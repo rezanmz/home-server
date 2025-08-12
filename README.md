@@ -20,6 +20,7 @@ services/
 
 - **cloudflare-ddns**: Updates DNS for `reza.network` using Cloudflare's API. Image: `favonia/cloudflare-ddns:1.15.1` ([repo](https://github.com/favonia/cloudflare-ddns)).
 - **nginx**: Serves a simple static site on `reza.network` over HTTP (port 80).
+  - HTTPS via Let's Encrypt (webroot). Exposes ports 80 and 443. Auto-renew with `certbot` sidecar. Requires repo secret `LETSENCRYPT_EMAIL`.
 
 ## CI/CD
 

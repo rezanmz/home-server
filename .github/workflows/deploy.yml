@@ -18,6 +18,7 @@ jobs:
     env:
       # Make secrets available to all compose runs. Add more here as your services require.
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
