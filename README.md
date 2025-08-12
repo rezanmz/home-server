@@ -18,7 +18,7 @@ services/
 
 ## Services
 
-- **cloudflare-ddns**: Updates DNS for `reza.network` using Cloudflare's API. Image: `ghcr.io/favonia/cloudflare-ddns` ([repo](https://github.com/favonia/cloudflare-ddns)).
+- **cloudflare-ddns**: Updates DNS for `reza.network` using Cloudflare's API. Image: `favonia/cloudflare-ddns:1.15.1` ([repo](https://github.com/favonia/cloudflare-ddns)).
 - **nginx**: Serves a simple static site on `reza.network` over HTTP (port 80).
 
 ## CI/CD
