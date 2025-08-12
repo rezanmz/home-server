@@ -12,40 +12,39 @@ services:
       - ./html:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /var/lib/home-server/nginx/letsencrypt:/etc/letsencrypt
-      - /var/lib/home-server/nginx/certbot-www:/var/www/certbot
     command: >-
-      sh -c "apk add --no-cache openssl >/dev/null 2>&1 || true;
-      if [ ! -f /etc/letsencrypt/live/reza.network/fullchain.pem ]; then
-        mkdir -p /etc/letsencrypt/live/reza.network;
-        openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-          -keyout /etc/letsencrypt/live/reza.network/privkey.pem \
-          -out /etc/letsencrypt/live/reza.network/fullchain.pem \
-          -subj '/CN=reza.network';
-      fi;
+      sh -c "apk add --no-cache openssl >/dev/null 2>&1 || true; \
+      if [ ! -f /etc/letsencrypt/live/reza.network/fullchain.pem ]; then \
+        mkdir -p /etc/letsencrypt/live/reza.network; \
+        openssl req -x509 -nodes -newkey rsa:2048 -days 1 -keyout /etc/letsencrypt/live/reza.network/privkey.pem -out /etc/letsencrypt/live/reza.network/fullchain.pem -subj '/CN=reza.network'; \
+      fi; \
       nginx -g 'daemon off;'"
 
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/dns-cloudflare:latest
     container_name: certbot
     restart: unless-stopped
     environment:
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     volumes:
       - /var/lib/home-server/nginx/letsencrypt:/etc/letsencrypt
-      - /var/lib/home-server/nginx/certbot-www:/var/www/certbot
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - nginx
     entrypoint: sh
     command: -c "set -e; \
+      mkdir -p /etc/letsencrypt; \
+      printf 'dns_cloudflare_api_token = %s\n' \"$CLOUDFLARE_API_TOKEN\" > /etc/letsencrypt/cloudflare.ini; \
+      chmod 600 /etc/letsencrypt/cloudflare.ini; \
       first_issue() { \
-        certbot certonly --webroot -w /var/www/certbot -d reza.network \
-          --agree-tos --non-interactive --email \"$LETSENCRYPT_EMAIL\" --rsa-key-size 4096; \
+        certbot certonly --dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
+          -d reza.network --agree-tos --non-interactive --email \"$LETSENCRYPT_EMAIL\" --rsa-key-size 4096; \
         docker exec nginx nginx -s reload || true; \
       }; \
       renew_loop() { \
         while true; do \
-          certbot renew --webroot -w /var/www/certbot --quiet --no-self-upgrade || true; \
+          certbot renew --quiet --no-self-upgrade || true; \
           docker exec nginx nginx -s reload || true; \
           sleep 12h; \
         done; \
