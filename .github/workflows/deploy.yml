@@ -6,6 +6,7 @@ on:
     paths:
       - 'services/**'
       - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 concurrency:
   group: deploy-home-server
@@ -17,7 +18,6 @@ jobs:
     env:
       # Make secrets available to all compose runs. Add more here as your services require.
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      DEPLOY_STATE_DIR: ${{ github.workspace }}/.deploy-state/services
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,6 +28,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # Persistent cache for compose files of deployed services
+          DEPLOY_STATE_DIR="${DEPLOY_STATE_DIR:-$HOME/.home-server-deploy/services}"
 
           AFTER_SHA="${GITHUB_SHA}"
           BEFORE_SHA="${{ github.event.before }}"
@@ -74,18 +77,66 @@ jobs:
 
           echo "Removed services: ${REMOVED_SERVICES[*]:-<none>}"
 
-          # Deploy changed or newly added services
-          for svc in "${CHANGED_SERVICES[@]:-}"; do
+          # If workflow changed in this push, redeploy all current services
+          if git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" -- '.github/workflows/deploy.yml' | grep -q .; then
+            echo "Workflow changed; marking all current services for deployment"
+            CHANGED_SERVICES=("${CURRENT_SERVICES[@]:-}")
+          fi
+
+          # Also deploy services that have never been deployed (no state dir) or are not currently running
+          EXTRA_DEPLOY=()
+          for svc in "${CURRENT_SERVICES[@]:-}"; do
+            need=false
+            [[ ! -d "${DEPLOY_STATE_DIR}/$svc" ]] && need=true
+            if [[ "$need" == false ]]; then
+              pushd "services/$svc" >/dev/null
+              running_count=$(docker compose -f compose.yaml ps --status=running --services | wc -l || true)
+              popd >/dev/null
+              [[ "${running_count}" -eq 0 ]] && need=true
+            fi
+            if [[ "$need" == true ]]; then
+              EXTRA_DEPLOY+=("$svc")
+            fi
+          done
+
+          # Union of CHANGED_SERVICES and EXTRA_DEPLOY (unique)
+          DEPLOY_SET=()
+          add_unique() { local v; for v in "$@"; do in_list "$v" "${DEPLOY_SET[@]:-}" || DEPLOY_SET+=("$v"); done; }
+          add_unique "${CHANGED_SERVICES[@]:-}"
+          add_unique "${EXTRA_DEPLOY[@]:-}"
+
+          echo "Will deploy: ${DEPLOY_SET[*]:-<none>}"
+
+          # Deploy selected services (continue on failure per service)
+          FAILURES=()
+          for svc in "${DEPLOY_SET[@]:-}"; do
             if in_list "$svc" "${CURRENT_SERVICES[@]:-}"; then
               echo "Deploying: $svc"
               pushd "services/$svc" >/dev/null
-              docker compose -f compose.yaml pull | cat
-              docker compose -f compose.yaml up -d --remove-orphans | cat
+              success=true
+              if ! docker compose -f compose.yaml pull | cat; then
+                echo "[WARN] Pull failed for $svc"
+                success=false
+              fi
+              if ! docker compose -f compose.yaml up -d --remove-orphans | cat; then
+                echo "[WARN] Up failed for $svc"
+                success=false
+              fi
               popd >/dev/null
-              mkdir -p "${DEPLOY_STATE_DIR}/$svc"
-              rsync -a --delete "services/$svc/" "${DEPLOY_STATE_DIR}/$svc/"
+              if [[ "$success" == true ]]; then
+                mkdir -p "${DEPLOY_STATE_DIR}/$svc"
+                rm -rf "${DEPLOY_STATE_DIR}/$svc"/* 2>/dev/null || true
+                mkdir -p "${DEPLOY_STATE_DIR}/$svc"
+                cp -a "services/$svc/." "${DEPLOY_STATE_DIR}/$svc/"
+              else
+                FAILURES+=("$svc")
+              fi
             fi
           done
+
+          if [[ ${#FAILURES[@]} -gt 0 ]]; then
+            echo "The following services failed to deploy: ${FAILURES[*]}"
+          fi
 
           # Stop services removed from the repo
           for svc in "${REMOVED_SERVICES[@]:-}"; do
