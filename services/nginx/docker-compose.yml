@@ -3,24 +3,43 @@ services:
     image: nginx:alpine
     container_name: nginx
     restart: unless-stopped
+    environment:
+      - DOMAIN=${DOMAIN}
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./html:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
       - /var/lib/home-server/nginx/letsencrypt:/etc/letsencrypt
     command:
       - sh
-      - -lc
+      - -c
       - |
         set -e
+        echo "Setting up nginx for domain: $DOMAIN"
         apk add --no-cache openssl inotify-tools >/dev/null 2>&1 || true
-        if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
-          mkdir -p /etc/letsencrypt/live/${DOMAIN}
-          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -keyout /etc/letsencrypt/live/${DOMAIN}/privkey.pem -out /etc/letsencrypt/live/${DOMAIN}/fullchain.pem -subj '/CN=${DOMAIN}'
+        
+        # Create self-signed certificate if Let's Encrypt cert doesn't exist
+        if [ ! -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
+          echo "Creating temporary self-signed certificate for $DOMAIN"
+          mkdir -p /etc/letsencrypt/live/$DOMAIN
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
+            -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
+            -subj "/CN=$DOMAIN"
         fi
-        ( inotifywait -m -e close_write,create,delete /etc/letsencrypt/live/${DOMAIN} 2>/dev/null | while read -r _; do nginx -s reload || true; done ) &
+        
+        # Set up file watcher to reload nginx when certificates change
+        (
+          inotifywait -m -e close_write,create,delete /etc/letsencrypt/live/$DOMAIN 2>/dev/null | \
+          while read -r _; do 
+            echo "Certificate files changed, reloading nginx..."
+            nginx -s reload || true
+          done
+        ) &
+        
+        echo "Starting nginx..."
         exec nginx -g 'daemon off;'
 
   certbot:
@@ -30,30 +49,13 @@ services:
     environment:
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - DOMAIN=${DOMAIN}
+      - LETSENCRYPT_STAGING=${LETSENCRYPT_STAGING:-false}
     volumes:
       - /var/lib/home-server/nginx/letsencrypt:/etc/letsencrypt
+      - ./certbot-entrypoint.sh:/entrypoint.sh:ro
     depends_on:
       - nginx
-    entrypoint: sh
-    command: -c "set -e; \
-      mkdir -p /etc/letsencrypt; \
-      printf 'dns_cloudflare_api_token = %s\n' \"$CLOUDFLARE_API_TOKEN\" > /etc/letsencrypt/cloudflare.ini; \
-      chmod 600 /etc/letsencrypt/cloudflare.ini; \
-      first_issue() { \
-        EXTRA=""; \
-        if [ \"${LETSENCRYPT_STAGING:-}\" = \"true\" ]; then EXTRA="--test-cert"; fi; \
-        certbot certonly --dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
-          -d ${DOMAIN} --agree-tos --non-interactive --email \"$LETSENCRYPT_EMAIL\" --rsa-key-size 4096 $EXTRA; \
-      }; \
-      renew_loop() { \
-        while true; do \
-          EXTRA=""; \
-          if [ \"${LETSENCRYPT_STAGING:-}\" = \"true\" ]; then EXTRA="--test-cert"; fi; \
-          certbot renew --quiet $EXTRA || true; \
-          sleep 12h; \
-        done; \
-      }; \
-      if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then first_issue; fi; \
-      renew_loop"
+    command: ["/entrypoint.sh"]
 
 
