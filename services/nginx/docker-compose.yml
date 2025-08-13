@@ -1,5 +1,3 @@
-name: nginx
-
 services:
   nginx:
     image: nginx:alpine
@@ -18,11 +16,11 @@ services:
       - |
         set -e
         apk add --no-cache openssl inotify-tools >/dev/null 2>&1 || true
-        if [ ! -f /etc/letsencrypt/live/reza.network/fullchain.pem ]; then
-          mkdir -p /etc/letsencrypt/live/reza.network
-          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -keyout /etc/letsencrypt/live/reza.network/privkey.pem -out /etc/letsencrypt/live/reza.network/fullchain.pem -subj '/CN=reza.network'
+        if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
+          mkdir -p /etc/letsencrypt/live/${DOMAIN}
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -keyout /etc/letsencrypt/live/${DOMAIN}/privkey.pem -out /etc/letsencrypt/live/${DOMAIN}/fullchain.pem -subj '/CN=${DOMAIN}'
         fi
-        ( inotifywait -m -e close_write,create,delete /etc/letsencrypt/live/reza.network 2>/dev/null | while read -r _; do nginx -s reload || true; done ) &
+        ( inotifywait -m -e close_write,create,delete /etc/letsencrypt/live/${DOMAIN} 2>/dev/null | while read -r _; do nginx -s reload || true; done ) &
         exec nginx -g 'daemon off;'
 
   certbot:
@@ -45,7 +43,7 @@ services:
         EXTRA=""; \
         if [ \"${LETSENCRYPT_STAGING:-}\" = \"true\" ]; then EXTRA="--test-cert"; fi; \
         certbot certonly --dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
-          -d reza.network --agree-tos --non-interactive --email \"$LETSENCRYPT_EMAIL\" --rsa-key-size 4096 $EXTRA; \
+          -d ${DOMAIN} --agree-tos --non-interactive --email \"$LETSENCRYPT_EMAIL\" --rsa-key-size 4096 $EXTRA; \
       }; \
       renew_loop() { \
         while true; do \
@@ -55,7 +53,7 @@ services:
           sleep 12h; \
         done; \
       }; \
-      if [ ! -f /etc/letsencrypt/live/reza.network/fullchain.pem ]; then first_issue; fi; \
+      if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then first_issue; fi; \
       renew_loop"
 
 
