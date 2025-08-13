@@ -2,7 +2,7 @@ name: Deploy Docker Services
 
 on:
   push:
-    branches: [main, master] # Adjust branches as needed
+    branches: ["main"]
     paths:
       - "services/**"
   workflow_dispatch: # Allows manual triggering
