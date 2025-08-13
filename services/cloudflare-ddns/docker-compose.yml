@@ -1,5 +1,3 @@
-name: cloudflare-ddns
-
 services:
   ddns:
     image: favonia/cloudflare-ddns:1.15.1
@@ -7,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
-      DOMAINS: reza.network
+      DOMAINS: ${DOMAIN}
       # UPDATE_CRON: "*/5 * * * *"  # optional: customize the update schedule
 
 

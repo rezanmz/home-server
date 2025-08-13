@@ -193,94 +193,16 @@ jobs:
             echo "✅ Service $service removed successfully"
           done
 
-      - name: Deploy and update services
-        if: env.CURRENT_SERVICES != ''
+      - name: Discover and Deploy Services
+        id: deploy
         run: |
-          echo "🚀 Deploying and updating services..."
-
-          # Set up common environment variables from secrets
-          export DOCKER_BUILDKIT=1
-          export COMPOSE_DOCKER_CLI_BUILD=1
-
-          failed_deployments=""
-          successful_deployments=""
-
-          for service in ${{ env.CURRENT_SERVICES }}; do
-            echo "🔄 Processing service: $service"
-            
-            service_dir="${SERVICES_DIR}/$service"
-            compose_file=""
-            
-            if [ -f "$service_dir/docker-compose.yml" ]; then
-              compose_file="docker-compose.yml"
-            elif [ -f "$service_dir/docker-compose.yaml" ]; then
-              compose_file="docker-compose.yaml"
-            elif [ -f "$service_dir/compose.yaml" ]; then
-              compose_file="compose.yaml"
-            elif [ -f "$service_dir/compose.yml" ]; then
-              compose_file="compose.yml"
-            fi
-            
-            # Change to service directory
-            cd "$service_dir"
-            
-            echo "📂 Working in directory: $(pwd)"
-            echo "📄 Using compose file: $compose_file"
-            
-            # Create a temporary env file with GitHub secrets if needed
-            # Note: You can add more environment variables here from GitHub secrets
-            cat > .env.temp << EOF
-          GITHUB_SHA=${GITHUB_SHA}
-          GITHUB_RUN_ID=${GITHUB_RUN_ID}
-          DEPLOYMENT_ENV=production
-          EOF
-            
-            # Pull latest images first
-            if docker-compose -f "$compose_file" pull 2>/dev/null; then
-              echo "📦 Images pulled successfully for $service"
-            else
-              echo "⚠️ Could not pull images for $service (might be building from source)"
-            fi
-            
-            # Deploy/update the service
-            echo "🚀 Deploying $service..."
-            if docker-compose -f "$compose_file" up -d --remove-orphans --force-recreate; then
-              echo "✅ Service $service deployed successfully"
-              successful_deployments="${successful_deployments}$service "
-              
-              # Wait a moment for service to initialize
-              sleep 5
-              
-              # Check if service is running
-              if docker-compose -f "$compose_file" ps | grep -q "Up\|running"; then
-                echo "🟢 Service $service is running"
-              else
-                echo "⚠️ Service $service may not be running properly"
-                docker-compose -f "$compose_file" logs --tail=20
-              fi
-            else
-              echo "❌ Failed to deploy service $service"
-              failed_deployments="${failed_deployments}$service "
-              
-              # Show logs for debugging
-              echo "📜 Logs for $service:"
-              docker-compose -f "$compose_file" logs --tail=50 || true
-            fi
-            
-            # Clean up temporary files
-            rm -f .env.temp
-            
-            # Return to root directory
-            cd "$GITHUB_WORKSPACE"
-          done
-
-          echo "SUCCESSFUL_DEPLOYMENTS=$successful_deployments" >> $GITHUB_ENV
-          echo "FAILED_DEPLOYMENTS=$failed_deployments" >> $GITHUB_ENV
-
-          if [ ! -z "$failed_deployments" ]; then
-            echo "❌ Some deployments failed: $failed_deployments"
-            exit 1
-          fi
+          ./manage-services.sh
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+          DOMAIN: ${{ secrets.DOMAIN }}
 
       - name: Health check services
         if: env.CURRENT_SERVICES != ''
