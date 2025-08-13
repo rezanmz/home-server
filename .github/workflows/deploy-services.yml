@@ -1,0 +1,375 @@
+name: Deploy Docker Services
+
+on:
+  push:
+    branches: [main, master] # Adjust branches as needed
+    paths:
+      - "services/**"
+  workflow_dispatch: # Allows manual triggering
+
+env:
+  SERVICES_DIR: "services"
+  STATE_FILE: "/tmp/deployed_services.txt"
+
+jobs:
+  deploy-services:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Needed to detect changes
+
+      - name: Set up environment
+        run: |
+          echo "🚀 Starting Docker services deployment"
+          echo "GITHUB_SHA=${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "GITHUB_RUN_ID=${GITHUB_RUN_ID}" >> $GITHUB_ENV
+
+          # Create logs directory
+          mkdir -p logs
+
+          # Set proper permissions for Docker socket if needed
+          sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
+
+      - name: Discover current services
+        id: discover
+        run: |
+          echo "🔍 Discovering services in ${SERVICES_DIR} directory..."
+
+          # Find all directories with docker-compose.yml files
+          current_services=""
+          if [ -d "${SERVICES_DIR}" ]; then
+            for service_dir in ${SERVICES_DIR}/*/; do
+              if [ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ]; then
+                service_name=$(basename "$service_dir")
+                current_services="${current_services}${service_name} "
+                echo "📦 Found service: $service_name"
+              fi
+            done
+          fi
+
+          # Remove trailing space and save to environment
+          current_services=$(echo "$current_services" | sed 's/[[:space:]]*$//')
+          echo "CURRENT_SERVICES=$current_services" >> $GITHUB_ENV
+          echo "current_services=$current_services" >> $GITHUB_OUTPUT
+
+          echo "📋 Current services: $current_services"
+
+      - name: Load previously deployed services
+        id: previous
+        run: |
+          echo "📖 Loading previously deployed services..."
+
+          # Try to get previously deployed services from a persistent location
+          # Using a file in the runner's workspace that persists between runs
+          previous_services=""
+          if [ -f "$HOME/deployed_services.txt" ]; then
+            previous_services=$(cat "$HOME/deployed_services.txt" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+            echo "📜 Previously deployed: $previous_services"
+          else
+            echo "📝 No previous deployment record found"
+          fi
+
+          echo "PREVIOUS_SERVICES=$previous_services" >> $GITHUB_ENV
+          echo "previous_services=$previous_services" >> $GITHUB_OUTPUT
+
+      - name: Determine service actions
+        id: actions
+        run: |
+          echo "🎯 Determining required actions..."
+
+          current_services="${{ env.CURRENT_SERVICES }}"
+          previous_services="${{ env.PREVIOUS_SERVICES }}"
+
+          # Convert to arrays
+          current_array=($current_services)
+          previous_array=($previous_services)
+
+          # Find new services (in current but not in previous)
+          new_services=""
+          for service in ${current_array[@]}; do
+            if [[ ! " ${previous_array[@]} " =~ " $service " ]]; then
+              new_services="${new_services}$service "
+            fi
+          done
+
+          # Find removed services (in previous but not in current)
+          removed_services=""
+          for service in ${previous_array[@]}; do
+            if [[ ! " ${current_array[@]} " =~ " $service " ]]; then
+              removed_services="${removed_services}$service "
+            fi
+          done
+
+          # All current services need to be checked for updates
+          update_services="$current_services"
+
+          # Clean up trailing spaces
+          new_services=$(echo "$new_services" | sed 's/[[:space:]]*$//')
+          removed_services=$(echo "$removed_services" | sed 's/[[:space:]]*$//')
+          update_services=$(echo "$update_services" | sed 's/[[:space:]]*$//')
+
+          echo "NEW_SERVICES=$new_services" >> $GITHUB_ENV
+          echo "REMOVED_SERVICES=$removed_services" >> $GITHUB_ENV
+          echo "UPDATE_SERVICES=$update_services" >> $GITHUB_ENV
+
+          echo "✨ New services: $new_services"
+          echo "🗑️  Removed services: $removed_services"
+          echo "🔄 Services to update: $update_services"
+
+      - name: Validate service configurations
+        run: |
+          echo "✅ Validating Docker Compose configurations..."
+
+          failed_services=""
+          for service in ${{ env.CURRENT_SERVICES }}; do
+            echo "🔍 Validating $service..."
+            
+            service_dir="${SERVICES_DIR}/$service"
+            compose_file=""
+            
+            if [ -f "$service_dir/docker-compose.yml" ]; then
+              compose_file="$service_dir/docker-compose.yml"
+            elif [ -f "$service_dir/docker-compose.yaml" ]; then
+              compose_file="$service_dir/docker-compose.yaml"
+            else
+              echo "❌ No docker-compose file found for $service"
+              failed_services="${failed_services}$service "
+              continue
+            fi
+            
+            # Validate configuration
+            if ! docker-compose -f "$compose_file" config > /dev/null 2>&1; then
+              echo "❌ Invalid configuration for $service"
+              failed_services="${failed_services}$service "
+            else
+              echo "✅ Configuration valid for $service"
+            fi
+          done
+
+          if [ ! -z "$failed_services" ]; then
+            echo "❌ Failed services: $failed_services"
+            exit 1
+          fi
+
+      - name: Remove deleted services
+        if: env.REMOVED_SERVICES != ''
+        run: |
+          echo "🗑️ Removing deleted services..."
+
+          for service in ${{ env.REMOVED_SERVICES }}; do
+            echo "🛑 Removing service: $service"
+            
+            # Find containers with the service name pattern
+            containers=$(docker ps -a --filter "name=${service}" --format "{{.Names}}" || true)
+            
+            if [ ! -z "$containers" ]; then
+              echo "🛑 Stopping and removing containers for $service..."
+              echo "$containers" | xargs -r docker stop || true
+              echo "$containers" | xargs -r docker rm || true
+            fi
+            
+            # Remove networks (be careful not to remove shared networks)
+            networks=$(docker network ls --filter "name=${service}" --format "{{.Name}}" | grep -v bridge | grep -v host | grep -v none || true)
+            if [ ! -z "$networks" ]; then
+              echo "🌐 Removing networks for $service..."
+              echo "$networks" | xargs -r docker network rm || true
+            fi
+            
+            # Remove images with the service name (only if not used by other containers)
+            images=$(docker images --filter "reference=*${service}*" --format "{{.Repository}}:{{.Tag}}" || true)
+            if [ ! -z "$images" ]; then
+              echo "🏞️ Removing unused images for $service..."
+              echo "$images" | xargs -r docker rmi --force || true
+            fi
+            
+            echo "✅ Service $service removed successfully"
+          done
+
+      - name: Deploy and update services
+        if: env.CURRENT_SERVICES != ''
+        run: |
+          echo "🚀 Deploying and updating services..."
+
+          # Set up common environment variables from secrets
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+
+          failed_deployments=""
+          successful_deployments=""
+
+          for service in ${{ env.CURRENT_SERVICES }}; do
+            echo "🔄 Processing service: $service"
+            
+            service_dir="${SERVICES_DIR}/$service"
+            compose_file=""
+            
+            if [ -f "$service_dir/docker-compose.yml" ]; then
+              compose_file="docker-compose.yml"
+            elif [ -f "$service_dir/docker-compose.yaml" ]; then
+              compose_file="docker-compose.yaml"
+            fi
+            
+            # Change to service directory
+            cd "$service_dir"
+            
+            echo "📂 Working in directory: $(pwd)"
+            echo "📄 Using compose file: $compose_file"
+            
+            # Create a temporary env file with GitHub secrets if needed
+            # Note: You can add more environment variables here from GitHub secrets
+            cat > .env.temp << EOF
+          GITHUB_SHA=${GITHUB_SHA}
+          GITHUB_RUN_ID=${GITHUB_RUN_ID}
+          DEPLOYMENT_ENV=production
+          EOF
+            
+            # Pull latest images first
+            if docker-compose -f "$compose_file" pull 2>/dev/null; then
+              echo "📦 Images pulled successfully for $service"
+            else
+              echo "⚠️ Could not pull images for $service (might be building from source)"
+            fi
+            
+            # Deploy/update the service
+            echo "🚀 Deploying $service..."
+            if docker-compose -f "$compose_file" up -d --remove-orphans --force-recreate; then
+              echo "✅ Service $service deployed successfully"
+              successful_deployments="${successful_deployments}$service "
+              
+              # Wait a moment for service to initialize
+              sleep 5
+              
+              # Check if service is running
+              if docker-compose -f "$compose_file" ps | grep -q "Up\|running"; then
+                echo "🟢 Service $service is running"
+              else
+                echo "⚠️ Service $service may not be running properly"
+                docker-compose -f "$compose_file" logs --tail=20
+              fi
+            else
+              echo "❌ Failed to deploy service $service"
+              failed_deployments="${failed_deployments}$service "
+              
+              # Show logs for debugging
+              echo "📜 Logs for $service:"
+              docker-compose -f "$compose_file" logs --tail=50 || true
+            fi
+            
+            # Clean up temporary files
+            rm -f .env.temp
+            
+            # Return to root directory
+            cd "$GITHUB_WORKSPACE"
+          done
+
+          echo "SUCCESSFUL_DEPLOYMENTS=$successful_deployments" >> $GITHUB_ENV
+          echo "FAILED_DEPLOYMENTS=$failed_deployments" >> $GITHUB_ENV
+
+          if [ ! -z "$failed_deployments" ]; then
+            echo "❌ Some deployments failed: $failed_deployments"
+            exit 1
+          fi
+
+      - name: Health check services
+        if: env.CURRENT_SERVICES != ''
+        run: |
+          echo "🏥 Performing health checks..."
+
+          for service in ${{ env.CURRENT_SERVICES }}; do
+            echo "🔍 Checking health of $service..."
+            
+            service_dir="${SERVICES_DIR}/$service"
+            compose_file=""
+            
+            if [ -f "$service_dir/docker-compose.yml" ]; then
+              compose_file="docker-compose.yml"
+            elif [ -f "$service_dir/docker-compose.yaml" ]; then
+              compose_file="docker-compose.yaml"
+            fi
+            
+            cd "$service_dir"
+            
+            # Check container status
+            status=$(docker-compose -f "$compose_file" ps --format "table {{.Name}}\t{{.Status}}" || true)
+            echo "📊 Status for $service:"
+            echo "$status"
+            
+            # Count running containers
+            running_count=$(docker-compose -f "$compose_file" ps | grep -c "Up\|running" || echo "0")
+            total_count=$(docker-compose -f "$compose_file" config --services | wc -l)
+            
+            echo "📈 $service: $running_count/$total_count containers running"
+            
+            cd "$GITHUB_WORKSPACE"
+          done
+
+      - name: Update deployment record
+        if: always()
+        run: |
+          echo "📝 Updating deployment record..."
+
+          # Save current services to persistent file
+          echo "${{ env.CURRENT_SERVICES }}" | tr ' ' '\n' > "$HOME/deployed_services.txt"
+
+          echo "💾 Deployment record updated"
+
+      - name: Cleanup unused Docker resources
+        if: always()
+        run: |
+          echo "🧹 Cleaning up unused Docker resources..."
+
+          # Remove unused images (but keep images less than 24 hours old)
+          docker image prune -f --filter "until=24h" || true
+
+          # Remove unused networks
+          docker network prune -f || true
+
+          # Remove unused build cache
+          docker builder prune -f --keep-storage 1GB || true
+
+          echo "✅ Cleanup completed"
+
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          echo "📊 Deployment Summary"
+          echo "===================="
+          echo "🕐 Timestamp: $(date)"
+          echo "📦 Total services: $(echo '${{ env.CURRENT_SERVICES }}' | wc -w)"
+          echo "✅ Successful: ${{ env.SUCCESSFUL_DEPLOYMENTS }}"
+          echo "❌ Failed: ${{ env.FAILED_DEPLOYMENTS }}"
+          echo "🗑️ Removed: ${{ env.REMOVED_SERVICES }}"
+          echo ""
+
+          echo "🔍 Current Docker status:"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | head -20
+
+          echo ""
+          echo "💽 Docker disk usage:"
+          docker system df
+
+          # Save summary to file for potential use in notifications
+          cat > logs/deployment-summary.txt << EOF
+          Deployment Summary - $(date)
+          ============================
+          Repository: ${{ github.repository }}
+          Commit: ${{ github.sha }}
+          Successful deployments: ${{ env.SUCCESSFUL_DEPLOYMENTS }}
+          Failed deployments: ${{ env.FAILED_DEPLOYMENTS }}
+          Removed services: ${{ env.REMOVED_SERVICES }}
+          EOF
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "🚨 Deployment failed! Check the logs above for details."
+          echo "Failed services: ${{ env.FAILED_DEPLOYMENTS }}"
+
+          # You can add notification logic here (Slack, email, etc.)
+          # Example: Send to webhook
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Docker deployment failed for ${{ github.repository }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
