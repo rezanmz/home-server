@@ -44,7 +44,7 @@ discover_services() {
     local services=""
     if [ -d "$SERVICES_DIR" ]; then
         for service_dir in $SERVICES_DIR/*/; do
-            if [ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ]; then
+            if [ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ] || [ -f "${service_dir}compose.yaml" ] || [ -f "${service_dir}compose.yml" ]; then
                 service_name=$(basename "$service_dir")
                 services="$services$service_name "
                 log_info "Found service: $service_name"
@@ -69,8 +69,12 @@ validate_service() {
         compose_file="$service_dir/docker-compose.yml"
     elif [ -f "$service_dir/docker-compose.yaml" ]; then
         compose_file="$service_dir/docker-compose.yaml"
+    elif [ -f "$service_dir/compose.yaml" ]; then
+        compose_file="$service_dir/compose.yaml"
+    elif [ -f "$service_dir/compose.yml" ]; then
+        compose_file="$service_dir/compose.yml"
     else
-        log_error "No docker-compose file found for $service"
+        log_error "No compose file found for $service"
         return 1
     fi
     
@@ -96,8 +100,12 @@ deploy_service() {
         compose_file="docker-compose.yml"
     elif [ -f "$service_dir/docker-compose.yaml" ]; then
         compose_file="docker-compose.yaml"
+    elif [ -f "$service_dir/compose.yaml" ]; then
+        compose_file="compose.yaml"
+    elif [ -f "$service_dir/compose.yml" ]; then
+        compose_file="compose.yml"
     else
-        log_error "No docker-compose file found for $service"
+        log_error "No compose file found for $service"
         return 1
     fi
     
@@ -175,8 +183,12 @@ check_service_status() {
         compose_file="docker-compose.yml"
     elif [ -f "$service_dir/docker-compose.yaml" ]; then
         compose_file="docker-compose.yaml"
+    elif [ -f "$service_dir/compose.yaml" ]; then
+        compose_file="compose.yaml"
+    elif [ -f "$service_dir/compose.yml" ]; then
+        compose_file="compose.yml"
     else
-        log_error "No docker-compose file found for $service"
+        log_error "No compose file found for $service"
         return 1
     fi
     
@@ -200,8 +212,12 @@ show_service_logs() {
         compose_file="docker-compose.yml"
     elif [ -f "$service_dir/docker-compose.yaml" ]; then
         compose_file="docker-compose.yaml"
+    elif [ -f "$service_dir/compose.yaml" ]; then
+        compose_file="compose.yaml"
+    elif [ -f "$service_dir/compose.yml" ]; then
+        compose_file="compose.yml"
     else
-        log_error "No docker-compose file found for $service"
+        log_error "No compose file found for $service"
         return 1
     fi
     

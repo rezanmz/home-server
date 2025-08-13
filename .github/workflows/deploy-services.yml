@@ -2,9 +2,7 @@ name: Deploy Docker Services
 
 on:
   push:
-    branches: ["main"]
-    paths:
-      - "services/**"
+    branches: [main, master] # Adjust branches as needed
   workflow_dispatch: # Allows manual triggering
 
 env:
@@ -38,11 +36,11 @@ jobs:
         run: |
           echo "🔍 Discovering services in ${SERVICES_DIR} directory..."
 
-          # Find all directories with docker-compose.yml files
+          # Find all directories with docker-compose.yml, docker-compose.yaml, or compose.yaml files
           current_services=""
           if [ -d "${SERVICES_DIR}" ]; then
             for service_dir in ${SERVICES_DIR}/*/; do
-              if [ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ]; then
+              if [ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ] || [ -f "${service_dir}compose.yaml" ] || [ -f "${service_dir}compose.yml" ]; then
                 service_name=$(basename "$service_dir")
                 current_services="${current_services}${service_name} "
                 echo "📦 Found service: $service_name"
@@ -134,15 +132,22 @@ jobs:
               compose_file="$service_dir/docker-compose.yml"
             elif [ -f "$service_dir/docker-compose.yaml" ]; then
               compose_file="$service_dir/docker-compose.yaml"
+            elif [ -f "$service_dir/compose.yaml" ]; then
+              compose_file="$service_dir/compose.yaml"
+            elif [ -f "$service_dir/compose.yml" ]; then
+              compose_file="$service_dir/compose.yml"
             else
-              echo "❌ No docker-compose file found for $service"
+              echo "❌ No compose file found for $service"
               failed_services="${failed_services}$service "
               continue
             fi
             
             # Validate configuration
+            echo "🔧 Using compose file: $compose_file"
             if ! docker-compose -f "$compose_file" config > /dev/null 2>&1; then
               echo "❌ Invalid configuration for $service"
+              echo "🔍 Debug: Let's see the actual error:"
+              docker-compose -f "$compose_file" config 2>&1 || true
               failed_services="${failed_services}$service "
             else
               echo "✅ Configuration valid for $service"
@@ -210,6 +215,10 @@ jobs:
               compose_file="docker-compose.yml"
             elif [ -f "$service_dir/docker-compose.yaml" ]; then
               compose_file="docker-compose.yaml"
+            elif [ -f "$service_dir/compose.yaml" ]; then
+              compose_file="compose.yaml"
+            elif [ -f "$service_dir/compose.yml" ]; then
+              compose_file="compose.yml"
             fi
             
             # Change to service directory
@@ -288,6 +297,10 @@ jobs:
               compose_file="docker-compose.yml"
             elif [ -f "$service_dir/docker-compose.yaml" ]; then
               compose_file="docker-compose.yaml"
+            elif [ -f "$service_dir/compose.yaml" ]; then
+              compose_file="compose.yaml"
+            elif [ -f "$service_dir/compose.yml" ]; then
+              compose_file="compose.yml"
             fi
             
             cd "$service_dir"
