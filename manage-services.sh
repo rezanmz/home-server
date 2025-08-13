@@ -19,19 +19,19 @@ NC='\033[0m' # No Color
 
 # Logging functions
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "${BLUE}ℹ️  $1${NC}" >&2
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}✅ $1${NC}" >&2
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}⚠️  $1${NC}" >&2
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}❌ $1${NC}" >&2
 }
 
 # Create logs directory
@@ -44,10 +44,14 @@ discover_services() {
     local services=""
     if [ -d "$SERVICES_DIR" ]; then
         for service_dir in $SERVICES_DIR/*/; do
-            if [ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ] || [ -f "${service_dir}compose.yaml" ] || [ -f "${service_dir}compose.yml" ]; then
+            # Check if the directory exists and contains a compose file
+            if [ -d "$service_dir" ] && ([ -f "${service_dir}docker-compose.yml" ] || [ -f "${service_dir}docker-compose.yaml" ] || [ -f "${service_dir}compose.yaml" ] || [ -f "${service_dir}compose.yml" ]); then
                 service_name=$(basename "$service_dir")
-                services="$services$service_name "
-                log_info "Found service: $service_name"
+                # Only add valid service directory names (avoid parsing log output)
+                if [[ "$service_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+                    services="$services$service_name "
+                    log_info "Found service: $service_name"
+                fi
             fi
         done
     fi
@@ -249,7 +253,28 @@ cleanup_docker() {
 deploy_all() {
     log_info "🚀 Starting deployment of all services..."
     
+    # Clear any potentially problematic input
+    exec < /dev/null
+    
+    # Get services from discover_services function, not from arguments
     local current_services=$(discover_services)
+    
+    # Validate the services we found are actually valid directory names
+    local validated_services=""
+    for service in $current_services; do
+        if [[ "$service" =~ ^[a-zA-Z0-9_-]+$ ]] && [ -d "$SERVICES_DIR/$service" ]; then
+            validated_services="$validated_services$service "
+        fi
+    done
+    current_services=$(echo "$validated_services" | sed 's/[[:space:]]*$//')
+    
+    if [ -z "$current_services" ]; then
+        log_error "No valid services found!"
+        exit 1
+    fi
+    
+    log_info "Valid services found: $current_services"
+    
     local previous_services=""
     
     # Load previous state
