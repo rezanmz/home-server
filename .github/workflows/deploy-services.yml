@@ -12,6 +12,11 @@ env:
 jobs:
   deploy-services:
     runs-on: self-hosted
+    env:
+      # Make secrets available to all compose runs. Add more here as your services require.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+      DOMAIN: ${{ secrets.DOMAIN }}
 
     steps:
       - name: Checkout repository
@@ -118,10 +123,6 @@ jobs:
           echo "🔄 Services to update: $update_services"
 
       - name: Validate service configurations
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
-          DOMAIN: ${{ secrets.DOMAIN }}
         run: |
           echo "✅ Validating Docker Compose configurations..."
 
@@ -202,12 +203,6 @@ jobs:
         run: |
           chmod +x ./manage-services.sh
           ./manage-services.sh deploy
-        env:
-          DOCKER_HOST: unix:///var/run/docker.sock
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
-          DOMAIN: ${{ secrets.DOMAIN }}
 
       - name: Health check services
         if: env.CURRENT_SERVICES != ''
