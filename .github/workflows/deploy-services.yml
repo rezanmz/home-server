@@ -200,6 +200,7 @@ jobs:
       - name: Discover and Deploy Services
         id: deploy
         run: |
+          chmod +x ./manage-services.sh
           ./manage-services.sh
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
