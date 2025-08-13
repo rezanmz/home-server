@@ -118,11 +118,15 @@ jobs:
           echo "🔄 Services to update: $update_services"
 
       - name: Validate service configurations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+          DOMAIN: ${{ secrets.DOMAIN }}
         run: |
           echo "✅ Validating Docker Compose configurations..."
 
           failed_services=""
-          for service in ${{ env.CURRENT_SERVICES }}; do
+          for service in ${{ env.UPDATE_SERVICES }}; do
             echo "🔍 Validating $service..."
             
             service_dir="${SERVICES_DIR}/$service"

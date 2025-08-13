@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Local Docker Services Manager
 # This script mirrors the GitHub Actions workflow for local development and testing
 
