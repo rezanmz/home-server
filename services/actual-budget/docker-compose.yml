@@ -1,10 +1,5 @@
 version: '3.8'
 
-networks:
-  home-server:
-    external: true
-    name: home-server
-
 services:
   actual-budget:
     image: actualbudget/actual-server:latest
@@ -17,3 +12,6 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+
+networks:
+  home-server:

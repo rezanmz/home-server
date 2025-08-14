@@ -1,11 +1,5 @@
 version: '3.8'
 
-networks:
-  home-server:
-    name: home-server
-    driver: bridge
-    internal: false  # Allows outbound internet access but services aren't directly exposed
-
 services:
   swag:
     image: lscr.io/linuxserver/swag:latest
@@ -33,3 +27,6 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+
+networks:
+  home-server:
