@@ -21,8 +21,7 @@ services:
         # Your Cloudflare API token (from GitHub secrets)
       - DOMAINS=reza.network,*.reza.network
         # Your main domain and wildcard subdomain
-      - PROXIED=false
-        # Set to false since this is for home server (not web hosting)
+      - PROXIED=true
       - UPDATE_CRON=@every 5m
         # Check for IP changes every 5 minutes
       - UPDATE_ON_START=true
