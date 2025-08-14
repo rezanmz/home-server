@@ -1,6 +1,0 @@
-#!/bin/bash
-# This script will be executed by SWAG to populate the Cloudflare credentials
-# The CLOUDFLARE_API_TOKEN environment variable will be used
-
-echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > /config/dns-conf/cloudflare.ini
-chmod 600 /config/dns-conf/cloudflare.ini

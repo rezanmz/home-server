@@ -27,7 +27,7 @@ services:
       # - DISABLE_F2B=true  # Uncomment if you don't want fail2ban
       # - SWAG_AUTORELOAD=true  # Uncomment for automatic config reloading
     volumes:
-      - ./config:/config
+      - ./config:/config:ro
     ports:
       - "443:443"
       - "80:80"
