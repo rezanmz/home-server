@@ -1,0 +1,45 @@
+services:
+  samba:
+    image: ghcr.io/servercontainers/samba
+    container_name: samba
+    restart: unless-stopped
+    ports:
+      - "139:139"     # NetBIOS Session Service
+      - "445:445"     # SMB over TCP
+      - "137:137/udp" # NetBIOS Name Service
+      - "138:138/udp" # NetBIOS Datagram Service
+      - "5353:5353/udp" # mDNS for service discovery
+    environment:
+      # Server identification
+      MODEL: 'TimeCapsule'
+      AVAHI_NAME: HomeServer
+      
+      # Samba configuration
+      SAMBA_CONF_LOG_LEVEL: 1
+      SAMBA_CONF_WORKGROUP: WORKGROUP
+      SAMBA_CONF_SERVER_STRING: Home Media Server
+      
+      # Create a media user group
+      GROUP_media: 1500
+      
+      # Create a media user account (change password as needed)
+      ACCOUNT_mediauser: raspberry
+      UID_mediauser: 1000
+      GROUPS_mediauser: media
+      
+      # Media shares configuration
+      SAMBA_VOLUME_CONFIG_movies: "[Movies]; path=/media/movies; valid users = mediauser; guest ok = no; read only = yes; browseable = yes; force group = media"
+      SAMBA_VOLUME_CONFIG_tv: "[TV Shows]; path=/media/tv; valid users = mediauser; guest ok = no; read only = yes; browseable = yes; force group = media"
+      SAMBA_VOLUME_CONFIG_media: "[Media]; path=/media; valid users = mediauser; guest ok = no; read only = yes; browseable = yes; force group = media"
+      
+      # Optional: Public read-only access (uncomment if you want guest access)
+      # SAMBA_VOLUME_CONFIG_movies_public: "[Movies (Public)]; path=/media/movies; guest ok = yes; read only = yes; browseable = yes"
+      # SAMBA_VOLUME_CONFIG_tv_public: "[TV Shows (Public)]; path=/media/tv; guest ok = yes; read only = yes; browseable = yes"
+      
+    volumes:
+      - type: bind
+        source: ~/media
+        target: /media
+      
+      # Avahi service discovery (optional - for automatic network discovery)
+      - /etc/avahi/services/:/external/avahi
