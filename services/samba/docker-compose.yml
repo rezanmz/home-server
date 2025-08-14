@@ -24,11 +24,11 @@ services:
       
       # Create a media user account (change password as needed)
       ACCOUNT_pi: raspberry
-      UID_mediauser: 1000
+      UID_pi: 1000
       GROUPS_pi: media
       
       # Media shares configuration
-      SAMBA_VOLUME_CONFIG_media: "[Media]; path=/media; valid users = mediauser; guest ok = no; read only = no; browseable = yes; force group = media"
+      SAMBA_VOLUME_CONFIG_media: "[Media]; path=/media; valid users = pi; guest ok = no; read only = no; browseable = yes; force group = media"
       
       # Optional: Public read-only access (uncomment if you want guest access)
       # SAMBA_VOLUME_CONFIG_movies_public: "[Movies (Public)]; path=/media/movies; guest ok = yes; read only = yes; browseable = yes"
