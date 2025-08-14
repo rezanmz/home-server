@@ -1,11 +1,19 @@
 version: '3.8'
 
+networks:
+  home-server-internal:
+    external: true
+    name: home-server-internal
+
 services:
   actual-budget:
     image: actualbudget/actual-server:latest
     container_name: actual-budget-server
-    ports:
-      - "5006:5006"
+    # No ports exposed to host - only accessible via internal network
+    expose:
+      - "5006"
     volumes:
       - ~/services/actual-budget/data:/data
+    networks:
+      - home-server-internal
     restart: unless-stopped
