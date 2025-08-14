@@ -18,7 +18,7 @@ services:
       - TZ=UTC
       - URL=reza.network
       - VALIDATION=http
-      - SUBDOMAINS=budget
+      - SUBDOMAINS=budget,pihole
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false  # Set to true for testing
       - CERTPROVIDER=  # Leave empty for Let's Encrypt, set to 'zerossl' for ZeroSSL
