@@ -3,7 +3,11 @@ services:
     image: jellyfin/jellyfin
     container_name: jellyfin
     user: "1000:1000"
-    network_mode: 'host'
+    ports:
+      - '8096:8096' # HTTP web UI
+      - '8920:8920' # Optional: HTTPS web UI
+      - '7359:7359/udp' # Optional: Client discovery
+      - '1900:1900/udp' # Optional: DLNA service
     volumes:
       - ~/persistent/jellyfin/config:/config
       - ~/persistent/jellyfin/cache:/cache
