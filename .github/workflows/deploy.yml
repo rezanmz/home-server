@@ -116,75 +116,88 @@ jobs:
     runs-on: self-hosted
     needs: detect-changes
     if: needs.detect-changes.outputs.deleted-services != '[]'
-    strategy:
-      matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.deleted-services) }}
     steps:
-      - name: Stop and remove deleted service
+      - name: Stop and remove deleted services
         run: |
-          echo "Stopping and removing service: ${{ matrix.service }}"
+          deleted_services='${{ needs.detect-changes.outputs.deleted-services }}'
 
-          # Stop and remove containers
-          docker compose -p "${{ matrix.service }}" down --remove-orphans || true
+          # Parse JSON array and process each service
+          echo "$deleted_services" | jq -r '.[]' | while read -r service; do
+            if [ -n "$service" ]; then
+              echo "Stopping and removing service: $service"
 
-          # Remove unused volumes (optional, be careful with this)
-          # docker volume prune -f
+              # Stop and remove containers
+              docker compose -p "$service" down --remove-orphans || true
 
-          echo "Service ${{ matrix.service }} has been stopped and removed"
+              # Remove unused volumes (optional, be careful with this)
+              # docker volume prune -f
+
+              echo "Service $service has been stopped and removed"
+            fi
+          done
 
   deploy-changed-services:
     runs-on: self-hosted
-    needs: detect-changes
-    if: needs.detect-changes.outputs.changed-services != '[]'
-    strategy:
-      matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.changed-services) }}
+    needs: [detect-changes, stop-deleted-services]
+    if: always() && needs.detect-changes.outputs.changed-services != '[]'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate service configuration
+      - name: Deploy changed services
         run: |
-          service_dir="services/${{ matrix.service }}"
+          changed_services='${{ needs.detect-changes.outputs.changed-services }}'
 
-          if [ ! -d "$service_dir" ]; then
-            echo "Error: Service directory $service_dir does not exist"
-            exit 1
-          fi
+          # Parse JSON array and process each service sequentially
+          echo "$changed_services" | jq -r '.[]' | while read -r service; do
+            if [ -n "$service" ]; then
+              echo "=== Processing service: $service ==="
+              
+              service_dir="services/$service"
 
-          if [ ! -f "$service_dir/docker-compose.yml" ] && [ ! -f "$service_dir/docker-compose.yaml" ]; then
-            echo "Error: No docker-compose file found in $service_dir"
-            exit 1
-          fi
+              # Validate service configuration
+              echo "Validating service configuration for: $service"
+              if [ ! -d "$service_dir" ]; then
+                echo "Error: Service directory $service_dir does not exist"
+                exit 1
+              fi
 
-          echo "Service ${{ matrix.service }} configuration is valid"
+              if [ ! -f "$service_dir/docker-compose.yml" ] && [ ! -f "$service_dir/docker-compose.yaml" ]; then
+                echo "Error: No docker-compose file found in $service_dir"
+                exit 1
+              fi
 
-      - name: Deploy service
-        run: |
-          service_dir="services/${{ matrix.service }}"
-          cd "$service_dir"
+              echo "Service $service configuration is valid"
 
-          echo "Deploying service: ${{ matrix.service }}"
+              # Deploy the service
+              echo "Deploying service: $service"
+              cd "$service_dir"
 
-          # Stop existing containers
-          docker compose -p "${{ matrix.service }}" down || true
+              # Stop existing containers
+              docker compose -p "$service" down || true
 
-          # Pull latest images
-          docker compose -p "${{ matrix.service }}" pull
+              # Pull latest images
+              docker compose -p "$service" pull
 
-          # Start the service
-          docker compose -p "${{ matrix.service }}" up -d
+              # Start the service
+              docker compose -p "$service" up -d
 
-          # Wait a moment for the service to start
-          sleep 5
+              # Wait a moment for the service to start
+              sleep 5
 
-          # Check if containers are running
-          if docker compose -p "${{ matrix.service }}" ps --services --filter "status=running" | grep -q .; then
-            echo "Service ${{ matrix.service }} deployed successfully"
-          else
-            echo "Warning: Some containers in service ${{ matrix.service }} may not be running"
-            docker compose -p "${{ matrix.service }}" ps
-          fi
+              # Check if containers are running
+              if docker compose -p "$service" ps --services --filter "status=running" | grep -q .; then
+                echo "✅ Service $service deployed successfully"
+              else
+                echo "⚠️ Warning: Some containers in service $service may not be running"
+                docker compose -p "$service" ps
+              fi
+
+              echo "Completed deployment of service: $service"
+              echo ""
+              cd - > /dev/null
+            fi
+          done
 
   health-check-and-recovery:
     runs-on: self-hosted
