@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   swag:
     image: lscr.io/linuxserver/swag:latest
@@ -31,4 +29,3 @@ services:
 networks:
   home-server:
     external: true
-    

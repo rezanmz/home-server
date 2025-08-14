@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   actual-budget:
     image: actualbudget/actual-server:latest
@@ -17,4 +15,3 @@ services:
 networks:
   home-server:
     external: true
-    
