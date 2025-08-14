@@ -34,6 +34,7 @@ jobs:
         run: |
           # Get all changed directories in services/
           changed_dirs="${{ steps.changed-files.outputs.all_changed_files }}"
+          deleted_dirs="${{ steps.changed-files.outputs.deleted_files }}"
 
           # Initialize arrays
           changed_services=()
@@ -50,7 +51,7 @@ jobs:
             done
           fi
 
-          # Process changed directories
+          # Process changed directories (existing services that changed)
           for dir in $changed_dirs; do
             if [[ "$dir" == services/* ]]; then
               # Extract service name (first subdirectory under services/)
@@ -68,18 +69,21 @@ jobs:
             fi
           done
 
-          # Detect deleted services by comparing with previous commit
-          if [ "${{ github.event_name }}" = "push" ] && [ "$(git rev-list --count HEAD)" -gt 1 ]; then
-            # Get services that existed in previous commit but not now
-            prev_services=$(git show HEAD~1:services --name-only 2>/dev/null | grep -v '/' || echo "")
-            current_services=$(ls services/ 2>/dev/null || echo "")
-            
-            for prev_service in $prev_services; do
-              if [ -n "$prev_service" ] && [ ! -d "services/$prev_service" ]; then
-                deleted_services+=("$prev_service")
+          # Process deleted directories (services that were removed)
+          for dir in $deleted_dirs; do
+            if [[ "$dir" == services/* ]]; then
+              # Extract service name (first subdirectory under services/)
+              service_path=${dir#services/}
+              service_name=${service_path%%/*}
+              
+              if [ -n "$service_name" ] && [ "$service_name" != "services" ]; then
+                # Add to deleted services if not already present
+                if [[ ! " ${deleted_services[@]} " =~ " ${service_name} " ]]; then
+                  deleted_services+=("$service_name")
+                fi
               fi
-            done
-          fi
+            fi
+          done
 
           # Convert arrays to JSON (compact format for GitHub Actions)
           if [ ${#changed_services[@]} -eq 0 ]; then
@@ -182,12 +186,15 @@ jobs:
             docker compose -p "${{ matrix.service }}" ps
           fi
 
-  health-check:
+  health-check-and-recovery:
     runs-on: self-hosted
-    needs: [detect-changes, deploy-changed-services]
-    if: always() && (needs.deploy-changed-services.result == 'success' || needs.deploy-changed-services.result == 'skipped')
+    needs: [detect-changes, deploy-changed-services, stop-deleted-services]
+    if: always()
     steps:
-      - name: Overall health check
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Health check and service recovery
         run: |
           echo "=== Docker System Overview ==="
           docker system df
@@ -196,7 +203,113 @@ jobs:
           docker ps
 
           echo "=== Docker Compose Services ==="
-          # List all compose projects
           docker compose ls || true
 
-          echo "Deployment workflow completed"
+          echo ""
+          echo "=== Service Health Check and Recovery ==="
+
+          # Get all services that should be running
+          services_to_check=()
+          if [ -d "services" ]; then
+            for service_dir in services/*/; do
+              if [ -d "$service_dir" ]; then
+                service_name=$(basename "$service_dir")
+                services_to_check+=("$service_name")
+              fi
+            done
+          fi
+
+          echo "Services to check: ${services_to_check[*]}"
+
+          # Check each service and recover if needed
+          failed_services=()
+          recovered_services=()
+
+          for service in "${services_to_check[@]}"; do
+            echo ""
+            echo "--- Checking service: $service ---"
+            
+            service_dir="services/$service"
+            cd "$service_dir"
+            
+            # Check if service containers are running
+            running_containers=$(docker compose -p "$service" ps --services --filter "status=running" 2>/dev/null || echo "")
+            total_containers=$(docker compose -p "$service" ps --services 2>/dev/null || echo "")
+            
+            if [ -z "$running_containers" ] || [ -z "$total_containers" ]; then
+              echo "❌ Service $service has no containers or is not running"
+              failed_services+=("$service")
+              
+              echo "🔄 Attempting to recover service: $service"
+              
+              # Stop any existing containers
+              docker compose -p "$service" down || true
+              
+              # Pull latest images
+              echo "📥 Pulling latest images for $service..."
+              docker compose -p "$service" pull || echo "Warning: Failed to pull images for $service"
+              
+              # Start the service
+              echo "🚀 Starting service: $service"
+              if docker compose -p "$service" up -d; then
+                echo "✅ Successfully started $service"
+                
+                # Wait a moment for containers to start
+                sleep 10
+                
+                # Verify the service is now running
+                new_running=$(docker compose -p "$service" ps --services --filter "status=running" 2>/dev/null || echo "")
+                if [ -n "$new_running" ]; then
+                  echo "✅ Service $service is now healthy"
+                  recovered_services+=("$service")
+                else
+                  echo "❌ Service $service failed to start properly"
+                  echo "Container status:"
+                  docker compose -p "$service" ps
+                  echo "Container logs:"
+                  docker compose -p "$service" logs --tail=20
+                fi
+              else
+                echo "❌ Failed to start service: $service"
+                echo "Container status:"
+                docker compose -p "$service" ps
+              fi
+            else
+              echo "✅ Service $service is healthy"
+              
+              # Still show container status for info
+              echo "Container status:"
+              docker compose -p "$service" ps
+            fi
+            
+            cd - > /dev/null
+          done
+
+          echo ""
+          echo "=== Recovery Summary ==="
+          echo "Total services checked: ${#services_to_check[@]}"
+          echo "Failed services found: ${#failed_services[@]}"
+          echo "Services recovered: ${#recovered_services[@]}"
+
+          if [ ${#failed_services[@]} -gt 0 ]; then
+            echo "Failed services: ${failed_services[*]}"
+          fi
+
+          if [ ${#recovered_services[@]} -gt 0 ]; then
+            echo "Recovered services: ${recovered_services[*]}"
+          fi
+
+          # Final status check
+          echo ""
+          echo "=== Final System Status ==="
+          docker ps
+
+          remaining_failed=$((${#failed_services[@]} - ${#recovered_services[@]}))
+          if [ $remaining_failed -gt 0 ]; then
+            echo "⚠️  Warning: $remaining_failed service(s) could not be recovered"
+            exit 1
+          else
+            echo "✅ All services are healthy!"
+          fi
+
+          echo "Deployment and health check workflow completed"
