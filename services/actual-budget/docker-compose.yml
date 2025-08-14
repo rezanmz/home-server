@@ -4,7 +4,7 @@ services:
   actual-budget:
     image: actualbudget/actual-server:latest
     user: "1000:1000"
-    container_name: actual-budget-server
+    container_name: actual-budget
     # No ports exposed to host - only accessible via internal network
     expose:
       - "5006"
@@ -16,3 +16,5 @@ services:
 
 networks:
   home-server:
+    external: true
+    

@@ -30,3 +30,5 @@ services:
 
 networks:
   home-server:
+    external: true
+    
