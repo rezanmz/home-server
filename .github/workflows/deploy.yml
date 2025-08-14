@@ -1,0 +1,185 @@
+name: Deploy Services
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  detect-changes:
+    runs-on: self-hosted
+    outputs:
+      changed-services: ${{ steps.changed-services.outputs.changed_services }}
+      deleted-services: ${{ steps.changed-services.outputs.deleted_services }}
+      all-services: ${{ steps.changed-services.outputs.all_services }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: services/**
+          dir_names: true
+          dir_names_max_depth: 2
+
+      - name: Detect changed services
+        id: changed-services
+        run: |
+          # Get all changed directories in services/
+          changed_dirs="${{ steps.changed-files.outputs.all_changed_files }}"
+
+          # Initialize arrays
+          changed_services=()
+          deleted_services=()
+          all_services=()
+
+          # Get all existing services
+          if [ -d "services" ]; then
+            for service_dir in services/*/; do
+              if [ -d "$service_dir" ]; then
+                service_name=$(basename "$service_dir")
+                all_services+=("$service_name")
+              fi
+            done
+          fi
+
+          # Process changed directories
+          for dir in $changed_dirs; do
+            if [[ "$dir" == services/* ]]; then
+              # Extract service name (first subdirectory under services/)
+              service_path=${dir#services/}
+              service_name=${service_path%%/*}
+              
+              if [ -n "$service_name" ] && [ "$service_name" != "services" ]; then
+                if [ -d "services/$service_name" ]; then
+                  # Service still exists, it's changed
+                  if [[ ! " ${changed_services[@]} " =~ " ${service_name} " ]]; then
+                    changed_services+=("$service_name")
+                  fi
+                fi
+              fi
+            fi
+          done
+
+          # Detect deleted services by comparing with previous commit
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # Get services that existed in previous commit but not now
+            git show HEAD~1:services 2>/dev/null | while read -r service; do
+              if [ ! -d "services/$service" ]; then
+                deleted_services+=("$service")
+              fi
+            done 2>/dev/null || true
+          fi
+
+          # Convert arrays to JSON
+          changed_services_json=$(printf '%s\n' "${changed_services[@]}" | jq -R . | jq -s .)
+          deleted_services_json=$(printf '%s\n' "${deleted_services[@]}" | jq -R . | jq -s .)
+          all_services_json=$(printf '%s\n' "${all_services[@]}" | jq -R . | jq -s .)
+
+          echo "changed_services=$changed_services_json" >> $GITHUB_OUTPUT
+          echo "deleted_services=$deleted_services_json" >> $GITHUB_OUTPUT
+          echo "all_services=$all_services_json" >> $GITHUB_OUTPUT
+
+          echo "Changed services: $changed_services_json"
+          echo "Deleted services: $deleted_services_json"
+          echo "All services: $all_services_json"
+
+  stop-deleted-services:
+    runs-on: self-hosted
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deleted-services != '[]'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.deleted-services) }}
+    steps:
+      - name: Stop and remove deleted service
+        run: |
+          echo "Stopping and removing service: ${{ matrix.service }}"
+
+          # Stop and remove containers
+          docker compose -p "${{ matrix.service }}" down --remove-orphans || true
+
+          # Remove unused volumes (optional, be careful with this)
+          # docker volume prune -f
+
+          echo "Service ${{ matrix.service }} has been stopped and removed"
+
+  deploy-changed-services:
+    runs-on: self-hosted
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed-services != '[]'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.changed-services) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate service configuration
+        run: |
+          service_dir="services/${{ matrix.service }}"
+
+          if [ ! -d "$service_dir" ]; then
+            echo "Error: Service directory $service_dir does not exist"
+            exit 1
+          fi
+
+          if [ ! -f "$service_dir/docker-compose.yml" ] && [ ! -f "$service_dir/docker-compose.yaml" ]; then
+            echo "Error: No docker-compose file found in $service_dir"
+            exit 1
+          fi
+
+          echo "Service ${{ matrix.service }} configuration is valid"
+
+      - name: Deploy service
+        run: |
+          service_dir="services/${{ matrix.service }}"
+          cd "$service_dir"
+
+          echo "Deploying service: ${{ matrix.service }}"
+
+          # Stop existing containers
+          docker compose -p "${{ matrix.service }}" down || true
+
+          # Pull latest images
+          docker compose -p "${{ matrix.service }}" pull
+
+          # Start the service
+          docker compose -p "${{ matrix.service }}" up -d
+
+          # Wait a moment for the service to start
+          sleep 5
+
+          # Check if containers are running
+          if docker compose -p "${{ matrix.service }}" ps --services --filter "status=running" | grep -q .; then
+            echo "Service ${{ matrix.service }} deployed successfully"
+          else
+            echo "Warning: Some containers in service ${{ matrix.service }} may not be running"
+            docker compose -p "${{ matrix.service }}" ps
+          fi
+
+  health-check:
+    runs-on: self-hosted
+    needs: [detect-changes, deploy-changed-services]
+    if: always() && (needs.deploy-changed-services.result == 'success' || needs.deploy-changed-services.result == 'skipped')
+    steps:
+      - name: Overall health check
+        run: |
+          echo "=== Docker System Overview ==="
+          docker system df
+
+          echo "=== Running Containers ==="
+          docker ps
+
+          echo "=== Docker Compose Services ==="
+          # List all compose projects
+          docker compose ls || true
+
+          echo "Deployment workflow completed"

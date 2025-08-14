@@ -1,61 +1,20 @@
+version: '3.8'
+
 services:
   nginx:
     image: nginx:alpine
-    container_name: nginx
-    restart: unless-stopped
-    environment:
-      - DOMAIN=${DOMAIN}
+    container_name: nginx-server
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./html:/usr/share/nginx/html:ro
-      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - /var/lib/home-server/nginx/letsencrypt:/etc/letsencrypt
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        echo "Setting up nginx for domain: $DOMAIN"
-        apk add --no-cache openssl inotify-tools >/dev/null 2>&1 || true
-        
-        # Create self-signed certificate if Let's Encrypt cert doesn't exist
-        if [ ! -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
-          echo "Creating temporary self-signed certificate for $DOMAIN"
-          mkdir -p /etc/letsencrypt/live/$DOMAIN
-          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-            -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
-            -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
-            -subj "/CN=$DOMAIN"
-        fi
-        
-        # Set up file watcher to reload nginx when certificates change
-        (
-          inotifywait -m -e close_write,create,delete /etc/letsencrypt/live/$DOMAIN 2>/dev/null | \
-          while read -r _; do 
-            echo "Certificate files changed, reloading nginx..."
-            nginx -s reload || true
-          done
-        ) &
-        
-        echo "Starting nginx..."
-        exec nginx -g 'daemon off;'
-
-  certbot:
-    image: certbot/dns-cloudflare:latest
-    container_name: certbot
+      - ./ssl:/etc/nginx/ssl:ro
     restart: unless-stopped
-    environment:
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-      - DOMAIN=${DOMAIN}
-      - LETSENCRYPT_STAGING=${LETSENCRYPT_STAGING:-false}
-    volumes:
-      - /var/lib/home-server/nginx/letsencrypt:/etc/letsencrypt
-      - ./certbot-entrypoint.sh:/entrypoint.sh:ro
-    depends_on:
-      - nginx
-    command: ["/entrypoint.sh"]
+    networks:
+      - web
 
-
+networks:
+  web:
+    external: false

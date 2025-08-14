@@ -1,0 +1,43 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Docker
+.env
+*.log
+
+# SSL certificates and private keys
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Service-specific ignores
+services/*/logs/
+services/*/data/
+services/*/cache/
+services/*/config/*.key
+services/*/config/*.crt
+services/*/config/*.pem
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+*.bak
+*.backup
