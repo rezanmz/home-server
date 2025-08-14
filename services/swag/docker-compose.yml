@@ -25,7 +25,7 @@ services:
       # - DISABLE_F2B=true  # Uncomment if you don't want fail2ban
       # - SWAG_AUTORELOAD=true  # Uncomment for automatic config reloading
     volumes:
-      - ./config/nginx/proxy-confs:/config/nginx/proxy-confs:ro
+      - ./config:/config
     ports:
       - "443:443"
       - "80:80"
