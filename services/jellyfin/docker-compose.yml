@@ -1,24 +1,18 @@
 services:
   jellyfin:
-    image: lscr.io/linuxserver/jellyfin:latest
-    user: "1000:1000"
+    image: jellyfin/jellyfin
     container_name: jellyfin
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=UTC
-      - JELLYFIN_PublishedServerUrl=http://192.168.1.200:8096
+    user: "1000:1000"
+    network_mode: 'host'
     volumes:
       - ~/persistent/jellyfin/config:/config
       - ~/persistent/jellyfin/cache:/cache
-      
-      # Media directories here:
-      - ~/media/movies:/data/movies:ro
-      - ~/media/tv:/data/tvshows:ro
-      - ~/media/music:/data/music:ro
-    ports:
-      - "8096:8096"     # Main web UI port - accessible on your local network
-      - "8920:8920"     # HTTPS web UI (optional)
-      - "7359:7359/udp" # Client discovery
-      - "1900:1900/udp" # Service discovery for DLNA
-    restart: unless-stopped
+      - type: bind
+        source: ~/media/movies
+        target: /media/movies
+        read_only: true
+      - type: bind
+        source: ~/media/tv
+        target: /media/tv
+        read_only: true
+    restart: 'unless-stopped'

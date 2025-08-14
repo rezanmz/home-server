@@ -15,12 +15,10 @@ chmod 755 ~/persistent/jellyfin/cache
 echo "📺 Creating example media directories..."
 mkdir -p ~/media/movies
 mkdir -p ~/media/tv
-mkdir -p ~/media/music
 
 # Set read permissions for media directories
 chmod 755 ~/media/movies
 chmod 755 ~/media/tv
-chmod 755 ~/media/music
 
 echo "ℹ️  NOTE: Please update the following in docker-compose.yml:"
 echo "   1. Change JELLYFIN_PublishedServerUrl to your Raspberry Pi's actual IP address"
