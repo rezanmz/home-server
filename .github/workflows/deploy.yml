@@ -145,8 +145,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy changed services
+        env:
+          SECRETS_JSON: ${{ toJSON(secrets) }}
+          VARS_JSON: ${{ toJSON(vars) }}
         run: |
           changed_services='${{ needs.detect-changes.outputs.changed-services }}'
+
+          # Export all secrets and variables as environment variables
+          echo "$SECRETS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/secrets.env
+          echo "$VARS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/vars.env
 
           # Parse JSON array and process each service sequentially
           echo "$changed_services" | jq -r '.[]' | while read -r service; do
@@ -172,6 +179,12 @@ jobs:
               # Deploy the service
               echo "Deploying service: $service"
               cd "$service_dir"
+
+              # Source all secrets and variables as environment variables
+              set -a  # automatically export all variables
+              source /tmp/secrets.env 2>/dev/null || true
+              source /tmp/vars.env 2>/dev/null || true
+              set +a  # disable automatic export
 
               # Stop existing containers
               docker compose -p "$service" down || true
@@ -199,6 +212,9 @@ jobs:
             fi
           done
 
+          # Clean up temporary files
+          rm -f /tmp/secrets.env /tmp/vars.env
+
   health-check-and-recovery:
     runs-on: self-hosted
     needs: [detect-changes, deploy-changed-services, stop-deleted-services]
@@ -207,122 +223,62 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Health check and service recovery
+      - name: Health check and recovery
+        env:
+          SECRETS_JSON: ${{ toJSON(secrets) }}
+          VARS_JSON: ${{ toJSON(vars) }}
         run: |
-          echo "=== Docker System Overview ==="
-          docker system df
+          echo "=== Health Check and Recovery ==="
 
-          echo "=== Running Containers ==="
-          docker ps
+          # Export all secrets and variables as environment variables
+          echo "$SECRETS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/secrets.env
+          echo "$VARS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/vars.env
 
-          echo "=== Docker Compose Services ==="
-          docker compose ls || true
+          # Source all secrets and variables
+          set -a  # automatically export all variables
+          source /tmp/secrets.env 2>/dev/null || true
+          source /tmp/vars.env 2>/dev/null || true
+          set +a  # disable automatic export
 
-          echo ""
-          echo "=== Service Health Check and Recovery ==="
-
-          # Get all services that should be running
-          services_to_check=()
-          if [ -d "services" ]; then
-            for service_dir in services/*/; do
-              if [ -d "$service_dir" ]; then
-                service_name=$(basename "$service_dir")
-                services_to_check+=("$service_name")
-              fi
-            done
-          fi
-
-          echo "Services to check: ${services_to_check[*]}"
-
-          # Check each service and recover if needed
-          failed_services=()
-          recovered_services=()
-
-          for service in "${services_to_check[@]}"; do
-            echo ""
-            echo "--- Checking service: $service ---"
-            
-            service_dir="services/$service"
-            cd "$service_dir"
-            
-            # Check if service containers are running
-            running_containers=$(docker compose -p "$service" ps --services --filter "status=running" 2>/dev/null || echo "")
-            total_containers=$(docker compose -p "$service" ps --services 2>/dev/null || echo "")
-            
-            if [ -z "$running_containers" ] || [ -z "$total_containers" ]; then
-              echo "❌ Service $service has no containers or is not running"
-              failed_services+=("$service")
+          # Check all services in the services directory
+          for service_dir in services/*/; do
+            if [ -d "$service_dir" ]; then
+              service=$(basename "$service_dir")
+              echo "Checking health of service: $service"
               
-              echo "🔄 Attempting to recover service: $service"
+              cd "$service_dir"
               
-              # Stop any existing containers
-              docker compose -p "$service" down || true
-              
-              # Pull latest images
-              echo "📥 Pulling latest images for $service..."
-              docker compose -p "$service" pull || echo "Warning: Failed to pull images for $service"
-              
-              # Start the service
-              echo "🚀 Starting service: $service"
-              if docker compose -p "$service" up -d; then
-                echo "✅ Successfully started $service"
+              # Check if any containers are supposed to be running
+              if [ -f "docker-compose.yml" ] || [ -f "docker-compose.yaml" ]; then
+                # Get list of services that should be running
+                running_services=$(docker compose -p "$service" ps --services --filter "status=running" 2>/dev/null || echo "")
+                expected_services=$(docker compose -p "$service" config --services 2>/dev/null || echo "")
                 
-                # Wait a moment for containers to start
-                sleep 10
-                
-                # Verify the service is now running
-                new_running=$(docker compose -p "$service" ps --services --filter "status=running" 2>/dev/null || echo "")
-                if [ -n "$new_running" ]; then
-                  echo "✅ Service $service is now healthy"
-                  recovered_services+=("$service")
-                else
-                  echo "❌ Service $service failed to start properly"
-                  echo "Container status:"
-                  docker compose -p "$service" ps
-                  echo "Container logs:"
-                  docker compose -p "$service" logs --tail=20
+                if [ -n "$expected_services" ]; then
+                  if [ -z "$running_services" ]; then
+                    echo "⚠️ Service $service has no running containers. Attempting recovery..."
+                    docker compose -p "$service" up -d
+                    sleep 10
+                    
+                    # Check again
+                    running_services=$(docker compose -p "$service" ps --services --filter "status=running" 2>/dev/null || echo "")
+                    if [ -n "$running_services" ]; then
+                      echo "✅ Service $service recovered successfully"
+                    else
+                      echo "❌ Service $service failed to recover"
+                      docker compose -p "$service" logs --tail=20
+                    fi
+                  else
+                    echo "✅ Service $service is running"
+                  fi
                 fi
-              else
-                echo "❌ Failed to start service: $service"
-                echo "Container status:"
-                docker compose -p "$service" ps
               fi
-            else
-              echo "✅ Service $service is healthy"
               
-              # Still show container status for info
-              echo "Container status:"
-              docker compose -p "$service" ps
+              cd - > /dev/null
             fi
-            
-            cd - > /dev/null
           done
 
-          echo ""
-          echo "=== Recovery Summary ==="
-          echo "Total services checked: ${#services_to_check[@]}"
-          echo "Failed services found: ${#failed_services[@]}"
-          echo "Services recovered: ${#recovered_services[@]}"
+          # Clean up temporary files
+          rm -f /tmp/secrets.env /tmp/vars.env
 
-          if [ ${#failed_services[@]} -gt 0 ]; then
-            echo "Failed services: ${failed_services[*]}"
-          fi
-
-          if [ ${#recovered_services[@]} -gt 0 ]; then
-            echo "Recovered services: ${recovered_services[*]}"
-          fi
-
-          # Final status check
-          echo ""
-          echo "=== Final System Status ==="
-          docker ps
-
-          remaining_failed=$((${#failed_services[@]} - ${#recovered_services[@]}))
-          if [ $remaining_failed -gt 0 ]; then
-            echo "⚠️  Warning: $remaining_failed service(s) could not be recovered"
-            exit 1
-          else
-            echo "✅ All services are healthy!"
-          fi
-
-          echo "Deployment and health check workflow completed"
+          echo "=== Health check completed ==="

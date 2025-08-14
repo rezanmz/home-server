@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  cloudflare-ddns:
+    image: favonia/cloudflare-ddns:latest
+    container_name: cloudflare-ddns-updater
+    network_mode: host
+    # This bypasses network isolation and makes IPv6 easier
+    restart: always
+    # Restart the updater after reboot
+    user: "1000:1000"
+    # Run the updater with specific user and group IDs
+    read_only: true
+    # Make the container filesystem read-only (recommended for security)
+    cap_drop: [all]
+    # Drop all Linux capabilities (recommended for security)
+    security_opt: [no-new-privileges:true]
+    # Another protection to restrict superuser privileges
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+        # Your Cloudflare API token (from GitHub secrets)
+      - DOMAINS=reza.network,*.reza.network
+        # Your main domain and wildcard subdomain
+      - PROXIED=false
+        # Set to false since this is for home server (not web hosting)
+      - UPDATE_CRON=@every 5m
+        # Check for IP changes every 5 minutes
+      - UPDATE_ON_START=true
+        # Update immediately when container starts
+      - CACHE_EXPIRATION=6h
+        # Cache Cloudflare API responses for 6 hours
+      - TZ=UTC
+        # Timezone for logging
+      - EMOJI=true
+        # Use emojis in logs for better readability
+      - QUIET=false
+        # Enable detailed logging
+      - DELETE_ON_STOP=false
+        # Don't delete DNS records when container stops
+      - IP4_PROVIDER=cloudflare.trace
+        # Use Cloudflare's trace service for IPv4 detection
+      - IP6_PROVIDER=cloudflare.trace
+        # Use Cloudflare's trace service for IPv6 detection
+      - DETECTION_TIMEOUT=5s
+        # Timeout for IP detection
+      - UPDATE_TIMEOUT=30s
+        # Timeout for DNS updates
+      - TTL=1
+        # TTL of 1 means "automatic" to Cloudflare
+      - RECORD_COMMENT=Updated by home-server DDNS
