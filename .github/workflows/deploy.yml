@@ -69,19 +69,36 @@ jobs:
           done
 
           # Detect deleted services by comparing with previous commit
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "${{ github.event_name }}" = "push" ] && [ "$(git rev-list --count HEAD)" -gt 1 ]; then
             # Get services that existed in previous commit but not now
-            git show HEAD~1:services 2>/dev/null | while read -r service; do
-              if [ ! -d "services/$service" ]; then
-                deleted_services+=("$service")
+            prev_services=$(git show HEAD~1:services --name-only 2>/dev/null | grep -v '/' || echo "")
+            current_services=$(ls services/ 2>/dev/null || echo "")
+            
+            for prev_service in $prev_services; do
+              if [ -n "$prev_service" ] && [ ! -d "services/$prev_service" ]; then
+                deleted_services+=("$prev_service")
               fi
-            done 2>/dev/null || true
+            done
           fi
 
-          # Convert arrays to JSON
-          changed_services_json=$(printf '%s\n' "${changed_services[@]}" | jq -R . | jq -s .)
-          deleted_services_json=$(printf '%s\n' "${deleted_services[@]}" | jq -R . | jq -s .)
-          all_services_json=$(printf '%s\n' "${all_services[@]}" | jq -R . | jq -s .)
+          # Convert arrays to JSON (compact format for GitHub Actions)
+          if [ ${#changed_services[@]} -eq 0 ]; then
+            changed_services_json="[]"
+          else
+            changed_services_json=$(printf '%s\n' "${changed_services[@]}" | jq -R . | jq -s -c .)
+          fi
+
+          if [ ${#deleted_services[@]} -eq 0 ]; then
+            deleted_services_json="[]"
+          else
+            deleted_services_json=$(printf '%s\n' "${deleted_services[@]}" | jq -R . | jq -s -c .)
+          fi
+
+          if [ ${#all_services[@]} -eq 0 ]; then
+            all_services_json="[]"
+          else
+            all_services_json=$(printf '%s\n' "${all_services[@]}" | jq -R . | jq -s -c .)
+          fi
 
           echo "changed_services=$changed_services_json" >> $GITHUB_OUTPUT
           echo "deleted_services=$deleted_services_json" >> $GITHUB_OUTPUT
