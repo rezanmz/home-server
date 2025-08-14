@@ -17,9 +17,8 @@ services:
       - PGID=1000
       - TZ=UTC
       - URL=reza.network
-      - VALIDATION=dns
-      - DNSPLUGIN=cloudflare
-      - SUBDOMAINS=wildcard
+      - VALIDATION=http
+      - SUBDOMAINS=budget
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false  # Set to true for testing
       - CERTPROVIDER=  # Leave empty for Let's Encrypt, set to 'zerossl' for ZeroSSL
