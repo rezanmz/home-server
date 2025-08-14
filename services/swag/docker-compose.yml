@@ -23,7 +23,6 @@ services:
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false  # Set to true for testing
       - CERTPROVIDER=  # Leave empty for Let's Encrypt, set to 'zerossl' for ZeroSSL
-      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       # - DISABLE_F2B=true  # Uncomment if you don't want fail2ban
       # - SWAG_AUTORELOAD=true  # Uncomment for automatic config reloading
     volumes:
