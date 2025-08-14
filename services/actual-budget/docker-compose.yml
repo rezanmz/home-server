@@ -3,7 +3,7 @@ version: '3.8'
 networks:
   home-server:
     external: true
-    name: home-server-internal
+    name: home-server
 
 services:
   actual-budget:
