@@ -1,0 +1,36 @@
+version: '3.8'
+
+networks:
+  home-server-internal:
+    name: home-server-internal
+    driver: bridge
+    internal: false  # Allows outbound internet access but services aren't directly exposed
+
+services:
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - URL=reza.network
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
+      - SUBDOMAINS=wildcard
+      - EMAIL=${LETSENCRYPT_EMAIL}
+      - STAGING=false  # Set to true for testing
+      - CERTPROVIDER=  # Leave empty for Let's Encrypt, set to 'zerossl' for ZeroSSL
+      # - DISABLE_F2B=true  # Uncomment if you don't want fail2ban
+      # - SWAG_AUTORELOAD=true  # Uncomment for automatic config reloading
+    volumes:
+      - ./config/nginx/proxy-confs:/config/nginx/proxy-confs:ro
+    ports:
+      - "443:443"
+      - "80:80"
+      # - "443:443/udp"  # Uncomment for QUIC (HTTP/3) support
+    networks:
+      - home-server-internal
+    restart: unless-stopped
