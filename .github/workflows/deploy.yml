@@ -186,6 +186,22 @@ jobs:
               source /tmp/vars.env 2>/dev/null || true
               set +a  # disable automatic export
 
+              # Check for and run pre-deploy script
+              echo "Checking for pre-deploy script for service: $service"
+              for script_name in "pre-deploy.sh" "setup.sh" "init.sh"; do
+                if [ -f "$script_name" ]; then
+                  echo "Found $script_name, executing..."
+                  chmod +x "$script_name"
+                  if ./"$script_name"; then
+                    echo "✅ Pre-deploy script $script_name executed successfully"
+                  else
+                    echo "❌ Pre-deploy script $script_name failed with exit code $?"
+                    exit 1
+                  fi
+                  break
+                fi
+              done
+
               # Stop existing containers
               docker compose -p "$service" down || true
 
@@ -257,6 +273,23 @@ jobs:
                 if [ -n "$expected_services" ]; then
                   if [ -z "$running_services" ]; then
                     echo "⚠️ Service $service has no running containers. Attempting recovery..."
+                    
+                    # Check for and run pre-deploy script before recovery
+                    echo "Checking for pre-deploy script during recovery for service: $service"
+                    for script_name in "pre-deploy.sh" "setup.sh" "init.sh"; do
+                      if [ -f "$script_name" ]; then
+                        echo "Found $script_name, executing for recovery..."
+                        chmod +x "$script_name"
+                        if ./"$script_name"; then
+                          echo "✅ Pre-deploy script $script_name executed successfully during recovery"
+                        else
+                          echo "❌ Pre-deploy script $script_name failed during recovery with exit code $?"
+                          continue  # Don't exit, try to recover anyway
+                        fi
+                        break
+                      fi
+                    done
+                    
                     docker compose -p "$service" up -d
                     sleep 10
                     

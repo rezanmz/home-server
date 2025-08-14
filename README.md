@@ -41,11 +41,60 @@ The workflow uses `tj-actions/changed-files` to detect which services have been 
 1. **Detect Changes**: Identifies which services in the `services/` directory have changed
 2. **Stop Deleted Services**: Stops and removes containers for deleted services
 3. **Deploy Changed Services**:
+   - Runs pre-deploy scripts (if present)
    - Validates service configuration
    - Stops existing containers
    - Pulls latest images
    - Starts updated services
-4. **Health Check**: Verifies deployment status
+4. **Health Check**: Verifies deployment status and runs recovery if needed
+
+### Pre-Deploy Scripts
+
+Each service can include a custom pre-deploy script that runs before Docker containers are started. The workflow looks for scripts with these names (in priority order):
+
+1. `pre-deploy.sh`
+2. `setup.sh`
+3. `init.sh`
+
+**Script Requirements:**
+
+- Must return exit code 0 for success
+- Must return non-zero exit code for failure (deployment will stop)
+- Should include proper error handling and logging
+
+**Common Use Cases:**
+
+- Directory creation and permission setting
+- Environment variable validation
+- Configuration file generation
+- External dependency health checks
+- Data migration or backup operations
+- Certificate management
+
+**Script Environment:**
+
+- Current working directory: service directory
+- All GitHub secrets and variables available as environment variables
+- Same shell environment as deployment step
+
+**Example Pre-Deploy Script:**
+
+```bash
+#!/bin/bash
+echo "Setting up my-service..."
+
+# Create necessary directories
+mkdir -p ./data ./config
+chmod 755 ./data ./config
+
+# Validate required environment variables
+if [ -z "$REQUIRED_VAR" ]; then
+    echo "❌ Error: REQUIRED_VAR not set"
+    exit 1
+fi
+
+echo "✅ Setup completed"
+```
 
 ### Service Lifecycle
 
@@ -73,9 +122,16 @@ The workflow uses `tj-actions/changed-files` to detect which services have been 
        restart: unless-stopped
    ```
 
-3. Add any configuration files needed
+3. (Optional) Add a pre-deploy script for custom setup:
 
-4. Commit and push - the service will be deployed automatically!
+   ```bash
+   touch services/my-new-service/pre-deploy.sh
+   chmod +x services/my-new-service/pre-deploy.sh
+   ```
+
+4. Add any configuration files needed
+
+5. Commit and push - the service will be deployed automatically!
 
 ## 🔧 Service Examples
 
