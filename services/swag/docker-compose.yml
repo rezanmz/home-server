@@ -1,8 +1,8 @@
 version: '3.8'
 
 networks:
-  home-server-internal:
-    name: home-server-internal
+  home-server:
+    name: home-server
     driver: bridge
     internal: false  # Allows outbound internet access but services aren't directly exposed
 
@@ -31,5 +31,5 @@ services:
       - "80:80"
       # - "443:443/udp"  # Uncomment for QUIC (HTTP/3) support
     networks:
-      - home-server-internal
+      - home-server
     restart: unless-stopped

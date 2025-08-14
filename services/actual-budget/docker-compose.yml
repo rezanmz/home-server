@@ -1,7 +1,7 @@
 version: '3.8'
 
 networks:
-  home-server-internal:
+  home-server:
     external: true
     name: home-server-internal
 
@@ -15,5 +15,5 @@ services:
     volumes:
       - ~/services/actual-budget/data:/data
     networks:
-      - home-server-internal
+      - home-server
     restart: unless-stopped
