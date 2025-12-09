@@ -4,7 +4,7 @@ services:
     container_name: cloudflare-ddns-updater
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier
-    restart: always
+    restart: unless-stopped
     # Restart the updater after reboot
     user: "1000:1000"
     # Run the updater with specific user and group IDs

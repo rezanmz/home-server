@@ -19,4 +19,4 @@ services:
         source: ~/media/tv
         target: /media/tv
         read_only: true
-    restart: 'unless-stopped'
+    restart: unless-stopped
