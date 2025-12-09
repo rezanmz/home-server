@@ -45,3 +45,8 @@ services:
       - TTL=1
         # TTL of 1 means "automatic" to Cloudflare
       - RECORD_COMMENT=Updated by home-server DDNS
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M

@@ -11,6 +11,11 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1G
 
 networks:
   home-server:

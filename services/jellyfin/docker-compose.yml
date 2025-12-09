@@ -19,5 +19,11 @@ services:
         source: ~/media/tv
         target: /media/tv
         read_only: true
-    entrypoint: ["/bin/sh", "-c", "sleep 30 && /jellyfin/jellyfin"]
     restart: unless-stopped
+    devices:
+      - /dev/dri:/dev/dri
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 4G

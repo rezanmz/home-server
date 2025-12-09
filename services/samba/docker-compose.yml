@@ -41,3 +41,9 @@ services:
       
       # Avahi service discovery (optional - for automatic network discovery)
       - /etc/avahi/services/:/external/avahi
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
