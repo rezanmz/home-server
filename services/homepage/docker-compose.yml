@@ -1,0 +1,20 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - ~/persistent/homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro # For system/container stats
+    ports:
+      - "3000:3000"
+    networks:
+      - home-server
+    restart: unless-stopped
+
+networks:
+  home-server:
+    external: true
