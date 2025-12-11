@@ -16,8 +16,8 @@ services:
       - WIREGUARD_PRIVATE_KEY=${NORD_WIREGUARD_PRIVATE_KEY}
       - SERVER_COUNTRIES=Switzerland
       - TZ=UTC
-      - DOT=off
-      - DNS_ADDRESS=1.1.1.1
+      # - DOT=off
+      # - DNS_ADDRESS=1.1.1.1
       - FIREWALL_OUTBOUND_SUBNETS=192.168.0.0/24
     networks:
       - home-server
