@@ -1,15 +1,14 @@
 services:
   jellyseerr:
-    image: lscr.io/linuxserver/jellyseerr:latest
+    image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - LOG_LEVEL=debug
       - TZ=UTC
     volumes:
-      - ~/persistent/jellyseerr/config:/config
+      - ~/persistent/jellyseerr/config:/app/config
     ports:
-      - 5055:5055
+      - "5055:5055"
     networks:
       - home-server
     restart: unless-stopped
