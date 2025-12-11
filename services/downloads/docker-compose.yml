@@ -14,11 +14,16 @@ services:
       - VPN_SERVICE_PROVIDER=nordvpn
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${NORD_WIREGUARD_PRIVATE_KEY}
-      - SERVER_COUNTRIES=Canada
+      - SERVER_COUNTRIES=Switzerland
       - TZ=UTC
+      - DOT=off
+      - DNS_ADDRESS=1.1.1.1
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.0.0/24
     networks:
       - home-server
     restart: always
+    sysctl:
+      - net.ipv6.conf.all.disable_ipv6=1
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
