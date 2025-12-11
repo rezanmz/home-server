@@ -22,7 +22,7 @@ services:
     networks:
       - home-server
     restart: always
-    sysctl:
+    sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
 
   qbittorrent:
