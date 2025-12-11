@@ -1,0 +1,24 @@
+services:
+  jellyseerr:
+    image: lscr.io/linuxserver/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - ~/persistent/jellyseerr/config:/config
+    ports:
+      - 5055:5055
+    networks:
+      - home-server
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true

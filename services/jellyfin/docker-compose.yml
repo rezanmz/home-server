@@ -22,8 +22,14 @@ services:
     restart: unless-stopped
     devices:
       - /dev/dri:/dev/dri
+    networks:
+      - home-server
     deploy:
       resources:
         limits:
           cpus: '3.0'
           memory: 4G
+
+networks:
+  home-server:
+    external: true
