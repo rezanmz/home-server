@@ -2,8 +2,7 @@
 echo "🛡️ Setting up Pi-hole..."
 
 # Create config directories
-mkdir -p ~/persistent/pihole/etc-pihole
-mkdir -p ~/persistent/pihole/etc-dnsmasq.d
+mkdir -p ~/persistent/pihole
 
 # # Fix Port 53 Conflict (Ubuntu/Debian/Raspbian specific)
 # # We need to stop systemd-resolved from hogging port 53
