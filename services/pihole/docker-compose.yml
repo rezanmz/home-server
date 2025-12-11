@@ -1,0 +1,25 @@
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    environment:
+      - TZ=UTC
+      - WEBPASSWORD=admin  # Change this after first login!
+      # INTERFACE: Tells Pi-hole to listen on all interfaces
+      - FTLCONF_LOCAL_IPV4=0.0.0.0
+    volumes:
+      - ~/persistent/pihole/etc-pihole:/etc/pihole
+      - ~/persistent/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 8010:80 # Web Interface (Mapped to avoid SWAG conflict)
+    networks:
+      - home-server
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN # Required for DHCP/DNS features
+
+networks:
+  home-server:
+    external: true
