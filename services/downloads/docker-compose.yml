@@ -16,6 +16,8 @@ services:
       - WIREGUARD_PRIVATE_KEY=${NORD_WIREGUARD_PRIVATE_KEY}
       - SERVER_COUNTRIES=Canada
       - TZ=UTC
+    networks:
+      - home-server
     restart: always
 
   qbittorrent:
@@ -34,3 +36,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+
+networks:
+  home-server:
+    external: true
