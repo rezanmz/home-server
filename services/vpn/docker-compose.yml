@@ -19,7 +19,7 @@ services:
       - ~/persistent/vpn/config:/etc/wireguard
       - /lib/modules:/lib/modules:ro
     ports:
-      - "51820:51820/udp" # The VPN Tunnel
+      - "1234:51820/udp" # The VPN Tunnel
       # We do NOT expose 51821 directly to the host; we use the home-server network to proxy it via Swag
     networks:
       - home-server
