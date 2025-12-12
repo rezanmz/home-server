@@ -2,7 +2,7 @@ services:
   vpn:
     image: ghcr.io/wg-easy/wg-easy:15.1.0
     container_name: wg-easy
-    environment:
+    # environment:
       # ⚠️ CHANGE THIS to your actual WAN hostname
       # - WG_HOST=hi.reza.network
       
