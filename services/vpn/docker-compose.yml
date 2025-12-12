@@ -1,0 +1,40 @@
+services:
+  vpn:
+    image: ghcr.io/wg-easy/wg-easy
+    container_name: wg-easy
+    environment:
+      # ⚠️ CHANGE THIS to your actual WAN hostname
+      - WG_HOST=hi.reza.network
+      
+      # Web UI Password (leave empty to not require a password, but highly recommended to set one)
+      - PASSWORD=${VPN_PASSWORD}
+      
+      # 192.168.2.x is your home network (based on your Jellyfin example).
+      # 10.8.0.x is the internal VPN network.
+      # By listing both, the VPN client will route traffic for your home LAN through the VPN.
+      - WG_ALLOWED_IPS=192.168.2.0/24,10.8.0.0/24
+      - WG_DEFAULT_DNS=1.1.1.1
+
+    volumes:
+      - ~/persistent/vpn/config:/etc/wireguard
+    ports:
+      - "51820:51820/udp" # The VPN Tunnel
+      # We do NOT expose 51821 directly to the host; we use the home-server network to proxy it via Swag
+    networks:
+      - home-server
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true
