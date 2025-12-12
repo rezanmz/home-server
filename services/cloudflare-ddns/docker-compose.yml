@@ -17,9 +17,9 @@ services:
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
         # Your Cloudflare API token (from GitHub secrets)
-      - DOMAINS=reza.network=true,budget.reza.network=true,hi.reza.network=false
+      - DOMAINS=reza.network,budget.reza.network,hi.reza.network
         # Your main domain and wildcard subdomain
-      - PROXIED=true
+      - PROXIED=!is(hi.reza.network)
       - UPDATE_CRON=@every 5m
         # Check for IP changes every 5 minutes
       - UPDATE_ON_START=true
