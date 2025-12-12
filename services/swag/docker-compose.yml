@@ -12,16 +12,13 @@ services:
       - VALIDATION=http
       - SUBDOMAINS=budget
       - EMAIL=${LETSENCRYPT_EMAIL}
-      - STAGING=false  # Set to true for testing
-      - CERTPROVIDER=  # Leave empty for Let's Encrypt, set to 'zerossl' for ZeroSSL
-      # - DISABLE_F2B=true  # Uncomment if you don't want fail2ban
-      # - SWAG_AUTORELOAD=true  # Uncomment for automatic config reloading
+      - STAGING=false
+      - CERTPROVIDER=
     volumes:
-      - ./config/nginx/proxy-confs:/config/nginx/proxy-confs:ro
+      - ~/persistent/swag/config:/config
     ports:
       - "443:443"
       - "80:80"
-      # - "443:443/udp"  # Uncomment for QUIC (HTTP/3) support
     networks:
       - home-server
     restart: unless-stopped
