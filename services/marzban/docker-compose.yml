@@ -1,27 +1,20 @@
 services:
   marzban:
-    image: gozargah/marzban
+    image: gozargah/marzban:latest
     container_name: marzban
     restart: always
-    # ⚠️ Critical: Marzban needs host networking to manage proxy ports dynamically
     network_mode: host
     
     environment:
-      # Database settings (SQLite is default and perfect for single node)
       - SQLALCHEMY_DATABASE_URL=sqlite:////var/lib/marzban/db.sqlite3
-      
-      # Admin Setup (Change these on first run, or use the CLI)
       - SUDO_USERNAME=admin
       - SUDO_PASSWORD=admin
       
-      # Web Interface Port (Default 8000)
-      - UVICORN_PORT=8000
       - UVICORN_HOST=0.0.0.0
+      - UVICORN_PORT=8000
       
-      # Xray Configuration
       - XRAY_EXECUTABLE_PATH=/usr/local/bin/xray
       - XRAY_ASSETS_PATH=/usr/local/share/xray
       
     volumes:
-      # Persistent Data
       - ~/persistent/marzban:/var/lib/marzban
