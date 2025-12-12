@@ -21,6 +21,9 @@ services:
       - UVICORN_SSL_CERTFILE=/var/lib/marzban/certs/fullchain.pem
       - UVICORN_SSL_KEYFILE=/var/lib/marzban/certs/key.pem
       
+      # ⚠️ NEW: Tell Marzban to accept our self-signed cert
+      - UVICORN_SSL_CA_TYPE=private
+      
       - XRAY_EXECUTABLE_PATH=/usr/local/bin/xray
       - XRAY_ASSETS_PATH=/usr/local/share/xray
       
