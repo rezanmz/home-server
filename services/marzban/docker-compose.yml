@@ -10,19 +10,20 @@ services:
       - SUDO_USERNAME=admin
       - SUDO_PASSWORD=admin
       
-      # 1. Disable Debug to stop the 'npm' crash
+      # Keep this to stop the 'npm' crash
       - DEBUG=False
       
-      # 2. Force Host Binding
+      # Keep this to bind to 0.0.0.0
       - UVICORN_HOST=0.0.0.0
       - UVICORN_PORT=8000
       
-      # 3. Feed it the Fake SSL certs to unlock 0.0.0.0 binding
+      # Keep the certs to trick the security check
       - UVICORN_SSL_CERTFILE=/var/lib/marzban/certs/fullchain.pem
       - UVICORN_SSL_KEYFILE=/var/lib/marzban/certs/key.pem
-      
-      # ⚠️ NEW: Tell Marzban to accept our self-signed cert
       - UVICORN_SSL_CA_TYPE=private
+      
+      # ⚠️ CHANGE THIS: Use relative path instead of full URL
+      - VITE_BASE_API=/api/
       
       - XRAY_EXECUTABLE_PATH=/usr/local/bin/xray
       - XRAY_ASSETS_PATH=/usr/local/share/xray
