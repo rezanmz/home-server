@@ -1,0 +1,17 @@
+services:
+  3x-ui:
+    image: ghcr.io/mhsanaei/3x-ui:latest
+    container_name: 3x-ui
+    restart: unless-stopped
+    
+    # ⚠️ Host networking is required for VPN panels to manage ports dynamically
+    network_mode: host
+    
+    volumes:
+      - ~/persistent/3x-ui/db:/etc/x-ui
+      - ~/persistent/3x-ui/cert:/root/cert
+      
+    environment:
+      - XRAY_VMESS_AEAD_FORCED=false
+      
+    # No 'ports' section needed because of network_mode: host
