@@ -10,8 +10,12 @@ services:
       - SUDO_USERNAME=admin
       - SUDO_PASSWORD=admin
       
-      - UVICORN_HOST=0.0.0.0
-      - UVICORN_PORT=8000
+      # 1. Force Marzban to bind to 0.0.0.0 using Debug mode
+      - DEBUG=True
+      
+      # 2. Prevent Debug mode from breaking the frontend API URL
+      # We set this to your public domain so the frontend knows where to connect
+      - VITE_BASE_API=https://panel.reza.network/api/
       
       - XRAY_EXECUTABLE_PATH=/usr/local/bin/xray
       - XRAY_ASSETS_PATH=/usr/local/share/xray
