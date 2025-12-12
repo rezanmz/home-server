@@ -1,6 +1,6 @@
 services:
   cloudflare-ddns:
-    image: favonia/cloudflare-ddns:latest
+    image: favonia/cloudflare-ddns:1.15.1
     container_name: cloudflare-ddns-updater
     network_mode: host
     # This bypasses network isolation and makes IPv6 easier
