@@ -10,7 +10,7 @@ services:
       - TZ=UTC
       - URL=reza.network
       - VALIDATION=http
-      - SUBDOMAINS=budget,hi,panel
+      - SUBDOMAINS=budget,hi
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false
       - CERTPROVIDER=
