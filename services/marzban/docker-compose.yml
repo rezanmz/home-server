@@ -10,12 +10,16 @@ services:
       - SUDO_USERNAME=admin
       - SUDO_PASSWORD=admin
       
-      # 1. Force Marzban to bind to 0.0.0.0 using Debug mode
-      - DEBUG=True
+      # 1. Disable Debug to stop the 'npm' crash
+      - DEBUG=False
       
-      # 2. Prevent Debug mode from breaking the frontend API URL
-      # We set this to your public domain so the frontend knows where to connect
-      - VITE_BASE_API=https://panel.reza.network/api/
+      # 2. Force Host Binding
+      - UVICORN_HOST=0.0.0.0
+      - UVICORN_PORT=8000
+      
+      # 3. Feed it the Fake SSL certs to unlock 0.0.0.0 binding
+      - UVICORN_SSL_CERTFILE=/var/lib/marzban/certs/fullchain.pem
+      - UVICORN_SSL_KEYFILE=/var/lib/marzban/certs/key.pem
       
       - XRAY_EXECUTABLE_PATH=/usr/local/bin/xray
       - XRAY_ASSETS_PATH=/usr/local/share/xray
