@@ -1,6 +1,6 @@
 services:
   conduit:
-    image: ghcr.io/psiphon-inc/conduit/cli:latest
+    image: ghcr.io/psiphon-inc/conduit/cli:1.1.0
     container_name: conduit
     restart: unless-stopped
     
