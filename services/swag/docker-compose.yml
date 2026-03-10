@@ -7,7 +7,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=UTC
+      - TZ=EST
       - URL=reza.network
       - VALIDATION=http
       - SUBDOMAINS=budget,hi,panel,zeroclaw

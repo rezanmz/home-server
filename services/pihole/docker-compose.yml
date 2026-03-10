@@ -1,0 +1,35 @@
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2026.02.0
+    ports:
+      # DNS Ports (Required for Pi-hole to function)
+      - "53:53/tcp"
+      - "53:53/udp"
+      # Web UI Port (Changed to 8181 to avoid conflicting with SWAG on port 80)
+      - "8181:80/tcp"
+      # We omit port 443 to avoid conflicting with SWAG. 
+    environment:
+      TZ: 'EST'
+      FTLCONF_webserver_api_password: '${PIHOLE_PASSWORD}'
+      # Allows Pi-hole to respond to queries from local network
+      FTLCONF_dns_listeningMode: 'ALL'
+
+    volumes:
+      # Persist Pi-hole's databases and config
+      - '~/persistent/pihole/etc-pihole:/etc/pihole'
+      
+    restart: unless-stopped
+    
+    networks:
+      - home-server
+      
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true
