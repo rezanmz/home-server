@@ -13,9 +13,6 @@ services:
       - ZEROCLAW_ALLOW_PUBLIC_BIND=true
       - ZEROCLAW_GATEWAY_PORT=42617
 
-      # Turn off the pairing code screen
-      - ZEROCLAW_GATEWAY_REQUIRE_PAIRING=false
-      
     volumes:
       - ~/persistent/zeroclaw-data:/zeroclaw-data
     
