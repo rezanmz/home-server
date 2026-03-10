@@ -2,7 +2,7 @@ services:
   vpn:
     image: ghcr.io/wg-easy/wg-easy:15.2.2
     container_name: wg-easy
-    # environment:
+    environment:
       # ⚠️ CHANGE THIS to your actual WAN hostname
       # - WG_HOST=hi.reza.network
       
@@ -13,7 +13,7 @@ services:
       # 10.8.0.x is the internal VPN network.
       # By listing both, the VPN client will route traffic for your home LAN through the VPN.
       # - WG_ALLOWED_IPS=192.168.2.0/24,10.8.0.0/24
-      # - WG_DEFAULT_DNS=1.1.1.1
+      - WG_DEFAULT_DNS=192.168.2.100
 
     volumes:
       - ~/persistent/vpn/config:/etc/wireguard
