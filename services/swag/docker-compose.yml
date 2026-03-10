@@ -10,7 +10,7 @@ services:
       - TZ=EST
       - URL=reza.network
       - VALIDATION=http
-      - SUBDOMAINS=budget,hi,panel,zeroclaw,jellyfin
+      - SUBDOMAINS=budget,hi,panel,zeroclaw,jellyfin,radarr,sonarr,prowlarr,jellyseerr,qbittorrent,homepage,pihole
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false
       - CERTPROVIDER=
