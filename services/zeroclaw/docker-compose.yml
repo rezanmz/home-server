@@ -1,6 +1,8 @@
 services:
   zeroclaw:
-    image: ghcr.io/zeroclaw-labs/zeroclaw:v0.1.7
+    build:
+      context: ./zeroclaw-repo
+      dockerfile: Dockerfile
     container_name: zeroclaw
     user: "1000:1000"
     restart: unless-stopped
@@ -22,7 +24,7 @@ services:
       
     networks:
       - home-server
-      
+
     deploy:
       resources:
         limits:
