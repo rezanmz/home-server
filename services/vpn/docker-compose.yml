@@ -13,7 +13,7 @@ services:
       # 10.8.0.x is the internal VPN network.
       # By listing both, the VPN client will route traffic for your home LAN through the VPN.
       # - WG_ALLOWED_IPS=192.168.2.0/24,10.8.0.0/24
-      - WG_DEFAULT_DNS=192.168.2.100
+      # - WG_DEFAULT_DNS=1.1.1.1
 
     volumes:
       - ~/persistent/vpn/config:/etc/wireguard

@@ -16,6 +16,8 @@ services:
       - CERTPROVIDER=
     volumes:
       - ~/persistent/swag/config:/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "443:443"
       - "80:80"
