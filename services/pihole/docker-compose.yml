@@ -11,16 +11,10 @@ services:
       # Allows Pi-hole to respond to queries from local network
       FTLCONF_dns_listeningMode: 'ALL'
       FTLCONF_webserver_port: '8181'
-
     volumes:
       # Persist Pi-hole's databases and config
       - '~/persistent/pihole/etc-pihole:/etc/pihole'
-      
     restart: unless-stopped
-    
-    networks:
-      - home-server
-      
     deploy:
       resources:
         limits:
