@@ -1,6 +1,6 @@
 services:
   swag:
-    image: linuxserver/swag:5.2.2
+    image: linuxserver/swag:5.3.1
     container_name: swag
     cap_add:
       - NET_ADMIN
@@ -10,7 +10,7 @@ services:
       - TZ=UTC
       - URL=reza.network
       - VALIDATION=http
-      - SUBDOMAINS=budget,hi,panel
+      - SUBDOMAINS=budget,hi,panel,zeroclaw
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false
       - CERTPROVIDER=

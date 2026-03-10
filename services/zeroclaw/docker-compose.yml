@@ -1,0 +1,43 @@
+services:
+  zeroclaw:
+    image: ghcr.io/zeroclaw-labs/zeroclaw:v0.1.7
+    container_name: zeroclaw
+    restart: unless-stopped
+    environment:
+      # We pull the API key from your GitHub Actions Secrets
+      - API_KEY=${ZEROCLAW_API_KEY}
+      - PROVIDER=openrouter
+      
+      # Required for container networking so SWAG can reach it
+      - ZEROCLAW_ALLOW_PUBLIC_BIND=true
+      - ZEROCLAW_GATEWAY_PORT=42617
+      
+    volumes:
+      - ~/persistent/zeroclaw-data:/zeroclaw-data
+    
+    # Expose internally to the SWAG proxy
+    expose:
+      - "42617"
+      
+    networks:
+      - home-server
+      
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    healthcheck:
+      test: ["CMD", "zeroclaw", "status"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  home-server:
+    external: true

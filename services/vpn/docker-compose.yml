@@ -1,6 +1,6 @@
 services:
   vpn:
-    image: ghcr.io/wg-easy/wg-easy:15.1.0
+    image: ghcr.io/wg-easy/wg-easy:15.2.2
     container_name: wg-easy
     # environment:
       # ⚠️ CHANGE THIS to your actual WAN hostname
