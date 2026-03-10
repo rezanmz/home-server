@@ -2,6 +2,7 @@ services:
   zeroclaw:
     image: ghcr.io/zeroclaw-labs/zeroclaw:v0.1.7
     container_name: zeroclaw
+    user: "1000:1000"
     restart: unless-stopped
     environment:
       # We pull the API key from your GitHub Actions Secrets
