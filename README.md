@@ -1,214 +1,131 @@
-# Home Server Management
+# Home Server
 
-This repository manages Docker services on a Raspberry Pi home server using GitHub Actions for automated deployment.
+Docker services running on a Raspberry Pi, deployed automatically via GitHub Actions on every push to `main`.
 
-## 🏗️ Architecture
+## Architecture
 
-- **Services Directory**: Each service lives in its own directory under `services/`
-- **Docker Compose**: Each service has its own `docker-compose.yml` file
-- **Automated Deployment**: GitHub Actions detect changes and deploy services automatically
-- **Self-hosted Runner**: Deployment runs directly on the Raspberry Pi
+All services run as Docker Compose projects connected through a shared `home-server` Docker network. [SWAG](https://docs.linuxserver.io/general/swag/) handles SSL termination and reverse proxying with Let's Encrypt certificates for `*.reza.network` subdomains. [Cloudflare DDNS](https://github.com/favonia/cloudflare-ddns) keeps DNS records pointed at the server's current IP.
 
-## 📁 Directory Structure
+```
+Internet → Cloudflare DNS → Router (port forward 80/443) → SWAG (reverse proxy)
+                                                              ↓
+                                              home-server Docker network
+                                                  ↓         ↓        ↓
+                                              Jellyfin   Radarr   ... etc
+```
+
+### Networking
+
+- Services that need to be reached by SWAG join the `home-server` external network.
+- Pi-hole and Cloudflare DDNS use `network_mode: host`.
+- qBittorrent routes through Gluetun (NordVPN WireGuard) via `network_mode: service:gluetun`.
+- Most services are LAN/VPN-only (nginx `allow`/`deny` rules). Only Actual Budget is Cloudflare-proxied.
+
+## Services
+
+| Service             | Description                               | Access                                         |
+| ------------------- | ----------------------------------------- | ---------------------------------------------- |
+| **SWAG**            | Nginx reverse proxy + Let's Encrypt SSL   | Ports 80/443                                   |
+| **Cloudflare DDNS** | Keeps DNS records updated with current IP | —                                              |
+| **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                          |
+| **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                        |
+| **Radarr**          | Movie management & automation             | `radarr.reza.network`                          |
+| **Sonarr**          | TV show management & automation           | `sonarr.reza.network`                          |
+| **Prowlarr**        | Indexer manager for Radarr/Sonarr         | `prowlarr.reza.network`                        |
+| **Jellyseerr**      | Media request management                  | `jellyseerr.reza.network`                      |
+| **Downloads**       | qBittorrent (via Gluetun VPN)             | `qbittorrent.reza.network`                     |
+| **Actual Budget**   | Personal finance/budgeting                | `budget.reza.network`                          |
+| **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                        |
+| **VPN**             | WireGuard (wg-easy)                       | `hi.reza.network` (UI), port 1234/udp (tunnel) |
+| **Samba**           | SMB file shares for media                 | Ports 139/445                                  |
+| **ZeroClaw**        | AI assistant (built from source)          | `zeroclaw.reza.network`                        |
+
+## Deployment
+
+Pushing to `main` triggers the [deploy workflow](.github/workflows/deploy.yml):
+
+1. **Detect changes** — uses `tj-actions/changed-files` to find which `services/` directories changed
+2. **Stop deleted services** — tears down any removed service
+3. **Deploy changed services** — for each changed service:
+   - Runs `pre-deploy.sh` if present (also checks for `setup.sh` / `init.sh`)
+   - Stops existing containers
+   - Pulls latest images
+   - Starts the service
+4. **Health check** — verifies all services are running; attempts recovery for any that aren't
+
+Each service runs as its own Compose project (`docker compose -p <service-name>`).
+
+## Directory Structure
 
 ```
 home-server/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # Main deployment workflow
-├── services/
-│   ├── nginx/                  # Example nginx service
-│   │   ├── docker-compose.yml
-│   │   ├── nginx.conf
-│   │   ├── html/
-│   │   └── ssl/
-│   └── [other-services]/       # Add more services here
-└── README.md
+├── .github/workflows/deploy.yml
+├── README.md
+└── services/
+    ├── actual-budget/
+    ├── cloudflare-ddns/
+    ├── downloads/          # Gluetun VPN + qBittorrent
+    ├── heimdall/
+    ├── jellyfin/
+    ├── jellyseerr/
+    ├── pihole/
+    ├── prowlarr/
+    ├── radarr/
+    ├── samba/
+    ├── sonarr/
+    ├── swag/               # Reverse proxy + nginx configs
+    │   └── config/nginx/proxy-confs/*.conf
+    ├── vpn/                # WireGuard (wg-easy)
+    └── zeroclaw/
 ```
 
-## 🚀 How It Works
+Each service directory contains a `docker-compose.yml` and most include a `pre-deploy.sh` that creates persistent directories and sets permissions.
 
-### Change Detection
+## Adding a New Service
 
-The workflow uses `tj-actions/changed-files` to detect which services have been modified:
-
-1. **Changed Services**: Services with modifications are rebuilt and restarted
-2. **New Services**: New services are built and started
-3. **Deleted Services**: Removed services are stopped and cleaned up
-
-### Deployment Process
-
-1. **Detect Changes**: Identifies which services in the `services/` directory have changed
-2. **Stop Deleted Services**: Stops and removes containers for deleted services
-3. **Deploy Changed Services**:
-   - Runs pre-deploy scripts (if present)
-   - Validates service configuration
-   - Stops existing containers
-   - Pulls latest images
-   - Starts updated services
-4. **Health Check**: Verifies deployment status and runs recovery if needed
-
-### Pre-Deploy Scripts
-
-Each service can include a custom pre-deploy script that runs before Docker containers are started. The workflow looks for scripts with these names (in priority order):
-
-1. `pre-deploy.sh`
-2. `setup.sh`
-3. `init.sh`
-
-**Script Requirements:**
-
-- Must return exit code 0 for success
-- Must return non-zero exit code for failure (deployment will stop)
-- Should include proper error handling and logging
-
-**Common Use Cases:**
-
-- Directory creation and permission setting
-- Environment variable validation
-- Configuration file generation
-- External dependency health checks
-- Data migration or backup operations
-- Certificate management
-
-**Script Environment:**
-
-- Current working directory: service directory
-- All GitHub secrets and variables available as environment variables
-- Same shell environment as deployment step
-
-**Example Pre-Deploy Script:**
-
-```bash
-#!/bin/bash
-echo "Setting up my-service..."
-
-# Create necessary directories
-mkdir -p ./data ./config
-chmod 755 ./data ./config
-
-# Validate required environment variables
-if [ -z "$REQUIRED_VAR" ]; then
-    echo "❌ Error: REQUIRED_VAR not set"
-    exit 1
-fi
-
-echo "✅ Setup completed"
-```
-
-### Service Lifecycle
-
-- **New Service**: Add directory under `services/` → Automatic deployment
-- **Update Service**: Modify files → Automatic redeployment
-- **Remove Service**: Delete directory → Automatic cleanup
-
-## 📋 Adding a New Service
-
-1. Create a new directory under `services/`:
-
-   ```bash
-   mkdir services/my-new-service
-   ```
-
-2. Add a `docker-compose.yml` file:
+1. Create `services/<name>/docker-compose.yml`:
 
    ```yaml
-   version: "3.8"
    services:
      my-service:
        image: my-image:latest
-       ports:
-         - "8080:80"
+       networks:
+         - home-server
        restart: unless-stopped
+
+   networks:
+     home-server:
+       external: true
    ```
 
-3. (Optional) Add a pre-deploy script for custom setup:
+2. If the service needs persistent storage, add a `pre-deploy.sh`:
 
    ```bash
-   touch services/my-new-service/pre-deploy.sh
-   chmod +x services/my-new-service/pre-deploy.sh
+   #!/bin/bash
+   mkdir -p ~/persistent/my-service/config
+   chmod 755 ~/persistent/my-service/config
    ```
 
-4. Add any configuration files needed
+3. To expose it via HTTPS, add a subdomain config in `services/swag/config/nginx/proxy-confs/` and add the subdomain to SWAG's `SUBDOMAINS` env var and Cloudflare DDNS's `DOMAINS` list.
 
-5. Commit and push - the service will be deployed automatically!
+4. Push to `main`.
 
-## 🔧 Service Examples
+## Required Secrets
 
-### Nginx (Included)
+These must be set as GitHub Actions secrets:
 
-A simple web server with:
+| Secret                       | Used by                     |
+| ---------------------------- | --------------------------- |
+| `CLOUDFLARE_API_TOKEN`       | Cloudflare DDNS             |
+| `NORD_WIREGUARD_PRIVATE_KEY` | Downloads (Gluetun/NordVPN) |
+| `PIHOLE_PASSWORD`            | Pi-hole web UI              |
+| `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)        |
+| `ZEROCLAW_API_KEY`           | ZeroClaw                    |
 
-- Custom nginx configuration
-- Static HTML content
-- SSL certificate support (directory prepared)
+## Setup
 
-### Adding Jellyfin
-
-```bash
-mkdir services/jellyfin
-```
-
-Create `services/jellyfin/docker-compose.yml`:
-
-```yaml
-version: "3.8"
-services:
-  jellyfin:
-    image: jellyfin/jellyfin:latest
-    container_name: jellyfin
-    ports:
-      - "8096:8096"
-    volumes:
-      - ./config:/config
-      - ./cache:/cache
-      - /path/to/media:/media:ro
-    restart: unless-stopped
-    environment:
-      - JELLYFIN_PublishedServerUrl=http://your-server-ip:8096
-```
-
-## ⚙️ Setup Requirements
-
-### Self-hosted Runner Setup
-
-1. On your Raspberry Pi, install Docker and Docker Compose
-2. Set up a GitHub self-hosted runner following [GitHub's documentation](https://docs.github.com/en/actions/hosting-your-own-runners/adding-self-hosted-runners-to-a-repository)
-3. Ensure the runner has Docker permissions
-
-### Required Tools on Runner
-
-- Docker
-- Docker Compose
-- jq (for JSON processing)
-- git
-
-## 🔒 Security Considerations
-
-- Services run on self-hosted runner (your Raspberry Pi)
-- Docker containers are isolated
-- Consider using secrets for sensitive configuration
-- Regular updates of base images recommended
-
-## 📊 Monitoring
-
-The workflow provides:
-
-- Deployment status for each service
-- Container health checks
-- Docker system overview
-- Running container list
-
-## 🤝 Contributing
-
-1. Add your service under `services/`
-2. Test locally with `docker compose up`
-3. Commit and push to trigger deployment
-4. Monitor the GitHub Actions workflow
-
-## 📝 Notes
-
-- Each service runs with its own Docker Compose project name
-- Services are isolated by default
-- Modify networking in docker-compose.yml if services need to communicate
-- SSL certificates should be placed in respective service directories
+1. Install Docker, Docker Compose, jq, and git on the Raspberry Pi
+2. Create the shared network: `docker network create home-server`
+3. Set up a [GitHub self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners)
+4. Configure the required secrets in the repository settings
+5. Push to `main` to deploy everything
