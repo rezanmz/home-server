@@ -4,7 +4,6 @@ services:
     container_name: duplicati
     environment:
       # Run as root to read all service configs regardless of ownership (e.g. Pi-hole, VPN).
-      # Safe because /source is mounted read-only and no-new-privileges is set.
       - PUID=0
       - PGID=0
       - TZ=EST
