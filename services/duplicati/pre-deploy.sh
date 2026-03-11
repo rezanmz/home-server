@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "💾 Setting up Duplicati..."
+echo "💾 Setting up Duplicati backup service..."
 
 # Create config and backup directories
 mkdir -p ~/persistent/duplicati/config
