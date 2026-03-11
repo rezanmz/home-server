@@ -148,6 +148,7 @@ jobs:
           PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
+          DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
         run: |
           changed_services='${{ needs.detect-changes.outputs.changed-services }}'
 
@@ -233,6 +234,7 @@ jobs:
           PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
+          DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
         run: |
           echo "=== Health Check and Recovery ==="
 

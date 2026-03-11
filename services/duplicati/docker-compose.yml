@@ -1,0 +1,29 @@
+services:
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:2.2.0
+    container_name: duplicati
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=EST
+      - SETTINGS_ENCRYPTION_KEY=${DUPLICATI_ENCRYPTION_KEY}
+    volumes:
+      - ~/persistent/duplicati/config:/config
+      - ~/persistent/duplicati/backups:/backups
+      - ~/persistent:/source:ro
+    expose:
+      - "8200"
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+networks:
+  home-server:
+    external: true

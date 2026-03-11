@@ -41,6 +41,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                         |
 | **VPN**             | WireGuard (wg-easy)                       | `vpn.reza.network` (UI), port 1234/udp (tunnel) |
 | **Samba**           | SMB file shares for media                 | Ports 139/445 (LAN-only)                        |
+| **Duplicati**       | Encrypted backups of service configs      | `duplicati.reza.network`                        |
 
 ## Deployment
 
@@ -124,6 +125,7 @@ These must be set as GitHub Actions secrets:
 | `PIHOLE_PASSWORD`            | Pi-hole web UI                         |
 | `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)                   |
 | `SAMBA_PASSWORD`             | Samba file share user                  |
+| `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
 
 ## Setup
 
