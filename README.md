@@ -7,12 +7,14 @@ Docker services running on a Raspberry Pi, deployed automatically via GitHub Act
 All services run as Docker Compose projects connected through a shared `home-server` Docker network. [SWAG](https://docs.linuxserver.io/general/swag/) handles SSL termination and reverse proxying with Let's Encrypt certificates for `*.reza.network` subdomains. [Cloudflare DDNS](https://github.com/favonia/cloudflare-ddns) keeps DNS records pointed at the server's current IP.
 
 ```
-Internet → Cloudflare DNS → Router (port forward 80/443) → SWAG (reverse proxy)
-                                                              ↓
-                                              home-server Docker network
-                                                  ↓         ↓        ↓
-                                              Jellyfin   Radarr   ... etc
+Internet → Cloudflare DNS → Router (port forward 443) → SWAG (reverse proxy)
+                                                            ↓
+                                            home-server Docker network
+                                                ↓         ↓        ↓
+                                            Jellyfin   Radarr   ... etc
 ```
+
+SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port 443 needs to be forwarded (port 80 is not required).
 
 ### Networking
 
@@ -38,7 +40,7 @@ Internet → Cloudflare DNS → Router (port forward 80/443) → SWAG (reverse p
 | **Actual Budget**   | Personal finance/budgeting                | `budget.reza.network`                           |
 | **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                         |
 | **VPN**             | WireGuard (wg-easy)                       | `vpn.reza.network` (UI), port 1234/udp (tunnel) |
-| **Samba**           | SMB file shares for media                 | Ports 139/445                                   |
+| **Samba**           | SMB file shares for media                 | Ports 139/445 (LAN-only)                        |
 
 ## Deployment
 
@@ -91,6 +93,8 @@ Each service directory contains a `docker-compose.yml` and most include a `pre-d
        networks:
          - home-server
        restart: unless-stopped
+       security_opt:
+         - no-new-privileges:true
 
    networks:
      home-server:
@@ -102,7 +106,7 @@ Each service directory contains a `docker-compose.yml` and most include a `pre-d
    ```bash
    #!/bin/bash
    mkdir -p ~/persistent/my-service/config
-   chmod 755 ~/persistent/my-service/config
+   chmod 700 ~/persistent/my-service/config
    ```
 
 3. To expose it via HTTPS, add a subdomain config in `services/swag/config/nginx/proxy-confs/` and add the subdomain to SWAG's `SUBDOMAINS` env var and Cloudflare DDNS's `DOMAINS` list.
@@ -113,13 +117,13 @@ Each service directory contains a `docker-compose.yml` and most include a `pre-d
 
 These must be set as GitHub Actions secrets:
 
-| Secret                       | Used by                     |
-| ---------------------------- | --------------------------- |
-| `CLOUDFLARE_API_TOKEN`       | Cloudflare DDNS             |
-| `NORD_WIREGUARD_PRIVATE_KEY` | Downloads (Gluetun/NordVPN) |
-| `PIHOLE_PASSWORD`            | Pi-hole web UI              |
-| `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)        |
-| `SAMBA_PASSWORD`             | Samba file share user       |
+| Secret                       | Used by                                |
+| ---------------------------- | -------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`       | Cloudflare DDNS, SWAG (DNS validation) |
+| `NORD_WIREGUARD_PRIVATE_KEY` | Downloads (Gluetun/NordVPN)            |
+| `PIHOLE_PASSWORD`            | Pi-hole web UI                         |
+| `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)                   |
+| `SAMBA_PASSWORD`             | Samba file share user                  |
 
 ## Setup
 
