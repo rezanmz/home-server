@@ -12,7 +12,7 @@ services:
     volumes:
       - ~/persistent/duplicati/config:/config
       - ~/persistent/duplicati/backups:/backups
-      - ~/persistent:/source:ro
+      - ~/persistent:/source
     expose:
       - "8200"
     networks:
