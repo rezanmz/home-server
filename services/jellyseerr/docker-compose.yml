@@ -8,8 +8,8 @@ services:
       - TZ=EST
     volumes:
       - ~/persistent/jellyseerr/config:/app/config
-    ports:
-      - "5055:5055"
+    expose:
+      - "5055"
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
       start_period: 20s

@@ -8,8 +8,8 @@ services:
       - TZ=EST
     volumes:
       - ~/persistent/prowlarr/config:/config
-    ports:
-      - 9696:9696
+    expose:
+      - "9696"
     networks:
       - home-server
     restart: unless-stopped

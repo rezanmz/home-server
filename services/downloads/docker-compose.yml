@@ -6,8 +6,8 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    ports:
-      - 8080:8080
+    expose:
+      - "8080"
     volumes:
       - ~/persistent/gluetun:/gluetun
     environment:

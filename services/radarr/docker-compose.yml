@@ -9,8 +9,8 @@ services:
     volumes:
       - ~/persistent/radarr/config:/config
       - ~/media:/media
-    ports:
-      - 7878:7878
+    expose:
+      - "7878"
     networks:
       - home-server
     restart: unless-stopped

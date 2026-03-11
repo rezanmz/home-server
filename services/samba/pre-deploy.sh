@@ -34,17 +34,3 @@ if [ ! -d /etc/avahi/services ]; then
 fi
 
 echo "✅ Samba service setup completed!"
-echo ""
-echo "📋 Service Details:"
-echo "   - Server Name: HomeServer"
-echo "   - Workgroup: WORKGROUP"
-echo "   - Username: pi"
-echo "   - Password: raspberry"
-echo ""
-echo "📁 Available Shares:"
-echo "   - All Media: \\\\HomeServer\\Media"
-echo ""
-echo "🔒 Security Notes:"
-echo "   - All shares are read-only for safety"
-echo "   - Change the default password in docker-compose.yml"
-echo "   - Consider setting up proper user accounts"

@@ -17,28 +17,29 @@ Internet → Cloudflare DNS → Router (port forward 80/443) → SWAG (reverse p
 ### Networking
 
 - Services that need to be reached by SWAG join the `home-server` external network.
-- Pi-hole and Cloudflare DDNS use `network_mode: host`.
+- Pi-hole uses `network_mode: host` (needed for DNS on port 53 and DHCP). The Raspberry Pi's IP is `192.168.2.2`.
+- VPN clients use Pi-hole (`192.168.2.2`) as their DNS resolver, getting ad-blocking while connected remotely.
 - qBittorrent routes through Gluetun (NordVPN WireGuard) via `network_mode: service:gluetun`.
-- Most services are LAN/VPN-only (nginx `allow`/`deny` rules). Only Actual Budget is Cloudflare-proxied.
+- All services are LAN/VPN-only (nginx `allow`/`deny` rules).
 
 ## Services
 
-| Service             | Description                               | Access                                         |
-| ------------------- | ----------------------------------------- | ---------------------------------------------- |
-| **SWAG**            | Nginx reverse proxy + Let's Encrypt SSL   | Ports 80/443                                   |
-| **Cloudflare DDNS** | Keeps DNS records updated with current IP | —                                              |
-| **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                          |
-| **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                        |
-| **Radarr**          | Movie management & automation             | `radarr.reza.network`                          |
-| **Sonarr**          | TV show management & automation           | `sonarr.reza.network`                          |
-| **Prowlarr**        | Indexer manager for Radarr/Sonarr         | `prowlarr.reza.network`                        |
-| **Jellyseerr**      | Media request management                  | `jellyseerr.reza.network`                      |
-| **Downloads**       | qBittorrent (via Gluetun VPN)             | `qbittorrent.reza.network`                     |
-| **Actual Budget**   | Personal finance/budgeting                | `budget.reza.network`                          |
-| **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                        |
-| **VPN**             | WireGuard (wg-easy)                       | `hi.reza.network` (UI), port 1234/udp (tunnel) |
-| **Samba**           | SMB file shares for media                 | Ports 139/445                                  |
-| **ZeroClaw**        | AI assistant (built from source)          | `zeroclaw.reza.network`                        |
+| Service             | Description                               | Access                                          |
+| ------------------- | ----------------------------------------- | ----------------------------------------------- |
+| **SWAG**            | Nginx reverse proxy + Let's Encrypt SSL   | Ports 80/443                                    |
+| **Cloudflare DDNS** | Keeps DNS records updated with current IP | —                                               |
+| **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                           |
+| **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                         |
+| **Radarr**          | Movie management & automation             | `radarr.reza.network`                           |
+| **Sonarr**          | TV show management & automation           | `sonarr.reza.network`                           |
+| **Prowlarr**        | Indexer manager for Radarr/Sonarr         | `prowlarr.reza.network`                         |
+| **Jellyseerr**      | Media request management                  | `jellyseerr.reza.network`                       |
+| **Downloads**       | qBittorrent (via Gluetun VPN)             | `qbittorrent.reza.network`                      |
+| **Actual Budget**   | Personal finance/budgeting                | `budget.reza.network`                           |
+| **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                         |
+| **VPN**             | WireGuard (wg-easy)                       | `vpn.reza.network` (UI), port 1234/udp (tunnel) |
+| **Samba**           | SMB file shares for media                 | Ports 139/445                                   |
+| **ZeroClaw**        | AI assistant (built from source)          | `zeroclaw.reza.network`                         |
 
 ## Deployment
 
@@ -121,6 +122,7 @@ These must be set as GitHub Actions secrets:
 | `PIHOLE_PASSWORD`            | Pi-hole web UI              |
 | `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)        |
 | `ZEROCLAW_API_KEY`           | ZeroClaw                    |
+| `SAMBA_PASSWORD`             | Samba file share user       |
 
 ## Setup
 

@@ -9,8 +9,8 @@ services:
     volumes:
       - ~/persistent/sonarr/config:/config
       - ~/media:/media
-    ports:
-      - 8989:8989
+    expose:
+      - "8989"
     networks:
       - home-server
     restart: unless-stopped

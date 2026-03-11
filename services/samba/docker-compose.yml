@@ -22,8 +22,8 @@ services:
       # Create a media user group
       GROUP_media: 1500
       
-      # Create a media user account (change password as needed)
-      ACCOUNT_pi: raspberry
+      # Create a media user account
+      ACCOUNT_pi: ${SAMBA_PASSWORD}
       UID_pi: 1000
       GROUPS_pi: media
       
