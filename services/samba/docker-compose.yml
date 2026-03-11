@@ -1,6 +1,6 @@
 services:
   samba:
-    image: ghcr.io/servercontainers/samba  # TODO: pin to a specific version tag
+    image: ghcr.io/servercontainers/samba:a3.23.3-s4.22.8-r0
     container_name: samba
     restart: unless-stopped
     security_opt:
