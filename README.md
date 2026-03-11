@@ -39,7 +39,6 @@ Internet → Cloudflare DNS → Router (port forward 80/443) → SWAG (reverse p
 | **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                         |
 | **VPN**             | WireGuard (wg-easy)                       | `vpn.reza.network` (UI), port 1234/udp (tunnel) |
 | **Samba**           | SMB file shares for media                 | Ports 139/445                                   |
-| **ZeroClaw**        | AI assistant (built from source)          | `zeroclaw.reza.network`                         |
 
 ## Deployment
 
@@ -76,8 +75,7 @@ home-server/
     ├── sonarr/
     ├── swag/               # Reverse proxy + nginx configs
     │   └── config/nginx/proxy-confs/*.conf
-    ├── vpn/                # WireGuard (wg-easy)
-    └── zeroclaw/
+    └── vpn/                # WireGuard (wg-easy)
 ```
 
 Each service directory contains a `docker-compose.yml` and most include a `pre-deploy.sh` that creates persistent directories and sets permissions.
@@ -121,7 +119,6 @@ These must be set as GitHub Actions secrets:
 | `NORD_WIREGUARD_PRIVATE_KEY` | Downloads (Gluetun/NordVPN) |
 | `PIHOLE_PASSWORD`            | Pi-hole web UI              |
 | `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)        |
-| `ZEROCLAW_API_KEY`           | ZeroClaw                    |
 | `SAMBA_PASSWORD`             | Samba file share user       |
 
 ## Setup
