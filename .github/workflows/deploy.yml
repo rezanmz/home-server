@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   detect-changes:
@@ -146,14 +143,13 @@ jobs:
 
       - name: Deploy changed services
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}
-          VARS_JSON: ${{ toJSON(vars) }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          NORD_WIREGUARD_PRIVATE_KEY: ${{ secrets.NORD_WIREGUARD_PRIVATE_KEY }}
+          PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+          SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
         run: |
           changed_services='${{ needs.detect-changes.outputs.changed-services }}'
-
-          # Export all secrets and variables as environment variables
-          echo "$SECRETS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/secrets.env
-          echo "$VARS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/vars.env
 
           # Parse JSON array and process each service sequentially
           echo "$changed_services" | jq -r '.[]' | while read -r service; do
@@ -179,12 +175,6 @@ jobs:
               # Deploy the service
               echo "Deploying service: $service"
               cd "$service_dir"
-
-              # Source all secrets and variables as environment variables
-              set -a  # automatically export all variables
-              source /tmp/secrets.env 2>/dev/null || true
-              source /tmp/vars.env 2>/dev/null || true
-              set +a  # disable automatic export
 
               # Check for and run pre-deploy script
               echo "Checking for pre-deploy script for service: $service"
@@ -228,9 +218,6 @@ jobs:
             fi
           done
 
-          # Clean up temporary files
-          rm -f /tmp/secrets.env /tmp/vars.env
-
   health-check-and-recovery:
     runs-on: self-hosted
     needs: [detect-changes, deploy-changed-services, stop-deleted-services]
@@ -241,20 +228,13 @@ jobs:
 
       - name: Health check and recovery
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}
-          VARS_JSON: ${{ toJSON(vars) }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          NORD_WIREGUARD_PRIVATE_KEY: ${{ secrets.NORD_WIREGUARD_PRIVATE_KEY }}
+          PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+          SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
         run: |
           echo "=== Health Check and Recovery ==="
-
-          # Export all secrets and variables as environment variables
-          echo "$SECRETS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/secrets.env
-          echo "$VARS_JSON" | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > /tmp/vars.env
-
-          # Source all secrets and variables
-          set -a  # automatically export all variables
-          source /tmp/secrets.env 2>/dev/null || true
-          source /tmp/vars.env 2>/dev/null || true
-          set +a  # disable automatic export
 
           # Check all services in the services directory
           for service_dir in services/*/; do
@@ -310,8 +290,5 @@ jobs:
               cd - > /dev/null
             fi
           done
-
-          # Clean up temporary files
-          rm -f /tmp/secrets.env /tmp/vars.env
 
           echo "=== Health check completed ==="

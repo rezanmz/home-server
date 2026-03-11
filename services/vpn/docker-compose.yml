@@ -16,6 +16,8 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     cap_add:
       - NET_ADMIN
     sysctls:

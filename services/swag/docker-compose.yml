@@ -9,7 +9,8 @@ services:
       - PGID=1000
       - TZ=EST
       - URL=reza.network
-      - VALIDATION=http
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
       - SUBDOMAINS=budget,vpn,jellyfin,radarr,sonarr,prowlarr,jellyseerr,qbittorrent,homepage,pihole
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false
@@ -24,6 +25,8 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

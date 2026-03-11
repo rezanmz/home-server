@@ -8,8 +8,8 @@ mkdir -p ~/persistent/jellyfin/cache
 
 # Set proper permissions (jellyfin runs as user 1000:1000)
 echo "🔒 Setting permissions..."
-chmod 755 ~/persistent/jellyfin/config
-chmod 755 ~/persistent/jellyfin/cache
+chmod 700 ~/persistent/jellyfin/config
+chmod 700 ~/persistent/jellyfin/cache
 
 # Create example media directories (user can customize these)
 echo "📺 Creating example media directories..."

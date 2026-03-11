@@ -11,6 +11,8 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       - ACTUAL_LOGIN_METHOD=openid
       - ACTUAL_OPENID_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration

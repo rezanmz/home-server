@@ -12,6 +12,8 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

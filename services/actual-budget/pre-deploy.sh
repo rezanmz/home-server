@@ -11,6 +11,6 @@ mkdir -p ~/persistent/actual-budget
 
 # Set proper permissions
 echo "Setting permissions on data directories..."
-chmod 755 ~/persistent/actual-budget
+chmod 700 ~/persistent/actual-budget
 
 echo "✅ Pre-deploy script for Actual Budget completed successfully"

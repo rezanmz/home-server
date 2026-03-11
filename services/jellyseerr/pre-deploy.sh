@@ -5,6 +5,6 @@ echo "🍿 Setting up Jellyseerr..."
 mkdir -p ~/persistent/jellyseerr/config
 
 # Set permissions
-chmod 755 ~/persistent/jellyseerr/config
+chmod 700 ~/persistent/jellyseerr/config
 
 echo "✅ Jellyseerr setup complete"

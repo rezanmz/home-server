@@ -5,6 +5,6 @@ echo "🏠 Setting up Heimdall..."
 mkdir -p ~/persistent/heimdall/config
 
 # Set permissions
-chmod -R 755 ~/persistent/heimdall
+chmod -R 700 ~/persistent/heimdall
 
 echo "✅ Heimdall setup complete"

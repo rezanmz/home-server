@@ -1,13 +1,15 @@
 services:
   samba:
-    image: ghcr.io/servercontainers/samba
+    image: ghcr.io/servercontainers/samba  # TODO: pin to a specific version tag
     container_name: samba
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "139:139"     # NetBIOS Session Service
-      - "445:445"     # SMB over TCP
-      - "137:137/udp" # NetBIOS Name Service
-      - "138:138/udp" # NetBIOS Datagram Service
+      - "192.168.2.2:139:139"     # NetBIOS Session Service
+      - "192.168.2.2:445:445"     # SMB over TCP
+      - "192.168.2.2:137:137/udp" # NetBIOS Name Service
+      - "192.168.2.2:138:138/udp" # NetBIOS Datagram Service
       # - "5353:5353/udp" # mDNS for service discovery
     environment:
       # Server identification

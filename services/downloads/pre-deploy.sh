@@ -6,8 +6,8 @@ mkdir -p ~/persistent/gluetun
 mkdir -p ~/persistent/qbittorrent/config
 
 # Set permissions
-chmod 755 ~/persistent/gluetun
-chmod 755 ~/persistent/qbittorrent/config
+chmod 700 ~/persistent/gluetun
+chmod 700 ~/persistent/qbittorrent/config
 
 # Ensure the shared media directory exists (defined in samba/jellyfin)
 mkdir -p ~/media/downloads

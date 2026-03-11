@@ -4,7 +4,7 @@ services:
     init: true
     container_name: jellyseerr
     environment:
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=info
       - TZ=EST
     volumes:
       - ~/persistent/jellyseerr/config:/app/config
@@ -19,6 +19,8 @@ services:
     networks:
       - home-server
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

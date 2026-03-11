@@ -16,6 +16,8 @@ services:
       # Persist Pi-hole's databases and config
       - '~/persistent/pihole/etc-pihole:/etc/pihole'
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

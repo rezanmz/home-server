@@ -22,6 +22,8 @@ services:
     networks:
       - home-server
     restart: always
+    security_opt:
+      - no-new-privileges:true
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
 
@@ -38,6 +40,8 @@ services:
       - ~/media:/media
     network_mode: service:gluetun
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       gluetun:
         condition: service_healthy

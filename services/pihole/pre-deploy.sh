@@ -5,6 +5,6 @@ echo "🕳️ Setting up Pi-hole..."
 mkdir -p ~/persistent/pihole/etc-pihole
 
 # Set proper permissions
-chmod 755 ~/persistent/pihole/etc-pihole
+chmod 700 ~/persistent/pihole/etc-pihole
 
 echo "✅ Pi-hole setup complete"
