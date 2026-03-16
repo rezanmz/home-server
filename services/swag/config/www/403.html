@@ -10,12 +10,15 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        html, body {
-            height: 100%;
+        html { height: 100%; }
+
+        body {
+            min-height: 100%;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: #0f0f13;
             color: #e4e4e7;
-            overflow: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .page {
@@ -23,207 +26,396 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100%;
+            min-height: 100vh;
             position: relative;
-            padding: 2rem;
+            padding: 2rem 1.5rem;
             text-align: center;
         }
 
-        /* Animated gradient background */
         .page::before {
             content: '';
-            position: absolute;
+            position: fixed;
             inset: 0;
             background:
-                radial-gradient(ellipse 60% 50% at 20% 30%, rgba(239, 68, 68, 0.08) 0%, transparent 70%),
-                radial-gradient(ellipse 50% 60% at 80% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+                radial-gradient(ellipse 60% 50% at 20% 30%, rgba(239, 68, 68, 0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 60% at 80% 70%, rgba(168, 85, 247, 0.07) 0%, transparent 70%);
             animation: bgPulse 8s ease-in-out infinite alternate;
             z-index: 0;
+            pointer-events: none;
         }
 
         @keyframes bgPulse {
-            0% { opacity: 0.6; }
+            0% { opacity: 0.5; }
             100% { opacity: 1; }
         }
 
-        .content { position: relative; z-index: 1; max-width: 600px; }
+        .content {
+            position: relative;
+            z-index: 1;
+            max-width: 520px;
+            width: 100%;
+        }
 
-        /* Big 403 */
+        /* Door animation */
+        .door-container {
+            position: relative;
+            width: 100px;
+            height: 120px;
+            margin: 0 auto 1.5rem;
+            perspective: 400px;
+        }
+
+        .door-frame {
+            width: 100%;
+            height: 100%;
+            border: 3px solid #27272a;
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            overflow: hidden;
+            background: #18181b;
+        }
+
+        .door {
+            position: absolute;
+            inset: 3px;
+            background: linear-gradient(135deg, #1e1e24, #27272a);
+            border-radius: 4px 4px 0 0;
+            transform-origin: left center;
+            animation: doorSlam 3s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .door-knob {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        .door-sign {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            color: #ef4444;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            transform: rotate(0deg);
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        @keyframes doorSlam {
+            0%, 100% { transform: rotateY(0deg); }
+            15% { transform: rotateY(-80deg); }
+            25% { transform: rotateY(-80deg); }
+            40% { transform: rotateY(0deg); }
+            42% { transform: rotateY(-5deg); }
+            44% { transform: rotateY(0deg); }
+        }
+
+        /* Peep eyes that show when door opens */
+        .peep-eyes {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 12px;
+            opacity: 0;
+            animation: peepShow 3s ease-in-out infinite;
+        }
+
+        .eye {
+            width: 10px;
+            height: 10px;
+            background: #ef4444;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .eye::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #0f0f13;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            animation: eyeLook 3s ease-in-out infinite;
+        }
+
+        @keyframes peepShow {
+            0%, 12% { opacity: 0; }
+            18%, 35% { opacity: 1; }
+            40%, 100% { opacity: 0; }
+        }
+
+        @keyframes eyeLook {
+            0%, 18% { transform: translateX(0); }
+            22% { transform: translateX(3px); }
+            26% { transform: translateX(-2px); }
+            30%, 100% { transform: translateX(0); }
+        }
+
         .error-code {
             font-family: 'JetBrains Mono', monospace;
-            font-size: clamp(6rem, 18vw, 11rem);
-            font-weight: 900;
+            font-size: clamp(5rem, 16vw, 10rem);
+            font-weight: 700;
             line-height: 1;
             background: linear-gradient(135deg, #ef4444 0%, #a855f7 50%, #6366f1 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            filter: drop-shadow(0 0 40px rgba(239, 68, 68, 0.25));
+            filter: drop-shadow(0 0 40px rgba(239, 68, 68, 0.2));
             user-select: none;
             margin-bottom: 0.25rem;
         }
 
         .subtitle {
-            font-size: 1.15rem;
+            font-size: 1rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.25em;
             color: #71717a;
-            margin-bottom: 2rem;
-        }
-
-        /* Shield icon */
-        .shield {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: rgba(239, 68, 68, 0.08);
-            border: 2px solid rgba(239, 68, 68, 0.2);
-            margin-bottom: 1.5rem;
-            animation: shieldFloat 3s ease-in-out infinite;
-        }
-
-        .shield svg {
-            width: 36px;
-            height: 36px;
-            stroke: #ef4444;
-            fill: none;
-            stroke-width: 1.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        @keyframes shieldFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+            margin-bottom: 1.75rem;
         }
 
         .message {
             font-size: 1.05rem;
             line-height: 1.7;
             color: #a1a1aa;
-            margin-bottom: 2.5rem;
+            margin-bottom: 1.75rem;
         }
 
-        .message strong { color: #e4e4e7; font-weight: 600; }
+        .message strong {
+            color: #e4e4e7;
+            font-weight: 600;
+        }
 
-        /* Terminal-style humor box */
-        .terminal {
+        /* Rejection reasons */
+        .reasons {
             background: #18181b;
             border: 1px solid #27272a;
             border-radius: 12px;
             padding: 1.25rem 1.5rem;
             text-align: left;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            line-height: 1.8;
-            color: #71717a;
+            margin-bottom: 1.75rem;
             width: 100%;
-            max-width: 480px;
-            margin-bottom: 2rem;
         }
 
-        .terminal-dots {
-            display: flex;
-            gap: 6px;
+        .reasons-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #52525b;
             margin-bottom: 0.75rem;
         }
 
-        .terminal-dots span {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
+        .reason {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            padding: 0.4rem 0;
+            font-size: 0.85rem;
+            color: #71717a;
+            line-height: 1.5;
         }
 
-        .terminal-dots span:nth-child(1) { background: #ef4444; }
-        .terminal-dots span:nth-child(2) { background: #eab308; }
-        .terminal-dots span:nth-child(3) { background: #22c55e; }
+        .reason-icon {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
 
-        .terminal .prompt { color: #22c55e; }
-        .terminal .cmd { color: #e4e4e7; }
-        .terminal .output { color: #ef4444; }
-        .terminal .comment { color: #52525b; }
+        .reason-icon.fail { color: #ef4444; }
 
-        /* Quip that rotates */
+        /* Quip */
+        .quip-container {
+            margin-bottom: 1rem;
+        }
+
         .quip {
             font-size: 0.85rem;
-            color: #52525b;
+            color: #a855f7;
             font-style: italic;
+            line-height: 1.6;
+            min-height: 1.6em;
         }
 
-        .quip span { display: none; }
-        .quip span.active { display: inline; }
+        .quip-refresh {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.75rem;
+            padding: 0.4rem 0.85rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #52525b;
+            background: transparent;
+            border: 1px solid #27272a;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.2s ease;
+        }
+
+        .quip-refresh:hover {
+            border-color: #a855f7;
+            color: #a855f7;
+        }
+
+        .quip-refresh:active {
+            transform: scale(0.96);
+        }
+
+        .quip-refresh svg {
+            width: 12px;
+            height: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .quip-refresh:hover svg {
+            transform: rotate(180deg);
+        }
+
+        .divider {
+            width: 48px;
+            height: 2px;
+            background: linear-gradient(90deg, #ef4444, #a855f7);
+            border: none;
+            border-radius: 1px;
+            margin: 0 auto 1.5rem;
+            opacity: 0.4;
+        }
+
+        .footer-note {
+            font-size: 0.75rem;
+            color: #3f3f46;
+        }
 
         /* Responsive */
         @media (max-width: 480px) {
-            .terminal { font-size: 0.7rem; padding: 1rem; }
-            .subtitle { font-size: 0.95rem; letter-spacing: 0.15em; }
+            .page { padding: 1.5rem 1.25rem; }
+            .door-container { width: 80px; height: 96px; margin-bottom: 1.25rem; }
+            .subtitle { font-size: 0.85rem; letter-spacing: 0.15em; margin-bottom: 1.5rem; }
+            .message { font-size: 0.95rem; margin-bottom: 1.5rem; }
+            .reasons { padding: 1rem 1.15rem; }
+            .reason { font-size: 0.8rem; }
         }
-
     </style>
 </head>
 <body>
 
     <div class="page">
         <div class="content">
-            <div class="shield">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <line x1="9" y1="9" x2="15" y2="15"/>
-                    <line x1="15" y1="9" x2="9" y2="15"/>
-                </svg>
+
+            <div class="door-container">
+                <div class="door-frame">
+                    <div class="peep-eyes">
+                        <div class="eye"></div>
+                        <div class="eye"></div>
+                    </div>
+                    <div class="door">
+                        <div class="door-sign">NOPE</div>
+                        <div class="door-knob"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="error-code">403</div>
             <div class="subtitle">Access Denied</div>
 
             <p class="message">
-                This service lives on <strong>reza.network</strong> and is only accessible
-                from the <strong>local LAN</strong> or through the <strong>WireGuard VPN</strong>.
-                You're neither — so here we are.
+                Someone peeked through the door, saw it was <strong>you</strong>,
+                and decided not to answer.
             </p>
 
-            <div class="terminal">
-                <div class="terminal-dots">
-                    <span></span><span></span><span></span>
+            <div class="reasons">
+                <div class="reasons-title">Why you can't come in</div>
+                <div class="reason">
+                    <span class="reason-icon fail">✗</span>
+                    <span>You weren't on the guest list</span>
                 </div>
-                <span class="comment"># what SWAG thinks of your request</span><br>
-                <span class="prompt">nginx $</span> <span class="cmd">check-access --ip <span id="visitor-ip">your.ip</span></span><br>
-                <span class="output">✗ not in 192.168.2.0/24 (LAN)</span><br>
-                <span class="output">✗ not in 10.8.0.0/24 (VPN)</span><br>
-                <span class="output">→ deny all; # nothing personal</span><br>
-                <br>
-                <span class="comment"># maybe try one of these instead</span><br>
-                <span class="prompt">you $</span> <span class="cmd">wg-quick up reza-vpn</span><br>
-                <span class="prompt">you $</span> <span class="cmd">ssh into-the-lan && curl -s localhost</span>
+                <div class="reason">
+                    <span class="reason-icon fail">✗</span>
+                    <span>The bouncer doesn't recognize you</span>
+                </div>
+                <div class="reason">
+                    <span class="reason-icon fail">✗</span>
+                    <span>You forgot the secret handshake</span>
+                </div>
+                <div class="reason">
+                    <span class="reason-icon fail">✗</span>
+                    <span>The server is pretending nobody's home</span>
+                </div>
             </div>
 
-            <p class="quip">
-                <span class="active"></span>
+            <div class="quip-container">
+                <p class="quip" id="quip"></p>
+                <button class="quip-refresh" id="refresh-btn" aria-label="New quip">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Another one
+                </button>
+            </div>
+
+            <hr class="divider">
+
+            <p class="footer-note">
+                Nothing to see here. Go get some coffee or something.
             </p>
         </div>
     </div>
 
+    <!-- Quips are injected at deploy time from quips.json by pre-deploy.sh.
+         This script tag is separate so a parse error from the placeholder
+         doesn't break the main logic below. -->
+    <script>window.quips = %%QUIPS_JSON%%;</script>
+
     <script>
-        const quips = [
-            "Pi-hole blocked your bad vibes before SWAG even had to.",
-            "Jellyfin has great content. You'll just never know.",
-            "Radarr and Sonarr are busy. Downloading… uh… Linux ISOs.",
-            "The VPN is right there. It's free*. (*requires being me)",
-            "This server runs on vibes, Docker, and deny all;",
-            "qBittorrent is seeding at 0 KB/s. As a lifestyle choice.",
-            "Prowlarr found 47 indexers. None of them are for you.",
-            "Duplicati has a backup of this rejection, just in case.",
-            "Actual Budget says we can't afford to let you in.",
-            "Heimdall has a dashboard of things you can't access.",
-            "Even Cloudflare DDNS knows where you live. And it's not here.",
-            "SWAG: Secure Web Application Gateway. Emphasis on Secure.",
+        // Fallback if quips weren't injected (e.g. local testing)
+        const quips = window.quips || [
+            "The door is locked. The key is a metaphor. You don't have the metaphor.",
+            "Error 403: your vibes were checked and found insufficient.",
+            "I'd let you in, but I literally can't. I'm HTML.",
+            "On the bright side, at least it's not a 500.",
         ];
-        const el = document.querySelector('.quip span');
-        el.textContent = quips[Math.floor(Math.random() * quips.length)];
+
+        let lastIndex = -1;
+
+        function showQuip() {
+            let index;
+            do {
+                index = Math.floor(Math.random() * quips.length);
+            } while (index === lastIndex && quips.length > 1);
+            lastIndex = index;
+
+            const el = document.getElementById('quip');
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(4px)';
+            setTimeout(() => {
+                el.textContent = quips[index];
+                el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 150);
+        }
+
+        showQuip();
+        document.getElementById('refresh-btn').addEventListener('click', showQuip);
     </script>
 
 </body>

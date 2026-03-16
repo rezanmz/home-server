@@ -13,7 +13,20 @@ cp -f ./config/nginx/proxy-confs/*.conf ~/persistent/swag/config/nginx/proxy-con
 
 # 3. Copy custom error pages (e.g. 403.html) so nginx error_page directives work
 echo "🔄 Syncing custom error pages..."
-cp -f ./config/www/* ~/persistent/swag/config/www/
+cp -f ./config/www/403.html ~/persistent/swag/config/www/
+
+# 3a. Inject quips.json into 403.html (replaces %%QUIPS_JSON%% placeholder)
+#     This avoids a runtime fetch that would be blocked by nginx deny rules.
+if [ -f ./config/www/quips.json ]; then
+    echo "🎲 Injecting quips into 403 page..."
+    python3 -c "
+import json
+html = open('$HOME/persistent/swag/config/www/403.html').read()
+quips = open('./config/www/quips.json').read().strip()
+html = html.replace('%%QUIPS_JSON%%', quips)
+open('$HOME/persistent/swag/config/www/403.html', 'w').write(html)
+"
+fi
 
 # 4. Set permissions (ensure the container user can read them)
 chmod -R 700 ~/persistent/swag/config
