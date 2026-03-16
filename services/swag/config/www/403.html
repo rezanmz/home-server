@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 — Nope.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f0f13;
+            color: #e4e4e7;
+            overflow: hidden;
+        }
+
+        .page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            position: relative;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        /* Animated gradient background */
+        .page::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 30%, rgba(239, 68, 68, 0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 60% at 80% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+            animation: bgPulse 8s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+
+        @keyframes bgPulse {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .content { position: relative; z-index: 1; max-width: 600px; }
+
+        /* Big 403 */
+        .error-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(6rem, 18vw, 11rem);
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(135deg, #ef4444 0%, #a855f7 50%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 40px rgba(239, 68, 68, 0.25));
+            user-select: none;
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 1.15rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            color: #71717a;
+            margin-bottom: 2rem;
+        }
+
+        /* Shield icon */
+        .shield {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.08);
+            border: 2px solid rgba(239, 68, 68, 0.2);
+            margin-bottom: 1.5rem;
+            animation: shieldFloat 3s ease-in-out infinite;
+        }
+
+        .shield svg {
+            width: 36px;
+            height: 36px;
+            stroke: #ef4444;
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        @keyframes shieldFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .message {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: #a1a1aa;
+            margin-bottom: 2.5rem;
+        }
+
+        .message strong { color: #e4e4e7; font-weight: 600; }
+
+        /* Terminal-style humor box */
+        .terminal {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            text-align: left;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.8;
+            color: #71717a;
+            width: 100%;
+            max-width: 480px;
+            margin-bottom: 2rem;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 0.75rem;
+        }
+
+        .terminal-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .terminal-dots span:nth-child(1) { background: #ef4444; }
+        .terminal-dots span:nth-child(2) { background: #eab308; }
+        .terminal-dots span:nth-child(3) { background: #22c55e; }
+
+        .terminal .prompt { color: #22c55e; }
+        .terminal .cmd { color: #e4e4e7; }
+        .terminal .output { color: #ef4444; }
+        .terminal .comment { color: #52525b; }
+
+        /* Quip that rotates */
+        .quip {
+            font-size: 0.85rem;
+            color: #52525b;
+            font-style: italic;
+        }
+
+        .quip span { display: none; }
+        .quip span.active { display: inline; }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .terminal { font-size: 0.7rem; padding: 1rem; }
+            .subtitle { font-size: 0.95rem; letter-spacing: 0.15em; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="page">
+        <div class="content">
+            <div class="shield">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                </svg>
+            </div>
+
+            <div class="error-code">403</div>
+            <div class="subtitle">Access Denied</div>
+
+            <p class="message">
+                This service lives on <strong>reza.network</strong> and is only accessible
+                from the <strong>local LAN</strong> or through the <strong>WireGuard VPN</strong>.
+                You're neither — so here we are.
+            </p>
+
+            <div class="terminal">
+                <div class="terminal-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <span class="comment"># what SWAG thinks of your request</span><br>
+                <span class="prompt">nginx $</span> <span class="cmd">check-access --ip <span id="visitor-ip">your.ip</span></span><br>
+                <span class="output">✗ not in 192.168.2.0/24 (LAN)</span><br>
+                <span class="output">✗ not in 10.8.0.0/24 (VPN)</span><br>
+                <span class="output">→ deny all; # nothing personal</span><br>
+                <br>
+                <span class="comment"># maybe try one of these instead</span><br>
+                <span class="prompt">you $</span> <span class="cmd">wg-quick up reza-vpn</span><br>
+                <span class="prompt">you $</span> <span class="cmd">ssh into-the-lan && curl -s localhost</span>
+            </div>
+
+            <p class="quip">
+                <span class="active"></span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const quips = [
+            "Pi-hole blocked your bad vibes before SWAG even had to.",
+            "Jellyfin has great content. You'll just never know.",
+            "Radarr and Sonarr are busy. Downloading… uh… Linux ISOs.",
+            "The VPN is right there. It's free*. (*requires being me)",
+            "This server runs on vibes, Docker, and deny all;",
+            "qBittorrent is seeding at 0 KB/s. As a lifestyle choice.",
+            "Prowlarr found 47 indexers. None of them are for you.",
+            "Duplicati has a backup of this rejection, just in case.",
+            "Actual Budget says we can't afford to let you in.",
+            "Heimdall has a dashboard of things you can't access.",
+            "Even Cloudflare DDNS knows where you live. And it's not here.",
+            "SWAG: Secure Web Application Gateway. Emphasis on Secure.",
+        ];
+        const el = document.querySelector('.quip span');
+        el.textContent = quips[Math.floor(Math.random() * quips.length)];
+    </script>
+
+</body>
+</html>
