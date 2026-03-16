@@ -16,6 +16,11 @@ services:
       # Persist Pi-hole's databases and config
       - '~/persistent/pihole/etc-pihole:/etc/pihole'
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:

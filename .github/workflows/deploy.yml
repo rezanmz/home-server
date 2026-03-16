@@ -28,10 +28,15 @@ jobs:
 
       - name: Detect changed services
         id: changed-services
+        # Security: use env vars instead of ${{ }} interpolation in run blocks
+        # to prevent script injection via crafted filenames/branch names.
+        env:
+          CHANGED_DIRS: ${{ steps.changed-files.outputs.all_changed_files }}
+          DELETED_DIRS: ${{ steps.changed-files.outputs.deleted_files }}
         run: |
           # Get all changed directories in services/
-          changed_dirs="${{ steps.changed-files.outputs.all_changed_files }}"
-          deleted_dirs="${{ steps.changed-files.outputs.deleted_files }}"
+          changed_dirs="$CHANGED_DIRS"
+          deleted_dirs="$DELETED_DIRS"
 
           # Initialize arrays
           changed_services=()
@@ -115,8 +120,11 @@ jobs:
     if: needs.detect-changes.outputs.deleted-services != '[]'
     steps:
       - name: Stop and remove deleted services
+        # Security: avoid direct interpolation in shell to prevent script injection.
+        env:
+          DELETED_SERVICES: ${{ needs.detect-changes.outputs.deleted-services }}
         run: |
-          deleted_services='${{ needs.detect-changes.outputs.deleted-services }}'
+          deleted_services="$DELETED_SERVICES"
 
           # Parse JSON array and process each service
           echo "$deleted_services" | jq -r '.[]' | while read -r service; do
@@ -149,8 +157,10 @@ jobs:
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
           DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
+          # Security: pass job outputs via env to prevent script injection.
+          CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
         run: |
-          changed_services='${{ needs.detect-changes.outputs.changed-services }}'
+          changed_services="$CHANGED_SERVICES"
 
           # Parse JSON array and process each service sequentially
           echo "$changed_services" | jq -r '.[]' | while read -r service; do

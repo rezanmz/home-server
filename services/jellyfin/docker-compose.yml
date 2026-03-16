@@ -26,6 +26,17 @@ services:
       - /dev/dri:/dev/dri
     networks:
       - home-server
+    healthcheck:
+      test: curl -f http://localhost:8096/health || exit 1
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:

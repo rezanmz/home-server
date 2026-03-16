@@ -16,6 +16,17 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: curl -f http://localhost:7878/ping || exit 1
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
