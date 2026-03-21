@@ -7,6 +7,9 @@ services:
     # cap_drop: [ALL] strips dangerous root capabilities (module loading, raw
     # sockets, etc.) so a compromised container has far less power.
     cap_drop: [ALL]
+    cap_add:
+      - SETUID
+      - SETGID
     environment:
       - PUID=0
       - PGID=0
@@ -23,6 +26,12 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: curl -f http://localhost:8200 || exit 1
+      start_period: 15s
+      interval: 30s
+      timeout: 5s
+      retries: 3
     logging:
       driver: json-file
       options:

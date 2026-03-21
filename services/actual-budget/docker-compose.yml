@@ -20,7 +20,7 @@ services:
       - ACTUAL_OPENID_ENFORCE=true
       - ACTUAL_TOKEN_EXPIRATION=7200
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:5006/ || exit 1
+      test: node /app/src/scripts/health-check.js || exit 1
       start_period: 15s
       interval: 30s
       timeout: 5s
