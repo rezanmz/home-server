@@ -10,6 +10,7 @@ services:
     cap_add:
       - SETUID
       - SETGID
+      - DAC_READ_SEARCH
     environment:
       - PUID=0
       - PGID=0
