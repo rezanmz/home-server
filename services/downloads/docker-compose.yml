@@ -8,6 +8,9 @@ services:
       - /dev/net/tun:/dev/net/tun
     expose:
       - "8080"
+      - "7878"   # Radarr
+      - "8989"   # Sonarr
+      - "9696"   # Prowlarr
     volumes:
       - ~/persistent/gluetun:/gluetun
     environment:

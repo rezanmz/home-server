@@ -21,7 +21,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 - Services that need to be reached by SWAG join the `home-server` external network.
 - Pi-hole uses `network_mode: host` (needed for DNS on port 53 and DHCP). The Raspberry Pi's IP is `192.168.2.2`.
 - VPN clients use Pi-hole (`192.168.2.2`) as their DNS resolver, getting ad-blocking while connected remotely.
-- qBittorrent routes through Gluetun (NordVPN WireGuard) via `network_mode: service:gluetun`.
+- qBittorrent, Radarr, Sonarr, and Prowlarr all route through Gluetun (NordVPN WireGuard) via `network_mode: container:gluetun`.
 - All services are LAN/VPN-only (nginx `allow`/`deny` rules).
 
 ## Services
@@ -32,9 +32,9 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Cloudflare DDNS** | Keeps DNS records updated with current IP | —                                               |
 | **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                           |
 | **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                         |
-| **Radarr**          | Movie management & automation             | `radarr.reza.network`                           |
-| **Sonarr**          | TV show management & automation           | `sonarr.reza.network`                           |
-| **Prowlarr**        | Indexer manager for Radarr/Sonarr         | `prowlarr.reza.network`                         |
+| **Radarr**          | Movie management & automation (via VPN)   | `radarr.reza.network`                           |
+| **Sonarr**          | TV show management & automation (via VPN) | `sonarr.reza.network`                           |
+| **Prowlarr**        | Indexer manager for Radarr/Sonarr (via VPN) | `prowlarr.reza.network`                       |
 | **Jellyseerr**      | Media request management                  | `jellyseerr.reza.network`                       |
 | **Downloads**       | qBittorrent (via Gluetun VPN)             | `qbittorrent.reza.network`                      |
 | **Actual Budget**   | Personal finance/budgeting                | `budget.reza.network`                           |

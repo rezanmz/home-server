@@ -9,10 +9,7 @@ services:
     volumes:
       - ~/persistent/sonarr/config:/config
       - ~/media:/media
-    expose:
-      - "8989"
-    networks:
-      - home-server
+    network_mode: container:gluetun
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -32,7 +29,3 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
-
-networks:
-  home-server:
-    external: true
