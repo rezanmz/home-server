@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      deploy_all:
+        description: 'Deploy all services (full stack redeploy)'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   detect-changes:
@@ -33,6 +40,7 @@ jobs:
         env:
           CHANGED_DIRS: ${{ steps.changed-files.outputs.all_changed_files }}
           DELETED_DIRS: ${{ steps.changed-files.outputs.deleted_files }}
+          DEPLOY_ALL: ${{ github.event.inputs.deploy_all }}
         run: |
           # Get all changed directories in services/
           changed_dirs="$CHANGED_DIRS"
@@ -53,39 +61,45 @@ jobs:
             done
           fi
 
-          # Process changed directories (existing services that changed)
-          for dir in $changed_dirs; do
-            if [[ "$dir" == services/* ]]; then
-              # Extract service name (first subdirectory under services/)
-              service_path=${dir#services/}
-              service_name=${service_path%%/*}
-              
-              if [ -n "$service_name" ] && [ "$service_name" != "services" ]; then
-                if [ -d "services/$service_name" ]; then
-                  # Service still exists, it's changed
-                  if [[ ! " ${changed_services[@]} " =~ " ${service_name} " ]]; then
-                    changed_services+=("$service_name")
+          # Manual trigger with deploy_all: treat ALL services as changed
+          if [ "$DEPLOY_ALL" = "true" ]; then
+            echo "Manual deploy-all triggered — marking all services as changed"
+            changed_services=("${all_services[@]}")
+          else
+            # Process changed directories (existing services that changed)
+            for dir in $changed_dirs; do
+              if [[ "$dir" == services/* ]]; then
+                # Extract service name (first subdirectory under services/)
+                service_path=${dir#services/}
+                service_name=${service_path%%/*}
+                
+                if [ -n "$service_name" ] && [ "$service_name" != "services" ]; then
+                  if [ -d "services/$service_name" ]; then
+                    # Service still exists, it's changed
+                    if [[ ! " ${changed_services[@]} " =~ " ${service_name} " ]]; then
+                      changed_services+=("$service_name")
+                    fi
                   fi
                 fi
               fi
-            fi
-          done
+            done
 
-          # Process deleted directories (services that were removed)
-          for dir in $deleted_dirs; do
-            if [[ "$dir" == services/* ]]; then
-              # Extract service name (first subdirectory under services/)
-              service_path=${dir#services/}
-              service_name=${service_path%%/*}
-              
-              if [ -n "$service_name" ] && [ "$service_name" != "services" ]; then
-                # Add to deleted services if not already present
-                if [[ ! " ${deleted_services[@]} " =~ " ${service_name} " ]]; then
-                  deleted_services+=("$service_name")
+            # Process deleted directories (services that were removed)
+            for dir in $deleted_dirs; do
+              if [[ "$dir" == services/* ]]; then
+                # Extract service name (first subdirectory under services/)
+                service_path=${dir#services/}
+                service_name=${service_path%%/*}
+                
+                if [ -n "$service_name" ] && [ "$service_name" != "services" ]; then
+                  # Add to deleted services if not already present
+                  if [[ ! " ${deleted_services[@]} " =~ " ${service_name} " ]]; then
+                    deleted_services+=("$service_name")
+                  fi
                 fi
               fi
-            fi
-          done
+            done
+          fi
 
           # Convert arrays to JSON (compact format for GitHub Actions)
           if [ ${#changed_services[@]} -eq 0 ]; then
@@ -162,8 +176,114 @@ jobs:
         run: |
           changed_services="$CHANGED_SERVICES"
 
-          # Parse JSON array and process each service sequentially
-          echo "$changed_services" | jq -r '.[]' | while read -r service; do
+          # Auto-detect deployment order from docker-compose dependencies.
+          # Scans for `network_mode: container:<name>` to find cross-service
+          # dependencies, then topologically sorts so dependencies deploy first.
+          # No hard-coded order needed — it's derived from the actual configs.
+
+          declare -A container_to_service  # maps container_name -> service directory name
+          declare -A service_deps          # maps service -> space-separated list of dependency services
+
+          # Step 1: Build a map of container_name -> service for ALL services (not just changed ones)
+          for service_dir in services/*/; do
+            if [ -d "$service_dir" ]; then
+              svc=$(basename "$service_dir")
+              compose_file="$service_dir/docker-compose.yml"
+              [ ! -f "$compose_file" ] && compose_file="$service_dir/docker-compose.yaml"
+              [ ! -f "$compose_file" ] && continue
+
+              # Extract container_name values from the compose file
+              while IFS= read -r cname; do
+                [ -n "$cname" ] && container_to_service["$cname"]="$svc"
+              done < <(grep -E '^\s+container_name:' "$compose_file" | sed 's/.*container_name:\s*//' | tr -d '"' | tr -d "'" | xargs -n1)
+            fi
+          done
+
+          # Step 2: Build dependency map for ALL services (not just changed ones)
+          for service_dir in services/*/; do
+            if [ -d "$service_dir" ]; then
+              service=$(basename "$service_dir")
+              compose_file="$service_dir/docker-compose.yml"
+              [ ! -f "$compose_file" ] && compose_file="$service_dir/docker-compose.yaml"
+              [ ! -f "$compose_file" ] && continue
+
+              while IFS= read -r dep_container; do
+                dep_container=$(echo "$dep_container" | xargs)  # trim whitespace
+                [ -z "$dep_container" ] && continue
+                dep_service="${container_to_service[$dep_container]:-}"
+                if [ -n "$dep_service" ] && [ "$dep_service" != "$service" ]; then
+                  service_deps["$service"]+="$dep_service "
+                fi
+              done < <(grep -E '^\s+network_mode:\s*container:' "$compose_file" | sed 's/.*network_mode:\s*container://' | tr -d '"' | tr -d "'")
+            fi
+          done
+
+          # Step 2b: Reverse dependency resolution — if a base service changed,
+          # auto-include all services that depend on it (they need redeployment
+          # because the base container gets recreated with a new ID).
+          changed_containers=()
+          for service in $(echo "$changed_services" | jq -r '.[]'); do
+            compose_file="services/$service/docker-compose.yml"
+            [ ! -f "$compose_file" ] && compose_file="services/$service/docker-compose.yaml"
+            [ ! -f "$compose_file" ] && continue
+            while IFS= read -r cname; do
+              [ -n "$cname" ] && changed_containers+=("$cname")
+            done < <(grep -E '^\s+container_name:' "$compose_file" | sed 's/.*container_name:\s*//' | tr -d '"' | tr -d "'" | xargs -n1)
+          done
+
+          for svc in "${!service_deps[@]}"; do
+            for dep in ${service_deps[$svc]}; do
+              # Check if any container from the dependency service was changed
+              for cc in "${changed_containers[@]}"; do
+                dep_svc="${container_to_service[$cc]:-}"
+                if [ "$dep_svc" = "$dep" ]; then
+                  # This service depends on a changed container — auto-include it
+                  if ! echo "$changed_services" | jq -e --arg s "$svc" 'index($s) != null' > /dev/null 2>&1; then
+                    echo "Auto-including '$svc' (depends on changed container '$cc' from '$dep')"
+                    changed_services=$(echo "$changed_services" | jq --arg s "$svc" '. + [$s]')
+                  fi
+                  break 2
+                fi
+              done
+            done
+          done
+
+          # Step 3: Topological sort — deploy dependencies before dependents
+          sorted_services=()
+          visited=()
+
+          topo_visit() {
+            local svc="$1"
+            # Skip if already visited
+            for v in "${visited[@]}"; do
+              [ "$v" = "$svc" ] && return
+            done
+            visited+=("$svc")
+
+            # Visit dependencies first (only if they're in the changed set)
+            for dep in ${service_deps[$svc]:-}; do
+              if echo "$changed_services" | jq -e --arg s "$dep" 'index($s) != null' > /dev/null 2>&1; then
+                topo_visit "$dep"
+              fi
+            done
+
+            sorted_services+=("$svc")
+          }
+
+          # Visit services with dependencies first, then the rest (alphabetically)
+          for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
+            if [ -n "${service_deps[$service]:-}" ]; then
+              topo_visit "$service"
+            fi
+          done
+          for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
+            topo_visit "$service"
+          done
+
+          echo "Deployment order (auto-detected): ${sorted_services[*]}"
+
+          # Deploy each service in order
+          for service in "${sorted_services[@]}"; do
             if [ -n "$service" ]; then
               echo "=== Processing service: $service ==="
               
