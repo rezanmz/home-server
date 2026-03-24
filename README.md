@@ -35,7 +35,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Radarr**          | Movie management & automation (via VPN)   | `radarr.reza.network`                           |
 | **Sonarr**          | TV show management & automation (via VPN) | `sonarr.reza.network`                           |
 | **Prowlarr**        | Indexer manager for Radarr/Sonarr (via VPN) | `prowlarr.reza.network`                       |
-| **Jellyseerr**      | Media request management (via VPN)        | `jellyseerr.reza.network`                       |
+| **Jellyseerr**      | Media request management                  | `jellyseerr.reza.network`                       |
 | **Downloads**       | qBittorrent + FlareSolverr (via Gluetun VPN) | `qbittorrent.reza.network`                   |
 | **Actual Budget**   | Personal finance/budgeting                | `budget.reza.network`                           |
 | **Heimdall**        | Dashboard/homepage                        | `homepage.reza.network`                         |
