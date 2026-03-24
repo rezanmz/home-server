@@ -65,6 +65,30 @@ services:
       gluetun:
         condition: service_healthy
 
+  flaresolverr:
+    image: flaresolverr/flaresolverr:v3.4.6
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=EST
+    network_mode: service:gluetun
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
 networks:
   home-server:
     external: true
