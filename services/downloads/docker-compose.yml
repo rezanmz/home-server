@@ -11,6 +11,7 @@ services:
       - "7878"   # Radarr
       - "8989"   # Sonarr
       - "9696"   # Prowlarr
+      - "5055"   # Jellyseerr
     volumes:
       - ~/persistent/gluetun:/gluetun
     environment:
