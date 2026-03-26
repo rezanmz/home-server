@@ -42,6 +42,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **VPN**             | WireGuard (wg-easy)                       | `vpn.reza.network` (UI), port 1234/udp (tunnel) |
 | **Samba**           | SMB file shares for media                 | Ports 139/445 (LAN-only)                        |
 | **Duplicati**       | Encrypted backups of service configs      | `duplicati.reza.network`                        |
+| **Glances**         | System monitoring (CPU, mem, disk, etc.)  | `glances.reza.network`                          |
 
 ## Deployment
 
@@ -68,6 +69,7 @@ home-server/
     ├── actual-budget/
     ├── cloudflare-ddns/
     ├── downloads/          # Gluetun VPN + qBittorrent
+    ├── glances/            # System monitoring
     ├── heimdall/
     ├── jellyfin/
     ├── jellyseerr/

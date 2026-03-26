@@ -15,7 +15,7 @@ services:
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
         # Your Cloudflare API token (from GitHub secrets)
-      - DOMAINS=reza.network,budget.reza.network,vpn.reza.network,jellyfin.reza.network,radarr.reza.network,sonarr.reza.network,prowlarr.reza.network,jellyseerr.reza.network,qbittorrent.reza.network,homepage.reza.network,pihole.reza.network,duplicati.reza.network
+      - DOMAINS=reza.network,budget.reza.network,vpn.reza.network,jellyfin.reza.network,radarr.reza.network,sonarr.reza.network,prowlarr.reza.network,jellyseerr.reza.network,qbittorrent.reza.network,homepage.reza.network,pihole.reza.network,duplicati.reza.network,glances.reza.network
         # Your main domain and wildcard subdomain
       - PROXIED=false
         # All subdomains are DNS-only (not proxied through Cloudflare)
