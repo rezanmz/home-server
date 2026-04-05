@@ -40,7 +40,7 @@ services:
       - POSTGRES_PASSWORD=vikunja-db-pass
       - POSTGRES_USER=vikunja
     volumes:
-      - ~/persistent/vikunja/db:/var/lib/postgresql/data
+      - ~/persistent/vikunja/db:/var/lib/postgresql
     networks:
       - home-server
     restart: unless-stopped
