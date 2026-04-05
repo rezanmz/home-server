@@ -44,6 +44,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Duplicati**       | Encrypted backups of service configs      | `duplicati.reza.network`                        |
 | **Glances**         | System monitoring (CPU, mem, disk, etc.)  | `glances.reza.network`                          |
 | **Speedtest Tracker** | Automated internet speed monitoring     | `speedtest.reza.network`                        |
+| **Vikunja**           | Task management & to-do lists           | `todo.reza.network`                             |
 
 ## Deployment
 
@@ -82,6 +83,7 @@ home-server/
     ├── speedtest-tracker/   # Internet speed monitoring
     ├── swag/               # Reverse proxy + nginx configs
     │   └── config/nginx/proxy-confs/*.conf
+    ├── vikunja/             # Task management (Vikunja + PostgreSQL)
     └── vpn/                # WireGuard (wg-easy)
 ```
 
@@ -131,6 +133,7 @@ These must be set as GitHub Actions secrets:
 | `SAMBA_PASSWORD`             | Samba file share user                  |
 | `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
 | `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
+| `VIKUNJA_JWT_SECRET`         | Vikunja JWT signing secret             |
 
 ## Setup
 

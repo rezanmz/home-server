@@ -1,0 +1,66 @@
+services:
+  vikunja:
+    image: vikunja/vikunja:2.2.2
+    container_name: vikunja
+    environment:
+      - VIKUNJA_SERVICE_PUBLICURL=https://todo.reza.network
+      - VIKUNJA_DATABASE_HOST=vikunja-db
+      - VIKUNJA_DATABASE_PASSWORD=vikunja-db-pass
+      - VIKUNJA_DATABASE_TYPE=postgres
+      - VIKUNJA_DATABASE_USER=vikunja
+      - VIKUNJA_DATABASE_DATABASE=vikunja
+      - VIKUNJA_SERVICE_JWTSECRET=${VIKUNJA_JWT_SECRET}
+    expose:
+      - "3456"
+    volumes:
+      - ~/persistent/vikunja/files:/app/vikunja/files
+    depends_on:
+      vikunja-db:
+        condition: service_healthy
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  vikunja-db:
+    image: postgres:18
+    container_name: vikunja-db
+    environment:
+      - POSTGRES_PASSWORD=vikunja-db-pass
+      - POSTGRES_USER=vikunja
+    volumes:
+      - ~/persistent/vikunja/db:/var/lib/postgresql/data
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER"]
+      interval: 2s
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true
