@@ -5,7 +5,7 @@ services:
     container_name: jellyseerr
     environment:
       - LOG_LEVEL=info
-      - TZ=EST
+      - TZ=America/Toronto
     volumes:
       - ~/persistent/jellyseerr/config:/app/config
     expose:

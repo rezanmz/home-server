@@ -6,7 +6,7 @@ services:
     cap_add:
       - NET_ADMIN # Required to broadcast DHCP
     environment:
-      TZ: 'EST'
+      TZ: 'America/Toronto'
       FTLCONF_webserver_api_password: '${PIHOLE_PASSWORD}'
       # Allows Pi-hole to respond to queries from local network
       FTLCONF_dns_listeningMode: 'ALL'

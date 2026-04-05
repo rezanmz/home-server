@@ -7,7 +7,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=EST
+      - TZ=America/Toronto
       - URL=reza.network
       - VALIDATION=dns
       - DNSPLUGIN=cloudflare

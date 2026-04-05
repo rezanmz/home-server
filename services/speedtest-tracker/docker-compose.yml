@@ -5,7 +5,9 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=EST
+      - TZ=America/Toronto
+      - APP_TIMEZONE=America/Toronto
+      - DISPLAY_TIMEZONE=America/Toronto
       - APP_KEY=${SPEEDTEST_TRACKER_APP_KEY}
       - APP_URL=https://speedtest.reza.network
       - DB_CONNECTION=sqlite

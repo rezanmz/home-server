@@ -4,6 +4,7 @@ services:
     container_name: vikunja
     environment:
       - VIKUNJA_SERVICE_PUBLICURL=https://todo.reza.network
+      - TZ=America/Toronto
       - VIKUNJA_DATABASE_HOST=vikunja-db
       - VIKUNJA_DATABASE_PASSWORD=vikunja-db-pass
       - VIKUNJA_DATABASE_TYPE=postgres

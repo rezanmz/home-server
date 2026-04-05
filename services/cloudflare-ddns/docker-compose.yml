@@ -25,7 +25,7 @@ services:
         # Update immediately when container starts
       - CACHE_EXPIRATION=6h
         # Cache Cloudflare API responses for 6 hours
-      - TZ=EST
+      - TZ=America/Toronto
         # Timezone for logging
       - EMOJI=true
         # Use emojis in logs for better readability

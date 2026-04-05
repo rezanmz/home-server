@@ -14,6 +14,7 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
+      - TZ=America/Toronto
       - ACTUAL_LOGIN_METHOD=openid
       - ACTUAL_OPENID_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
       - ACTUAL_OPENID_AUTH_METHOD=openid

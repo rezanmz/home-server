@@ -15,6 +15,7 @@ services:
       # Server identification
       MODEL: 'TimeCapsule'
       AVAHI_NAME: HomeServer
+      TZ: America/Toronto
       
       # Samba configuration
       SAMBA_CONF_LOG_LEVEL: 1

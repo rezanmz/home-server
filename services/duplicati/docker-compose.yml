@@ -14,7 +14,7 @@ services:
     environment:
       - PUID=0
       - PGID=0
-      - TZ=EST
+      - TZ=America/Toronto
       - SETTINGS_ENCRYPTION_KEY=${DUPLICATI_ENCRYPTION_KEY}
     volumes:
       - ~/persistent/duplicati/config:/config

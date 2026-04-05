@@ -5,7 +5,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=EST
+      - TZ=America/Toronto
       - ALLOW_INTERNAL_REQUESTS=true
     volumes:
       - ~/persistent/heimdall/config:/config

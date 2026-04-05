@@ -4,7 +4,7 @@ services:
     container_name: glances
     pid: host
     environment:
-      - TZ=EST
+      - TZ=America/Toronto
       - GLANCES_OPT=-w
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
