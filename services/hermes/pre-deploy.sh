@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 echo "🤖 Setting up Hermes Agent..."
 
 # Create persistent data directory
