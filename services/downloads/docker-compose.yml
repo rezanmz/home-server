@@ -8,18 +8,20 @@ services:
       - /dev/net/tun:/dev/net/tun
     expose:
       - "8080"
+      - "6881"    # BitTorrent incoming (TCP)
+      - "6881/udp" # BitTorrent incoming (UDP)
       - "7878"   # Radarr
       - "8989"   # Sonarr
       - "9696"   # Prowlarr
     volumes:
       - ~/persistent/gluetun:/gluetun
     environment:
-      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=wireguard
-      - WIREGUARD_PRIVATE_KEY=${NORD_WIREGUARD_PRIVATE_KEY}
-      - SERVER_COUNTRIES=Switzerland
+      - WIREGUARD_PRIVATE_KEY=${PROTONVPN_WIREGUARD_PRIVATE_KEY}
+      - PORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
       - TZ=EST
-      # - DOT=off
       - DNS_ADDRESS=1.1.1.1
       - FIREWALL_OUTBOUND_SUBNETS=192.168.2.0/24
     networks:

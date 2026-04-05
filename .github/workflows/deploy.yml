@@ -166,7 +166,7 @@ jobs:
       - name: Deploy changed services
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          NORD_WIREGUARD_PRIVATE_KEY: ${{ secrets.NORD_WIREGUARD_PRIVATE_KEY }}
+          PROTONVPN_WIREGUARD_PRIVATE_KEY: ${{ secrets.PROTONVPN_WIREGUARD_PRIVATE_KEY }}
           PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
@@ -360,7 +360,7 @@ jobs:
       - name: Health check and recovery
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          NORD_WIREGUARD_PRIVATE_KEY: ${{ secrets.NORD_WIREGUARD_PRIVATE_KEY }}
+          PROTONVPN_WIREGUARD_PRIVATE_KEY: ${{ secrets.PROTONVPN_WIREGUARD_PRIVATE_KEY }}
           PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
