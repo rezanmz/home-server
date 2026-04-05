@@ -9,6 +9,7 @@ services:
       - APP_KEY=${SPEEDTEST_TRACKER_APP_KEY}
       - APP_URL=https://speedtest.reza.network
       - DB_CONNECTION=sqlite
+      - SPEEDTEST_SCHEDULE="0 */4 * * *"
     volumes:
       - ~/persistent/speedtest-tracker/config:/config
     expose:
