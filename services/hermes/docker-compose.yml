@@ -31,8 +31,10 @@ services:
       - HERMES_HOME=/root/.hermes
       - HERMES_WEBUI_HOST=0.0.0.0
       - HERMES_WEBUI_PASSWORD=${HERMES_WEBUI_PASSWORD}
+      - HERMES_WEBUI_AGENT_DIR=/root/.hermes/hermes-agent
     volumes:
       - ~/persistent/hermes/data:/root/.hermes
+      - ~/persistent/hermes/agent-src:/root/.hermes/hermes-agent:ro
     expose:
       - "8787"
     networks:
