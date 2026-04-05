@@ -1,7 +1,7 @@
 services:
   hermes:
     build:
-      context: https://github.com/NousResearch/hermes-agent.git#v2026.4.3
+      context: ~/persistent/hermes/agent-source
     image: hermes-agent:v2026.4.3
     container_name: hermes
     command: gateway run
@@ -25,36 +25,23 @@ services:
           memory: 4G
 
   hermes-webui:
-    build:
-      context: .
-      dockerfile: Dockerfile.webui
-    image: hermes-webui:0.36.1
+    image: ghcr.io/nesquena/hermes-webui:0.36.2
     container_name: hermes-webui
-    environment:
-      - HERMES_HOME=/root/.hermes
-      - HERMES_WEBUI_HOST=0.0.0.0
-      - HERMES_WEBUI_PASSWORD=${HERMES_WEBUI_PASSWORD}
-      - HERMES_WEBUI_AGENT_DIR=/root/.hermes/hermes-agent
-    volumes:
-      - ~/persistent/hermes/data:/root/.hermes
-      - ~/persistent/hermes/agent-src:/root/.hermes/hermes-agent:ro
     expose:
       - "8787"
+    volumes:
+      - ~/persistent/hermes/webui-data:/data
+      - ~/persistent/hermes/agent-source:/opt/hermes-agent:ro
+      - ~/.hermes:/root/.hermes
+    environment:
+      - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_PORT=8787
+      - HERMES_WEBUI_STATE_DIR=/data
+      - HERMES_WEBUI_AGENT_DIR=/opt/hermes-agent
+      - HERMES_WEBUI_PASSWORD=${HERMES_WEBUI_PASSWORD}
     networks:
       - home-server
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
 
 networks:
   home-server:

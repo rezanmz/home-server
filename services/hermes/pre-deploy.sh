@@ -4,16 +4,23 @@ echo "🤖 Setting up Hermes Agent..."
 
 # Create persistent data directory
 mkdir -p ~/persistent/hermes/data
+mkdir -p ~/persistent/hermes/webui-data
 
 # Hermes container runs as root by default
 chmod 755 ~/persistent/hermes/data
+chmod 755 ~/persistent/hermes/webui-data
 
-# Clone hermes-agent source for the WebUI (it needs the Python modules)
-if [ ! -d ~/persistent/hermes/agent-src ]; then
-    echo "📥 Cloning hermes-agent source for WebUI..."
-    git clone --branch v2026.4.3 --depth 1 https://github.com/NousResearch/hermes-agent.git ~/persistent/hermes/agent-src
+# Clone Hermes agent from github so WebUI can mount its Python files
+if [ ! -d ~/persistent/hermes/agent-source/.git ]; then
+  echo "📥 Cloning Hermes agent source code..."
+  rm -rf ~/persistent/hermes/agent-source
+  git clone -b v2026.4.3 https://github.com/NousResearch/hermes-agent.git ~/persistent/hermes/agent-source
 else
-    echo "✓ hermes-agent source already present"
+  echo "📥 Updating Hermes agent source code..."
+  cd ~/persistent/hermes/agent-source
+  git fetch
+  git checkout v2026.4.3
+  cd -
 fi
 
 # Build both images from source for ARM64
