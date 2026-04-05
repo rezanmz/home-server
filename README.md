@@ -32,6 +32,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Cloudflare DDNS** | Keeps DNS records updated with current IP | —                                               |
 | **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                           |
 | **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                         |
+| **Hermes**          | AI agent (gateway + web UI)               | `hermes.reza.network`                           |
 | **Radarr**          | Movie management & automation (via VPN)   | `radarr.reza.network`                           |
 | **Sonarr**          | TV show management & automation (via VPN) | `sonarr.reza.network`                           |
 | **Prowlarr**        | Indexer manager for Radarr/Sonarr (via VPN) | `prowlarr.reza.network`                       |
@@ -73,6 +74,7 @@ home-server/
     ├── downloads/          # Gluetun VPN + qBittorrent
     ├── glances/            # System monitoring
     ├── heimdall/
+    ├── hermes/              # AI agent (Hermes gateway)
     ├── jellyfin/
     ├── jellyseerr/
     ├── pihole/
@@ -134,6 +136,7 @@ These must be set as GitHub Actions secrets:
 | `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
 | `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
 | `VIKUNJA_JWT_SECRET`         | Vikunja JWT signing secret             |
+| `HERMES_WEBUI_PASSWORD`      | Hermes Web UI authentication           |
 
 ## Setup
 

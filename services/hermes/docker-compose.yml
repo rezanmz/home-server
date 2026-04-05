@@ -1,0 +1,56 @@
+services:
+  hermes:
+    build:
+      context: https://github.com/NousResearch/hermes-agent.git#v2026.4.3
+    image: hermes-agent:v2026.4.3
+    container_name: hermes
+    command: gateway run
+    volumes:
+      - ~/persistent/hermes/data:/opt/data
+    shm_size: "1g"
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+
+  hermes-webui:
+    image: ghcr.io/nesquena/hermes-webui:0.36.1
+    container_name: hermes-webui
+    environment:
+      - HERMES_HOME=/root/.hermes
+      - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_PASSWORD=${HERMES_WEBUI_PASSWORD}
+    volumes:
+      - ~/persistent/hermes/data:/root/.hermes
+    expose:
+      - "8787"
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true

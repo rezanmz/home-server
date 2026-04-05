@@ -173,6 +173,7 @@ jobs:
           DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
           SPEEDTEST_TRACKER_APP_KEY: ${{ secrets.SPEEDTEST_TRACKER_APP_KEY }}
           VIKUNJA_JWT_SECRET: ${{ secrets.VIKUNJA_JWT_SECRET }}
+          HERMES_WEBUI_PASSWORD: ${{ secrets.HERMES_WEBUI_PASSWORD }}
           # Security: pass job outputs via env to prevent script injection.
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
         run: |
@@ -328,8 +329,8 @@ jobs:
               # Stop existing containers
               docker compose -p "$service" down || true
 
-              # Pull latest images
-              docker compose -p "$service" pull
+              # Pull latest images (--ignore-buildable skips locally-built services)
+              docker compose -p "$service" pull --ignore-buildable
 
               # Start the service
               docker compose -p "$service" up -d
@@ -369,6 +370,7 @@ jobs:
           DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
           SPEEDTEST_TRACKER_APP_KEY: ${{ secrets.SPEEDTEST_TRACKER_APP_KEY }}
           VIKUNJA_JWT_SECRET: ${{ secrets.VIKUNJA_JWT_SECRET }}
+          HERMES_WEBUI_PASSWORD: ${{ secrets.HERMES_WEBUI_PASSWORD }}
         run: |
           echo "=== Health Check and Recovery ==="
 

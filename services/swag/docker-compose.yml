@@ -11,7 +11,7 @@ services:
       - URL=reza.network
       - VALIDATION=dns
       - DNSPLUGIN=cloudflare
-      - SUBDOMAINS=budget,vpn,jellyfin,radarr,sonarr,prowlarr,jellyseerr,qbittorrent,homepage,pihole,duplicati,glances,speedtest,todo
+      - SUBDOMAINS=budget,vpn,jellyfin,radarr,sonarr,prowlarr,jellyseerr,qbittorrent,homepage,pihole,duplicati,glances,speedtest,todo,hermes
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false
       - CERTPROVIDER=
