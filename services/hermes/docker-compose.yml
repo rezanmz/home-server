@@ -29,8 +29,11 @@ services:
     container_name: hermes-webui
     expose:
       - "8787"
+    command: >
+      sh -c "pip install --user -r /opt/hermes-agent/requirements.txt && python server.py"
     volumes:
       - ~/persistent/hermes/webui-data:/data
+      - ~/persistent/hermes/webui-local:/root/.local
       - ~/persistent/hermes/agent-source:/opt/hermes-agent:ro
       - ~/.hermes:/root/.hermes
     environment:
