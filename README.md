@@ -43,6 +43,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Samba**           | SMB file shares for media                 | Ports 139/445 (LAN-only)                        |
 | **Duplicati**       | Encrypted backups of service configs      | `duplicati.reza.network`                        |
 | **Glances**         | System monitoring (CPU, mem, disk, etc.)  | `glances.reza.network`                          |
+| **Speedtest Tracker** | Automated internet speed monitoring     | `speedtest.reza.network`                        |
 
 ## Deployment
 
@@ -78,6 +79,7 @@ home-server/
     ├── radarr/
     ├── samba/
     ├── sonarr/
+    ├── speedtest-tracker/   # Internet speed monitoring
     ├── swag/               # Reverse proxy + nginx configs
     │   └── config/nginx/proxy-confs/*.conf
     └── vpn/                # WireGuard (wg-easy)
@@ -128,6 +130,7 @@ These must be set as GitHub Actions secrets:
 | `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)                   |
 | `SAMBA_PASSWORD`             | Samba file share user                  |
 | `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
+| `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
 
 ## Setup
 

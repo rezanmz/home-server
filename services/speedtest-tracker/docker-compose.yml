@@ -1,0 +1,40 @@
+services:
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=EST
+      - APP_KEY=${SPEEDTEST_TRACKER_APP_KEY}
+      - APP_URL=https://speedtest.reza.network
+      - DB_CONNECTION=sqlite
+    volumes:
+      - ~/persistent/speedtest-tracker/config:/config
+    expose:
+      - "80"
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: curl -f http://localhost:80 || exit 1
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true

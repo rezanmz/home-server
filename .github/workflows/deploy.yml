@@ -171,6 +171,7 @@ jobs:
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
           DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
+          SPEEDTEST_TRACKER_APP_KEY: ${{ secrets.SPEEDTEST_TRACKER_APP_KEY }}
           # Security: pass job outputs via env to prevent script injection.
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
         run: |
@@ -365,6 +366,7 @@ jobs:
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
           SAMBA_PASSWORD: ${{ secrets.SAMBA_PASSWORD }}
           DUPLICATI_ENCRYPTION_KEY: ${{ secrets.DUPLICATI_ENCRYPTION_KEY }}
+          SPEEDTEST_TRACKER_APP_KEY: ${{ secrets.SPEEDTEST_TRACKER_APP_KEY }}
         run: |
           echo "=== Health Check and Recovery ==="
 
