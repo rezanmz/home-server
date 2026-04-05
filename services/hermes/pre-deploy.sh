@@ -15,9 +15,9 @@ else
     echo "✓ hermes-agent source already present"
 fi
 
-# Build the hermes-agent image from source for ARM64
-# (the official image only publishes amd64 builds)
-echo "🔨 Building hermes-agent image from source (this may take a while on first run)..."
-docker compose -p hermes build hermes
+# Build both images from source for ARM64
+# (the official hermes-agent image only publishes amd64 builds)
+echo "🔨 Building images from source (this may take a while on first run)..."
+docker compose -p hermes build
 
 echo "✅ Hermes Agent setup complete"

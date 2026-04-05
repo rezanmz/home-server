@@ -1,0 +1,6 @@
+FROM ghcr.io/nesquena/hermes-webui:0.36.1
+
+# Install hermes-agent Python packages so the WebUI can import agent modules
+# (openai, anthropic, cron, tools, etc.)
+RUN pip install --no-cache-dir --break-system-packages \
+    git+https://github.com/NousResearch/hermes-agent.git@v2026.4.3#egg=hermes-agent[all]
