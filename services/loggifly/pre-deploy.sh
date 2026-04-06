@@ -22,9 +22,9 @@ global_keywords:
 
 notifications:     
   apprise:
-    # Telegram Apprise format: tgram://bottoken/ChatID
+    # Telegram Apprise format: tgram://bottoken/ChatID?format=text
     # Get your bot token from @BotFather and your ChatID from @userinfobot
-    url: "tgram://your_bot_token/your_chat_id"
+    url: "tgram://your_bot_token/your_chat_id?format=text"
 EOF
 fi
 
