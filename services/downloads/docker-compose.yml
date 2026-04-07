@@ -50,7 +50,7 @@ services:
       - ~/persistent/qbittorrent/config:/config
       - ~/media:/media
     network_mode: service:gluetun
-    restart: unless-stopped\
+    restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     healthcheck:
