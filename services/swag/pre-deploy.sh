@@ -9,6 +9,7 @@ mkdir -p ~/persistent/swag/config/www
 # 2. Copy subdomain configs (including the default catch-all) into the Persistent Volume
 #    This forces the live server to match your Git repository.
 echo "🔄 Syncing proxy configurations..."
+rm -f ~/persistent/swag/config/nginx/proxy-confs/*.conf
 cp -f ./config/nginx/proxy-confs/*.conf ~/persistent/swag/config/nginx/proxy-confs/
 
 # 3. Copy custom error pages (e.g. 403.html) so nginx error_page directives work
