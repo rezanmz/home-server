@@ -37,6 +37,18 @@ DEBUG_LOGGING=true
 EOF
 fi
 
+# Ensure cryptographic keys exist in .env
+if ! grep -q "CREDS_KEY=" "$BASE_DIR/.env"; then
+  cat <<EOF >> "$BASE_DIR/.env"
+
+# Cryptographic Keys (Auto-generated)
+CREDS_KEY=$(openssl rand -hex 16)
+CREDS_IV=$(openssl rand -hex 8)
+JWT_SECRET=$(openssl rand -hex 32)
+JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+EOF
+fi
+
 if [ ! -f "$BASE_DIR/librechat.yaml" ]; then
   touch "$BASE_DIR/librechat.yaml"
 fi
