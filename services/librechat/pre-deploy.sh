@@ -5,12 +5,9 @@ echo "📋 Setting up LibreChat..."
 BASE_DIR=~/persistent/librechat
 
 # Create sub-directories
-mkdir -p "$BASE_DIR/data-node"
 mkdir -p "$BASE_DIR/images"
 mkdir -p "$BASE_DIR/uploads"
 mkdir -p "$BASE_DIR/logs"
-mkdir -p "$BASE_DIR/meili_data_v1.35.1"
-mkdir -p "$BASE_DIR/pgdata2"
 
 # Ensure .env and librechat.yaml exist
 if [ ! -f "$BASE_DIR/.env" ]; then
@@ -50,14 +47,6 @@ fi
 chown -R 1000:1000 "$BASE_DIR/images" "$BASE_DIR/uploads" "$BASE_DIR/logs"
 chown 1000:1000 "$BASE_DIR/.env" "$BASE_DIR/librechat.yaml"
 
-# MongoDB runs as 999
-chown -R 999:999 "$BASE_DIR/data-node"
-
-# Postgres (vectordb) runs as Postgres (999 or 70 depending on image) 
-# usually pgvector user is 999 or Postgres user 999. Let's make it 700 to user. Wait, Pi Pi docker pg runs as 999 or root. Let's just permisson it wide open locally for initialization or default 999.
-chown -R 999:999 "$BASE_DIR/pgdata2"
-
-chmod 700 "$BASE_DIR/data-node" "$BASE_DIR/pgdata2" "$BASE_DIR/meili_data_v1.35.1"
 chmod 600 "$BASE_DIR/.env" "$BASE_DIR/librechat.yaml"
 
 echo "✅ LibreChat setup complete"
