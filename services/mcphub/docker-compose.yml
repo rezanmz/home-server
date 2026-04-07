@@ -22,7 +22,7 @@ services:
       - home-server
 
   mcphub-postgres:
-    image: pgvector/pgvector:pg17-alpine
+    image: pgvector/pgvector:pg18
     container_name: mcphub-postgres
     environment:
       POSTGRES_DB: mcphub
