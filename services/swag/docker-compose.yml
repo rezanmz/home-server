@@ -12,7 +12,7 @@ services:
       - VALIDATION=dns
       - DNSPLUGIN=cloudflare
       - PROPAGATION=60
-      - SUBDOMAINS=budget,vpn,jellyfin,radarr,sonarr,prowlarr,jellyseerr,qbittorrent,homepage,pihole,duplicati,glances,speedtest,todo,hermes,anythingllm
+      - SUBDOMAINS=budget,vpn,jellyfin,radarr,sonarr,prowlarr,jellyseerr,qbittorrent,homepage,pihole,duplicati,glances,speedtest,todo,hermes,anythingllm,librechat,mcphub
       - EMAIL=${LETSENCRYPT_EMAIL}
       - STAGING=false
       - CERTPROVIDER=
