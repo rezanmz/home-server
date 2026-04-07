@@ -1,0 +1,66 @@
+services:
+  anythingllm:
+    image: ghcr.io/mintplex-labs/anything-llm:1.11.2
+    container_name: anythingllm
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      - STORAGE_DIR=/app/server/storage
+      - DATABASE_URL=postgresql://anythingllm:anythingllm-pass@anythingllm-db:5432/anythingllm
+      - TZ=America/Toronto
+    expose:
+      - "3001"
+    volumes:
+      - ~/persistent/anythingllm/storage:/app/server/storage
+      - ~/persistent/anythingllm/.env:/app/server/.env
+    networks:
+      - home-server
+    depends_on:
+      anythingllm-db:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  anythingllm-db:
+    image: pgvector/pgvector:pg16
+    container_name: anythingllm-db
+    environment:
+      - POSTGRES_PASSWORD=anythingllm-pass
+      - POSTGRES_USER=anythingllm
+      - POSTGRES_DB=anythingllm
+    volumes:
+      - ~/persistent/anythingllm/db:/var/lib/postgresql/data
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true

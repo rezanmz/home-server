@@ -46,6 +46,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Glances**         | System monitoring (CPU, mem, disk, etc.)  | `glances.reza.network`                          |
 | **Speedtest Tracker** | Automated internet speed monitoring     | `speedtest.reza.network`                        |
 | **Vikunja**           | Task management & to-do lists           | `todo.reza.network`                             |
+| **AnythingLLM**       | Local LLM UI & Agent interaction        | `anythingllm.reza.network`                      |
 
 ## Deployment
 
@@ -70,6 +71,7 @@ home-server/
 ├── README.md
 └── services/
     ├── actual-budget/
+    ├── anythingllm/        # AnythingLLM + Postgres with PGVector
     ├── cloudflare-ddns/
     ├── downloads/          # Gluetun VPN + qBittorrent
     ├── glances/            # System monitoring
