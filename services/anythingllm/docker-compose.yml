@@ -1,6 +1,6 @@
 services:
   anythingllm:
-    image: ghcr.io/mintplex-labs/anything-llm:1.11.2
+    image: ghcr.io/mintplex-labs/anything-llm:1.12.0
     container_name: anythingllm
     cap_add:
       - SYS_ADMIN
