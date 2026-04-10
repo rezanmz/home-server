@@ -9,6 +9,9 @@ services:
       - ~/persistent/open-webui/data:/app/backend/data
     environment:
       - TZ=America/Toronto
+      - ENABLE_OLLAMA_API=False
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - home-server
     security_opt:
