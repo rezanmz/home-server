@@ -14,6 +14,9 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - home-server
+    depends_on:
+      tika:
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -32,6 +35,33 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
+
+  tika:
+    image: apache/tika:3.2.3.0-full
+    container_name: tika
+    restart: unless-stopped
+    expose:
+      - "9998"
+    networks:
+      - home-server
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9998/tika || exit 1"]
+      start_period: 30s
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
 networks:
   home-server:
