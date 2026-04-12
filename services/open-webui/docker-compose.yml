@@ -12,6 +12,7 @@ services:
       - ENABLE_OLLAMA_API=False
       - CONTENT_EXTRACTION_ENGINE=tika
       - TIKA_SERVER_URL=http://tika:9998
+      - BYPASS_MODEL_ACCESS_CONTROL=True
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
