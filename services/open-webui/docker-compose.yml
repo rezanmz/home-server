@@ -36,8 +36,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '2'
+          memory: 4G
+        reservations:
+          memory: 2G
 
   tika:
     image: apache/tika:3.2.3.0-full
