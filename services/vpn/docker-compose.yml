@@ -6,7 +6,7 @@ services:
       - WG_HOST=vpn.reza.network
       - TZ=America/Toronto
       - WG_PORT=1234
-      - WG_ALLOWED_IPS=192.168.2.0/24,10.8.0.0/24
+      - WG_ALLOWED_IPS=192.168.1.0/24,10.8.0.0/24
       - WG_DEFAULT_DNS=192.168.1.2
 
     volumes:
