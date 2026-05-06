@@ -19,8 +19,8 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 ### Networking
 
 - Services that need to be reached by SWAG join the `home-server` external network.
-- Pi-hole uses `network_mode: host` (needed for DNS on port 53 and DHCP). The Raspberry Pi's IP is `192.168.2.2`.
-- VPN clients use Pi-hole (`192.168.2.2`) as their DNS resolver, getting ad-blocking while connected remotely.
+- Pi-hole uses `network_mode: host` (needed for DNS on port 53 and DHCP). The Raspberry Pi's IP is `192.168.1.2`.
+- VPN clients use Pi-hole (`192.168.1.2`) as their DNS resolver, getting ad-blocking while connected remotely.
 - qBittorrent, Radarr, Sonarr, and Prowlarr all route through Gluetun (ProtonVPN WireGuard, port forwarding enabled) via `network_mode: container:gluetun`.
 - All services are LAN/VPN-only (nginx `allow`/`deny` rules).
 

@@ -8,8 +8,8 @@ services:
     expose:
       - "8096"
     ports:
-      - '192.168.2.2:7359:7359/udp' # Client discovery (LAN)
-      - '192.168.2.2:1900:1900/udp' # DLNA service (LAN)
+      - '192.168.1.2:7359:7359/udp' # Client discovery (LAN)
+      - '192.168.1.2:1900:1900/udp' # DLNA service (LAN)
     volumes:
       - ~/persistent/jellyfin/config:/config
       - ~/persistent/jellyfin/cache:/cache
