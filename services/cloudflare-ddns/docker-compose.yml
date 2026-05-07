@@ -44,12 +44,7 @@ services:
       - TTL=1
         # TTL of 1 means "automatic" to Cloudflare
       - RECORD_COMMENT=Updated by home-server DDNS
-    healthcheck:
-      test: /usr/bin/cloudflare-ddns healthcheck
-      start_period: 30s
-      interval: 5m
-      timeout: 30s
-      retries: 3
+    # Cloudflare DDNS does not support health checking.
     logging:
       driver: json-file
       options:
