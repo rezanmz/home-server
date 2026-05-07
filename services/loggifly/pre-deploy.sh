@@ -7,20 +7,23 @@ mkdir -p ~/persistent/loggifly/config
 # Create default config.yaml with Telegram settings if it doesn't exist
 if [ ! -f ~/persistent/loggifly/config/config.yaml ]; then
 cat << 'EOF' > ~/persistent/loggifly/config/config.yaml
-containers:
-  # Example container
-  # my-container-name:
-  #   keywords:
-  #     - error
-  #     - regex: (username|password).*incorrect 
-    
-global_keywords:
+# LoggiFly v2 config format
+# See: https://clemcer.github.io/LoggiFly/guide/getting-started
+
+global:
   keywords:
     - failed
     - error
     - critical
 
-notifications:     
+# containers:
+#   rules:
+#     - container_name: my-container-name
+#       keywords:
+#         - keyword: error
+#         - regex: (username|password).*incorrect
+
+notifications:
   apprise:
     # Telegram Apprise format: tgram://bottoken/ChatID?format=text
     # Get your bot token from @BotFather and your ChatID from @userinfobot
