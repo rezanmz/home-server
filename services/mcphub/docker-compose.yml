@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   mcphub:
-    image: samanhappy/mcphub:0.12.12
+    image: samanhappy/mcphub:0.12.15
     container_name: mcphub
     environment:
       - DB_URL=postgresql://mcphub:mcphub_pass@mcphub-postgres:5432/mcphub
