@@ -6,16 +6,11 @@
   "dependencyDashboard": true,
   "packageRules": [
     {
-      "description": "All LinuxServer.io images (docker.io/linuxserver/* and lscr.io/linuxserver/*) use non-SemVer compound tag formats. A single regex matches both registries automatically.",
+      "description": "All LinuxServer.io images use non-SemVer compound tag formats. Apply loose versioning, exclude nightly/development builds, and exclude stale Ubuntu-era tags (e.g. '14.3.9.xxx...ubuntu20.04.1-ls166') which sort higher than real app-version tags under loose versioning.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/linuxserver\//"],
-      "versioning": "loose"
-    },
-    {
-      "description": "linuxserver/qbittorrent has a stale Ubuntu-era CalVer tag '20.04.1' that sorts higher than the real 5.x app-version tags. Exclude it.",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["linuxserver/qbittorrent"],
-      "allowedVersions": "!/^20\\.04\\.1$/"
+      "versioning": "loose",
+      "allowedVersions": "!/ubuntu|nightly/"
     },
     {
       "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Loose versioning prevents misidentification.",
