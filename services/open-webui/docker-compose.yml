@@ -42,7 +42,7 @@ services:
           memory: 2G
 
   tika:
-    image: apache/tika:3.2.3.0-full
+    image: apache/tika:3.3.0.0-full
     container_name: tika
     restart: unless-stopped
     expose:
