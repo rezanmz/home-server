@@ -1,6 +1,6 @@
 services:
   anythingllm:
-    image: mintplexlabs/anythingllm:1.12.0
+    image: mintplexlabs/anythingllm:1.12.1
     container_name: anythingllm
     cap_add:
       - SYS_ADMIN

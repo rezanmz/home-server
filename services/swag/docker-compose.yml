@@ -1,6 +1,6 @@
 services:
   swag:
-    image: linuxserver/swag:5.5.0
+    image: linuxserver/swag:5.6.0
     container_name: swag
     cap_add:
       - NET_ADMIN
