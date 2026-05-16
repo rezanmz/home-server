@@ -2,5 +2,42 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "description": "LinuxServer.io images use a non-SemVer tag format (e.g. 5.2.0_v2.0.12-ls455). Use loose versioning so Renovate compares them correctly instead of falling back to numeric date-style tags.",
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": [
+        "^linuxserver/",
+        "^lscr\\.io/linuxserver/"
+      ],
+      "versioning": "loose"
+    },
+    {
+      "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Use loose versioning to avoid misidentification.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/servercontainers/samba"],
+      "versioning": "loose"
+    },
+    {
+      "description": "pgvector uses channel tags like 'pg16' that are not version numbers — ignore them to prevent bogus upgrade PRs.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["pgvector/pgvector"],
+      "enabled": false
+    },
+    {
+      "description": "Group all non-major Docker updates into a single PR to reduce noise.",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "Docker non-major updates",
+      "minimumReleaseAge": "1 day"
+    },
+    {
+      "description": "Major Docker updates always get individual PRs for manual review.",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
   ]
 }
