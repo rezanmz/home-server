@@ -39,7 +39,7 @@ services:
         max-file: "3"
 
   qbittorrent:
-    image: linuxserver/qbittorrent:5.2.0
+    image: linuxserver/qbittorrent:20.04.1
     container_name: qbittorrent
     environment:
       - PUID=1000
