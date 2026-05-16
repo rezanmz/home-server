@@ -6,37 +6,34 @@
   "dependencyDashboard": true,
   "packageRules": [
     {
-      "description": "LinuxServer.io images use a non-SemVer compound tag format (e.g. 5.2.0_v2.0.12-ls455). Use loose versioning so Renovate compares them correctly.",
+      "description": "All LinuxServer.io images (docker.io/linuxserver/* and lscr.io/linuxserver/*) use non-SemVer compound tag formats. A single regex matches both registries automatically.",
       "matchDatasources": ["docker"],
-      "matchPackageNames": [
-        "linuxserver/duplicati",
-        "linuxserver/heimdall",
-        "linuxserver/prowlarr",
-        "linuxserver/qbittorrent",
-        "linuxserver/radarr",
-        "linuxserver/sonarr",
-        "linuxserver/swag",
-        "lscr.io/linuxserver/speedtest-tracker"
-      ],
+      "matchPackageNames": ["/linuxserver\//"],
       "versioning": "loose"
     },
     {
-      "description": "linuxserver/qbittorrent has stale Ubuntu-era CalVer tags (e.g. '20.04.1') that sort higher than the real app version tags (5.x). Explicitly ignore the known offending tag.",
+      "description": "linuxserver/qbittorrent has a stale Ubuntu-era CalVer tag '20.04.1' that sorts higher than the real 5.x app-version tags. Exclude it.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["linuxserver/qbittorrent"],
-      "ignoreVersions": ["20.04.1"]
+      "allowedVersions": "!/^20\\.04\\.1$/"
     },
     {
-      "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Use loose versioning to avoid misidentification.",
+      "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Loose versioning prevents misidentification.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["ghcr.io/servercontainers/samba"],
       "versioning": "loose"
     },
     {
-      "description": "pgvector uses channel tags like 'pg16' that are not version numbers — ignore them to prevent bogus upgrade PRs.",
+      "description": "pgvector uses channel tags like 'pg16' — not version numbers. Disable updates entirely to prevent bogus PRs.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["pgvector/pgvector"],
       "enabled": false
+    },
+    {
+      "description": "Images pinned to a build-variant suffix (e.g. '-full') must only update within that same variant. Detected automatically via matchCurrentValue — no package list needed.",
+      "matchDatasources": ["docker"],
+      "matchCurrentValue": "/-full$/",
+      "allowedVersions": "/-full$/"
     },
     {
       "description": "Group all non-major Docker updates into a single PR to reduce noise.",
