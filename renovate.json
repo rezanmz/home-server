@@ -6,13 +6,16 @@
   "dependencyDashboard": true,
   "packageRules": [
     {
-      "description": "LinuxServer.io images use a non-SemVer tag format (e.g. 5.2.0_v2.0.12-ls455). Use loose versioning so Renovate compares them correctly instead of falling back to numeric date-style tags.",
+      "description": "LinuxServer.io images use a non-SemVer tag format (e.g. 5.2.0_v2.0.12-ls455). Use loose versioning so Renovate compares them correctly.",
       "matchDatasources": ["docker"],
-      "matchPackagePatterns": [
-        "^linuxserver/",
-        "^lscr\\.io/linuxserver/"
-      ],
+      "matchPackageNames": ["/^linuxserver\//", "/^lscr\.io\/linuxserver\//"],
       "versioning": "loose"
+    },
+    {
+      "description": "linuxserver/qbittorrent has stale Ubuntu-era CalVer tags (e.g. '20.04.1') that sort higher than the real app version tags (5.x). Explicitly ignore the known offending tag.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/qbittorrent"],
+      "ignoreVersions": ["20.04.1"]
     },
     {
       "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Use loose versioning to avoid misidentification.",
