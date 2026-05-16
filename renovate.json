@@ -6,9 +6,18 @@
   "dependencyDashboard": true,
   "packageRules": [
     {
-      "description": "LinuxServer.io images use a non-SemVer tag format (e.g. 5.2.0_v2.0.12-ls455). Use loose versioning so Renovate compares them correctly.",
+      "description": "LinuxServer.io images use a non-SemVer compound tag format (e.g. 5.2.0_v2.0.12-ls455). Use loose versioning so Renovate compares them correctly.",
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["/^linuxserver\//", "/^lscr\.io\/linuxserver\//"],
+      "matchPackageNames": [
+        "linuxserver/duplicati",
+        "linuxserver/heimdall",
+        "linuxserver/prowlarr",
+        "linuxserver/qbittorrent",
+        "linuxserver/radarr",
+        "linuxserver/sonarr",
+        "linuxserver/swag",
+        "lscr.io/linuxserver/speedtest-tracker"
+      ],
       "versioning": "loose"
     },
     {
