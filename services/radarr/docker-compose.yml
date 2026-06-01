@@ -1,6 +1,6 @@
 services:
   radarr:
-    image: linuxserver/radarr:6.2.0-develop
+    image: linuxserver/radarr:6.2.1-develop
     container_name: radarr
     environment:
       - PUID=1000
