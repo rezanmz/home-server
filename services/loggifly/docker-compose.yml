@@ -1,6 +1,6 @@
 services:
   loggifly:
-    image: ghcr.io/clemcer/loggifly:v2.0.0
+    image: ghcr.io/clemcer/loggifly:v2.0.1
     container_name: loggifly
     restart: unless-stopped
     read_only: true
