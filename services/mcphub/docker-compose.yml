@@ -1,6 +1,6 @@
 services:
   mcphub:
-    image: samanhappy/mcphub:1.0.9-full
+    image: samanhappy/mcphub:1.0.10-full
     container_name: mcphub
     environment:
       - DB_URL=postgresql://mcphub:mcphub_pass@mcphub-postgres:5432/mcphub
