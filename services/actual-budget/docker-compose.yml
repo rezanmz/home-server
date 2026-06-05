@@ -16,9 +16,13 @@ services:
     environment:
       - TZ=America/Toronto
       - ACTUAL_LOGIN_METHOD=openid
+      - ACTUAL_ALLOWED_LOGIN_METHODS=openid
       - ACTUAL_OPENID_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
       - ACTUAL_OPENID_AUTH_METHOD=openid
       - ACTUAL_TOKEN_EXPIRATION=7200
+      - ACTUAL_OPENID_SERVER_HOSTNAME=https://budget.reza.network
+      - ACTUAL_OPENID_CLIENT_ID=${ACTUAL_OPENID_CLIENT_ID}
+      - ACTUAL_OPENID_CLIENT_SECRET=${ACTUAL_OPENID_CLIENT_SECRET}
     healthcheck:
       test: node /app/src/scripts/health-check.js || exit 1
       start_period: 15s
