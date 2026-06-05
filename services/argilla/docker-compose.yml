@@ -155,7 +155,7 @@ services:
           memory: 768M
 
   argilla-redis:
-    image: redis:7.4.2
+    image: redis:8.8.0
     container_name: argilla-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
