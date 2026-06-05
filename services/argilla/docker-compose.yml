@@ -114,7 +114,7 @@ services:
           memory: 512M
 
   argilla-elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
     container_name: argilla-elasticsearch
     restart: unless-stopped
     environment:
