@@ -180,6 +180,8 @@ jobs:
           HERMES_WEBUI_PASSWORD: ${{ secrets.HERMES_WEBUI_PASSWORD }}
           ACTUAL_OPENID_CLIENT_ID: ${{ secrets.ACTUAL_OPENID_CLIENT_ID }}
           ACTUAL_OPENID_CLIENT_SECRET: ${{ secrets.ACTUAL_OPENID_CLIENT_SECRET }}
+          ARGILLA_PASSWORD: ${{ secrets.ARGILLA_PASSWORD }}
+          ARGILLA_API_KEY: ${{ secrets.ARGILLA_API_KEY }}
           # Security: pass job outputs via env to prevent script injection.
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
         run: |
@@ -379,6 +381,8 @@ jobs:
           HERMES_WEBUI_PASSWORD: ${{ secrets.HERMES_WEBUI_PASSWORD }}
           ACTUAL_OPENID_CLIENT_ID: ${{ secrets.ACTUAL_OPENID_CLIENT_ID }}
           ACTUAL_OPENID_CLIENT_SECRET: ${{ secrets.ACTUAL_OPENID_CLIENT_SECRET }}
+          ARGILLA_PASSWORD: ${{ secrets.ARGILLA_PASSWORD }}
+          ARGILLA_API_KEY: ${{ secrets.ARGILLA_API_KEY }}
         run: |
           echo "=== Health Check and Recovery ==="
 

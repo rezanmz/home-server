@@ -1,0 +1,14 @@
+# Runtime data and imported datasets must stay off git.
+data/
+postgres/
+elasticsearch/
+redis/
+imports/
+*.jsonl
+*.csv
+*.tsv
+*.parquet
+*.arrow
+*.sqlite
+*.db
+*.log

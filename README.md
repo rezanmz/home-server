@@ -22,7 +22,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 - Pi-hole uses `network_mode: host` (needed for DNS on port 53 and DHCP). The Raspberry Pi's IP is `192.168.1.2`.
 - VPN clients use Pi-hole (`192.168.1.2`) as their DNS resolver, getting ad-blocking while connected remotely.
 - qBittorrent, Radarr, Sonarr, and Prowlarr all route through Gluetun (ProtonVPN WireGuard, port forwarding enabled) via `network_mode: container:gluetun`.
-- All services are LAN/VPN-only (nginx `allow`/`deny` rules).
+- Most services are LAN/VPN-only (nginx `allow`/`deny` rules). Argilla is publicly reachable at `argilla.reza.network` for external annotators.
 
 ## Services
 
@@ -47,6 +47,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Speedtest Tracker** | Automated internet speed monitoring     | `speedtest.reza.network`                        |
 | **Vikunja**           | Task management & to-do lists           | `todo.reza.network`                             |
 | **AnythingLLM**       | Local LLM UI & Agent interaction        | `anythingllm.reza.network`                      |
+| **Argilla**           | Human review and annotation workflows   | `argilla.reza.network`                          |
 
 ## Deployment
 
@@ -71,6 +72,7 @@ home-server/
 ├── README.md
 └── services/
     ├── actual-budget/
+    ├── argilla/            # Annotation and human review workflows
     ├── anythingllm/        # AnythingLLM + Postgres with PGVector
     ├── cloudflare-ddns/
     ├── downloads/          # Gluetun VPN + qBittorrent
@@ -139,6 +141,8 @@ These must be set as GitHub Actions secrets:
 | `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
 | `VIKUNJA_JWT_SECRET`         | Vikunja JWT signing secret             |
 | `HERMES_WEBUI_PASSWORD`      | Hermes Web UI authentication           |
+| `ARGILLA_PASSWORD`           | Argilla owner password                  |
+| `ARGILLA_API_KEY`            | Argilla owner API key                   |
 
 ## Setup
 
