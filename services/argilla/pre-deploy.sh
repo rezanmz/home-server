@@ -25,9 +25,12 @@ mkdir -p "$BASE_DIR/postgres"
 mkdir -p "$BASE_DIR/elasticsearch"
 mkdir -p "$BASE_DIR/redis"
 
-chmod 700 "$BASE_DIR/data"
-chmod 700 "$BASE_DIR/postgres"
-chmod 700 "$BASE_DIR/elasticsearch"
-chmod 700 "$BASE_DIR/redis"
+for dir in "$BASE_DIR/data" "$BASE_DIR/postgres" "$BASE_DIR/elasticsearch" "$BASE_DIR/redis"; do
+  if [ -O "$dir" ]; then
+    chmod 700 "$dir"
+  else
+    echo "ℹ️  Leaving permissions unchanged for $dir because it is owned by another user."
+  fi
+done
 
 echo "✅ Argilla setup complete"
