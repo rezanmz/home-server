@@ -25,18 +25,9 @@ mkdir -p "$BASE_DIR/postgres"
 mkdir -p "$BASE_DIR/elasticsearch"
 mkdir -p "$BASE_DIR/redis"
 
-# Argilla server runs as UID/GID 1000 inside argilla/argilla-server.
-chown -R 1000:1000 "$BASE_DIR/data"
 chmod 700 "$BASE_DIR/data"
-
-# PostgreSQL official image initializes as the postgres user.
-chown -R 999:999 "$BASE_DIR/postgres"
 chmod 700 "$BASE_DIR/postgres"
-
-# Elasticsearch runs as uid 1000 and group 0.
-chown -R 1000:0 "$BASE_DIR/elasticsearch"
-chmod 775 "$BASE_DIR/elasticsearch"
-
+chmod 700 "$BASE_DIR/elasticsearch"
 chmod 700 "$BASE_DIR/redis"
 
 echo "✅ Argilla setup complete"
