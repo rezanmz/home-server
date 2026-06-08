@@ -159,8 +159,6 @@ Set these GitHub Actions secrets before deploying the relevant services:
 | `OPEN_WEBUI_OAUTH_ADMIN_ROLES` | Optional Open WebUI admin Authentik group override |
 | `ARGILLA_PASSWORD`           | Argilla owner password                  |
 | `ARGILLA_API_KEY`            | Argilla owner API key                   |
-| `ARGILLA_OIDC_CLIENT_ID`     | Argilla Authentik OIDC client          |
-| `ARGILLA_OIDC_CLIENT_SECRET` | Argilla Authentik OIDC secret          |
 | `MCPHUB_ADMIN_PASSWORD`      | MCPHub admin password                  |
 
 ## Authentik OIDC Providers
@@ -171,8 +169,6 @@ Create OAuth2/OIDC providers in Authentik with these application slugs and redir
 | --- | -------------- | ------------ |
 | Actual Budget | `actual-budget` | `https://budget.reza.network/openid/callback` |
 | Open WebUI | `open-webui` | `https://chat.reza.network/oauth/oidc/callback` |
-| Argilla | `argilla` | `https://argilla.reza.network/oauth/keycloak/callback` |
-
 Open WebUI maps Authentik groups to app roles. By default, members of `open-webui-users` can log in and members of `open-webui-admins` become admins.
 
 ## Setup

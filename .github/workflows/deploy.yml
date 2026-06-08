@@ -191,8 +191,6 @@ jobs:
           OPEN_WEBUI_OAUTH_ADMIN_ROLES: ${{ secrets.OPEN_WEBUI_OAUTH_ADMIN_ROLES }}
           ARGILLA_PASSWORD: ${{ secrets.ARGILLA_PASSWORD }}
           ARGILLA_API_KEY: ${{ secrets.ARGILLA_API_KEY }}
-          ARGILLA_OIDC_CLIENT_ID: ${{ secrets.ARGILLA_OIDC_CLIENT_ID }}
-          ARGILLA_OIDC_CLIENT_SECRET: ${{ secrets.ARGILLA_OIDC_CLIENT_SECRET }}
           MCPHUB_ADMIN_PASSWORD: ${{ secrets.MCPHUB_ADMIN_PASSWORD }}
           # Security: pass job outputs via env to prevent script injection.
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
@@ -404,8 +402,6 @@ jobs:
           OPEN_WEBUI_OAUTH_ADMIN_ROLES: ${{ secrets.OPEN_WEBUI_OAUTH_ADMIN_ROLES }}
           ARGILLA_PASSWORD: ${{ secrets.ARGILLA_PASSWORD }}
           ARGILLA_API_KEY: ${{ secrets.ARGILLA_API_KEY }}
-          ARGILLA_OIDC_CLIENT_ID: ${{ secrets.ARGILLA_OIDC_CLIENT_ID }}
-          ARGILLA_OIDC_CLIENT_SECRET: ${{ secrets.ARGILLA_OIDC_CLIENT_SECRET }}
           MCPHUB_ADMIN_PASSWORD: ${{ secrets.MCPHUB_ADMIN_PASSWORD }}
         run: |
           echo "=== Health Check and Recovery ==="

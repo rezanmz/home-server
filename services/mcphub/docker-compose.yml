@@ -6,8 +6,9 @@ services:
       - DB_URL=postgresql://mcphub:mcphub_pass@mcphub-postgres:5432/mcphub
       - PORT=3000
       - NODE_ENV=production
-    ports:
-      - "3000:3000"
+      - ADMIN_PASSWORD=${MCPHUB_ADMIN_PASSWORD:?MCPHUB_ADMIN_PASSWORD must be set}
+    expose:
+      - "3000"
     depends_on:
       mcphub-postgres:
         condition: service_healthy
@@ -18,6 +19,13 @@ services:
     restart: unless-stopped
     networks:
       - home-server
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   mcphub-postgres:
     image: pgvector/pgvector:pg16
@@ -36,6 +44,13 @@ services:
     restart: unless-stopped
     networks:
       - home-server
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   home-server:
