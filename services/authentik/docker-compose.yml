@@ -1,0 +1,112 @@
+services:
+  authentik-postgresql:
+    image: docker.io/library/postgres:16-alpine
+    container_name: authentik-postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:?AUTHENTIK_POSTGRES_PASSWORD must be set}
+    volumes:
+      - ~/persistent/authentik/postgres:/var/lib/postgresql/data
+    networks:
+      - home-server
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      start_period: 20s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2026.5.2
+    container_name: authentik-server
+    command: server
+    restart: unless-stopped
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+    expose:
+      - "9000"
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?AUTHENTIK_SECRET_KEY must be set}
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:?AUTHENTIK_POSTGRES_PASSWORD must be set}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+    volumes:
+      - ~/persistent/authentik/data:/data
+      - ~/persistent/authentik/custom-templates:/templates
+    networks:
+      - home-server
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 512mb
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2026.5.2
+    container_name: authentik-worker
+    command: worker
+    restart: unless-stopped
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?AUTHENTIK_SECRET_KEY must be set}
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:?AUTHENTIK_POSTGRES_PASSWORD must be set}
+      AUTHENTIK_BOOTSTRAP_PASSWORD_HASH: ${AUTHENTIK_BOOTSTRAP_PASSWORD_HASH:?AUTHENTIK_BOOTSTRAP_PASSWORD_HASH must be set}
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+    volumes:
+      - ~/persistent/authentik/data:/data
+      - ~/persistent/authentik/certs:/certs
+      - ~/persistent/authentik/custom-templates:/templates
+    networks:
+      - home-server
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 512mb
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+        reservations:
+          memory: 384M
+
+networks:
+  home-server:
+    external: true

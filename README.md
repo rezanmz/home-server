@@ -23,6 +23,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 - VPN clients use Pi-hole (`192.168.1.2`) as their DNS resolver, getting ad-blocking while connected remotely.
 - qBittorrent, Radarr, Sonarr, and Prowlarr all route through Gluetun (ProtonVPN WireGuard, port forwarding enabled) via `network_mode: container:gluetun`.
 - Most services are LAN/VPN-only (nginx `allow`/`deny` rules). Argilla is publicly reachable at `argilla.reza.network` for external annotators.
+- Authentik provides native OIDC for services that support it. Services without native OIDC keep their own authentication and, for admin surfaces, remain LAN/VPN-only.
 
 ## Services
 
@@ -30,6 +31,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | ------------------- | ----------------------------------------- | ----------------------------------------------- |
 | **SWAG**            | Nginx reverse proxy + Let's Encrypt SSL   | Ports 80/443                                    |
 | **Cloudflare DDNS** | Keeps DNS records updated with current IP | —                                               |
+| **Authentik**       | Identity provider for native OIDC apps    | `auth.reza.network`                            |
 | **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                           |
 | **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                         |
 | **Hermes**          | AI agent (gateway + web UI)               | `hermes.reza.network`                           |
@@ -48,6 +50,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Vikunja**           | Task management & to-do lists           | `todo.reza.network`                             |
 | **AnythingLLM**       | Local LLM UI & Agent interaction        | `anythingllm.reza.network`                      |
 | **Argilla**           | Human review and annotation workflows   | `argilla.reza.network`                          |
+| **MCPHub**            | MCP server dashboard                    | `mcphub.reza.network`                           |
 
 ## Deployment
 
@@ -72,6 +75,7 @@ home-server/
 ├── README.md
 └── services/
     ├── actual-budget/
+    ├── authentik/          # Identity provider for OIDC integrations
     ├── argilla/            # Annotation and human review workflows
     ├── anythingllm/        # AnythingLLM + Postgres with PGVector
     ├── cloudflare-ddns/
@@ -81,6 +85,7 @@ home-server/
     ├── hermes/              # AI agent (Hermes gateway)
     ├── jellyfin/
     ├── jellyseerr/
+    ├── mcphub/
     ├── pihole/
     ├── prowlarr/
     ├── radarr/
@@ -128,7 +133,7 @@ Each service directory contains a `docker-compose.yml` and most include a `pre-d
 
 ## Required Secrets
 
-These must be set as GitHub Actions secrets:
+Set these GitHub Actions secrets before deploying the relevant services:
 
 | Secret                       | Used by                                |
 | ---------------------------- | -------------------------------------- |
@@ -136,13 +141,39 @@ These must be set as GitHub Actions secrets:
 | `PROTONVPN_WIREGUARD_PRIVATE_KEY` | Downloads (Gluetun/ProtonVPN)           |
 | `PIHOLE_PASSWORD`            | Pi-hole web UI                         |
 | `LETSENCRYPT_EMAIL`          | SWAG (Let's Encrypt)                   |
+| `AUTHENTIK_SECRET_KEY`       | Authentik application/session crypto   |
+| `AUTHENTIK_POSTGRES_PASSWORD` | Authentik PostgreSQL                  |
+| `AUTHENTIK_BOOTSTRAP_PASSWORD_HASH` | Initial Authentik `akadmin` password hash |
+| `AUTHENTIK_BOOTSTRAP_EMAIL`  | Optional initial Authentik admin email |
 | `SAMBA_PASSWORD`             | Samba file share user                  |
 | `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
 | `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
 | `VIKUNJA_JWT_SECRET`         | Vikunja JWT signing secret             |
 | `HERMES_WEBUI_PASSWORD`      | Hermes Web UI authentication           |
+| `ACTUAL_OPENID_CLIENT_ID`    | Actual Budget Authentik OIDC client    |
+| `ACTUAL_OPENID_CLIENT_SECRET` | Actual Budget Authentik OIDC secret   |
+| `OPEN_WEBUI_SECRET_KEY`      | Open WebUI session/OAuth token crypto  |
+| `OPEN_WEBUI_OAUTH_CLIENT_ID` | Open WebUI Authentik OIDC client       |
+| `OPEN_WEBUI_OAUTH_CLIENT_SECRET` | Open WebUI Authentik OIDC secret   |
+| `OPEN_WEBUI_OAUTH_ALLOWED_ROLES` | Optional Open WebUI allowed Authentik group override |
+| `OPEN_WEBUI_OAUTH_ADMIN_ROLES` | Optional Open WebUI admin Authentik group override |
 | `ARGILLA_PASSWORD`           | Argilla owner password                  |
 | `ARGILLA_API_KEY`            | Argilla owner API key                   |
+| `ARGILLA_OIDC_CLIENT_ID`     | Argilla Authentik OIDC client          |
+| `ARGILLA_OIDC_CLIENT_SECRET` | Argilla Authentik OIDC secret          |
+| `MCPHUB_ADMIN_PASSWORD`      | MCPHub admin password                  |
+
+## Authentik OIDC Providers
+
+Create OAuth2/OIDC providers in Authentik with these application slugs and redirect URIs:
+
+| App | Authentik slug | Redirect URI |
+| --- | -------------- | ------------ |
+| Actual Budget | `actual-budget` | `https://budget.reza.network/openid/callback` |
+| Open WebUI | `open-webui` | `https://chat.reza.network/oauth/oidc/callback` |
+| Argilla | `argilla` | `https://argilla.reza.network/oauth/keycloak/callback` |
+
+Open WebUI maps Authentik groups to app roles. By default, members of `open-webui-users` can log in and members of `open-webui-admins` become admins.
 
 ## Setup
 
