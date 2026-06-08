@@ -170,6 +170,7 @@ Create OAuth2/OIDC providers in Authentik with these application slugs and redir
 | Actual Budget | `actual-budget` | `https://budget.reza.network/openid/callback` |
 | Open WebUI | `open-webui` | `https://chat.reza.network/oauth/oidc/callback` |
 Open WebUI maps Authentik groups to app roles. By default, members of `open-webui-users` can log in and members of `open-webui-admins` become admins.
+Open WebUI also merges OAuth logins into existing local accounts when the email address matches; only enable this with a trusted IdP such as this Authentik instance.
 
 ## Setup
 
