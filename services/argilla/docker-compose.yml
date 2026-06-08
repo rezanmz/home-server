@@ -83,7 +83,7 @@ services:
           memory: 1G
 
   argilla-postgres:
-    image: postgres:14
+    image: postgres:18
     container_name: argilla-postgres
     restart: unless-stopped
     environment:
