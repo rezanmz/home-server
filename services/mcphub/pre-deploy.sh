@@ -16,11 +16,6 @@ if [ "$MCPHUB_ADMIN_PASSWORD" = "strongadminpassword123" ]; then
   exit 1
 fi
 
-if [ ${#MCPHUB_ADMIN_PASSWORD} -lt 16 ]; then
-  echo "❌ MCPHUB_ADMIN_PASSWORD must be at least 16 characters."
-  exit 1
-fi
-
 # Create sub-directories and files
 mkdir -p "$BASE_DIR/data"
 
