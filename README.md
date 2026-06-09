@@ -47,7 +47,6 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Duplicati**       | Encrypted backups of service configs      | `duplicati.reza.network`                        |
 | **Glances**         | System monitoring (CPU, mem, disk, etc.)  | `glances.reza.network`                          |
 | **Speedtest Tracker** | Automated internet speed monitoring     | `speedtest.reza.network`                        |
-| **Vikunja**           | Task management & to-do lists           | `todo.reza.network`                             |
 | **AnythingLLM**       | Local LLM UI & Agent interaction        | `anythingllm.reza.network`                      |
 | **Argilla**           | Human review and annotation workflows   | `argilla.reza.network`                          |
 | **MCPHub**            | MCP server dashboard                    | `mcphub.reza.network`                           |
@@ -94,7 +93,6 @@ home-server/
     ├── speedtest-tracker/   # Internet speed monitoring
     ├── swag/               # Reverse proxy + nginx configs
     │   └── config/nginx/proxy-confs/*.conf
-    ├── vikunja/             # Task management (Vikunja + PostgreSQL)
     └── vpn/                # WireGuard (wg-easy)
 ```
 
@@ -148,7 +146,6 @@ Set these GitHub Actions secrets before deploying the relevant services:
 | `SAMBA_PASSWORD`             | Samba file share user                  |
 | `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
 | `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
-| `VIKUNJA_JWT_SECRET`         | Vikunja JWT signing secret             |
 | `HERMES_WEBUI_PASSWORD`      | Hermes Web UI authentication           |
 | `ACTUAL_OPENID_CLIENT_ID`    | Actual Budget Authentik OIDC client    |
 | `ACTUAL_OPENID_CLIENT_SECRET` | Actual Budget Authentik OIDC secret   |
