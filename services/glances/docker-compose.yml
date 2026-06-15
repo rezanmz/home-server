@@ -1,6 +1,6 @@
 services:
   glances:
-    image: nicolargo/glances:4.5.4-full
+    image: nicolargo/glances:4.5.5-full
     container_name: glances
     pid: host
     environment:
