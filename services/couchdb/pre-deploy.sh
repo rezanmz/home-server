@@ -21,9 +21,9 @@ echo "Creating data directories if they don't exist..."
 mkdir -p ~/persistent/couchdb/data
 mkdir -p ~/persistent/couchdb/etc
 
-# Copy local.ini BEFORE chown (runner still owns the dirs at this point)
+# Copy local.ini (use sudo in case dir is already owned by UID 5984 from a previous deploy)
 echo "Copying CouchDB configuration..."
-cp -f ./config/local.ini ~/persistent/couchdb/etc/local.ini
+sudo cp -f ./config/local.ini ~/persistent/couchdb/etc/local.ini
 
 # Set proper permissions (CouchDB runs as UID 5984 inside the container)
 echo "Setting permissions on data directories..."
