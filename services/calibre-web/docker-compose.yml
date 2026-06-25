@@ -48,6 +48,8 @@ services:
       - ~/persistent/shelfmark/config:/config
       # Shared ingest folder with Calibre-Web Automated
       - ~/persistent/calibre-web/ingest:/books
+      # Mount downloads folder so Shelfmark can access files from the torrent client
+      - ~/media/downloads:/media/downloads
     # Web UI is internal-only, accessed via SWAG reverse proxy
     expose:
       - "8084"
