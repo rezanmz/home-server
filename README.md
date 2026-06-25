@@ -50,7 +50,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **AnythingLLM**       | Local LLM UI & Agent interaction        | `anythingllm.reza.network`                      |
 | **Argilla**           | Human review and annotation workflows   | `argilla.reza.network`                          |
 | **MCPHub**            | MCP server dashboard                    | `mcphub.reza.network`                           |
-| **CouchDB**           | Obsidian LiveSync server (CouchDB)      | `couchdb.reza.network`                          |
+| **Syncthing**         | File synchronization (Obsidian vaults)  | `syncthing.reza.network` (UI), ports 22000, 21027 |
 
 ## Deployment
 
@@ -76,7 +76,7 @@ home-server/
 └── services/
     ├── actual-budget/
     ├── authentik/          # Identity provider for OIDC integrations
-    ├── couchdb/            # CouchDB for Obsidian LiveSync
+    ├── syncthing/           # File sync for Obsidian vaults
     ├── argilla/            # Annotation and human review workflows
     ├── anythingllm/        # AnythingLLM + Postgres with PGVector
     ├── cloudflare-ddns/
@@ -159,8 +159,6 @@ Set these GitHub Actions secrets before deploying the relevant services:
 | `ARGILLA_PASSWORD`           | Argilla owner password                  |
 | `ARGILLA_API_KEY`            | Argilla owner API key                   |
 | `MCPHUB_ADMIN_PASSWORD`      | MCPHub admin password                  |
-| `COUCHDB_USER`               | CouchDB admin username                 |
-| `COUCHDB_PASSWORD`           | CouchDB admin password                 |
 
 ## Authentik OIDC Providers
 
