@@ -6,8 +6,6 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/Toronto
-      # CWA bundles the calibre tools required for ingest
-      - DOCKER_MODS=linuxserver/calibre-web:calibre
     volumes:
       - ~/persistent/calibre-web/config:/config
       # CWA expects the main library to be at /calibre-library
