@@ -1,0 +1,39 @@
+services:
+  couchdb:
+    image: couchdb:3.5.2
+    container_name: couchdb
+    # No ports exposed to host - only accessible via internal network
+    expose:
+      - "5984"
+    volumes:
+      - ~/persistent/couchdb/data:/opt/couchdb/data
+      - ~/persistent/couchdb/etc:/opt/couchdb/etc/local.d
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=America/Toronto
+      - COUCHDB_USER=${COUCHDB_USER:?COUCHDB_USER must be set}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}
+    healthcheck:
+      test: curl -sf http://localhost:5984/_up || exit 1
+      start_period: 15s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  home-server:
+    external: true

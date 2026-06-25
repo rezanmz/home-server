@@ -191,6 +191,8 @@ jobs:
           ARGILLA_PASSWORD: ${{ secrets.ARGILLA_PASSWORD }}
           ARGILLA_API_KEY: ${{ secrets.ARGILLA_API_KEY }}
           MCPHUB_ADMIN_PASSWORD: ${{ secrets.MCPHUB_ADMIN_PASSWORD }}
+          COUCHDB_USER: ${{ secrets.COUCHDB_USER }}
+          COUCHDB_PASSWORD: ${{ secrets.COUCHDB_PASSWORD }}
           # Security: pass job outputs via env to prevent script injection.
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
         run: |
@@ -401,6 +403,8 @@ jobs:
           ARGILLA_PASSWORD: ${{ secrets.ARGILLA_PASSWORD }}
           ARGILLA_API_KEY: ${{ secrets.ARGILLA_API_KEY }}
           MCPHUB_ADMIN_PASSWORD: ${{ secrets.MCPHUB_ADMIN_PASSWORD }}
+          COUCHDB_USER: ${{ secrets.COUCHDB_USER }}
+          COUCHDB_PASSWORD: ${{ secrets.COUCHDB_PASSWORD }}
         run: |
           echo "=== Health Check and Recovery ==="
 
