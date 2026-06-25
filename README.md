@@ -51,6 +51,7 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Argilla**           | Human review and annotation workflows   | `argilla.reza.network`                          |
 | **MCPHub**            | MCP server dashboard                    | `mcphub.reza.network`                           |
 | **Syncthing**         | File synchronization (Obsidian vaults)  | `syncthing.reza.network` (UI), ports 22000, 21027 |
+| **Calibre-Web**       | E-book library management               | `library.reza.network`                            |
 
 ## Deployment
 
@@ -76,6 +77,7 @@ home-server/
 └── services/
     ├── actual-budget/
     ├── authentik/          # Identity provider for OIDC integrations
+    ├── calibre-web/        # E-book library (Calibre-Web)
     ├── syncthing/           # File sync for Obsidian vaults
     ├── argilla/            # Annotation and human review workflows
     ├── anythingllm/        # AnythingLLM + Postgres with PGVector
