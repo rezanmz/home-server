@@ -1,14 +1,19 @@
 services:
   calibre-web:
-    image: lscr.io/linuxserver/calibre-web:0.6.26-ls388
+    image: crocodilestick/calibre-web-automated:v4.0.6
     container_name: calibre-web
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=America/Toronto
+      # CWA bundles the calibre tools required for ingest
+      - DOCKER_MODS=linuxserver/calibre-web:calibre
     volumes:
       - ~/persistent/calibre-web/config:/config
-      - ~/media/books:/books
+      # CWA expects the main library to be at /calibre-library
+      - ~/media/books:/calibre-library
+      # This is the watch folder where Shelfmark will download books to
+      - ~/persistent/calibre-web/ingest:/cwa-book-ingest
     # Web UI is internal-only, accessed via SWAG reverse proxy
     expose:
       - "8083"
@@ -19,6 +24,42 @@ services:
       - no-new-privileges:true
     healthcheck:
       test: curl -f http://localhost:8083 || exit 1
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  shelfmark:
+    image: ghcr.io/calibrain/shelfmark:v1.3.2
+    container_name: shelfmark
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Toronto
+    volumes:
+      - ~/persistent/shelfmark/config:/config
+      # Shared ingest folder with Calibre-Web Automated
+      - ~/persistent/calibre-web/ingest:/books
+    # Web UI is internal-only, accessed via SWAG reverse proxy
+    expose:
+      - "8084"
+    networks:
+      - home-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: curl -f http://localhost:8084/api/health || exit 1
       start_period: 30s
       interval: 30s
       timeout: 5s
