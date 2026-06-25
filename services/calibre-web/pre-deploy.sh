@@ -17,12 +17,12 @@ mkdir -p ~/media/books
 echo "🔒 Setting permissions on data directories..."
 chown -R 1000:1000 ~/persistent/calibre-web 2>/dev/null || {
   echo "⚠️ chown failed, setting permissive mode instead..."
-  chmod -R 755 ~/persistent/calibre-web
+  chmod -R 755 ~/persistent/calibre-web 2>/dev/null || true
 }
 
 chown -R 1000:1000 ~/persistent/shelfmark 2>/dev/null || {
   echo "⚠️ chown failed, setting permissive mode instead..."
-  chmod -R 755 ~/persistent/shelfmark
+  chmod -R 755 ~/persistent/shelfmark 2>/dev/null || true
 }
 
 chmod 755 ~/media/books
