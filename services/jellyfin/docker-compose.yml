@@ -42,8 +42,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '3.0'
-          memory: 4G
+          cpus: '2.00'
+          memory: 2G
 
 networks:
   home-server:

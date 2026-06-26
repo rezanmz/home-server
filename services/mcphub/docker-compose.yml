@@ -26,6 +26,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   mcphub-postgres:
     image: pgvector/pgvector:pg16
@@ -51,6 +56,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   home-server:

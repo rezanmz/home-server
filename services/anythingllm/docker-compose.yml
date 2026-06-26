@@ -29,8 +29,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 2G
+          cpus: '0.50'
+          memory: 1G
 
   anythingllm-db:
     image: pgvector/pgvector:pg16
@@ -58,8 +58,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   home-server:

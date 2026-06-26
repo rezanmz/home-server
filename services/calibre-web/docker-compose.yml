@@ -34,8 +34,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.50'
+          memory: 384M
 
   shelfmark:
     image: ghcr.io/calibrain/shelfmark:v1.3.2
@@ -68,8 +68,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   home-server:

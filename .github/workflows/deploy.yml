@@ -193,6 +193,7 @@ jobs:
           MCPHUB_ADMIN_PASSWORD: ${{ secrets.MCPHUB_ADMIN_PASSWORD }}
           # Security: pass job outputs via env to prevent script injection.
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.changed-services }}
+          DEPLOY_ALL: ${{ github.event.inputs.deploy_all }}
         run: |
           changed_services="$CHANGED_SERVICES"
 
@@ -268,42 +269,110 @@ jobs:
             done
           done
 
-          # Step 3: Topological sort — deploy dependencies before dependents
+          # Step 3: Determine deployment order
+          #
+          # For full-stack deploys (deploy_all), use explicit tier-based ordering
+          # to prevent overwhelming the Pi. Services are grouped by priority with
+          # sleep delays between tiers to stagger CPU/memory pressure.
+          #
+          # For incremental deploys, use the topological sort (dependencies first).
+
           sorted_services=()
-          visited=()
 
-          topo_visit() {
-            local svc="$1"
-            # Skip if already visited
-            for v in "${visited[@]}"; do
-              [ "$v" = "$svc" ] && return
-            done
-            visited+=("$svc")
+          if [ "$DEPLOY_ALL" = "true" ]; then
+            # Tier-based ordering for full-stack deploys.
+            # Services within each tier start together; tiers are separated by delays.
+            declare -A tier_map
+            tier_map=(
+              # Tier 0: Infrastructure (DNS, reverse proxy, DDNS)
+              [pihole]=0 [cloudflare-ddns]=0 [swag]=0
+              # Tier 1: Identity, networking, VPN tunnel
+              [authentik]=1 [vpn]=1 [downloads]=1
+              # Tier 2: Core services (media, *arrs, file shares)
+              [radarr]=2 [sonarr]=2 [prowlarr]=2 [jellyfin]=2 [samba]=2 [calibre-web]=2
+              # Tier 3: Applications (dashboards, utilities, monitoring)
+              [jellyseerr]=3 [actual-budget]=3 [heimdall]=3 [duplicati]=3
+              [glances]=3 [speedtest-tracker]=3 [syncthing]=3 [loggifly]=3
+              # Tier 4: Heavy/optional services (start last to avoid overloading boot)
+              [open-webui]=4 [anythingllm]=4 [argilla]=4 [mcphub]=4
+            )
 
-            # Visit dependencies first (only if they're in the changed set)
-            for dep in ${service_deps[$svc]:-}; do
-              if echo "$changed_services" | jq -e --arg s "$dep" 'index($s) != null' > /dev/null 2>&1; then
-                topo_visit "$dep"
+            # Build ordered list from tiers, only including changed services
+            for tier in 0 1 2 3 4; do
+              tier_services=()
+              for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
+                if [ "${tier_map[$service]:-}" = "$tier" ]; then
+                  tier_services+=("$service")
+                fi
+              done
+
+              if [ ${#tier_services[@]} -gt 0 ]; then
+                # Add a tier separator marker (empty string signals sleep between tiers)
+                if [ ${#sorted_services[@]} -gt 0 ]; then
+                  sorted_services+=("__TIER_BREAK__")
+                fi
+                sorted_services+=("${tier_services[@]}")
               fi
             done
 
-            sorted_services+=("$svc")
-          }
+            # Append any services not in the tier map (future-proofing)
+            for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
+              if [ -z "${tier_map[$service]:-}" ]; then
+                found=false
+                for s in "${sorted_services[@]}"; do
+                  [ "$s" = "$service" ] && found=true && break
+                done
+                if [ "$found" = false ]; then
+                  sorted_services+=("$service")
+                fi
+              fi
+            done
 
-          # Visit services with dependencies first, then the rest (alphabetically)
-          for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
-            if [ -n "${service_deps[$service]:-}" ]; then
+            echo "Deployment order (tier-based for full-stack deploy): ${sorted_services[*]}"
+          else
+            # Topological sort for incremental deploys — deploy dependencies before dependents
+            visited=()
+
+            topo_visit() {
+              local svc="$1"
+              # Skip if already visited
+              for v in "${visited[@]}"; do
+                [ "$v" = "$svc" ] && return
+              done
+              visited+=("$svc")
+
+              # Visit dependencies first (only if they're in the changed set)
+              for dep in ${service_deps[$svc]:-}; do
+                if echo "$changed_services" | jq -e --arg s "$dep" 'index($s) != null' > /dev/null 2>&1; then
+                  topo_visit "$dep"
+                fi
+              done
+
+              sorted_services+=("$svc")
+            }
+
+            # Visit services with dependencies first, then the rest (alphabetically)
+            for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
+              if [ -n "${service_deps[$service]:-}" ]; then
+                topo_visit "$service"
+              fi
+            done
+            for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
               topo_visit "$service"
-            fi
-          done
-          for service in $(echo "$changed_services" | jq -r '.[]' | sort); do
-            topo_visit "$service"
-          done
+            done
 
-          echo "Deployment order (auto-detected): ${sorted_services[*]}"
+            echo "Deployment order (auto-detected): ${sorted_services[*]}"
+          fi
 
           # Deploy each service in order
           for service in "${sorted_services[@]}"; do
+            # Handle tier break markers — sleep between tiers to stagger CPU/memory pressure
+            if [ "$service" = "__TIER_BREAK__" ]; then
+              echo "--- Tier break: waiting 15s for previous tier to stabilize ---"
+              sleep 15
+              continue
+            fi
+
             if [ -n "$service" ]; then
               echo "=== Processing service: $service ==="
               
@@ -352,8 +421,9 @@ jobs:
               # Start the service
               docker compose -p "$service" up -d
 
-              # Wait a moment for the service to start
-              sleep 5
+              # Wait for the service to start before proceeding to the next one.
+              # This prevents CPU/IO storms from starting too many services simultaneously.
+              sleep 10
 
               # Check if containers are running
               if docker compose -p "$service" ps --services --filter "status=running" | grep -q .; then

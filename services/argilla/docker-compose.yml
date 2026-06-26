@@ -45,10 +45,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          memory: 1G
+          cpus: '0.50'
+          memory: 512M
 
   argilla-worker:
     image: argilla/argilla-server:v2.8.0
@@ -79,8 +77,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '0.25'
+          memory: 384M
 
   argilla-postgres:
     image: postgres:14
@@ -110,15 +108,15 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.25'
+          memory: 256M
 
   argilla-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
     container_name: argilla-elasticsearch
     restart: unless-stopped
     environment:
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:UseSVE=0
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m -XX:UseSVE=0
       - CLI_JAVA_OPTS=-XX:UseSVE=0
       - node.name=argilla-elasticsearch
       - cluster.name=argilla-home-server
@@ -149,10 +147,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          memory: 768M
+          cpus: '0.50'
+          memory: 512M
 
   argilla-redis:
     image: redis:8.8.0
@@ -179,8 +175,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '0.10'
+          memory: 128M
 
 networks:
   home-server:

@@ -13,6 +13,16 @@ services:
       - ~/persistent/loggifly/config:/config
     networks:
       - home-server
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 64M
 
 networks:
   home-server:
