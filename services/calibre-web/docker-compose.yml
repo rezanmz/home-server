@@ -50,11 +50,7 @@ services:
       - ~/persistent/calibre-web/ingest:/books
       # Mount downloads folder so Shelfmark can access files from the torrent client
       - ~/media/downloads:/media/downloads
-    # Web UI is internal-only, accessed via SWAG reverse proxy
-    expose:
-      - "8084"
-    networks:
-      - home-server
+    network_mode: container:gluetun
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

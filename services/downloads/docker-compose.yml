@@ -11,6 +11,7 @@ services:
       - "7878"   # Radarr
       - "8989"   # Sonarr
       - "9696"   # Prowlarr
+      - "8084"   # Shelfmark
     volumes:
       - ~/persistent/gluetun:/gluetun
     environment:
