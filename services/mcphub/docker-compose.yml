@@ -29,8 +29,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '0.50'
+          memory: 512M
 
   mcphub-postgres:
     image: pgvector/pgvector:pg16

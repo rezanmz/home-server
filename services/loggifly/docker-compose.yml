@@ -21,8 +21,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 64M
+          cpus: '0.25'
+          memory: 128M
 
 networks:
   home-server:

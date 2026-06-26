@@ -34,7 +34,8 @@ SWAG uses Cloudflare DNS validation for Let's Encrypt certificates, so only port
 | **Authentik**       | Identity provider for native OIDC apps    | `auth.reza.network`                            |
 | **Pi-hole**         | DNS-level ad blocking                     | `pihole.reza.network`                           |
 | **Jellyfin**        | Media server (movies & TV)                | `jellyfin.reza.network`                         |
-| **Hermes**          | AI agent (gateway + web UI)               | `hermes.reza.network`                           |
+| **Open WebUI**      | Local LLM UI                              | `chat.reza.network`                             |
+| **Loggifly**        | Docker log monitoring agent               | —                                               |
 | **Radarr**          | Movie management & automation (via VPN)   | `radarr.reza.network`                           |
 | **Sonarr**          | TV show management & automation (via VPN) | `sonarr.reza.network`                           |
 | **Prowlarr**        | Indexer manager for Radarr/Sonarr (via VPN) | `prowlarr.reza.network`                       |
@@ -77,19 +78,20 @@ home-server/
 ├── README.md
 └── services/
     ├── actual-budget/
+    ├── anythingllm/        # AnythingLLM + Postgres with PGVector
+    ├── argilla/            # Annotation and human review workflows
     ├── authentik/          # Identity provider for OIDC integrations
     ├── calibre-web/        # E-book library (Calibre-Web) & Shelfmark
-    ├── syncthing/           # File sync for Obsidian vaults
-    ├── argilla/            # Annotation and human review workflows
-    ├── anythingllm/        # AnythingLLM + Postgres with PGVector
     ├── cloudflare-ddns/
     ├── downloads/          # Gluetun VPN + qBittorrent
+    ├── duplicati/          # Encrypted backups
     ├── glances/            # System monitoring
     ├── heimdall/
-    ├── hermes/              # AI agent (Hermes gateway)
     ├── jellyfin/
     ├── jellyseerr/
+    ├── loggifly/           # Docker log monitoring agent
     ├── mcphub/
+    ├── open-webui/         # Local LLM UI
     ├── pihole/
     ├── prowlarr/
     ├── radarr/
@@ -98,6 +100,7 @@ home-server/
     ├── speedtest-tracker/   # Internet speed monitoring
     ├── swag/               # Reverse proxy + nginx configs
     │   └── config/nginx/proxy-confs/*.conf
+    ├── syncthing/           # File sync for Obsidian vaults
     └── vpn/                # WireGuard (wg-easy)
 ```
 
@@ -151,7 +154,6 @@ Set these GitHub Actions secrets before deploying the relevant services:
 | `SAMBA_PASSWORD`             | Samba file share user                  |
 | `DUPLICATI_ENCRYPTION_KEY`   | Duplicati settings DB encryption       |
 | `SPEEDTEST_TRACKER_APP_KEY`  | Speedtest Tracker encryption key       |
-| `HERMES_WEBUI_PASSWORD`      | Hermes Web UI authentication           |
 | `ACTUAL_OPENID_CLIENT_ID`    | Actual Budget Authentik OIDC client    |
 | `ACTUAL_OPENID_CLIENT_SECRET` | Actual Budget Authentik OIDC secret   |
 | `OPEN_WEBUI_SECRET_KEY`      | Open WebUI session/OAuth token crypto  |

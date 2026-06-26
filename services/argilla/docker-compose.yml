@@ -116,7 +116,7 @@ services:
     container_name: argilla-elasticsearch
     restart: unless-stopped
     environment:
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m -XX:UseSVE=0
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:UseSVE=0
       - CLI_JAVA_OPTS=-XX:UseSVE=0
       - node.name=argilla-elasticsearch
       - cluster.name=argilla-home-server
@@ -148,7 +148,7 @@ services:
       resources:
         limits:
           cpus: '0.50'
-          memory: 512M
+          memory: 1G
 
   argilla-redis:
     image: redis:8.8.0

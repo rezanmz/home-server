@@ -54,7 +54,7 @@ services:
       - home-server
     security_opt:
       - no-new-privileges:true
-    shm_size: 256mb
+    shm_size: 512mb
     logging:
       driver: json-file
       options:
@@ -63,10 +63,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
+          cpus: '1.0'
+          memory: 1G
         reservations:
-          memory: 256M
+          memory: 512M
 
   authentik-worker:
     image: ghcr.io/goauthentik/server:2026.5.2
@@ -93,7 +93,7 @@ services:
       - home-server
     security_opt:
       - no-new-privileges:true
-    shm_size: 256mb
+    shm_size: 512mb
     logging:
       driver: json-file
       options:
@@ -102,10 +102,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 384M
+          cpus: '0.75'
+          memory: 768M
         reservations:
-          memory: 192M
+          memory: 384M
 
 networks:
   home-server:
