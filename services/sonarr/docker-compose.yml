@@ -1,6 +1,6 @@
 services:
   sonarr:
-    image: linuxserver/sonarr:4.0.19.2979-ls316
+    image: linuxserver/sonarr:4.0.19.2979-ls317
     container_name: sonarr
     environment:
       - PUID=1000
