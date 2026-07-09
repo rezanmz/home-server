@@ -45,7 +45,7 @@ services:
           memory: 128M
 
   qbittorrent:
-    image: linuxserver/qbittorrent:5.2.2
+    image: linuxserver/qbittorrent:5.2.3_v2.0.13-ls466
     container_name: qbittorrent
     environment:
       - PUID=1000
