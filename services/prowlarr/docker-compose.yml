@@ -1,6 +1,6 @@
 services:
   prowlarr:
-    image: linuxserver/prowlarr:2.5.0-develop
+    image: linuxserver/prowlarr:2.5.1-develop
     container_name: prowlarr
     environment:
       - PUID=1000
