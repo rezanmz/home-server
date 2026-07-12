@@ -22,3 +22,8 @@ spec:
     remediation:
       retries: 3
       strategy: rollback
+  values:
+    # This home LAN uses ARP/NDP L2 advertisements only; no BGP daemon is
+    # required on either node.
+    frrk8s:
+      enabled: false

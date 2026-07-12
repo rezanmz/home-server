@@ -1,0 +1,19 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: home-lan
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.1.240-192.168.1.249
+  autoAssign: true
+  avoidBuggyIPs: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: home-lan
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - home-lan
