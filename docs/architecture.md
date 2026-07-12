@@ -42,7 +42,8 @@ GitHub -> Flux -> K3s (3 server/worker nodes)
 - The eventual edge is Traefik using Kubernetes Gateway API. `ingress-nginx`
   is not used because the upstream project was retired in March 2026.
 - MetalLB needs a LAN address that is excluded from the router's DHCP pool.
-  No address is guessed or advertised until that reservation is confirmed.
+  Pi-hole DHCP ends at `192.168.1.239`; `192.168.1.240-249` is reserved for
+  Kubernetes LoadBalancer services and is never handed to DHCP clients.
 - cert-manager uses Cloudflare DNS-01. The Cloudflare token and all application
   credentials are SOPS/age-encrypted in Git; the age identity is never stored
   in the repository.
