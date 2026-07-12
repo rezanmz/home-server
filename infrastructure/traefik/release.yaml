@@ -51,6 +51,13 @@ spec:
           protocol: HTTP
           namespacePolicy:
             from: All
+        websecure:
+          port: 8443
+          protocol: HTTPS
+          namespacePolicy:
+            from: All
+          certificateRefs:
+            - name: reza-network-tls
     api:
       dashboard: false
       insecure: false
@@ -64,9 +71,16 @@ spec:
         headers:
           defaultMode: drop
     ports:
+      web:
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
       websecure:
         expose:
-          default: false
+          default: true
     service:
       annotations:
         metallb.io/address-pool: home-lan

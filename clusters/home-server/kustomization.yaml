@@ -7,4 +7,5 @@ resources:
   - ../../infrastructure/metallb
   - ../../infrastructure/gateway-api
   - ../../infrastructure/traefik
+  - ../../infrastructure/cert-manager
   - ../../apps/heimdall
