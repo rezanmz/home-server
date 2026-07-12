@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: (apps|clusters|infrastructure)/.*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age10qatpp7y6rrl248n739dsnh622jcncx49e4vnrusvdgx0un0t4uqpk40m5

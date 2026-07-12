@@ -1,0 +1,56 @@
+name: Validate cluster configuration
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/validate-cluster.yml
+      - .sops.yaml
+      - clusters/**
+      - infrastructure/**
+      - scripts/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/validate-cluster.yml
+      - .sops.yaml
+      - clusters/**
+      - infrastructure/**
+      - scripts/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cluster-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+        with:
+          version: v1.36.2
+
+      - name: Validate shell syntax
+        run: bash -n scripts/*.sh
+
+      - name: Render home cluster
+        run: |
+          kubectl kustomize clusters/home-server > /tmp/home-server.yaml
+          test -s /tmp/home-server.yaml
+
+      - name: Reject unencrypted secret manifests
+        run: |
+          while IFS= read -r file; do
+            if ! grep -q '^sops:' "$file"; then
+              echo "SOPS metadata missing from $file" >&2
+              exit 1
+            fi
+          done < <(find apps clusters infrastructure -type f -name '*.sops.yaml' 2>/dev/null | sort)

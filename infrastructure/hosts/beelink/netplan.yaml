@@ -1,0 +1,19 @@
+# Installed as /etc/netplan/00-installer-config.yaml.
+# The Kubernetes node uses only its wired interface and static LAN address.
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      match:
+        macaddress: 78:55:36:07:5d:58
+      set-name: enp1s0
+      dhcp4: false
+      dhcp6: false
+      addresses:
+        - 192.168.1.3/24
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        addresses:
+          - 192.168.1.2

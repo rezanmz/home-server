@@ -1,8 +1,14 @@
 # Home Server
 
+> [!IMPORTANT]
+> The repository is being migrated from a single-host Docker Compose stack to
+> K3s and Flux. The Pi Compose deployment remains production during the staged
+> migration. See [the cluster architecture](docs/architecture.md) for the live
+> topology, target state, constraints, and rollback plan.
+
 Docker services running on a Raspberry Pi, deployed automatically via GitHub Actions on every push to `main`.
 
-## Architecture
+## Legacy Compose architecture
 
 All services run as Docker Compose projects connected through a shared `home-server` Docker network. [SWAG](https://docs.linuxserver.io/general/swag/) handles SSL termination and reverse proxying with Let's Encrypt certificates for `*.reza.network` subdomains. [Cloudflare DDNS](https://github.com/favonia/cloudflare-ddns) keeps DNS records pointed at the server's current IP.
 

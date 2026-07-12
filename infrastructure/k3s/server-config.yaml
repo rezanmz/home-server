@@ -1,0 +1,19 @@
+# Installed as /etc/rancher/k3s/config.yaml on beelink.
+node-name: beelink
+node-ip: 192.168.1.3
+advertise-address: 192.168.1.3
+tls-san:
+  - beelink
+  - 192.168.1.3
+flannel-backend: host-gw
+secrets-encryption: true
+write-kubeconfig-mode: "0600"
+disable:
+  - traefik
+  - servicelb
+  - local-storage
+node-label:
+  - homelab.rezan.dev/cpu-arch=amd64
+  - homelab.rezan.dev/storage=nvme
+  - homelab.rezan.dev/gpu=amd
+  - node.longhorn.io/create-default-disk=true
