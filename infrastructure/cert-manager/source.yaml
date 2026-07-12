@@ -7,5 +7,8 @@ spec:
   interval: 12h
   timeout: 2m
   url: oci://quay.io/jetstack/charts/cert-manager
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
   ref:
     tag: v1.21.0
