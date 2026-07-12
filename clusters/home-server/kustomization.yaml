@@ -4,3 +4,4 @@ resources:
   - flux-system
   - ../../infrastructure/namespaces
   - ../../infrastructure/longhorn
+  - ../../apps/heimdall

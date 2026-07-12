@@ -93,3 +93,11 @@ routes through a second LAN address.
 
 Compose and SWAG are retired only after every route, data restore, backup, and
 rollback test succeeds.
+
+### Active canary
+
+Heimdall is the first Kubernetes application canary. During validation it is a
+ClusterIP-only service on the Beelink; `homepage.reza.network` continues to use
+the Pi Compose container through SWAG. Its temporary Beelink selector prevents
+the duplicate canary from competing with production on the Pi and is removed
+when the legacy stack is retired.
