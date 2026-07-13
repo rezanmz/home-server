@@ -1,9 +1,9 @@
 # Home cluster runbook
 
-## Access
+## Access and first checks
 
-The K3s API is intentionally not exposed to the internet. Administer it through
-the Beelink:
+The Kubernetes API is not exposed publicly. Administer the cluster through the
+Beelink:
 
 ```bash
 ssh beelink
@@ -11,21 +11,30 @@ sudo k3s kubectl get nodes -o wide
 sudo k3s kubectl get pods -A
 ```
 
-The server kubeconfig is root-only at `/etc/rancher/k3s/k3s.yaml`. The Pi is an
-agent and its production Compose stack remains separately managed by Docker.
+The server kubeconfig is root-only at `/etc/rancher/k3s/k3s.yaml`. Healthy
+production state means both nodes are `Ready`, all expected application pods
+are `Running` or successfully `Completed`, and no workload controller is short
+of its desired ready replicas.
 
-## GitOps health
+Useful controller checks:
 
 ```bash
-sudo k3s kubectl -n flux-system get gitrepositories,kustomizations
+sudo k3s kubectl get deployments,statefulsets -A
+sudo k3s kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+sudo k3s kubectl get events -A --sort-by=.lastTimestamp | tail -n 50
+```
+
+## GitOps reconciliation
+
+```bash
+sudo k3s kubectl -n flux-system get gitrepositories,kustomizations -o wide
 sudo k3s kubectl get helmreleases -A
 ```
 
-Healthy state means every source, Kustomization, and HelmRelease reports
-`READY=True`. Flux tracks `main` at `clusters/home-server` and prunes resources
-removed from that path.
+Every source, Kustomization, and HelmRelease should report `READY=True`. Flux
+tracks `main` and prunes resources removed from the cluster entry point.
 
-To request an immediate reconciliation after a push:
+To request immediate reconciliation after a push:
 
 ```bash
 stamp=$(date +%s)
@@ -35,41 +44,105 @@ sudo k3s kubectl -n flux-system annotate kustomization flux-system \
   reconcile.fluxcd.io/requestedAt="$stamp" --overwrite
 ```
 
-## Node scheduling
-
-The Pi is cordoned while it runs the legacy Compose stack:
-
-```bash
-sudo k3s kubectl get nodes
-```
-
-Longhorn system DaemonSets and existing replicas still run there. Do not leave
-the Pi uncordoned until its Docker workload has been reduced enough for the
-Kubernetes scheduler to make safe placement decisions. When a new two-replica
-volume is created during migration, uncordon only long enough for Longhorn to
-build its Pi replica, verify the volume is healthy, then cordon it again:
+If reconciliation fails, inspect the Kustomization and relevant HelmRelease
+before changing live objects:
 
 ```bash
-sudo k3s kubectl uncordon raspberrypi
-sudo k3s kubectl -n longhorn-system get volumes.longhorn.io
-sudo k3s kubectl cordon raspberrypi
+sudo k3s kubectl -n flux-system describe kustomization flux-system
+sudo k3s kubectl -n flux-system logs deployment/source-controller --tail=100
+sudo k3s kubectl -n flux-system logs deployment/kustomize-controller --tail=100
 ```
+
+The retired Compose definitions are not a deployment path. Do not restart the
+old Docker projects to work around a Kubernetes failure; diagnose or roll back
+the Git revision through Flux.
+
+## Ingress and TLS
+
+- Public router target: Pi at `192.168.1.2`, TCP ports 80 and 443
+- Traefik host ports: TCP 80 and 443 on both cluster nodes
+- Traefik MetalLB VIP: `192.168.1.240`
+- MetalLB pool: `192.168.1.240-192.168.1.249`
+- Pi-hole DHCP range: `192.168.1.10-192.168.1.239`
+
+Check the edge and certificate objects:
+
+```bash
+sudo k3s kubectl -n traefik get daemonsets,pods,services -o wide
+sudo k3s kubectl -n traefik get gateway home
+sudo k3s kubectl -n traefik get certificate reza-network
+sudo k3s kubectl get clusterissuer letsencrypt-production
+sudo k3s kubectl get httproutes -A
+```
+
+Test the public path, the Pi host-port path, and the MetalLB path separately:
+
+```bash
+curl -fsS https://homepage.reza.network/ >/dev/null
+curl -fsS --resolve homepage.reza.network:443:192.168.1.2 \
+  https://homepage.reza.network/ >/dev/null
+curl -fsS --resolve homepage.reza.network:443:192.168.1.240 \
+  https://homepage.reza.network/ >/dev/null
+```
+
+The `letsencrypt-production` ClusterIssuer uses Cloudflare DNS-01. The wildcard
+certificate is stored as `traefik/reza-network-tls` and renews automatically.
+An HTTP 403 from an administrative hostname can be correct when the request
+does not originate from an allowed LAN or WireGuard range.
+
+## Pi network services
+
+Pi-hole, Samba, Syncthing, wg-easy, and Duplicati are Kubernetes workloads in
+the `network-services` namespace. They are pinned to the Pi when they require
+its address or data.
+
+```bash
+sudo k3s kubectl -n network-services get deployments,pods,pvc -o wide
+sudo k3s kubectl -n network-services logs deployment/pihole --tail=100
+sudo k3s kubectl -n network-services logs deployment/wg-easy --tail=100
+```
+
+From a LAN machine, verify DNS and the host-level listeners:
+
+```bash
+dig @192.168.1.2 github.com
+ssh pi 'sudo ss -lntup'
+```
+
+Expected Pi-facing services include DNS on TCP/UDP 53, DHCP on UDP 67, NTP on
+UDP 123, SMB on TCP 139/445, Syncthing on TCP/UDP 22000 and UDP 21027, and
+WireGuard on UDP 1234. The Pi-hole UI listens internally on port 8181 and is
+published through the Gateway rather than directly as the public service.
 
 ## Storage
 
-The default `longhorn` StorageClass uses two replicas, `Retain` reclaim policy,
-and `WaitForFirstConsumer`. It is for small application state only.
+Longhorn stores small application state with two replicas across the two nodes:
 
 ```bash
 sudo k3s kubectl get storageclass
+sudo k3s kubectl get pvc -A
 sudo k3s kubectl -n longhorn-system get nodes.longhorn.io
 sudo k3s kubectl -n longhorn-system get volumes.longhorn.io
 ```
 
-Media, downloads, books, Syncthing shared data, and backup repositories stay on
-the Pi until independent NAS/NFS storage is available.
+Every attached Longhorn volume should be `healthy`. A degraded volume means one
+of the two nodes or replicas needs attention; do not delete its PVC as a repair
+step.
 
-The pre-migration rollback set is on the Beelink at:
+Large and shared data remains on NFS exported by the Pi. Check the server and
+exports directly when media, downloads, books, Syncthing data, or backups all
+fail at once:
+
+```bash
+ssh pi 'systemctl is-active nfs-server && sudo exportfs -v'
+sudo k3s kubectl get pv | grep nfs-media
+```
+
+The Pi is the authoritative source for these trees. There is no independent NAS
+or third storage node, so a Pi outage is expected to interrupt every NFS-backed
+workload. Do not treat Longhorn replicas as copies of the NFS data.
+
+The local pre-migration recovery set is on the Beelink:
 
 ```text
 /srv/home-server-backups/pre-k3s-20260712/
@@ -78,59 +151,52 @@ The pre-migration rollback set is on the Beelink at:
 └── SHA256SUMS
 ```
 
-This is not off-site backup. Copy it to independent storage before retiring any
-Pi service.
+This set and the age identities are not off-site backups. Duplicati repositories
+also reside on the Pi, so copy critical recovery material to independent media
+when off-site or machine-independent recovery is required.
 
-## Networking and TLS
+## Media VPN checks
 
-- Pi-hole DHCP range: `192.168.1.10-192.168.1.239`
-- MetalLB pool: `192.168.1.240-192.168.1.249`
-- Traefik Gateway VIP: `192.168.1.240`
-- Current public router target: Pi/SWAG at `192.168.1.2`
-
-Test the Kubernetes edge without changing DNS or the router:
+The consolidated downloads pod shares Gluetun's network namespace. A healthy
+pod has all containers ready, a ProtonVPN public address, and qBittorrent's
+listening port matched to Gluetun's forwarded port.
 
 ```bash
-curl --resolve homepage.reza.network:443:192.168.1.240 \
-  https://homepage.reza.network/
+sudo k3s kubectl -n media get pod -l app.kubernetes.io/name=media-vpn
+sudo k3s kubectl -n media logs deployment/downloads -c gluetun --tail=100
+sudo k3s kubectl -n media logs deployment/downloads -c qbittorrent --tail=100
 ```
 
-The `letsencrypt-production` ClusterIssuer uses Cloudflare DNS-01. The wildcard
-certificate is stored as `traefik/reza-network-tls` and renews automatically.
+If Gluetun is unhealthy, keep the download clients stopped or unready until its
+tunnel and firewall are healthy. Do not bypass the sidecar with an ordinary
+pod-level egress route.
 
-```bash
-sudo k3s kubectl get clusterissuer letsencrypt-production
-sudo k3s kubectl -n traefik get certificate reza-network
-sudo k3s kubectl -n traefik get gateway home
-sudo k3s kubectl -n apps get httproutes
-```
+## Secrets and recovery identities
 
-## Secrets
-
-Only SOPS ciphertext belongs in Git. The age public recipient is in
-`.sops.yaml`. Root-only recovery identities are stored at:
+Only SOPS ciphertext belongs in Git. The age public recipient is in the SOPS
+configuration. Root-only recovery identities are stored at:
 
 - Beelink: `/root/.config/sops/age/keys.txt`
 - Pi: `/root/.config/sops/age/home-server.txt`
 - Cluster: `flux-system/sops-age`
 
-The copies on the two cluster nodes are not an off-site recovery strategy. Back
-up the identity to a secure password manager or encrypted removable medium.
-Never print the identity, put it in shell history, or commit it.
+Never print a private identity, put it in shell history, or commit it. Store an
+additional recovery copy in a password manager or on encrypted removable media.
 
-## Heimdall canary
+## Planned maintenance
 
-`apps/heimdall` is a data-restored Kubernetes canary on the Beelink. Its public
-hostname still reaches Pi/SWAG; the K3s copy is tested through the `.240` VIP.
-Before cutover, re-run a final SQLite online backup, sync any changes since the
-canary copy, validate the route, and keep the Pi container available for quick
-rollback.
+The two-node design has deliberate single points of failure:
 
-## Remaining dependencies
+- Beelink maintenance removes the K3s control plane and most compute workloads.
+- Pi maintenance removes DNS/DHCP, public ingress, WireGuard, SMB, Syncthing
+  discovery, Duplicati, and all NFS-backed data.
 
-- Add a third wired SSD-backed node before converting the K3s datastore to
-  embedded-etcd HA.
-- Add independent NAS/NFS storage before moving large/shared datasets.
-- Reserve and forward router ports 80/443 to `192.168.1.240` only after service
-  route parity is complete.
-- Move DHCP/WireGuard to the router and SMB to the NAS where possible.
+Before rebooting either node, confirm the other node is healthy, check Longhorn
+volume health, and expect the services tied to the maintained node to be
+unavailable. Afterward, verify node readiness, Longhorn health, Flux readiness,
+network listeners, and a representative public route.
+
+AnythingLLM and the Gemini Telegram bot are intentionally absent. Do not restore
+their retired Compose projects during maintenance. The `glances` route is
+Headlamp, and the `loggifly` workload is the Kubernetes event exporter; these
+names are retained only for hostname and migration continuity.

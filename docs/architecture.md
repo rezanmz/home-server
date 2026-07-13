@@ -1,119 +1,136 @@
 # Home cluster architecture
 
-## Current migration phase
+## Operating model
 
-The production Docker Compose stack remains on `raspberrypi` (`192.168.1.2`).
-It continues to provide DNS, DHCP, HTTPS ingress, VPN, SMB, media, and all
-application workloads while the Kubernetes platform is built alongside it.
+K3s is the only production application platform. Flux reconciles this public
+repository, decrypts SOPS resources in the cluster, and prunes objects removed
+from the cluster entry point. GitHub Actions validates configuration; it does
+not SSH into either node or run Docker Compose.
 
-The interim Kubernetes topology is intentionally non-HA:
+The former Compose containers and SWAG reverse proxy are retired. Their
+definitions remain in the repository as historical migration reference only.
 
-- `beelink` (`192.168.1.3`, amd64) is the single K3s server and a worker.
-- `raspberrypi` (`192.168.1.2`, arm64) joins as a worker but is initially
-  cordoned so Kubernetes cannot compete with the production Compose stack.
-- K3s uses its single-server SQLite datastore. A two-member embedded-etcd
-  cluster is not used because it has no failure quorum.
-- Bundled Traefik, ServiceLB, and local-path storage are disabled. Platform
-  components are installed declaratively through Flux.
+## Nodes and failure domains
 
-This phase creates a scheduler and GitOps control plane without moving the
-existing network edge or stopping any production service.
+The cluster has two wired nodes:
 
-### Deployed foundation
+- `beelink` (`192.168.1.3`, amd64) is the single K3s server and the main compute
+  node. It hosts ordinary application workloads, databases, the consolidated
+  VPN/download pod, and Jellyfin with `/dev/dri` hardware access.
+- `raspberrypi` (`192.168.1.2`, arm64) is a K3s agent and the network/storage
+  node. Workloads that depend on its LAN address, broadcasts, local files, or
+  forwarded ports are pinned there.
 
-- K3s `v1.36.2+k3s1` with encrypted Kubernetes Secrets at rest.
-- Flux `v2.9.1` pulling this public repository with SOPS/age decryption.
-- Longhorn `1.12.0` with two-replica, retained application volumes.
-- MetalLB `0.16.1` in L2 mode with no FRR/BGP workload.
-- Gateway API `v1.5.1` and Traefik chart `41.0.2` on VIP `192.168.1.240`.
-- cert-manager `v1.21.0` with Cloudflare DNS-01 and a wildcard Let's Encrypt
-  certificate for `reza.network`.
-- A data-restored Heimdall canary reachable only through the new VIP during
-  validation. The router still sends public traffic to Pi/SWAG.
+K3s uses its single-server SQLite datastore. Embedded etcd is not enabled
+because two control-plane members cannot provide useful failure quorum. There
+is no third node planned, so a Beelink outage is an accepted control-plane
+outage. Existing pods on the Pi may continue temporarily, but the cluster
+cannot reconcile or reschedule until the server returns.
 
-See [the operator runbook](runbook.md) for health checks, reconciliation,
-storage, secret recovery, and rollback procedures.
-
-## Target state
-
-The long-term topology is three wired K3s server/worker nodes with embedded
-etcd, plus storage that is independent of the cluster nodes:
+## Traffic flow
 
 ```text
-Internet -> router -> MetalLB VIP -> Traefik Gateway API -> applications
-                                  \
-GitHub -> Flux -> K3s (3 server/worker nodes)
-                    |       |
-                    + Longhorn (small application volumes)
-                    + NAS/NFS (media, downloads, books, backups)
+Public clients -> Cloudflare DNS -> router -> 192.168.1.2:80/443
+                                               |
+LAN clients ----------------------------> Traefik DaemonSet
+                                               |
+LAN validation -> 192.168.1.240 ---------------+
+                                               |
+                                       Gateway API HTTPRoutes
+                                               |
+                                          applications
 ```
 
-- A third SSD-backed node is required before enabling embedded-etcd HA.
-- A NAS or other independent storage server is required before large shared
-  datasets can move off the Pi without replacing one single point of failure
-  with another.
-- Longhorn uses two replicas during the interim and must move to three replicas
-  when a third eligible storage node is added.
-- The eventual edge is Traefik using Kubernetes Gateway API. `ingress-nginx`
-  is not used because the upstream project was retired in March 2026.
-- MetalLB needs a LAN address that is excluded from the router's DHCP pool.
-  Pi-hole DHCP ends at `192.168.1.239`; `192.168.1.240-249` is reserved for
-  Kubernetes LoadBalancer services and is never handed to DHCP clients.
-- cert-manager uses Cloudflare DNS-01. The Cloudflare token and all application
-  credentials are SOPS/age-encrypted in Git; the age identity is never stored
-  in the repository.
+Traefik runs on both nodes as a DaemonSet and claims host ports 80 and 443. The
+Pi therefore preserves the router's previous public-forwarding contract without
+SWAG. MetalLB also advertises `192.168.1.240` for the Traefik LoadBalancer
+Service, providing a stable cluster VIP for LAN access and direct validation.
+The reserved MetalLB range is `192.168.1.240-192.168.1.249`, outside Pi-hole's
+DHCP range of `192.168.1.10-192.168.1.239`.
 
-## Scheduling rules
+Gateway API HTTPRoutes attach applications to the shared Traefik Gateway.
+cert-manager uses Cloudflare DNS-01 to issue and renew a wildcard Let's Encrypt
+certificate for `reza.network`. Traefik's CRD provider is also enabled so
+Gateway API extension filters can reference LAN/VPN IP allow-list middleware.
 
-Ordinary workloads have no hostname affinity. Kubernetes can place them on any
-node that has sufficient resources and a compatible image architecture.
-Constraints are allowed only for physical requirements such as amd64-only
-images, `/dev/dri`, host networking, multicast, or storage locality.
+Pi-hole uses the Pi host network for DNS, DHCP, and NTP. Samba and Syncthing also
+use the Pi host network for LAN discovery. wg-easy is pinned to the Pi and maps
+the router-facing UDP port 1234 to its WireGuard listener. These constraints are
+physical requirements rather than general scheduling policy.
 
-Singleton applications and single-writer databases remain one replica even
-when their volumes are replicated. Storage replication is not application or
-database-level clustering.
+## Workload placement
 
-## Storage classes
+Ordinary workloads are eligible for any node with a compatible image and enough
+resources. Explicit placement is used where the application needs:
 
-- Longhorn: small databases, configuration, and application state.
-- NAS/NFS: movies, TV, books, downloads, shared Syncthing data, and backup
-  repositories.
-- Node-local paths: not used for durable application state.
+- the Pi address, LAN broadcasts, NFS source data, or a router-forwarded port;
+- Beelink hardware such as `/dev/dri`;
+- a compatible CPU architecture; or
+- colocated containers that must share one network namespace.
 
-The interim Longhorn StorageClass requests two replicas and retains volumes
-when claims are deleted. Because the Pi is initially cordoned, no durable PVC
-is created until both storage nodes are eligible; degraded single-replica
-volume creation is disabled.
+The downloads deployment combines Gluetun, qBittorrent, FlareSolverr, Prowlarr,
+Radarr, Sonarr, Shelfmark, and their access proxies in one pod. This preserves
+the VPN network-namespace contract. Gluetun owns the encrypted egress path,
+firewall, kill switch, and ProtonVPN forwarded port.
 
-The pre-K3s rollback snapshot is stored outside Kubernetes at
-`/srv/home-server-backups/pre-k3s-20260712` on the Beelink. It contains the Pi
-application-state tree and consistency-safe logical dumps of all four live
-PostgreSQL instances. It is a migration rollback copy, not an off-site backup.
+Singleton applications and databases stay at one replica even though their
+volumes are replicated. Storage replication is not application-level
+clustering.
 
-The Beelink uses only its static wired address. Wi-Fi is intentionally absent
-from the checked-in Netplan configuration so Kubernetes never advertises or
-routes through a second LAN address.
+## Storage
 
-## Service migration order
+Two storage mechanisms serve different data classes:
 
-1. Platform: Flux, SOPS/age, Longhorn, MetalLB, Gateway API, Traefik,
-   cert-manager, monitoring, and default-deny network policy.
-2. Low-risk applications with no special host integration.
-3. Stateful applications, one at a time, using an export/restore or logical
-   database dump and an explicit rollback check.
-4. Media and VPN workloads after shared storage and sidecar networking are
-   ready.
-5. DNS/DHCP, WireGuard, SMB, and other host-network services last. Prefer the
-   router for DHCP/WireGuard and the NAS for SMB.
+- Longhorn stores small databases, configuration, and application state. Its
+  default StorageClass uses two replicas, `Retain`, and
+  `WaitForFirstConsumer`.
+- Static NFS volumes exported by the Pi store media, downloads, books, shared
+  Syncthing data, Duplicati repositories, and read-only access to the former
+  persistent-data tree.
 
-Compose and SWAG are retired only after every route, data restore, backup, and
-rollback test succeeds.
+The Pi NFS exports are the current authoritative shared storage. No independent
+NAS is planned at present. This is an accepted single point of failure: the two
+Longhorn replicas protect small state against one disk or node loss, but they do
+not make the K3s control plane or Pi-hosted NFS data highly available.
 
-### Active canary
+The pre-migration rollback snapshot at
+`/srv/home-server-backups/pre-k3s-20260712` on the Beelink contains a copy of the
+Pi application-state tree and consistency-safe PostgreSQL dumps. It is a local
+recovery set, not an off-site backup. Duplicati continues to write encrypted
+backup archives to its Pi-hosted NFS repository.
 
-Heimdall is the first Kubernetes application canary. During validation it is a
-ClusterIP-only service on the Beelink; `homepage.reza.network` continues to use
-the Pi Compose container through SWAG. Its temporary Beelink selector prevents
-the duplicate canary from competing with production on the Pi and is removed
-when the legacy stack is retired.
+## Application boundaries
+
+Applications are separated into four operational namespaces:
+
+- `apps` for identity, personal, and general web applications;
+- `media` for Jellyfin, books, download automation, and VPN-isolated egress;
+- `network-services` for Pi-hole, WireGuard, Samba, Syncthing, and Duplicati;
+- `monitoring` for Headlamp and Kubernetes event export.
+
+Namespace default-deny policies and workload-specific rules permit only the
+required ingress and egress. Administrative routes use LAN/WireGuard allow
+lists. SOPS/age-encrypted Secret manifests are safe to store in the public
+repository; the private age identity remains root-only outside Git.
+
+The historical Glances hostname now serves Headlamp with read-only cluster and
+metrics permissions. The historical Loggifly workload name now runs a
+Kubernetes event exporter that delivers warning events to Telegram. AnythingLLM
+and the Gemini Telegram bot are deliberately not part of the production
+cluster.
+
+## Accepted constraints
+
+This design prioritizes a complete K3s migration over adding hardware:
+
+- one K3s server means no control-plane HA;
+- Pi-hosted NFS means no shared-storage HA;
+- two Longhorn replicas tolerate only one replica failure and still depend on
+  the single control plane for orchestration;
+- maintenance on the Pi interrupts DNS/DHCP, public ingress, WireGuard, SMB,
+  Syncthing discovery, and NFS-backed applications;
+- maintenance on the Beelink interrupts cluster administration and most
+  compute workloads.
+
+These are current operating assumptions, not pending migration steps. Revisit
+them only if a third node or independent storage is intentionally introduced.
