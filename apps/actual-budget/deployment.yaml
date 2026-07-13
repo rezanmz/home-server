@@ -18,12 +18,14 @@ spec:
         app.kubernetes.io/name: actual-budget
     spec:
       automountServiceAccountToken: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       # Keep Actual beside Authentik/Traefik so server-side OIDC requests can
       # use the node-local HTTPS listener instead of hairpinning through VIP.
       nodeSelector:
         kubernetes.io/hostname: raspberrypi
       hostAliases:
-        - ip: 192.168.1.2
+        - ip: 127.0.0.1
           hostnames:
             - auth.reza.network
       securityContext:
