@@ -13,10 +13,14 @@ spec:
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
+        # The distroless image declares USER by name ("nonroot"). Kubelet
+        # cannot prove a named user is non-root, so pin its documented UID.
+        runAsUser: 65532
+        runAsGroup: 65532
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: event-exporter
-          image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7.0
+          image: resmoio/kubernetes-event-exporter:v1.1
           imagePullPolicy: IfNotPresent
           args: [-conf=/data/config.yaml]
           env:
