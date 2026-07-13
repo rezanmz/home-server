@@ -32,7 +32,7 @@ spec:
                   key: client-secret
             - name: HEADLAMP_CONFIG_OIDC_IDP_ISSUER_URL
               value: https://auth.reza.network/application/o/headlamp/
-            - {name: HEADLAMP_CONFIG_OIDC_SCOPES, value: openid,email,profile}
+            - {name: HEADLAMP_CONFIG_OIDC_SCOPES, value: "openid,email,profile"}
           ports:
             - {name: http, containerPort: 4466}
             - {name: metrics, containerPort: 9090}
