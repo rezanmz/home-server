@@ -63,21 +63,21 @@ spec:
               containerPort: 6900
           startupProbe:
             httpGet:
-              path: /api/v1/status
+              path: /
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 18
           readinessProbe:
             httpGet:
-              path: /api/v1/status
+              path: /
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 6
           livenessProbe:
             httpGet:
-              path: /api/v1/status
+              path: /
               port: http
             periodSeconds: 30
             timeoutSeconds: 5
