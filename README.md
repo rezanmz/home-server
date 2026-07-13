@@ -47,10 +47,10 @@ plane and the Pi NFS server are known single points of failure.
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
 | Books | Calibre-Web, Shelfmark | `library.reza.network`, `shelfmark.reza.network` |
 | Network services | Pi-hole, wg-easy, Samba, Syncthing | `pihole.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
-| Operations | Duplicati, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `duplicati.reza.network`, `glances.reza.network`, Telegram alerts, background DNS updates |
+| Operations | Duplicati, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `duplicati.reza.network`, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
-The `glances.reza.network` name now serves a read-only Headlamp Kubernetes
-dashboard; Glances is no longer deployed. The former Loggifly function is now a
+Headlamp is the read-only Kubernetes dashboard at `headlamp.reza.network`;
+Glances is no longer deployed. The former Loggifly function is now a
 Kubernetes event exporter that sends warning events to Telegram. Its historical
 application name is retained in the manifests.
 
