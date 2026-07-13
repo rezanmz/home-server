@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: wg-easy
 spec:
   # Start only after the Pi Compose container releases UDP/1234.
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:

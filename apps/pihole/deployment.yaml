@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: pihole
 spec:
   # Cut over only after Pi Compose DNS/DHCP is stopped and the config is restored.
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:

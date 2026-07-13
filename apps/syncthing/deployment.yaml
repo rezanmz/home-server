@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: syncthing
 spec:
   # Never run against the live NFS tree while the Compose instance is active.
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
