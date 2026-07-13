@@ -11,6 +11,10 @@ spec:
     spec:
       serviceAccountName: headlamp
       automountServiceAccountToken: true
+      hostAliases:
+        - ip: 192.168.1.2
+          hostnames:
+            - auth.reza.network
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:

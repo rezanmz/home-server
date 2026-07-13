@@ -152,6 +152,12 @@ spec:
                   optional: true
             - name: AUTHENTIK_ERROR_REPORTING__ENABLED
               value: "false"
+            # Server and worker share a pod network namespace; give the
+            # worker's internal HTTP/metrics listeners distinct ports.
+            - name: AUTHENTIK_LISTEN__HTTP
+              value: 127.0.0.1:9001
+            - name: AUTHENTIK_LISTEN__METRICS
+              value: 127.0.0.1:9301
           resources:
             requests:
               cpu: 200m
