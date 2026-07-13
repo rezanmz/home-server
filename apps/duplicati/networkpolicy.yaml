@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: duplicati, namespace: network-services}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: duplicati}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: traefik}
+      ports:
+        - {port: 18200, protocol: TCP}
+  # Backup destinations are user-configurable and may use arbitrary protocols.
+  egress:
+    - {}

@@ -27,3 +27,7 @@ resources:
   - ../../apps/samba
   - ../../apps/syncthing
   - ../../apps/vpn
+  - ../../apps/jellyfin
+  - ../../apps/duplicati
+  - ../../apps/glances
+  - ../../apps/loggifly

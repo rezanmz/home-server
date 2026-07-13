@@ -1,0 +1,26 @@
+# LoggiFly's Docker-socket log access is replaced by Kubernetes warning-event
+# alerts. This catches failed scheduling, unhealthy probes, image failures and
+# crash loops without granting access to either node's container runtime.
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: loggifly, namespace: monitoring}
+data:
+  config.yaml: |
+    logLevel: info
+    logFormat: json
+    metricsNamePrefix: loggifly_event_
+    maxEventAgeSeconds: 60
+    route:
+      routes:
+        - drop:
+            - type: Normal
+          match:
+            - receiver: telegram
+    receivers:
+      - name: telegram
+        webhook:
+          endpoint: "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+          layout:
+            chat_id: "${TELEGRAM_CHAT_ID}"
+            disable_web_page_preview: true
+            text: "Kubernetes {{ .Type }}: {{ .Reason }} for {{ .InvolvedObject.Kind }} {{ .Namespace }}/{{ .InvolvedObject.Name }} — {{ .Message }}"

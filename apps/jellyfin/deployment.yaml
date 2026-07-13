@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin
+  namespace: media
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jellyfin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jellyfin
+    spec:
+      automountServiceAccountToken: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        supplementalGroups: [44, 991]
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: jellyfin
+          image: jellyfin/jellyfin:10.11.11
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: TZ, value: America/Toronto}
+            - {name: JELLYFIN_PublishedServerUrl, value: "http://192.168.1.3:8096"}
+          ports:
+            - {name: http, containerPort: 8096, protocol: TCP}
+            - {name: discovery, containerPort: 7359, protocol: UDP}
+            - {name: dlna, containerPort: 1900, protocol: UDP}
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 2Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /config}
+            - {name: cache, mountPath: /cache}
+            - {name: media, mountPath: /media, readOnly: true}
+            - {name: dri, mountPath: /dev/dri}
+        - name: access-proxy
+          image: nginx:1.27.4-alpine
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: access-http, containerPort: 18096, protocol: TCP}
+          readinessProbe: {tcpSocket: {port: access-http}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: access-http}, periodSeconds: 30}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: nginx-tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+      volumes:
+        - name: config
+          persistentVolumeClaim: {claimName: jellyfin-config}
+        - name: cache
+          emptyDir: {sizeLimit: 20Gi}
+        - name: media
+          persistentVolumeClaim: {claimName: media-library}
+        - name: dri
+          hostPath: {path: /dev/dri, type: Directory}
+        - name: proxy-config
+          configMap: {name: jellyfin-access-proxy}
+        - {name: nginx-tmp, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}

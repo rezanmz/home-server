@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: duplicati, namespace: network-services}
+spec:
+  replicas: 0
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: duplicati}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: duplicati}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: duplicati
+          image: linuxserver/duplicati:v2.3.0.3_stable_2026-06-10-ls299
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PUID, value: "0"}
+            - {name: PGID, value: "0"}
+            - {name: TZ, value: America/Toronto}
+            - {name: DUPLICATI__REQUIRE_DB_ENCRYPTION_KEY, value: "true"}
+            - {name: DUPLICATI__WEBSERVICE_PORT, value: "8200"}
+            - {name: DUPLICATI__WEBSERVICE_INTERFACE, value: any}
+            - {name: DUPLICATI__WEBSERVICE_ALLOWED_HOSTNAMES, value: "*"}
+            - name: SETTINGS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef: {name: duplicati-secrets, key: settings-encryption-key}
+          ports:
+            - {name: http, containerPort: 8200}
+          startupProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 18}
+          readinessProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 6}
+          livenessProbe: {httpGet: {path: /, port: http}, periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 3}
+          resources:
+            requests: {cpu: 50m, memory: 192Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [SETUID, SETGID, DAC_READ_SEARCH]
+          volumeMounts:
+            - {name: config, mountPath: /config}
+            - {name: backups, mountPath: /backups}
+            - {name: source, mountPath: /source, readOnly: true}
+            - {name: media, mountPath: /media, readOnly: true}
+        - name: access-proxy
+          image: nginx:1.27.4-alpine
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: access-http, containerPort: 18200}
+          readinessProbe: {tcpSocket: {port: access-http}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: access-http}, periodSeconds: 30}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: nginx-tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+      volumes:
+        - name: config
+          persistentVolumeClaim: {claimName: duplicati-config}
+        - name: backups
+          persistentVolumeClaim: {claimName: duplicati-backups}
+        - name: source
+          persistentVolumeClaim: {claimName: legacy-persistent}
+        - name: media
+          persistentVolumeClaim: {claimName: media-library}
+        - name: proxy-config
+          configMap: {name: duplicati-access-proxy}
+        - {name: nginx-tmp, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: glances, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: glances-view}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - {kind: ServiceAccount, name: glances, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: glances-metrics-reader}
+rules:
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: glances-metrics-reader}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glances-metrics-reader
+subjects:
+  - {kind: ServiceAccount, name: glances, namespace: monitoring}

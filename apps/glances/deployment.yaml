@@ -1,0 +1,67 @@
+# Headlamp replaces Docker-specific Glances with a Kubernetes-native read-only
+# dashboard. The public hostname is retained to avoid changing bookmarks/DNS.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: glances, namespace: monitoring}
+spec:
+  replicas: 0
+  selector:
+    matchLabels: {app.kubernetes.io/name: glances}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: glances}
+    spec:
+      serviceAccountName: glances
+      automountServiceAccountToken: true
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: headlamp
+          image: ghcr.io/headlamp-k8s/headlamp:v0.43.0
+          imagePullPolicy: IfNotPresent
+          args: [-in-cluster, -plugins-dir=/headlamp/plugins]
+          ports:
+            - {name: http, containerPort: 4466}
+            - {name: metrics, containerPort: 9090}
+          startupProbe: {httpGet: {path: /, port: http}, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 24}
+          readinessProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 6}
+          livenessProbe: {httpGet: {path: /, port: http}, periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 3}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: headlamp-tmp, mountPath: /tmp}
+        - name: access-proxy
+          image: nginx:1.27.4-alpine
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: access-http, containerPort: 16120}
+          readinessProbe: {tcpSocket: {port: access-http}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: access-http}, periodSeconds: 30}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: nginx-tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+      volumes:
+        - {name: headlamp-tmp, emptyDir: {}}
+        - name: proxy-config
+          configMap: {name: glances-access-proxy}
+        - {name: nginx-tmp, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}

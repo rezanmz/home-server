@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Service
+metadata: {name: glances, namespace: monitoring}
+spec:
+  selector: {app.kubernetes.io/name: glances}
+  ports:
+    - {name: http, port: 80, targetPort: access-http}
