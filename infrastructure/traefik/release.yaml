@@ -24,13 +24,15 @@ spec:
       strategy: rollback
   values:
     deployment:
-      replicas: 1
+      kind: DaemonSet
     ingressClass:
       enabled: false
       isDefaultClass: false
     providers:
       kubernetesCRD:
-        enabled: false
+        # Required for Gateway API HTTPRoute ExtensionRef filters such as the
+        # LAN/VPN IP allow-lists on network-service admin routes.
+        enabled: true
       kubernetesIngress:
         enabled: false
       kubernetesGateway:
@@ -72,6 +74,7 @@ spec:
           defaultMode: drop
     ports:
       web:
+        hostPort: 80
         http:
           redirections:
             entryPoint:
@@ -79,6 +82,7 @@ spec:
               scheme: https
               permanent: true
       websecure:
+        hostPort: 443
         expose:
           default: true
     service:
