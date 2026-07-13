@@ -6,7 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: syncthing
 spec:
-  # Never run against the live NFS tree while the Compose instance is active.
   replicas: 1
   strategy:
     type: Recreate
@@ -19,11 +18,10 @@ spec:
         app.kubernetes.io/name: syncthing
     spec:
       automountServiceAccountToken: false
-      # Local discovery is UDP broadcast/multicast and requires the Pi LAN.
+      # Host networking preserves LAN discovery and direct sync ports. The
+      # scheduler may place the pod on either cluster node.
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      nodeSelector:
-        kubernetes.io/hostname: raspberrypi
       containers:
         - name: syncthing
           image: lscr.io/linuxserver/syncthing:v2.1.1-ls221
