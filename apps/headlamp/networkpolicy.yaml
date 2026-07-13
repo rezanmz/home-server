@@ -34,3 +34,12 @@ spec:
         - ipBlock: {cidr: 192.168.1.240/32}
       ports:
         - {port: 443, protocol: TCP}
+    # The MetalLB service translates HTTPS to Traefik pod port 8443 before the
+    # NetworkPolicy egress rule is evaluated.
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: traefik}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: traefik}
+      ports:
+        - {port: 8443, protocol: TCP}
