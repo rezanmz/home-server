@@ -82,7 +82,9 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           securityContext:
-            allowPrivilegeEscalation: false
+            # Pi-hole's entrypoint drops from root to UID 1000 while retaining
+            # low-port and DHCP capabilities; no-new-privileges blocks that.
+            allowPrivilegeEscalation: true
             capabilities:
               add:
                 - NET_ADMIN
