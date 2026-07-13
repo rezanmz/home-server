@@ -92,8 +92,10 @@ spec:
               path: /-/health/ready/
               port: http
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            # Authentik can briefly pause while checking its database/cache.
+            # Allow a short stall without withdrawing the pod from service.
+            timeoutSeconds: 10
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /-/health/live/
