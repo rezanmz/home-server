@@ -19,6 +19,21 @@ The interim Kubernetes topology is intentionally non-HA:
 This phase creates a scheduler and GitOps control plane without moving the
 existing network edge or stopping any production service.
 
+### Deployed foundation
+
+- K3s `v1.36.2+k3s1` with encrypted Kubernetes Secrets at rest.
+- Flux `v2.9.1` pulling this public repository with SOPS/age decryption.
+- Longhorn `1.12.0` with two-replica, retained application volumes.
+- MetalLB `0.16.1` in L2 mode with no FRR/BGP workload.
+- Gateway API `v1.5.1` and Traefik chart `41.0.2` on VIP `192.168.1.240`.
+- cert-manager `v1.21.0` with Cloudflare DNS-01 and a wildcard Let's Encrypt
+  certificate for `reza.network`.
+- A data-restored Heimdall canary reachable only through the new VIP during
+  validation. The router still sends public traffic to Pi/SWAG.
+
+See [the operator runbook](runbook.md) for health checks, reconciliation,
+storage, secret recovery, and rollback procedures.
+
 ## Target state
 
 The long-term topology is three wired K3s server/worker nodes with embedded
