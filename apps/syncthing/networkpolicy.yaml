@@ -16,7 +16,7 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: traefik
       ports:
-        - port: 8384
+        - port: 18384
           protocol: TCP
     - from:
         - ipBlock:
@@ -25,6 +25,8 @@ spec:
             cidr: 10.8.0.0/24
       ports:
         - port: 8384
+          protocol: TCP
+        - port: 18384
           protocol: TCP
         - port: 21027
           protocol: UDP

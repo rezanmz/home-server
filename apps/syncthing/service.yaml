@@ -10,9 +10,9 @@ spec:
   selector:
     app.kubernetes.io/name: syncthing
   ports:
-    - name: https
+    - name: http
       port: 8384
-      targetPort: https
+      targetPort: access-http
       protocol: TCP
     - name: sync-tcp
       port: 22000

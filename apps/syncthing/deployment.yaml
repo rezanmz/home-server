@@ -87,6 +87,27 @@ spec:
               mountPath: /config
             - name: data
               mountPath: /data
+        - name: access-proxy
+          image: nginx:1.27.4-alpine
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: access-http, containerPort: 18384}
+          readinessProbe: {tcpSocket: {port: access-http}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: access-http}, periodSeconds: 30}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: nginx-tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -94,3 +115,7 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: syncthing-data
+        - name: proxy-config
+          configMap: {name: syncthing-access-proxy}
+        - {name: nginx-tmp, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}
