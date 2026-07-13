@@ -248,9 +248,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: ES_JAVA_OPTS
-              value: -Xms512m -Xmx512m -XX:UseSVE=0
-            - name: CLI_JAVA_OPTS
-              value: -XX:UseSVE=0
+              value: -Xms512m -Xmx512m
             - name: node.name
               value: argilla-elasticsearch
             - name: cluster.name
