@@ -18,10 +18,13 @@ spec:
         app.kubernetes.io/name: syncthing
     spec:
       automountServiceAccountToken: false
-      # Host networking preserves LAN discovery and direct sync ports. The
-      # scheduler may place the pod on either cluster node.
+      # Host networking preserves LAN discovery and direct sync ports. Keep
+      # this workload on the Pi so its direct-sync address remains stable;
+      # relay-only mode is a separate opt-in configuration.
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
       containers:
         - name: syncthing
           image: lscr.io/linuxserver/syncthing:v2.1.1-ls221

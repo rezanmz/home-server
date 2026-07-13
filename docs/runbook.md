@@ -65,6 +65,11 @@ Git revision through Flux.
 - MetalLB pool: `192.168.1.240-192.168.1.249`
 - Pi-hole DHCP range: `192.168.1.10-192.168.1.239`
 
+Pi-hole's local overrides point HTTP hostnames at the Traefik VIP (`.240`),
+not at an application node. Kubernetes Services then follow pods as they move
+between nodes. Pi-specific protocols such as DNS/DHCP, SMB, NFS, and the
+WireGuard UDP endpoint continue to use the Pi address (`.2`).
+
 Check the edge and certificate objects:
 
 ```bash

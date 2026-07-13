@@ -42,29 +42,31 @@ spec:
               value: "8181"
             - name: FTLCONF_webserver_domain
               value: pihole.reza.network
-            # Use Traefik's MetalLB VIP for the Headlamp/Authenik OIDC path.
-            # Pods cannot reach Traefik through the Pi host's address.
+            # HTTP hostnames resolve to Traefik's stable MetalLB VIP. This
+            # keeps internal DNS independent of which node runs an app pod.
+            # Pi-specific protocols (DNS, DHCP, SMB, NFS, WireGuard UDP) still
+            # use the Pi address directly and are not represented here.
             - name: FTLCONF_dns_hosts
               value: |-
                 192.168.1.240 auth.reza.network
-                192.168.1.2 budget.reza.network
-                192.168.1.2 chat.reza.network
-                192.168.1.2 duplicati.reza.network
+                192.168.1.240 budget.reza.network
+                192.168.1.240 chat.reza.network
+                192.168.1.240 duplicati.reza.network
                 192.168.1.240 headlamp.reza.network
-                192.168.1.2 homepage.reza.network
-                192.168.1.2 jellyfin.reza.network
-                192.168.1.2 jellyseerr.reza.network
-                192.168.1.2 library.reza.network
-                192.168.1.2 mcphub.reza.network
-                192.168.1.2 pihole.reza.network
-                192.168.1.2 prowlarr.reza.network
-                192.168.1.2 qbittorrent.reza.network
-                192.168.1.2 radarr.reza.network
-                192.168.1.2 shelfmark.reza.network
-                192.168.1.2 sonarr.reza.network
-                192.168.1.2 speedtest.reza.network
-                192.168.1.2 syncthing.reza.network
-                192.168.1.2 vpn.reza.network
+                192.168.1.240 homepage.reza.network
+                192.168.1.240 jellyfin.reza.network
+                192.168.1.240 jellyseerr.reza.network
+                192.168.1.240 library.reza.network
+                192.168.1.240 mcphub.reza.network
+                192.168.1.240 pihole.reza.network
+                192.168.1.240 prowlarr.reza.network
+                192.168.1.240 qbittorrent.reza.network
+                192.168.1.240 radarr.reza.network
+                192.168.1.240 shelfmark.reza.network
+                192.168.1.240 sonarr.reza.network
+                192.168.1.240 speedtest.reza.network
+                192.168.1.240 syncthing.reza.network
+                192.168.1.240 vpn.reza.network
           ports:
             - name: dns-tcp
               containerPort: 53
