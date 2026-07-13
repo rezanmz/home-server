@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: open-webui
     app.kubernetes.io/component: application
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -152,7 +152,7 @@ metadata:
     app.kubernetes.io/name: open-webui
     app.kubernetes.io/component: tika
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: open-webui

@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: mcphub
     app.kubernetes.io/component: application
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -158,7 +158,7 @@ metadata:
     app.kubernetes.io/name: mcphub
     app.kubernetes.io/component: database
 spec:
-  replicas: 0
+  replicas: 1
   serviceName: mcphub-postgresql
   selector:
     matchLabels:
