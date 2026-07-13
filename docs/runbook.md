@@ -114,6 +114,12 @@ UDP 123, SMB on TCP 139/445, Syncthing on TCP/UDP 22000 and UDP 21027, and
 WireGuard on UDP 1234. The Pi-hole UI listens internally on port 8181 and is
 published through the Gateway rather than directly as the public service.
 
+wg-easy v15 stores its endpoint, client DNS, and AllowedIPs in the persistent
+application database; the v14 `WG_*` environment variables are ignored. The
+global and per-client DNS value should be `192.168.1.2`. After changing client
+DNS or routes, download/import the refreshed client profile because WireGuard
+cannot push configuration changes into an already imported profile.
+
 ## Storage
 
 Longhorn stores small application state with two replicas across the two nodes:

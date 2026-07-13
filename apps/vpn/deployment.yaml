@@ -48,16 +48,11 @@ spec:
           image: ghcr.io/wg-easy/wg-easy:15.3.0
           imagePullPolicy: IfNotPresent
           env:
-            - name: WG_HOST
-              value: vpn.reza.network
             - name: TZ
               value: America/Toronto
-            - name: WG_PORT
-              value: "1234"
-            - name: WG_ALLOWED_IPS
-              value: 192.168.1.0/24,10.8.0.0/24
-            - name: WG_DEFAULT_DNS
-              value: 192.168.1.2
+            # wg-easy v15 stores endpoint, DNS, and AllowedIPs in its database.
+            # The former v14 WG_* variables are ignored and must not imply that
+            # these settings are declaratively enforced here.
           ports:
             - name: wireguard
               containerPort: 51820
