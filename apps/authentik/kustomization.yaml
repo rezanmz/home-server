@@ -7,3 +7,4 @@ resources:
   - services.yaml
   - networkpolicy.yaml
   - route.yaml
+  - headlamp-referencegrant.yaml

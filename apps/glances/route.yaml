@@ -1,3 +1,39 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: glances-lan-only
+  namespace: monitoring
+spec:
+  ipAllowList:
+    sourceRange:
+      - 192.168.1.0/24
+      - 10.8.0.0/24
+      # wg-easy is a pod, so VPN-to-LAN traffic is SNATed to the K3s pod CIDR.
+      - 10.42.0.0/16
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authentik-forward-auth
+  namespace: monitoring
+spec:
+  forwardAuth:
+    address: http://authentik.apps.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik
+    trustForwardHeader: true
+    authResponseHeaders:
+      - X-authentik-username
+      - X-authentik-groups
+      - X-authentik-entitlements
+      - X-authentik-email
+      - X-authentik-name
+      - X-authentik-uid
+      - X-authentik-jwt
+      - X-authentik-meta-jwks
+      - X-authentik-meta-outpost
+      - X-authentik-meta-provider
+      - X-authentik-meta-app
+      - X-authentik-meta-version
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata: {name: glances, namespace: monitoring}
@@ -6,11 +42,37 @@ spec:
     - {name: home, namespace: traefik}
   hostnames: [glances.reza.network]
   rules:
+    # Authentik's embedded outpost owns this callback and logout path.
+    - matches:
+        - path: {type: PathPrefix, value: /outpost.goauthentik.io}
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: glances-lan-only
+      backendRefs:
+        - {name: authentik, namespace: apps, port: 9000}
     - filters:
         - type: ExtensionRef
           extensionRef:
             group: traefik.io
             kind: Middleware
             name: custom-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: glances-lan-only
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: authentik-forward-auth
       backendRefs:
         - {name: glances, port: 80}

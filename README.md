@@ -93,7 +93,8 @@ services/                retired Docker Compose definitions; reference only
 ## Access and security
 
 - Most administrative interfaces are restricted to the home LAN and WireGuard
-  ranges by an application-side proxy or a Traefik middleware.
+  ranges by an application-side proxy or a Traefik middleware. Headlamp also
+  requires an Authentik session.
 - Argilla and the explicitly public application routes are reachable through
   the public Gateway. Authentik supplies OIDC where the application supports it.
 - Default-deny network policies and explicit egress rules limit namespace

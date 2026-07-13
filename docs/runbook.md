@@ -210,5 +210,6 @@ network listeners, and a representative public route.
 
 AnythingLLM and the Gemini Telegram bot are intentionally absent. Do not restore
 their retired Compose projects during maintenance. The `glances` route is
-Headlamp, and the `loggifly` workload is the Kubernetes event exporter; these
+Headlamp; it requires both LAN/WireGuard access and an Authentik login. The
+`loggifly` workload is the Kubernetes event exporter; these
 names are retained only for hostname and migration continuity.
