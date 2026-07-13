@@ -25,6 +25,13 @@ spec:
   values:
     deployment:
       kind: DaemonSet
+    # Traefik binds host ports 80/443 on every node, so a surge pod cannot be
+    # scheduled beside the existing pod during an update.
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+        maxSurge: 0
     ingressClass:
       enabled: false
       isDefaultClass: false
