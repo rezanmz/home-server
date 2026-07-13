@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-application
+  namespace: apps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/component: application
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 9000
+          protocol: TCP
+  # Authentik may connect to configured SMTP, LDAP and identity providers.
+  egress:
+    - {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-database
+  namespace: apps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/component: database
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: authentik
+              app.kubernetes.io/component: application
+      ports:
+        - port: 5432
+          protocol: TCP
+  egress: []

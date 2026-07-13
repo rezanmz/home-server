@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: heimdall
+  name: actual-budget
   namespace: apps
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: heimdall
+      app.kubernetes.io/name: actual-budget
   policyTypes:
     - Ingress
     - Egress
@@ -14,15 +14,9 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: infrastructure
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: monitoring
-        - namespaceSelector:
-            matchLabels:
               kubernetes.io/metadata.name: traefik
       ports:
-        - port: 18081
+        - port: 15006
           protocol: TCP
   egress:
     - to:
@@ -39,20 +33,7 @@ spec:
           protocol: TCP
     - to:
         - ipBlock:
-            cidr: 10.0.0.0/8
-        - ipBlock:
-            cidr: 172.16.0.0/12
-        - ipBlock:
-            cidr: 192.168.0.0/16
-    - to:
-        - ipBlock:
             cidr: 0.0.0.0/0
-            except:
-              - 10.0.0.0/8
-              - 172.16.0.0/12
-              - 192.168.0.0/16
       ports:
-        - port: 80
-          protocol: TCP
         - port: 443
           protocol: TCP

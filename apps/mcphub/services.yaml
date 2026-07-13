@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcphub
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: application
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: application
+  ports:
+    - name: http
+      port: 3000
+      targetPort: access-http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcphub-postgresql
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: database
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcphub-postgres
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: database
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP

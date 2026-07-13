@@ -1,0 +1,2 @@
+/home/reza/media 192.168.1.2(rw,sync,no_subtree_check,root_squash) 192.168.1.3(rw,sync,no_subtree_check,root_squash)
+/home/reza/persistent 192.168.1.2(ro,sync,no_subtree_check,root_squash) 192.168.1.3(ro,sync,no_subtree_check,root_squash)

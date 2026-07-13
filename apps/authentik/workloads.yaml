@@ -1,0 +1,303 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: application
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik
+        app.kubernetes.io/component: application
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: prepare-data
+          image: busybox:1.37.0
+          command:
+            - sh
+            - -ec
+            - mkdir -p /state/data /state/certs /state/custom-templates
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /state
+      containers:
+        - name: server
+          image: ghcr.io/goauthentik/server:2026.5.2
+          imagePullPolicy: IfNotPresent
+          args:
+            - server
+          env:
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: secret-key
+            - name: AUTHENTIK_POSTGRESQL__HOST
+              value: authentik-postgresql
+            - name: AUTHENTIK_POSTGRESQL__NAME
+              value: authentik
+            - name: AUTHENTIK_POSTGRESQL__USER
+              value: authentik
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: postgres-password
+            - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+              value: "false"
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /-/health/live/
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /-/health/ready/
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/health/live/
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: data
+            - name: data
+              mountPath: /templates
+              subPath: custom-templates
+            - name: shared-memory
+              mountPath: /dev/shm
+        - name: worker
+          image: ghcr.io/goauthentik/server:2026.5.2
+          imagePullPolicy: IfNotPresent
+          args:
+            - worker
+          env:
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: secret-key
+            - name: AUTHENTIK_POSTGRESQL__HOST
+              value: authentik-postgresql
+            - name: AUTHENTIK_POSTGRESQL__NAME
+              value: authentik
+            - name: AUTHENTIK_POSTGRESQL__USER
+              value: authentik
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: postgres-password
+            - name: AUTHENTIK_BOOTSTRAP_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: bootstrap-password-hash
+            - name: AUTHENTIK_BOOTSTRAP_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: bootstrap-email
+                  optional: true
+            - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+              value: "false"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 750m
+              memory: 768Mi
+          startupProbe:
+            exec:
+              command:
+                - ak
+                - healthcheck
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - ak
+                - healthcheck
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - ak
+                - healthcheck
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: data
+            - name: data
+              mountPath: /certs
+              subPath: certs
+            - name: data
+              mountPath: /templates
+              subPath: custom-templates
+            - name: shared-memory
+              mountPath: /dev/shm
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: authentik-data
+        - name: shared-memory
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: authentik-postgresql
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: database
+spec:
+  replicas: 0
+  serviceName: authentik-postgresql
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik
+        app.kubernetes.io/component: database
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          image: docker.io/library/postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              value: authentik
+            - name: POSTGRES_USER
+              value: authentik
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: postgres-password
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: authentik-postgresql

@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: heimdall
+  name: speedtest-tracker
   namespace: apps
   labels:
-    app.kubernetes.io/name: heimdall
+    app.kubernetes.io/name: speedtest-tracker
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: heimdall
+    app.kubernetes.io/name: speedtest-tracker
   ports:
     - name: http
       port: 80

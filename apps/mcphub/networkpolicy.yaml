@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcphub-application
+  namespace: apps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcphub
+      app.kubernetes.io/component: application
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 13000
+          protocol: TCP
+  # MCP servers are user-configured and can use arbitrary protocols and ports.
+  egress:
+    - {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcphub-database
+  namespace: apps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcphub
+      app.kubernetes.io/component: database
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcphub
+              app.kubernetes.io/component: application
+      ports:
+        - port: 5432
+          protocol: TCP
+  egress: []

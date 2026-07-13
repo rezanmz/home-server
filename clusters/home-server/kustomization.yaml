@@ -8,4 +8,11 @@ resources:
   - ../../infrastructure/gateway-api
   - ../../infrastructure/traefik
   - ../../infrastructure/cert-manager
+  - ../../infrastructure/nfs-media
   - ../../apps/heimdall
+  - ../../apps/actual-budget
+  - ../../apps/authentik
+  - ../../apps/jellyseerr
+  - ../../apps/mcphub
+  - ../../apps/open-webui
+  - ../../apps/speedtest-tracker
