@@ -18,13 +18,12 @@ spec:
         app.kubernetes.io/name: actual-budget
     spec:
       automountServiceAccountToken: false
-      # Actual performs server-side OIDC discovery against the public issuer.
-      # Use the local Traefik host port so this request does not hairpin through
-      # MetalLB's LAN VIP.
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      # Keep Actual beside Authentik/Traefik so server-side OIDC requests can
+      # use the node-local HTTPS listener instead of hairpinning through VIP.
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
       hostAliases:
-        - ip: 127.0.0.1
+        - ip: 192.168.1.2
           hostnames:
             - auth.reza.network
       securityContext:
