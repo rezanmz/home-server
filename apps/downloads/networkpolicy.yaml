@@ -34,25 +34,6 @@ spec:
         - {port: 8989, protocol: TCP}
         - {port: 9696, protocol: TCP}
   egress:
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns
-      ports:
-        - {port: 53, protocol: UDP}
-        - {port: 53, protocol: TCP}
-    - to:
-        - ipBlock: {cidr: 10.42.0.0/16}
-        - ipBlock: {cidr: 10.43.0.0/16}
-        - ipBlock: {cidr: 192.168.1.0/24}
-      ports:
-        - {port: 80, protocol: TCP}
-        - {port: 443, protocol: TCP}
-    - to:
-        - ipBlock: {cidr: 0.0.0.0/0}
-      ports:
-        - {port: 443, protocol: TCP}
-        - {protocol: UDP}
+    # Gluetun owns this Pod's routes, firewall and VPN kill switch. Kubernetes
+    # egress filtering here interferes with its tunnel and encrypted DNS.
+    - {}
