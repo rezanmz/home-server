@@ -237,6 +237,13 @@ spec:
         app.kubernetes.io/component: database
     spec:
       automountServiceAccountToken: false
+      initContainers:
+        - name: prepare-postgres-data
+          image: busybox:1.37.0
+          command: [sh, -ec, "mkdir -p /var/lib/postgresql/data/pgdata && chown 70:70 /var/lib/postgresql/data/pgdata"]
+          securityContext: {runAsUser: 0, runAsGroup: 0}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
       securityContext:
         runAsNonRoot: true
         runAsUser: 70
