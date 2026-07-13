@@ -286,10 +286,13 @@ spec:
           resources:
             requests:
               cpu: 250m
-              memory: 768Mi
+              memory: 1Gi
             limits:
               cpu: 500m
-              memory: 1Gi
+              # Elasticsearch is already using about 963MiB under the current
+              # 1Gi limit. Keep the JVM heap bounded, but leave native/mmap
+              # overhead room so a normal index or restart spike is not an OOM.
+              memory: 1536Mi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
