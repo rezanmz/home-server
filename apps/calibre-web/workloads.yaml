@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: calibre-web, namespace: media}
 spec:
-  replicas: 0
+  replicas: 1
   strategy: {type: Recreate}
   selector:
     matchLabels: {app.kubernetes.io/name: calibre-web}
