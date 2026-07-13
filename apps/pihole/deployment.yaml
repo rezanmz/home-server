@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: pihole
+spec:
+  # Cut over only after Pi Compose DNS/DHCP is stopped and the config is restored.
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pihole
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pihole
+    spec:
+      automountServiceAccountToken: false
+      # DNS/DHCP clients must keep reaching the Pi's stable LAN address.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
+      containers:
+        - name: pihole
+          image: pihole/pihole:2026.07.2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: America/Toronto
+            - name: FTLCONF_webserver_api_password
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-credentials
+                  key: web-password
+            - name: FTLCONF_dns_listeningMode
+              value: ALL
+            - name: FTLCONF_webserver_port
+              value: "8181"
+            - name: FTLCONF_webserver_domain
+              value: pihole.reza.network
+          ports:
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dhcp
+              containerPort: 67
+              protocol: UDP
+            - name: http
+              containerPort: 8181
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 24
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_ADMIN
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pihole
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: pihole-config

@@ -23,3 +23,7 @@ resources:
   - ../../apps/prowlarr
   - ../../apps/radarr
   - ../../apps/sonarr
+  - ../../apps/pihole
+  - ../../apps/samba
+  - ../../apps/syncthing
+  - ../../apps/vpn

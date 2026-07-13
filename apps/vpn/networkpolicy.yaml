@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: wg-easy
+  namespace: network-services
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wg-easy
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 51821
+          protocol: TCP
+    - from:
+        - ipBlock:
+            cidr: 192.168.1.0/24
+        - ipBlock:
+            cidr: 10.8.0.0/24
+      ports:
+        - port: 51821
+          protocol: TCP
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 51820
+          protocol: UDP
+  # Tunnel clients need forwarding to the LAN and internet.
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0

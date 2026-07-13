@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syncthing
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: syncthing
+spec:
+  # Never run against the live NFS tree while the Compose instance is active.
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: syncthing
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: syncthing
+    spec:
+      automountServiceAccountToken: false
+      # Local discovery is UDP broadcast/multicast and requires the Pi LAN.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
+      containers:
+        - name: syncthing
+          image: lscr.io/linuxserver/syncthing:v2.1.1-ls221
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/Toronto
+          ports:
+            - name: https
+              containerPort: 8384
+              protocol: TCP
+            - name: sync-tcp
+              containerPort: 22000
+              protocol: TCP
+            - name: sync-quic
+              containerPort: 22000
+              protocol: UDP
+            - name: discovery
+              containerPort: 21027
+              protocol: UDP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          startupProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /rest/noauth/health
+              port: https
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /rest/noauth/health
+              port: https
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /rest/noauth/health
+              port: https
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: syncthing-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: syncthing-data

@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pihole
+  namespace: network-services
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: pihole
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 8181
+          protocol: TCP
+    - from:
+        - ipBlock:
+            cidr: 192.168.1.0/24
+        - ipBlock:
+            cidr: 10.8.0.0/24
+      ports:
+        - port: 53
+          protocol: TCP
+        - port: 53
+          protocol: UDP
+        - port: 8181
+          protocol: TCP
+    # DHCP discovery can originate from 0.0.0.0 before the client has an IP.
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 67
+          protocol: UDP
+  # Pi-hole needs arbitrary upstream DNS and block-list destinations, plus
+  # broadcast DHCP replies. Restricting egress by port is too brittle here.
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0

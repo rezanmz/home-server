@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: samba
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: samba
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: samba
+  ports:
+    - name: netbios-ns
+      port: 137
+      targetPort: netbios-ns
+      protocol: UDP
+    - name: netbios-dgm
+      port: 138
+      targetPort: netbios-dgm
+      protocol: UDP
+    - name: netbios-ssn
+      port: 139
+      targetPort: netbios-ssn
+      protocol: TCP
+    - name: smb
+      port: 445
+      targetPort: smb
+      protocol: TCP

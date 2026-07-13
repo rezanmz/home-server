@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: samba
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: samba
+spec:
+  # Cut over only after the Pi Compose container releases ports 137-139/445.
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: samba
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: samba
+    spec:
+      automountServiceAccountToken: false
+      # NetBIOS discovery depends on LAN broadcasts from the Pi address.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
+      containers:
+        - name: samba
+          image: ghcr.io/servercontainers/samba:a3.23.4-s4.22.8-r0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MODEL
+              value: TimeCapsule
+            - name: AVAHI_NAME
+              value: HomeServer
+            - name: TZ
+              value: America/Toronto
+            - name: SAMBA_CONF_LOG_LEVEL
+              value: "1"
+            - name: SAMBA_CONF_WORKGROUP
+              value: WORKGROUP
+            - name: SAMBA_CONF_SERVER_STRING
+              value: Home Media Server
+            - name: GROUP_media
+              value: "1500"
+            - name: ACCOUNT_pi
+              valueFrom:
+                secretKeyRef:
+                  name: samba-credentials
+                  key: password
+            - name: UID_pi
+              value: "1000"
+            - name: GROUPS_pi
+              value: media
+            - name: SAMBA_VOLUME_CONFIG_media
+              value: "[Media]; path=/media; valid users = pi; guest ok = no; read only = no; browseable = yes; force group = media"
+          ports:
+            - name: netbios-ns
+              containerPort: 137
+              protocol: UDP
+            - name: netbios-dgm
+              containerPort: 138
+              protocol: UDP
+            - name: netbios-ssn
+              containerPort: 139
+              protocol: TCP
+            - name: smb
+              containerPort: 445
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          startupProbe:
+            tcpSocket:
+              port: smb
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 18
+          readinessProbe:
+            tcpSocket:
+              port: smb
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: smb
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: media
+              mountPath: /media
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-library
