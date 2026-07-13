@@ -4,8 +4,6 @@ metadata:
   name: apps
   labels:
     pod-security.kubernetes.io/enforce: privileged
-  labels:
-    pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/enforce-version: latest
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/audit-version: latest
