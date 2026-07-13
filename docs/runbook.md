@@ -31,8 +31,16 @@ sudo k3s kubectl -n flux-system get gitrepositories,kustomizations -o wide
 sudo k3s kubectl get helmreleases -A
 ```
 
-Every source, Kustomization, and HelmRelease should report `READY=True`. Flux
-tracks `main` and prunes resources removed from the cluster entry point.
+Every source, Kustomization, and HelmRelease should report `READY=True`. The
+root Kustomization intentionally has `prune: false`: removing a manifest or
+temporarily losing the decryption key must not delete live workloads, Secrets,
+or PVCs. Before an intentional retirement, review the rendered diff and delete
+resources explicitly, one workload at a time. Never delete the root
+`flux-system` Kustomization as a recovery step.
+
+Before changing storage, create an application-level export or snapshot and
+verify that it can be read. Longhorn uses `reclaimPolicy: Retain`, but that
+only protects a volume after PVC deletion; it is not a database backup.
 
 To request immediate reconciliation after a push:
 

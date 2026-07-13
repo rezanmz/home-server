@@ -25,7 +25,10 @@ spec:
   retryInterval: 1m
   timeout: 20m
   path: ./clusters/home-server
-  prune: true
+  # Keep orphaned objects until an operator reviews the diff. This prevents a
+  # bad or incomplete reconciliation from deleting live workloads, Secrets, or
+  # PVCs. Cleanup is explicit and separately reviewed.
+  prune: false
   decryption:
     provider: sops
     secretRef:
