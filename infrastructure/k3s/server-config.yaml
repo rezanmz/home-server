@@ -11,7 +11,7 @@ write-kubeconfig-mode: "0600"
 kube-apiserver-arg:
   - oidc-issuer-url=https://auth.reza.network/application/o/headlamp/
   - oidc-client-id=headlamp
-  - oidc-username-claim=preferred_username
+  - oidc-username-claim=email
   - "oidc-username-prefix=authentik:"
 disable:
   - traefik
