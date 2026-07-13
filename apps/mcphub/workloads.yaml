@@ -175,7 +175,13 @@ spec:
         - name: prepare-postgres-data
           image: busybox:1.37.0
           command: [sh, -ec, "mkdir -p /var/lib/postgresql/data/pgdata && chown 999:999 /var/lib/postgresql/data/pgdata"]
-          securityContext: {runAsUser: 999, runAsGroup: 999}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
           volumeMounts:
             - {name: data, mountPath: /var/lib/postgresql/data}
       securityContext:
