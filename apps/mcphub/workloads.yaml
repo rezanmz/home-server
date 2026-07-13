@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: prepare-data
-          image: busybox:1.37.0
+          image: pgvector/pgvector:pg16
           command:
             - sh
             - -ec
