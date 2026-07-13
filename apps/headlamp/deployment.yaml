@@ -1,17 +1,16 @@
-# Headlamp replaces Docker-specific Glances with a Kubernetes-native read-only
-# dashboard. The public hostname is retained to avoid changing bookmarks/DNS.
+# The historical Glances hostname is retained to avoid changing bookmarks/DNS.
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: glances, namespace: monitoring}
+metadata: {name: headlamp, namespace: monitoring}
 spec:
   replicas: 1
   selector:
-    matchLabels: {app.kubernetes.io/name: glances}
+    matchLabels: {app.kubernetes.io/name: headlamp}
   template:
     metadata:
-      labels: {app.kubernetes.io/name: glances}
+      labels: {app.kubernetes.io/name: headlamp}
     spec:
-      serviceAccountName: glances
+      serviceAccountName: headlamp
       automountServiceAccountToken: true
       securityContext:
         seccompProfile: {type: RuntimeDefault}
@@ -62,6 +61,6 @@ spec:
       volumes:
         - {name: headlamp-tmp, emptyDir: {}}
         - name: proxy-config
-          configMap: {name: glances-access-proxy}
+          configMap: {name: headlamp-access-proxy}
         - {name: nginx-tmp, emptyDir: {}}
         - {name: nginx-cache, emptyDir: {}}

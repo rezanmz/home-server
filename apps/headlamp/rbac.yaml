@@ -1,20 +1,20 @@
 apiVersion: v1
 kind: ServiceAccount
-metadata: {name: glances, namespace: monitoring}
+metadata: {name: headlamp, namespace: monitoring}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
-metadata: {name: glances-view}
+metadata: {name: headlamp-view}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
-  - {kind: ServiceAccount, name: glances, namespace: monitoring}
+  - {kind: ServiceAccount, name: headlamp, namespace: monitoring}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
-metadata: {name: glances-metrics-reader}
+metadata: {name: headlamp-metrics-reader}
 rules:
   - apiGroups: [metrics.k8s.io]
     resources: [nodes, pods]
@@ -22,10 +22,10 @@ rules:
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
-metadata: {name: glances-metrics-reader}
+metadata: {name: headlamp-metrics-reader}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: glances-metrics-reader
+  name: headlamp-metrics-reader
 subjects:
-  - {kind: ServiceAccount, name: glances, namespace: monitoring}
+  - {kind: ServiceAccount, name: headlamp, namespace: monitoring}

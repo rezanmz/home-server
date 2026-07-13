@@ -29,5 +29,5 @@ resources:
   - ../../apps/vpn
   - ../../apps/jellyfin
   - ../../apps/duplicati
-  - ../../apps/glances
+  - ../../apps/headlamp
   - ../../apps/loggifly

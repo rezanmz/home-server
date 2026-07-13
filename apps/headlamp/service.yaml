@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
-metadata: {name: glances, namespace: monitoring}
+metadata: {name: headlamp, namespace: monitoring}
 spec:
-  selector: {app.kubernetes.io/name: glances}
+  selector: {app.kubernetes.io/name: headlamp}
   ports:
     - {name: http, port: 80, targetPort: access-http}
