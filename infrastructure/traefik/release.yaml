@@ -33,6 +33,9 @@ spec:
         # Required for Gateway API HTTPRoute ExtensionRef filters such as the
         # LAN/VPN IP allow-lists on network-service admin routes.
         enabled: true
+        # The shared SWAG-compatible error page is exposed to each application
+        # namespace through a tightly scoped ExternalName service alias.
+        allowExternalNameServices: true
       kubernetesIngress:
         enabled: false
       kubernetesGateway:
