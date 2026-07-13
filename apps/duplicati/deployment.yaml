@@ -42,7 +42,10 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]
-              add: [SETUID, SETGID, DAC_READ_SEARCH]
+              # DAC_READ_SEARCH is needed for protected source data;
+              # DAC_OVERRIDE permits the optional root-owned local repository.
+              # Source and media mounts remain read-only at the VFS layer.
+              add: [SETUID, SETGID, DAC_READ_SEARCH, DAC_OVERRIDE]
           volumeMounts:
             - {name: config, mountPath: /config}
             - {name: backups, mountPath: /backups}
