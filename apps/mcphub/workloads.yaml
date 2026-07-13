@@ -189,6 +189,8 @@ spec:
       containers:
         - name: postgresql
           image: pgvector/pgvector:pg16
+          command: [sh, -ec]
+          args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_DB
