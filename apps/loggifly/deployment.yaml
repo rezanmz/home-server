@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: loggifly, namespace: monitoring}
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels: {app.kubernetes.io/name: loggifly}
   template:
