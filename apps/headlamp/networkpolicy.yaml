@@ -29,8 +29,8 @@ spec:
       ports:
         - {port: 6443, protocol: TCP}
     # Headlamp exchanges the OIDC authorization code with Authentik through the
-    # LAN Traefik address returned by the local DNS override.
+    # Pi's LAN Traefik address returned by Pi-hole's local DNS override.
     - to:
-        - ipBlock: {cidr: 192.168.1.240/32}
+        - ipBlock: {cidr: 192.168.1.2/32}
       ports:
         - {port: 443, protocol: TCP}

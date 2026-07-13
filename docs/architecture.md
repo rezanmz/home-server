@@ -115,9 +115,9 @@ required ingress and egress. Administrative routes use LAN/WireGuard allow
 lists. SOPS/age-encrypted Secret manifests are safe to store in the public
 repository; the private age identity remains root-only outside Git.
 
-The historical Glances hostname now serves Headlamp with read-only cluster and
-metrics permissions. It is available only from the LAN or WireGuard and requires
-an Authentik session. The historical Loggifly workload name now runs a
+Headlamp provides read-only cluster and metrics permissions at
+`headlamp.reza.network`. It is available only from the LAN or WireGuard and
+requires an Authentik session. The historical Loggifly workload name now runs a
 Kubernetes event exporter that delivers warning events to Telegram. AnythingLLM
 and the Gemini Telegram bot are deliberately not part of the production
 cluster.

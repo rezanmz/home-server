@@ -42,6 +42,29 @@ spec:
               value: "8181"
             - name: FTLCONF_webserver_domain
               value: pihole.reza.network
+            # Keep private service traffic on the LAN Traefik address. This is
+            # also the OIDC path Headlamp uses to exchange its login code.
+            - name: FTLCONF_dns_hosts
+              value: |-
+                192.168.1.2 auth.reza.network
+                192.168.1.2 budget.reza.network
+                192.168.1.2 chat.reza.network
+                192.168.1.2 duplicati.reza.network
+                192.168.1.2 headlamp.reza.network
+                192.168.1.2 homepage.reza.network
+                192.168.1.2 jellyfin.reza.network
+                192.168.1.2 jellyseerr.reza.network
+                192.168.1.2 library.reza.network
+                192.168.1.2 mcphub.reza.network
+                192.168.1.2 pihole.reza.network
+                192.168.1.2 prowlarr.reza.network
+                192.168.1.2 qbittorrent.reza.network
+                192.168.1.2 radarr.reza.network
+                192.168.1.2 shelfmark.reza.network
+                192.168.1.2 sonarr.reza.network
+                192.168.1.2 speedtest.reza.network
+                192.168.1.2 syncthing.reza.network
+                192.168.1.2 vpn.reza.network
           ports:
             - name: dns-tcp
               containerPort: 53
