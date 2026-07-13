@@ -1,0 +1,10 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: sonarr, namespace: media}
+spec:
+  parentRefs:
+    - {name: home, namespace: traefik}
+  hostnames: [sonarr.reza.network]
+  rules:
+    - backendRefs:
+        - {name: sonarr-access, port: 80}

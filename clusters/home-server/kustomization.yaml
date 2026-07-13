@@ -16,3 +16,10 @@ resources:
   - ../../apps/mcphub
   - ../../apps/open-webui
   - ../../apps/speedtest-tracker
+  - ../../apps/argilla
+  - ../../apps/calibre-web
+  - ../../apps/cloudflare-ddns
+  - ../../apps/downloads
+  - ../../apps/prowlarr
+  - ../../apps/radarr
+  - ../../apps/sonarr

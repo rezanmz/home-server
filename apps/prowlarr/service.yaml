@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata: {name: prowlarr, namespace: media}
+spec:
+  selector: {app.kubernetes.io/name: media-vpn}
+  ports:
+    - {name: http, port: 9696, targetPort: prowlarr}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: prowlarr-access, namespace: media}
+spec:
+  selector: {app.kubernetes.io/name: media-vpn}
+  ports:
+    - {name: http, port: 80, targetPort: pr-access}

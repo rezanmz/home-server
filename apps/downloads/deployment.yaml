@@ -1,0 +1,412 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: downloads
+  namespace: media
+  labels:
+    app.kubernetes.io/name: media-vpn
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: media-vpn
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: media-vpn
+        home-server.reza.network/internal-client: "true"
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      # Keep service-name URLs in the migrated application databases working.
+      # These names all resolved to Gluetun's shared namespace in Docker.
+      hostAliases:
+        - ip: 127.0.0.1
+          hostnames:
+            - gluetun
+            - qbittorrent
+            - flaresolverr
+            - prowlarr
+            - radarr
+            - sonarr
+            - shelfmark
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Native sidecar: every application container below shares this network
+        # namespace, preserving the old Docker `network_mode: container:gluetun`
+        # topology and a single Proton WireGuard session/forwarded port.
+        - name: gluetun
+          image: qmcgaw/gluetun:v3.41.1
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          env:
+            - {name: VPN_SERVICE_PROVIDER, value: protonvpn}
+            - {name: VPN_TYPE, value: wireguard}
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: media-vpn
+                  key: wireguard-private-key
+            - {name: PORT_FORWARD_ONLY, value: "on"}
+            - {name: VPN_PORT_FORWARDING, value: "on"}
+            - name: VPN_PORT_FORWARDING_UP_COMMAND
+              value: >-
+                /bin/sh -c 'wget -O- -nv --retry-connrefused --post-data
+                "json={\"listen_port\":{{PORT}},\"random_port\":false,\"upnp\":false}"
+                http://127.0.0.1:8080/api/v2/app/setPreferences'
+            - name: VPN_PORT_FORWARDING_DOWN_COMMAND
+              value: >-
+                /bin/sh -c 'wget -O- -nv --retry-connrefused --post-data
+                "json={\"listen_port\":0}"
+                http://127.0.0.1:8080/api/v2/app/setPreferences'
+            - {name: TZ, value: America/Toronto}
+            - {name: DNS_UPSTREAM_RESOLVER_TYPE, value: doh}
+            - {name: DNS_UPSTREAM_RESOLVERS, value: "cloudflare,google"}
+            - name: FIREWALL_INPUT_PORTS
+              value: |
+                7878,8080,8084,8191,8989,9696,17878,18080,18084,18989,19696
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "10.42.0.0/16,10.43.0.0/16,192.168.1.0/24"
+          startupProbe:
+            exec:
+              command: [wget, -qO-, http://127.0.0.1:8000/v1/vpn/status]
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            exec:
+              command: [wget, -qO-, http://127.0.0.1:8000/v1/vpn/status]
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, DAC_OVERRIDE, NET_ADMIN, NET_BIND_SERVICE, NET_RAW, SETGID, SETUID]
+          volumeMounts:
+            - {name: dev-net-tun, mountPath: /dev/net/tun}
+            - {name: gluetun-config, mountPath: /gluetun}
+      containers:
+        - name: qbittorrent
+          image: linuxserver/qbittorrent:5.2.3_v2.0.13-ls466
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PUID, value: "1000"}
+            - {name: PGID, value: "1000"}
+            - {name: TZ, value: America/Toronto}
+            - {name: WEBUI_PORT, value: "8080"}
+          ports:
+            - {name: qbittorrent, containerPort: 8080, protocol: TCP}
+          startupProbe:
+            exec:
+              command: [curl, -fsS, http://127.0.0.1:8080/]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec:
+              command: [curl, -fsS, http://127.0.0.1:8080/]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: [curl, -fsS, http://127.0.0.1:8080/]
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - {name: qbittorrent-config, mountPath: /config}
+            - {name: media-library, mountPath: /media}
+        - name: flaresolverr
+          image: flaresolverr/flaresolverr:v3.5.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: LOG_LEVEL, value: info}
+            - {name: TZ, value: America/Toronto}
+          ports:
+            - {name: flaresolverr, containerPort: 8191, protocol: TCP}
+          readinessProbe:
+            exec:
+              command: [curl, -fsS, http://127.0.0.1:8191/health]
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: [curl, -fsS, http://127.0.0.1:8191/health]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+        - name: prowlarr
+          image: linuxserver/prowlarr:2.5.1-develop
+          imagePullPolicy: IfNotPresent
+          env: &linuxserver-env
+            - {name: PUID, value: "1000"}
+            - {name: PGID, value: "1000"}
+            - {name: TZ, value: America/Toronto}
+          ports:
+            - {name: prowlarr, containerPort: 9696, protocol: TCP}
+          startupProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:9696/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:9696/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:9696/ping]}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          securityContext: {allowPrivilegeEscalation: false}
+          volumeMounts:
+            - {name: prowlarr-config, mountPath: /config}
+        - name: radarr
+          image: linuxserver/radarr:6.2.1.10461-ls308
+          imagePullPolicy: IfNotPresent
+          env: *linuxserver-env
+          ports:
+            - {name: radarr, containerPort: 7878, protocol: TCP}
+          startupProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:7878/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:7878/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:7878/ping]}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext: {allowPrivilegeEscalation: false}
+          volumeMounts:
+            - {name: radarr-config, mountPath: /config}
+            - {name: media-library, mountPath: /media}
+        - name: sonarr
+          image: linuxserver/sonarr:4.0.19.2979-ls317
+          imagePullPolicy: IfNotPresent
+          env: *linuxserver-env
+          ports:
+            - {name: sonarr, containerPort: 8989, protocol: TCP}
+          startupProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8989/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8989/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8989/ping]}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext: {allowPrivilegeEscalation: false}
+          volumeMounts:
+            - {name: sonarr-config, mountPath: /config}
+            - {name: media-library, mountPath: /media}
+        - name: shelfmark
+          image: ghcr.io/calibrain/shelfmark:v1.3.2
+          imagePullPolicy: IfNotPresent
+          env: *linuxserver-env
+          ports:
+            - {name: shelfmark, containerPort: 8084, protocol: TCP}
+          startupProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8084/api/health]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8084/api/health]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8084/api/health]}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          securityContext: {allowPrivilegeEscalation: false}
+          volumeMounts:
+            - {name: shelfmark-config, mountPath: /config}
+            - {name: calibre-web-ingest, mountPath: /books}
+            - {name: media-downloads, mountPath: /media/downloads}
+        - &access-proxy
+          name: qbittorrent-access-proxy
+          image: nginx:1.27.4-alpine
+          imagePullPolicy: IfNotPresent
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: qb-access, containerPort: 18080, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext: &access-proxy-security
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: qb-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: qb-nginx-tmp, mountPath: /tmp}
+            - {name: qb-nginx-cache, mountPath: /var/cache/nginx}
+        - <<: *access-proxy
+          name: prowlarr-access-proxy
+          ports:
+            - {name: pr-access, containerPort: 19696, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          volumeMounts:
+            - {name: pr-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: pr-nginx-tmp, mountPath: /tmp}
+            - {name: pr-nginx-cache, mountPath: /var/cache/nginx}
+        - <<: *access-proxy
+          name: radarr-access-proxy
+          ports:
+            - {name: ra-access, containerPort: 17878, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          volumeMounts:
+            - {name: ra-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: ra-nginx-tmp, mountPath: /tmp}
+            - {name: ra-nginx-cache, mountPath: /var/cache/nginx}
+        - <<: *access-proxy
+          name: sonarr-access-proxy
+          ports:
+            - {name: so-access, containerPort: 18989, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          volumeMounts:
+            - {name: so-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: so-nginx-tmp, mountPath: /tmp}
+            - {name: so-nginx-cache, mountPath: /var/cache/nginx}
+        - <<: *access-proxy
+          name: shelfmark-access-proxy
+          ports:
+            - {name: sh-access, containerPort: 18084, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          volumeMounts:
+            - {name: sh-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: sh-nginx-tmp, mountPath: /tmp}
+            - {name: sh-nginx-cache, mountPath: /var/cache/nginx}
+      volumes:
+        - name: dev-net-tun
+          hostPath: {path: /dev/net/tun, type: CharDevice}
+        - name: gluetun-config
+          persistentVolumeClaim: {claimName: gluetun-config}
+        - name: qbittorrent-config
+          persistentVolumeClaim: {claimName: qbittorrent-config}
+        - name: prowlarr-config
+          persistentVolumeClaim: {claimName: prowlarr-config}
+        - name: radarr-config
+          persistentVolumeClaim: {claimName: radarr-config}
+        - name: sonarr-config
+          persistentVolumeClaim: {claimName: sonarr-config}
+        - name: shelfmark-config
+          persistentVolumeClaim: {claimName: shelfmark-config}
+        - name: calibre-web-ingest
+          persistentVolumeClaim: {claimName: calibre-web-ingest}
+        - name: media-library
+          persistentVolumeClaim: {claimName: media-library}
+        - name: media-downloads
+          persistentVolumeClaim: {claimName: media-downloads}
+        - name: qb-access-config
+          configMap: {name: qbittorrent-access-proxy}
+        - name: pr-access-config
+          configMap: {name: prowlarr-access-proxy}
+        - name: ra-access-config
+          configMap: {name: radarr-access-proxy}
+        - name: so-access-config
+          configMap: {name: sonarr-access-proxy}
+        - name: sh-access-config
+          configMap: {name: shelfmark-access-proxy}
+        - {name: qb-nginx-tmp, emptyDir: {}}
+        - {name: qb-nginx-cache, emptyDir: {}}
+        - {name: pr-nginx-tmp, emptyDir: {}}
+        - {name: pr-nginx-cache, emptyDir: {}}
+        - {name: ra-nginx-tmp, emptyDir: {}}
+        - {name: ra-nginx-cache, emptyDir: {}}
+        - {name: so-nginx-tmp, emptyDir: {}}
+        - {name: so-nginx-cache, emptyDir: {}}
+        - {name: sh-nginx-tmp, emptyDir: {}}
+        - {name: sh-nginx-cache, emptyDir: {}}

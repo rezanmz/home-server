@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: calibre-web, namespace: media}
+spec:
+  replicas: 0
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: calibre-web}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: calibre-web
+        home-server.reza.network/internal-client: "true"
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: calibre-web
+          image: crocodilestick/calibre-web-automated:v4.0.6
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PUID, value: "1000"}
+            - {name: PGID, value: "1000"}
+            - {name: TZ, value: America/Toronto}
+          ports:
+            - {name: http, containerPort: 8083}
+          startupProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8083/]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18
+          readinessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8083/]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8083/]}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {cpu: 500m, memory: 384Mi}
+          securityContext: {allowPrivilegeEscalation: false}
+          volumeMounts:
+            - {name: config, mountPath: /config}
+            - {name: books, mountPath: /calibre-library}
+            - {name: ingest, mountPath: /cwa-book-ingest}
+      volumes:
+        - name: config
+          persistentVolumeClaim: {claimName: calibre-web-config}
+        - name: books
+          persistentVolumeClaim: {claimName: media-books}
+        - name: ingest
+          persistentVolumeClaim: {claimName: calibre-web-ingest}
