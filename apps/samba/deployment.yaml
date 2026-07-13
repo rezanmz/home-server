@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: samba
 spec:
-  # Cut over only after the Pi Compose container releases ports 137-139/445.
+  # The K3s pod owns ports 137-139/445 on the Pi.
   replicas: 1
   strategy:
     type: Recreate

@@ -74,10 +74,8 @@ kubectl kustomize clusters/home-server >/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
 ```
 
-The old `services` tree is retained only as migration history and emergency
-configuration reference. It is not deployed, and changes there do not trigger
-a production rollout. New work belongs in the Kubernetes application and
-infrastructure manifests.
+The former Compose definitions have been removed. New work belongs in the
+Kubernetes application and infrastructure manifests.
 
 ## Repository layout
 
@@ -87,7 +85,6 @@ clusters/home-server/    Flux reconciliation entry point
 infrastructure/          K3s platform, storage, ingress, and host configuration
 scripts/                 host preparation, bootstrap, and migration helpers
 docs/                    architecture and operations documentation
-services/                retired Docker Compose definitions; reference only
 ```
 
 ## Access and security

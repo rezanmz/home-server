@@ -53,9 +53,9 @@ sudo k3s kubectl -n flux-system logs deployment/source-controller --tail=100
 sudo k3s kubectl -n flux-system logs deployment/kustomize-controller --tail=100
 ```
 
-The retired Compose definitions are not a deployment path. Do not restart the
-old Docker projects to work around a Kubernetes failure; diagnose or roll back
-the Git revision through Flux.
+Docker Compose is not a deployment path for this cluster. Do not restart old
+Docker projects to work around a Kubernetes failure; diagnose or roll back the
+Git revision through Flux.
 
 ## Ingress and TLS
 
@@ -208,8 +208,7 @@ volume health, and expect the services tied to the maintained node to be
 unavailable. Afterward, verify node readiness, Longhorn health, Flux readiness,
 network listeners, and a representative public route.
 
-AnythingLLM and the Gemini Telegram bot are intentionally absent. Do not restore
-their retired Compose projects during maintenance. Headlamp is served at
+AnythingLLM and the Gemini Telegram bot are intentionally absent. Headlamp is served at
 `headlamp.reza.network`; it requires both LAN/WireGuard access and an Authentik
 login. The
 `loggifly` workload is the Kubernetes event exporter; these

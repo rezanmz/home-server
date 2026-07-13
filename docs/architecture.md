@@ -8,7 +8,7 @@ from the cluster entry point. GitHub Actions validates configuration; it does
 not SSH into either node or run Docker Compose.
 
 The former Compose containers and SWAG reverse proxy are retired. Their
-definitions remain in the repository as historical migration reference only.
+definitions are no longer part of this repository.
 
 ## Nodes and failure domains
 

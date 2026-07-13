@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: pihole
 spec:
-  # Cut over only after Pi Compose DNS/DHCP is stopped and the config is restored.
+  # Pi-hole owns DNS/DHCP on the Pi; keep host-networking enabled.
   replicas: 1
   strategy:
     type: Recreate

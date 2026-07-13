@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: wg-easy
 spec:
-  # Start only after the Pi Compose container releases UDP/1234.
+  # The K3s pod owns UDP/1234 on the Pi.
   replicas: 1
   strategy:
     type: Recreate
