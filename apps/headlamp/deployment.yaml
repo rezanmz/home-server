@@ -11,6 +11,11 @@ spec:
     spec:
       serviceAccountName: headlamp
       automountServiceAccountToken: true
+      hostAliases:
+        # Keep the OIDC issuer URL stable while resolving it through the LAN
+        # Traefik VIP from inside the cluster (avoid WAN hairpinning).
+        - ip: 192.168.1.240
+          hostnames: [auth.reza.network]
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:
