@@ -58,6 +58,12 @@ use the Pi host network for LAN discovery. wg-easy is pinned to the Pi and maps
 the router-facing UDP port 1234 to its WireGuard listener. These constraints are
 physical requirements rather than general scheduling policy.
 
+Pi-hole's split-horizon overrides point HTTP hostnames at the Traefik VIP
+`192.168.1.240`, so application pod placement is independent of DNS. Pi-specific
+protocols such as SMB, NFS, DNS/DHCP, and WireGuard continue to use
+`192.168.1.2`. Jellyfin advertises its Traefik HTTPS hostname; its host network
+is retained only for LAN discovery and DLNA multicast.
+
 ## Workload placement
 
 Ordinary workloads are eligible for any node with a compatible image and enough
