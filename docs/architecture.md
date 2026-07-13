@@ -85,8 +85,8 @@ Two storage mechanisms serve different data classes:
   default StorageClass uses two replicas, `Retain`, and
   `WaitForFirstConsumer`.
 - Static NFS volumes exported by the Pi store media, downloads, books, shared
-  Syncthing data, Duplicati repositories, and read-only access to the former
-  persistent-data tree.
+  Syncthing data, an optional local Duplicati repository tree, and read-only
+  access to the former persistent-data tree.
 
 The Pi NFS exports are the current authoritative shared storage. No independent
 NAS is planned at present. This is an accepted single point of failure: the two
@@ -96,8 +96,10 @@ not make the K3s control plane or Pi-hosted NFS data highly available.
 The pre-migration rollback snapshot at
 `/srv/home-server-backups/pre-k3s-20260712` on the Beelink contains a copy of the
 Pi application-state tree and consistency-safe PostgreSQL dumps. It is a local
-recovery set, not an off-site backup. Duplicati continues to write encrypted
-backup archives to its Pi-hosted NFS repository.
+recovery set, not an off-site backup. Duplicati writes encrypted backup archives
+to Backblaze B2. Because it is pinned to the Pi, its source is a read-only host
+path; this lets the backup process traverse application-owned directories
+without weakening NFS root-squashing for the rest of the cluster.
 
 ## Application boundaries
 

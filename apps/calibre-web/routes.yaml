@@ -17,5 +17,11 @@ spec:
     - {name: home, namespace: traefik}
   hostnames: [shelfmark.reza.network]
   rules:
-    - backendRefs:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+      backendRefs:
         - {name: shelfmark-access, port: 80}

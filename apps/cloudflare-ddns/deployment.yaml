@@ -45,7 +45,9 @@ spec:
             - {name: QUIET, value: "false"}
             - {name: DELETE_ON_STOP, value: "false"}
             - {name: IP4_PROVIDER, value: cloudflare.trace}
-            - {name: IP6_PROVIDER, value: cloudflare.trace}
+            # This network has no routed IPv6; disable the otherwise noisy
+            # five-minute IPv6 detection attempt.
+            - {name: IP6_PROVIDER, value: none}
             - {name: DETECTION_TIMEOUT, value: 5s}
             - {name: UPDATE_TIMEOUT, value: 30s}
             - {name: TTL, value: "1"}

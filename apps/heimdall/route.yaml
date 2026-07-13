@@ -10,6 +10,12 @@ spec:
   hostnames:
     - homepage.reza.network
   rules:
-    - backendRefs:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+      backendRefs:
         - name: heimdall
           port: 80

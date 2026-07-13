@@ -72,12 +72,21 @@ spec:
       volumes:
         - name: config
           persistentVolumeClaim: {claimName: duplicati-config}
+        # Duplicati is deliberately pinned to the Pi. Host paths let its root
+        # process traverse application-owned state without weakening the Pi's
+        # NFS root-squash policy for every workload on both cluster nodes.
         - name: backups
-          persistentVolumeClaim: {claimName: duplicati-backups}
+          hostPath:
+            path: /home/reza/persistent/duplicati/backups
+            type: Directory
         - name: source
-          persistentVolumeClaim: {claimName: legacy-persistent}
+          hostPath:
+            path: /home/reza/persistent
+            type: Directory
         - name: media
-          persistentVolumeClaim: {claimName: media-library}
+          hostPath:
+            path: /home/reza/media
+            type: Directory
         - name: proxy-config
           configMap: {name: duplicati-access-proxy}
         - {name: nginx-tmp, emptyDir: {}}

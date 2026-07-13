@@ -151,9 +151,15 @@ The local pre-migration recovery set is on the Beelink:
 └── SHA256SUMS
 ```
 
-This set and the age identities are not off-site backups. Duplicati repositories
-also reside on the Pi, so copy critical recovery material to independent media
-when off-site or machine-independent recovery is required.
+This set and the age identities are not off-site backups. Duplicati sends its
+encrypted repository to Backblaze B2, but restore credentials and the SOPS age
+identities still need an independent recovery copy.
+
+Duplicati runs as root so it can read application-owned state. It is pinned to
+the Pi and uses a read-only host path for `/home/reza/persistent`; routing this
+source through the root-squashed NFS PersistentVolume silently excludes
+protected directories. Check the newest Duplicati result for permission
+warnings after any storage or identity change.
 
 ## Media VPN checks
 

@@ -26,6 +26,11 @@ spec:
           extensionRef:
             group: traefik.io
             kind: Middleware
+            name: custom-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
             name: syncthing-lan-only
       backendRefs:
         - name: syncthing

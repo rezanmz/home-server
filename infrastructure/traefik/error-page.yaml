@@ -1,0 +1,506 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: error-pages
+  namespace: traefik
+data:
+  nginx.conf: |
+    pid /tmp/nginx.pid;
+    events {}
+    http {
+      access_log /dev/stdout;
+      error_log /dev/stderr warn;
+      server {
+        listen 8080;
+        location = /403.html {
+          root /usr/share/nginx/html;
+        }
+      }
+    }
+  403.html: |-
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>403 — Nope.</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+            *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+            html { height: 100%; }
+    
+            body {
+                min-height: 100%;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: #0f0f13;
+                color: #e4e4e7;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+    
+            .page {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                position: relative;
+                padding: 2rem 1.5rem;
+                text-align: center;
+            }
+    
+            .page::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background:
+                    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(239, 68, 68, 0.07) 0%, transparent 70%),
+                    radial-gradient(ellipse 50% 60% at 80% 70%, rgba(168, 85, 247, 0.07) 0%, transparent 70%);
+                animation: bgPulse 8s ease-in-out infinite alternate;
+                z-index: 0;
+                pointer-events: none;
+            }
+    
+            @keyframes bgPulse {
+                0% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+    
+            .content {
+                position: relative;
+                z-index: 1;
+                max-width: 520px;
+                width: 100%;
+            }
+    
+            /* Door animation */
+            .door-container {
+                position: relative;
+                width: 100px;
+                height: 120px;
+                margin: 0 auto 1.5rem;
+                perspective: 400px;
+            }
+    
+            .door-frame {
+                width: 100%;
+                height: 100%;
+                border: 3px solid #27272a;
+                border-radius: 8px 8px 0 0;
+                position: relative;
+                overflow: hidden;
+                background: #18181b;
+            }
+    
+            .door {
+                position: absolute;
+                inset: 3px;
+                background: linear-gradient(135deg, #1e1e24, #27272a);
+                border-radius: 4px 4px 0 0;
+                transform-origin: left center;
+                animation: doorSlam 3s ease-in-out infinite;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+    
+            .door-knob {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #ef4444;
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+            }
+    
+            .door-sign {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 0.5rem;
+                color: #ef4444;
+                font-weight: 700;
+                letter-spacing: 0.1em;
+                transform: rotate(0deg);
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+    
+            @keyframes doorSlam {
+                0%, 100% { transform: rotateY(0deg); }
+                15% { transform: rotateY(-80deg); }
+                25% { transform: rotateY(-80deg); }
+                40% { transform: rotateY(0deg); }
+                42% { transform: rotateY(-5deg); }
+                44% { transform: rotateY(0deg); }
+            }
+    
+            /* Peep eyes that show when door opens */
+            .peep-eyes {
+                position: absolute;
+                top: 40%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                gap: 12px;
+                opacity: 0;
+                animation: peepShow 3s ease-in-out infinite;
+            }
+    
+            .eye {
+                width: 10px;
+                height: 10px;
+                background: #ef4444;
+                border-radius: 50%;
+                position: relative;
+                box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+            }
+    
+            .eye::after {
+                content: '';
+                position: absolute;
+                width: 4px;
+                height: 4px;
+                background: #0f0f13;
+                border-radius: 50%;
+                top: 3px;
+                left: 3px;
+                animation: eyeLook 3s ease-in-out infinite;
+            }
+    
+            @keyframes peepShow {
+                0%, 12% { opacity: 0; }
+                18%, 35% { opacity: 1; }
+                40%, 100% { opacity: 0; }
+            }
+    
+            @keyframes eyeLook {
+                0%, 18% { transform: translateX(0); }
+                22% { transform: translateX(3px); }
+                26% { transform: translateX(-2px); }
+                30%, 100% { transform: translateX(0); }
+            }
+    
+            .error-code {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: clamp(5rem, 16vw, 10rem);
+                font-weight: 700;
+                line-height: 1;
+                background: linear-gradient(135deg, #ef4444 0%, #a855f7 50%, #6366f1 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                filter: drop-shadow(0 0 40px rgba(239, 68, 68, 0.2));
+                user-select: none;
+                margin-bottom: 0.25rem;
+            }
+    
+            .subtitle {
+                font-size: 1rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.25em;
+                color: #71717a;
+                margin-bottom: 1.75rem;
+            }
+    
+            .message {
+                font-size: 1.05rem;
+                line-height: 1.7;
+                color: #a1a1aa;
+                margin-bottom: 1.75rem;
+            }
+    
+            .message strong {
+                color: #e4e4e7;
+                font-weight: 600;
+            }
+    
+            /* Rejection reasons */
+            .reasons {
+                background: #18181b;
+                border: 1px solid #27272a;
+                border-radius: 12px;
+                padding: 1.25rem 1.5rem;
+                text-align: left;
+                margin-bottom: 1.75rem;
+                width: 100%;
+            }
+    
+            .reasons-title {
+                font-size: 0.7rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                color: #52525b;
+                margin-bottom: 0.75rem;
+            }
+    
+            .reason {
+                display: flex;
+                align-items: flex-start;
+                gap: 0.6rem;
+                padding: 0.4rem 0;
+                font-size: 0.85rem;
+                color: #71717a;
+                line-height: 1.5;
+            }
+    
+            .reason-icon {
+                flex-shrink: 0;
+                margin-top: 2px;
+            }
+    
+            .reason-icon.fail { color: #ef4444; }
+    
+            /* Quip */
+            .quip-container {
+                margin-bottom: 1rem;
+            }
+    
+            .quip {
+                font-size: 0.85rem;
+                color: #a855f7;
+                font-style: italic;
+                line-height: 1.6;
+                min-height: 1.6em;
+            }
+    
+            .quip-refresh {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                margin-top: 0.75rem;
+                padding: 0.4rem 0.85rem;
+                font-family: 'Inter', sans-serif;
+                font-size: 0.7rem;
+                font-weight: 600;
+                color: #52525b;
+                background: transparent;
+                border: 1px solid #27272a;
+                border-radius: 6px;
+                cursor: pointer;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                transition: all 0.2s ease;
+            }
+    
+            .quip-refresh:hover {
+                border-color: #a855f7;
+                color: #a855f7;
+            }
+    
+            .quip-refresh:active {
+                transform: scale(0.96);
+            }
+    
+            .quip-refresh svg {
+                width: 12px;
+                height: 12px;
+                transition: transform 0.3s ease;
+            }
+    
+            .quip-refresh:hover svg {
+                transform: rotate(180deg);
+            }
+    
+            .divider {
+                width: 48px;
+                height: 2px;
+                background: linear-gradient(90deg, #ef4444, #a855f7);
+                border: none;
+                border-radius: 1px;
+                margin: 0 auto 1.5rem;
+                opacity: 0.4;
+            }
+    
+            .footer-note {
+                font-size: 0.75rem;
+                color: #3f3f46;
+            }
+    
+            /* Responsive */
+            @media (max-width: 480px) {
+                .page { padding: 1.5rem 1.25rem; }
+                .door-container { width: 80px; height: 96px; margin-bottom: 1.25rem; }
+                .subtitle { font-size: 0.85rem; letter-spacing: 0.15em; margin-bottom: 1.5rem; }
+                .message { font-size: 0.95rem; margin-bottom: 1.5rem; }
+                .reasons { padding: 1rem 1.15rem; }
+                .reason { font-size: 0.8rem; }
+            }
+        </style>
+    </head>
+    <body>
+    
+        <div class="page">
+            <div class="content">
+    
+                <div class="door-container">
+                    <div class="door-frame">
+                        <div class="peep-eyes">
+                            <div class="eye"></div>
+                            <div class="eye"></div>
+                        </div>
+                        <div class="door">
+                            <div class="door-sign">NOPE</div>
+                            <div class="door-knob"></div>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="error-code">403</div>
+                <div class="subtitle">Access Denied</div>
+    
+                <p class="message">
+                    Someone peeked through the door, saw it was <strong>you</strong>,
+                    and decided not to answer.
+                </p>
+    
+                <div class="reasons">
+                    <div class="reasons-title">Why you can't come in</div>
+                    <div class="reason">
+                        <span class="reason-icon fail">✗</span>
+                        <span>You weren't on the guest list</span>
+                    </div>
+                    <div class="reason">
+                        <span class="reason-icon fail">✗</span>
+                        <span>The bouncer doesn't recognize you</span>
+                    </div>
+                    <div class="reason">
+                        <span class="reason-icon fail">✗</span>
+                        <span>You forgot the secret handshake</span>
+                    </div>
+                    <div class="reason">
+                        <span class="reason-icon fail">✗</span>
+                        <span>The server is pretending nobody's home</span>
+                    </div>
+                </div>
+    
+                <div class="quip-container">
+                    <p class="quip" id="quip"></p>
+                    <button class="quip-refresh" id="refresh-btn" aria-label="New quip">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                        Another one
+                    </button>
+                </div>
+    
+                <hr class="divider">
+    
+                <p class="footer-note">
+                    Nothing to see here. Go get some coffee or something.
+                </p>
+            </div>
+        </div>
+    
+        <!-- Quips are injected at deploy time from quips.json by pre-deploy.sh.
+             This script tag is separate so a parse error from the placeholder
+             doesn't break the main logic below. -->
+        <script>window.quips = %%QUIPS_JSON%%;</script>
+    
+        <script>
+            // Fallback if quips weren't injected (e.g. local testing)
+            const quips = window.quips || [
+                "The door is locked. The key is a metaphor. You don't have the metaphor.",
+                "Error 403: your vibes were checked and found insufficient.",
+                "I'd let you in, but I literally can't. I'm HTML.",
+                "On the bright side, at least it's not a 500.",
+            ];
+    
+            let lastIndex = -1;
+    
+            function showQuip() {
+                let index;
+                do {
+                    index = Math.floor(Math.random() * quips.length);
+                } while (index === lastIndex && quips.length > 1);
+                lastIndex = index;
+    
+                const el = document.getElementById('quip');
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(4px)';
+                setTimeout(() => {
+                    el.textContent = quips[index];
+                    el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, 150);
+            }
+    
+            showQuip();
+            document.getElementById('refresh-btn').addEventListener('click', showQuip);
+        </script>
+    
+    </body>
+    </html>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: error-pages
+  namespace: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: error-pages
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: error-pages
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: nginx:1.27.4-alpine
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: {path: /403.html, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /403.html, port: http}
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: config, mountPath: /usr/share/nginx/html/403.html, subPath: 403.html, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+            - {name: cache, mountPath: /var/cache/nginx}
+      volumes:
+        - name: config
+          configMap: {name: error-pages}
+        - {name: tmp, emptyDir: {}}
+        - {name: cache, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: error-pages
+  namespace: traefik
+spec:
+  selector:
+    app.kubernetes.io/name: error-pages
+  ports:
+    - {name: http, port: 80, targetPort: http}

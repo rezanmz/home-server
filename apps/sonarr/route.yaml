@@ -6,5 +6,11 @@ spec:
     - {name: home, namespace: traefik}
   hostnames: [sonarr.reza.network]
   rules:
-    - backendRefs:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+      backendRefs:
         - {name: sonarr-access, port: 80}

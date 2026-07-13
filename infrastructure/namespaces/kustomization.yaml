@@ -3,3 +3,5 @@ kind: Kustomization
 resources:
   - namespaces.yaml
   - apps-default-deny.yaml
+  - operational-default-deny.yaml
+  - error-page-middlewares.yaml
