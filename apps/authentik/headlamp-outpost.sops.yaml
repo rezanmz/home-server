@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: authentik-headlamp-outpost
+    namespace: apps
+type: Opaque
+stringData:
+    token: ENC[AES256_GCM,data:WybX1wZkctHadEZad0k5YkpSktg3RQDmxW9avhDwxeE4BfdYBkB8HWcaJksFxZCTXJSk2kD+4lwVwF7p,iv:38ezfjMsezC8sZa+OmRKR8lH9NDzcCvYTVX2cPQjTJk=,tag:Lfd0dzP9dwi2ed2xPsULWg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhWldWZllVb2NneWhTeFZM
+            WG5sUjRsUldKeTVTWEI1aHRseFQvcDVEWFNVCjNzUVFxZXBtQWNWQTVZSkhHRGhD
+            NXFucmxIM2pnU1d4V3JZbzc3RkNLS3cKLS0tIHhZK2w1ejF3MG1ENjV3QkRrWWJj
+            WVI2YTZST1RWTnlzZDUvSml5WHd4NzAKe+im1sfwci/oNQbxT4Fci/GTLJ+B2e3y
+            L+JX2LJFX96ED66HjDMbue52RtSaBiXO7+muzskDDPAJIR1H8UcqfQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age10qatpp7y6rrl248n739dsnh622jcncx49e4vnrusvdgx0un0t4uqpk40m5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-13T11:59:47Z"
+    mac: ENC[AES256_GCM,data:jVnv/y8lSWxs7UXcg+BbEHLKdu36rDm5Y+5vchbH3vYWbvjDIDRumOgNYbjc8cMclY8cY/BC4bSMX5YD+eWFHwRuRdXiyvMMWlyPwOUSG+Csm8uEPbCli8j9YHSYRdGXdYmGjkz+Ig7JtL1F7wxljxQJe+4DZWr4zvn/PBg2Uq0=,iv:Vv9KE3Zd/m5mBhVN5OPNlOd4lVIYYZwL3VfAUhQbiB0=,tag:MOtf9EkPjOx+i1CTglAxtQ==,type:str]
+    version: 3.13.2

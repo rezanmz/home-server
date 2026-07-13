@@ -8,3 +8,5 @@ resources:
   - networkpolicy.yaml
   - route.yaml
   - headlamp-referencegrant.yaml
+  - headlamp-outpost.sops.yaml
+  - headlamp-outpost.yaml
