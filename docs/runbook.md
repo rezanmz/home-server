@@ -236,8 +236,10 @@ wg-easy also masquerades VPN clients when forwarding them to the cluster. As a
 result, Traefik and the application-side access proxies see `10.42.1.0/24`, the
 Pi node's fixed pod CIDR, instead of `10.8.0.0/24`. The administrative route
 allow-lists intentionally contain exactly that Pi CIDR. Treat every pod on the
-Pi as trusted for those routes, keep sensitive workloads off that node unless
-they need its hardware/network role, and never replace the exception with the
+Pi as trusted for those routes. Keeping unrelated sensitive workloads off that
+node is currently an operator preference, not an enforced invariant: the Pi is
+untainted and floating workloads can schedule there. Pin or taint explicitly if
+placement is a security requirement, and never replace the exception with the
 cluster-wide `10.42.0.0/16`. The CI high-risk baseline should fail if a new
 pod-CIDR exception is added without review.
 
@@ -271,12 +273,12 @@ sudo k3s kubectl -n longhorn-system logs deployment/csi-snapshotter \
 The last command should produce no output. CSI snapshots remain local Longhorn
 state and do not replace an authenticated off-cluster BackupTarget. Use the
 `longhorn-snapshot` VolumeSnapshotClass. Longhorn 1.12's exact local snapshot
-parameter is `type: snap`; omitting it requests a remote backup, which fails
-while no BackupTarget is configured.
+parameter is `type: snap`; omitting it requests a remote backup instead of the
+intended local snapshot and therefore consumes the configured B2 target.
 
 Large and shared data remains on NFS exported by the Pi. Check the server and
-exports directly when media, downloads, books, Syncthing data, or backups all
-fail at once:
+exports directly when multiple NFS-backed workloads or the Syncthing file-level
+backup fail at once:
 
 ```bash
 ssh pi 'systemctl is-active nfs-server && sudo exportfs -v'
