@@ -11,6 +11,7 @@ resources:
   - ../../infrastructure/cert-manager
   - ../../infrastructure/nfs-media
   - ../../apps/heimdall
+  - ../../apps/home-assistant
   - ../../apps/actual-budget
   - ../../apps/authentik
   - ../../apps/jellyseerr

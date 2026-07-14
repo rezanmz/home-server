@@ -113,6 +113,11 @@ Singleton applications and databases stay at one replica even though their
 volumes are replicated. Storage replication is not application-level
 clustering.
 
+Home Assistant is a security-placement exception to ordinary floating apps. It
+is pinned to the Beelink and begins with no LAN egress so third-party integration
+code cannot inherit the Pi node's access to trusted NFS exports. LAN devices are
+opened individually by address, protocol, and port as integrations are approved.
+
 ## Storage
 
 Two storage mechanisms serve different data classes:
@@ -243,7 +248,7 @@ foreign repository objects as unsupported.
 
 Applications are separated into four operational namespaces:
 
-- `apps` for identity, personal, and general web applications;
+- `apps` for identity, personal, home-automation, and general web applications;
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
 - `network-services` for Pi-hole, WireGuard, Samba, Syncthing, and backups;
 - `monitoring` for Headlamp and Kubernetes event export.

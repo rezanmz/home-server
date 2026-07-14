@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-bootstrap
+  namespace: apps
+data:
+  configuration.yaml: |
+    # This file is copied to /config only for a new, empty Home Assistant PVC.
+    # After first boot it is application state and may be edited normally.
+    default_config:
+
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+
+    http:
+      use_x_forwarded_for: true
+      # The colocated nginx proxy reaches Home Assistant over pod loopback.
+      # Do not broaden this to a pod or LAN CIDR: forwarded headers from any
+      # other immediate peer must remain untrusted.
+      trusted_proxies:
+        - 127.0.0.1
+      ip_ban_enabled: true
+      login_attempts_threshold: 5
+  automations.yaml: "[]\n"
+  scripts.yaml: ""
+  scenes.yaml: ""

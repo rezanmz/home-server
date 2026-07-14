@@ -82,7 +82,14 @@ spec:
       enabled: true
       format: json
       fields:
+        # Request paths can contain bearer credentials, including Home
+        # Assistant webhook IDs. Retain routing/status metadata without URLs.
+        names:
+          RequestLine: drop
+          RequestPath: drop
         headers:
+          defaultMode: drop
+        queryParameters:
           defaultMode: drop
     ports:
       web:

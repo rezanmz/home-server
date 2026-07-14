@@ -1,0 +1,181 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: home-assistant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: home-assistant
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: home-assistant
+      annotations:
+        # Change to "true" only after creating the durable owner marker. The
+        # value triggers the activation rollout but is not itself trusted.
+        home-assistant.reza.network/owner-onboarded: "false"
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 300
+      securityContext:
+        appArmorProfile:
+          type: RuntimeDefault
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      # Home Assistant executes third-party integrations and eventually needs
+      # selected LAN access. Keep it off the Pi, whose host exports trusted NFS
+      # data to node identities that Kubernetes policy cannot fully isolate.
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      initContainers:
+        - name: initialize-config
+          image: busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -ec
+            - |
+              # The Home Assistant image runs as UID 0 with all capabilities
+              # dropped, so it cannot bypass mode bits. Give the pod fsGroup
+              # read/write access without making configuration world-readable.
+              umask 007
+              mkdir -p /config/themes
+              for file in configuration.yaml automations.yaml scripts.yaml scenes.yaml; do
+                if [ ! -e "/config/${file}" ]; then
+                  cp "/bootstrap/${file}" "/config/${file}"
+                  chmod 0660 "/config/${file}"
+                fi
+              done
+
+              # Generate the sidecar's runtime configuration from durable data
+              # state. An empty/replaced PVC therefore stays fail-closed even
+              # if DNS and the HTTPRoute still exist from an earlier install.
+              if [ -f /config/.owner-onboarded ] && [ ! -L /config/.owner-onboarded ]; then
+                cp /proxy-source/nginx.conf /proxy-runtime/nginx.conf
+              else
+                cp /proxy-source/nginx-deny.conf /proxy-runtime/nginx.conf
+              fi
+              chmod 0640 /proxy-runtime/nginx.conf
+          resources:
+            requests: {cpu: 5m, memory: 8Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 50m, memory: 32Mi, ephemeral-storage: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /config}
+            - {name: bootstrap, mountPath: /bootstrap, readOnly: true}
+            - {name: access-proxy-config, mountPath: /proxy-source, readOnly: true}
+            - {name: nginx-runtime, mountPath: /proxy-runtime}
+      containers:
+        - name: home-assistant
+          image: ghcr.io/home-assistant/home-assistant:2026.7.2@sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: America/Toronto
+          ports:
+            - name: http
+              containerPort: 8123
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+              ephemeral-storage: 2Gi
+          startupProbe:
+            httpGet:
+              path: /manifest.json
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /manifest.json
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /manifest.json
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            # The official s6-based image has no non-root execution contract.
+            # Keep that root requirement explicit and remove its usual power.
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+        - name: access-proxy
+          image: nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1
+          imagePullPolicy: IfNotPresent
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - name: access-http
+              containerPort: 18123
+              protocol: TCP
+          readinessProbe:
+            tcpSocket: {port: access-http}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: access-http}
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 10m, memory: 16Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 128Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: nginx-runtime, mountPath: /etc/nginx, readOnly: true}
+            - {name: nginx-tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: home-assistant-config
+        - name: bootstrap
+          configMap:
+            name: home-assistant-bootstrap
+        - name: access-proxy-config
+          configMap:
+            name: home-assistant-access-proxy
+        - name: nginx-runtime
+          emptyDir:
+            sizeLimit: 1Mi
+        - name: nginx-tmp
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: nginx-cache
+          emptyDir:
+            sizeLimit: 64Mi

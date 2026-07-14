@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-config
+  namespace: apps
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Includes configuration, authentication state, the SQLite recorder,
+      # and temporary/local native backup archives under /config.
+      storage: 20Gi
+  storageClassName: longhorn
