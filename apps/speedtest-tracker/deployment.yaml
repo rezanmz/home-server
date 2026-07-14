@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: speedtest-tracker
-          image: lscr.io/linuxserver/speedtest-tracker:1.14.3
+          image: lscr.io/linuxserver/speedtest-tracker:1.14.3@sha256:226b39816ccb9bf6d07fa9735d8beed656699db4669209e92f7494f15ab3f113
           imagePullPolicy: IfNotPresent
           env:
             - name: PUID
@@ -87,7 +87,7 @@ spec:
             - name: config
               mountPath: /config
         - name: access-proxy
-          image: nginx:1.27.4-alpine
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
@@ -110,7 +110,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
-            - {name: access-proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: access-proxy-config, mountPath: /etc/nginx, readOnly: true}
             - {name: nginx-tmp, mountPath: /tmp}
             - {name: nginx-cache, mountPath: /var/cache/nginx}
       volumes:

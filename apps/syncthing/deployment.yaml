@@ -25,9 +25,15 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/hostname: raspberrypi
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: syncthing
-          image: lscr.io/linuxserver/syncthing:v2.1.1-ls221
+          image: lscr.io/linuxserver/syncthing:v2.1.1-ls221@sha256:550509c4e3753abc00071ac07e88b998c611add0aa7f71a2f15e1f719b5fa4fb
           imagePullPolicy: IfNotPresent
           env:
             - name: PUID
@@ -36,6 +42,16 @@ spec:
               value: "1000"
             - name: TZ
               value: America/Toronto
+          # LinuxServer's s6 wrapper forces the GUI onto 0.0.0.0. Run the
+          # Syncthing binary directly so the host-network GUI is reachable
+          # only by the colocated access proxy over TLS loopback.
+          command: [/usr/bin/syncthing, serve]
+          args:
+            - --home=/config
+            - --no-browser
+            - --no-restart
+            - --no-upgrade
+            - --gui-address=https://127.0.0.1:8384
           ports:
             - name: https
               containerPort: 8384
@@ -57,39 +73,38 @@ spec:
               cpu: 500m
               memory: 384Mi
           startupProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /rest/noauth/health
-              port: https
+            exec:
+              command: [curl, -kfsS, https://127.0.0.1:8384/rest/noauth/health]
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 24
           readinessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /rest/noauth/health
-              port: https
+            exec:
+              command: [curl, -kfsS, https://127.0.0.1:8384/rest/noauth/health]
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           livenessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /rest/noauth/health
-              port: https
+            exec:
+              command: [curl, -kfsS, https://127.0.0.1:8384/rest/noauth/health]
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
             allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
           volumeMounts:
             - name: config
               mountPath: /config
             - name: data
               mountPath: /data
         - name: access-proxy
-          image: nginx:1.27.4-alpine
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           command: [nginx, -g, "daemon off;"]
           ports:
             - {name: access-http, containerPort: 18384}
@@ -106,7 +121,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
-            - {name: proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: proxy-config, mountPath: /etc/nginx, readOnly: true}
             - {name: nginx-tmp, mountPath: /tmp}
             - {name: nginx-cache, mountPath: /var/cache/nginx}
       volumes:

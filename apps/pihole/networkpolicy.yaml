@@ -16,7 +16,7 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: traefik
       ports:
-        - port: 8181
+        - port: 18181
           protocol: TCP
     - from:
         - ipBlock:
@@ -28,8 +28,6 @@ spec:
           protocol: TCP
         - port: 53
           protocol: UDP
-        - port: 8181
-          protocol: TCP
     # DHCP discovery can originate from 0.0.0.0 before the client has an IP.
     - from:
         - ipBlock:

@@ -18,7 +18,7 @@ data:
         listen 15055;
         allow 192.168.1.0/24;
         allow 10.8.0.0/24;
-        allow 10.42.0.0/16;
+        allow 10.42.1.0/24; # wg-easy masqueraded clients on the Pi
         deny all;
         location / {
           proxy_pass http://127.0.0.1:5055;

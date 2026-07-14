@@ -9,10 +9,6 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: traefik}
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: media}
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: apps}
       ports:
         - {port: 8083, protocol: TCP}
   egress:

@@ -3,7 +3,13 @@ kind: Kustomization
 resources:
   - secrets.sops.yaml
   - pvc.yaml
+  - backend-mtls.yaml
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml
   - route.yaml
+configMapGenerator:
+  - name: pihole-access-proxy
+    namespace: network-services
+    files:
+      - nginx.conf

@@ -1,9 +1,15 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: OCIRepository
 metadata:
   name: metallb
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 12h
   timeout: 2m
-  url: https://metallb.github.io/metallb
+  url: oci://quay.io/metallb/chart/metallb
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    tag: 0.16.1
+    digest: sha256:814c5ef92f9354238eabe52d6313a64a0ccfe52e9b941b0319202960e36e483e

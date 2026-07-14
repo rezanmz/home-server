@@ -4,6 +4,10 @@ server: https://192.168.1.3:6443
 token-file: /etc/rancher/k3s/node-token
 node-name: raspberrypi
 node-ip: 192.168.1.2
+kubelet-arg:
+  # wg-easy needs these two network-namespace sysctls. Allow only the exact
+  # names so the pod can declare them without a privileged init container.
+  - allowed-unsafe-sysctls=net.ipv4.ip_forward,net.ipv4.conf.all.src_valid_mark
 node-label:
   - homelab.rezan.dev/cpu-arch=arm64
   - homelab.rezan.dev/storage=nvme

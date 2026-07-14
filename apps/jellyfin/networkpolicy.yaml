@@ -12,10 +12,11 @@ spec:
       ports:
         - {port: 18096, protocol: TCP}
     - from:
+        # Jellyseerr is the only workload that needs Jellyfin's raw API.
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: apps}
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: media}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: jellyseerr}
       ports:
         - {port: 8096, protocol: TCP}
   egress:

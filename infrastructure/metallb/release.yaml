@@ -6,15 +6,10 @@ metadata:
 spec:
   interval: 30m
   timeout: 10m
-  chart:
-    spec:
-      chart: metallb
-      version: 0.16.1
-      sourceRef:
-        kind: HelmRepository
-        name: metallb
-        namespace: flux-system
-      interval: 12h
+  chartRef:
+    kind: OCIRepository
+    name: metallb
+    namespace: flux-system
   install:
     remediation:
       retries: 3
@@ -23,6 +18,12 @@ spec:
       retries: 3
       strategy: rollback
   values:
+    controller:
+      image:
+        tag: v0.16.1@sha256:f51ab515de9ccd20dc3dccb093e48df8adddac019326c456f449e55ba91b6420
+    speaker:
+      image:
+        tag: v0.16.1@sha256:16561e96531e1852d5c229ad7fae6e994dcfa983ff7f4de6b6208b34a4e2ddbc
     # This home LAN uses ARP/NDP L2 advertisements only; no BGP daemon is
     # required on either node.
     frrk8s:

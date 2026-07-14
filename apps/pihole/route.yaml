@@ -8,8 +8,8 @@ spec:
     sourceRange:
       - 192.168.1.0/24
       - 10.8.0.0/24
-      # wg-easy is a pod, so VPN-to-LAN traffic is SNATed to the K3s pod CIDR.
-      - 10.42.0.0/16
+      # wg-easy masquerades VPN clients to the Pi's fixed node PodCIDR.
+      - 10.42.1.0/24
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -35,5 +35,6 @@ spec:
             kind: Middleware
             name: pihole-lan-only
       backendRefs:
-        - name: pihole
-          port: 8181
+        - group: traefik.io
+          kind: TraefikService
+          name: pihole-mtls

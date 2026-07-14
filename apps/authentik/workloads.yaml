@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: prepare-data
-          image: docker.io/library/postgres:16-alpine
+          image: docker.io/library/postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
           command:
             - sh
             - -ec
@@ -46,7 +46,7 @@ spec:
               mountPath: /state
       containers:
         - name: server
-          image: ghcr.io/goauthentik/server:2026.5.2
+          image: ghcr.io/goauthentik/server:2026.5.2@sha256:3ddf09bbf69ded6a9634ecd753a01608d477f811e99bb5ffe9fc2ef7ad1c6581
           imagePullPolicy: IfNotPresent
           args:
             - server
@@ -118,7 +118,7 @@ spec:
             - name: shared-memory
               mountPath: /dev/shm
         - name: worker
-          image: ghcr.io/goauthentik/server:2026.5.2
+          image: ghcr.io/goauthentik/server:2026.5.2@sha256:3ddf09bbf69ded6a9634ecd753a01608d477f811e99bb5ffe9fc2ef7ad1c6581
           imagePullPolicy: IfNotPresent
           args:
             - worker
@@ -247,7 +247,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgresql
-          image: docker.io/library/postgres:16-alpine
+          image: docker.io/library/postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
           command: [sh, -ec]
           args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
           imagePullPolicy: IfNotPresent

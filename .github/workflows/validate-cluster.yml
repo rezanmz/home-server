@@ -1,58 +1,167 @@
 name: Validate cluster configuration
 
 on:
+  workflow_dispatch:
   pull_request:
-    paths:
-      - .github/workflows/validate-cluster.yml
-      - .sops.yaml
-      - apps/**
-      - clusters/**
-      - infrastructure/**
-      - scripts/**
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/validate-cluster.yml
-      - .sops.yaml
-      - apps/**
-      - clusters/**
-      - infrastructure/**
-      - scripts/**
 
 permissions:
   contents: read
 
 concurrency:
-  group: cluster-validation-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
 
       - name: Install kubectl
         uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5
         with:
           version: v1.36.2
 
-      - name: Validate shell syntax
-        run: bash -n scripts/*.sh
+      - name: Install pinned validation tools
+        env:
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ACTIONLINT_VERSION: 1.7.12
+          KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+          KUBECONFORM_VERSION: v0.8.0
+          HELM_SHA256: 15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0
+          HELM_VERSION: v3.21.3
+          YQ_SHA256: fa52a4e758c63d38299163fbdd1edfb4c4963247918bf9c1c5d31d84789eded4
+          YQ_VERSION: v4.53.3
+        run: |
+          set -euo pipefail
+          tool_dir="${RUNNER_TEMP}/validation-tools"
+          mkdir -p "$tool_dir"
+
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --show-error --silent \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            --output "$tool_dir/actionlint.tar.gz"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$tool_dir/actionlint.tar.gz" \
+            | sha256sum --check --strict
+          tar -xzf "$tool_dir/actionlint.tar.gz" -C "$tool_dir" actionlint
+          chmod 0755 "$tool_dir/actionlint"
+
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --show-error --silent \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
+            --output "$tool_dir/yq"
+          printf '%s  %s\n' "$YQ_SHA256" "$tool_dir/yq" | sha256sum --check --strict
+          chmod 0755 "$tool_dir/yq"
+
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --show-error --silent \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            --output "$tool_dir/kubeconform.tar.gz"
+          printf '%s  %s\n' "$KUBECONFORM_SHA256" "$tool_dir/kubeconform.tar.gz" \
+            | sha256sum --check --strict
+          tar -xzf "$tool_dir/kubeconform.tar.gz" -C "$tool_dir" kubeconform
+          chmod 0755 "$tool_dir/kubeconform"
+
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --show-error --silent \
+            "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            --output "$tool_dir/helm.tar.gz"
+          printf '%s  %s\n' "$HELM_SHA256" "$tool_dir/helm.tar.gz" \
+            | sha256sum --check --strict
+          tar -xzf "$tool_dir/helm.tar.gz" -C "$tool_dir" --strip-components=1 linux-amd64/helm
+          chmod 0755 "$tool_dir/helm"
+
+          "$tool_dir/actionlint" --version
+          "$tool_dir/helm" version --short
+          "$tool_dir/yq" --version
+          "$tool_dir/kubeconform" -v
+          printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
+
+      - name: Validate helper syntax
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/python-cache
+        run: |
+          actionlint
+          scripts/ci/validate-shell.sh
+          python3 -m py_compile scripts/ci/*.py
+          python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
+
+      - name: Reject plaintext Kubernetes Secrets
+        run: python3 scripts/ci/validate-secrets.py
 
       - name: Render home cluster
         run: |
-          kubectl kustomize clusters/home-server > /tmp/home-server.yaml
-          test -s /tmp/home-server.yaml
+          kubectl kustomize clusters/home-server > "$RUNNER_TEMP/home-server.yaml"
+          test -s "$RUNNER_TEMP/home-server.yaml"
 
-      - name: Reject unencrypted secret manifests
+      - name: Reject generated plaintext Kubernetes Secrets
+        run: >-
+          python3 scripts/ci/validate-secrets.py
+          --rendered "$RUNNER_TEMP/home-server.yaml"
+
+      - name: Prepare encrypted resources for schema validation
+        run: >-
+          python3 scripts/ci/prepare-schema-manifest.py
+          "$RUNNER_TEMP/home-server.yaml"
+          "$RUNNER_TEMP/home-server-schema.yaml"
+
+      - name: Validate Kubernetes schemas
+        env:
+          CRD_SCHEMA_COMMIT: 34cef0fc2698bbb611f475515e555a2d7ca85b6c
+          KUBERNETES_SCHEMA_COMMIT: 6575cbe6397e3c1cb0946a41a200c37377fafe29
         run: |
-          while IFS= read -r file; do
-            if ! grep -q '^sops:' "$file"; then
-              echo "SOPS metadata missing from $file" >&2
-              exit 1
-            fi
-          done < <(find apps clusters infrastructure -type f -name '*.sops.yaml' 2>/dev/null | sort)
+          kubeconform \
+            -strict \
+            -kubernetes-version 1.36.2 \
+            -schema-location "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/${KUBERNETES_SCHEMA_COMMIT}/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_SCHEMA_COMMIT}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json" \
+            -summary \
+            "$RUNNER_TEMP/home-server-schema.yaml"
+
+      - name: Reject newly introduced high-risk constructs
+        run: >-
+          python3 scripts/ci/check-high-risk-policy.py
+          "$RUNNER_TEMP/home-server.yaml"
+          scripts/ci/high-risk-baseline.txt
+
+      - name: Render immutable Helm releases
+        run: >-
+          scripts/ci/render-helm-releases.sh
+          "$RUNNER_TEMP/home-server.yaml"
+          "$RUNNER_TEMP/helm-releases.yaml"
+
+      - name: Prepare Helm resources for schema validation
+        run: >-
+          python3 scripts/ci/prepare-schema-manifest.py
+          "$RUNNER_TEMP/helm-releases.yaml"
+          "$RUNNER_TEMP/helm-releases-schema.yaml"
+
+      - name: Validate rendered Helm schemas
+        env:
+          CRD_SCHEMA_COMMIT: 34cef0fc2698bbb611f475515e555a2d7ca85b6c
+          KUBERNETES_SCHEMA_COMMIT: 6575cbe6397e3c1cb0946a41a200c37377fafe29
+        run: |
+          kubeconform \
+            -strict \
+            -skip CustomResourceDefinition \
+            -kubernetes-version 1.36.2 \
+            -schema-location "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/${KUBERNETES_SCHEMA_COMMIT}/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            -schema-location "https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_SCHEMA_COMMIT}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json" \
+            -summary \
+            "$RUNNER_TEMP/helm-releases-schema.yaml"
+
+      - name: Reject new Helm-generated high-risk constructs
+        run: >-
+          python3 scripts/ci/check-high-risk-policy.py
+          "$RUNNER_TEMP/helm-releases.yaml"
+          scripts/ci/helm-high-risk-baseline.txt

@@ -24,6 +24,20 @@ spec:
       port: 80
       scheme: http
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-vpn-only
+  namespace: apps
+spec:
+  ipAllowList:
+    sourceRange:
+      - 192.168.1.0/24
+      - 10.8.0.0/24
+      # wg-easy masquerades VPN clients to the Pi's fixed node PodCIDR.
+      # Scope this exception to that node; never trust 10.42.0.0/16.
+      - 10.42.1.0/24
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -50,6 +64,20 @@ spec:
       port: 80
       scheme: http
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-vpn-only
+  namespace: media
+spec:
+  ipAllowList:
+    sourceRange:
+      - 192.168.1.0/24
+      - 10.8.0.0/24
+      # wg-easy masquerades VPN clients to the Pi's fixed node PodCIDR.
+      # Scope this exception to that node; never trust 10.42.0.0/16.
+      - 10.42.1.0/24
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -75,6 +103,20 @@ spec:
       name: error-pages
       port: 80
       scheme: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-vpn-only
+  namespace: network-services
+spec:
+  ipAllowList:
+    sourceRange:
+      - 192.168.1.0/24
+      - 10.8.0.0/24
+      # wg-easy masquerades VPN clients to the Pi's fixed node PodCIDR.
+      # Scope this exception to that node; never trust 10.42.0.0/16.
+      - 10.42.1.0/24
 ---
 apiVersion: v1
 kind: Service

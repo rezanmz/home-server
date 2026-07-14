@@ -1,0 +1,10 @@
+# Assign the repository owner to review every path. Enforce this file with the
+# branch/ruleset setting "Require review from Code Owners."
+* @rezanmz
+
+/.github/ @rezanmz
+/scripts/ci/ @rezanmz
+/.sops.yaml @rezanmz
+/apps/ @rezanmz
+/clusters/ @rezanmz
+/infrastructure/ @rezanmz

@@ -14,12 +14,6 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: infrastructure
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: monitoring
-        - namespaceSelector:
-            matchLabels:
               kubernetes.io/metadata.name: traefik
       ports:
         - port: 18081

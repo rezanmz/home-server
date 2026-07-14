@@ -26,8 +26,14 @@ sudo k3s kubectl get events -A --sort-by=.lastTimestamp | tail -n 50
 
 ## GitOps reconciliation
 
+Changes reach production through a pull request. Direct pushes to `main` are
+blocked, and the required `Validate cluster configuration / validate` check
+must pass before merge. The workflow is intentionally GitHub-hosted and has
+read-only repository permissions; neither cluster node should be registered as
+a GitHub Actions runner.
+
 ```bash
-sudo k3s kubectl -n flux-system get gitrepositories,kustomizations -o wide
+sudo k3s kubectl -n flux-system get gitrepositories,ocirepositories,kustomizations -o wide
 sudo k3s kubectl get helmreleases -A
 ```
 
@@ -64,6 +70,12 @@ sudo k3s kubectl -n flux-system logs deployment/kustomize-controller --tail=100
 Docker Compose is not a deployment path for this cluster. Do not restart old
 Docker projects to work around a Kubernetes failure; diagnose or roll back the
 Git revision through Flux.
+
+During a deliberate recovery, suspend the root Kustomization before making
+temporary live changes. Keep it suspended until the corresponding protected
+revision is merged, verify the GitRepository artifact points at that revision,
+then resume and reconcile. Do not leave production permanently dependent on
+uncommitted live drift.
 
 ## Ingress and TLS
 
@@ -122,16 +134,61 @@ dig @192.168.1.2 github.com
 ssh pi 'sudo ss -lntup'
 ```
 
+Keep `127.0.1.1 raspberrypi` in the Pi's `/etc/hosts`. Administrative commands
+must be able to resolve the local hostname while Pi-hole is stopped or being
+replaced; relying on the DNS workload for `sudo` can otherwise break recovery.
+
 Expected Pi-facing services include DNS on TCP/UDP 53, DHCP on UDP 67, NTP on
 UDP 123, SMB on TCP 139/445, Syncthing on TCP/UDP 22000 and UDP 21027, and
 WireGuard on UDP 1234. The Pi-hole UI listens internally on port 8181 and is
 published through the Gateway rather than directly as the public service.
+The FTL listener must be `127.0.0.1:8181`; the colocated proxy listens with TLS
+on 18181 and requires Traefik's cert-manager-managed backend client certificate.
+The HTTPRoute reaches it through `TraefikService/pihole-mtls` and
+`ServersTransport/pihole-mtls`. A direct request without that certificate must
+return HTTP 400 (or fail its TLS handshake), even with a forged
+`X-Forwarded-For`; the Gateway route must return 200 from an allowed source.
+All three `pihole-mtls-*` Certificates must remain Ready. This backend identity
+is separate from the public wildcard certificate. The server leaf is loaded
+through nginx's one-minute certificate cache so normal Secret renewal does not
+need a restart. The private CA intentionally keeps the same key for its ten-year
+lifetime; rotate it only as a staged maintenance operation that reissues both
+leaf certificates and rolls the Pi-hole pod after proving the new trust chain.
+
+Syncthing must have automatic NAT traversal disabled (`natenabled=false`) so it
+cannot ask the router to expose port 22000 through UPnP or NAT-PMP. LAN
+discovery, global discovery, relays, and connections over WireGuard remain
+enabled. Verify the persistent setting from the running pod after replacing its
+configuration:
+
+```bash
+pod=$(sudo k3s kubectl -n network-services get pod \
+  -l app.kubernetes.io/name=syncthing -o jsonpath='{.items[0].metadata.name}')
+sudo k3s kubectl -n network-services exec "$pod" -c syncthing -- \
+  syncthing cli --home=/config config options natenabled get
+```
 
 wg-easy v15 stores its endpoint, client DNS, and AllowedIPs in the persistent
 application database; the v14 `WG_*` environment variables are ignored. The
 global and per-client DNS value should be `192.168.1.2`. After changing client
 DNS or routes, download/import the refreshed client profile because WireGuard
 cannot push configuration changes into an already imported profile.
+
+The Pi kubelet allowlists only `net.ipv4.ip_forward` and
+`net.ipv4.conf.all.src_valid_mark` as pod-scoped unsafe sysctls. wg-easy
+declares those settings directly and needs only `NET_ADMIN` plus `NET_RAW`; it
+must not regain a privileged init container, `SYS_MODULE`, or a `/lib/modules`
+host mount. A `SysctlForbidden` pod status means the deployed Pi K3s config no
+longer matches `infrastructure/k3s/agent-pi-config.yaml`.
+
+wg-easy also masquerades VPN clients when forwarding them to the cluster. As a
+result, Traefik and the application-side access proxies see `10.42.1.0/24`, the
+Pi node's fixed pod CIDR, instead of `10.8.0.0/24`. The administrative route
+allow-lists intentionally contain exactly that Pi CIDR. Treat every pod on the
+Pi as trusted for those routes, keep sensitive workloads off that node unless
+they need its hardware/network role, and never replace the exception with the
+cluster-wide `10.42.0.0/16`. The CI high-risk baseline should fail if a new
+pod-CIDR exception is added without review.
 
 ## Storage
 
@@ -174,11 +231,81 @@ This set and the age identities are not off-site backups. Duplicati sends its
 encrypted repository to Backblaze B2, but restore credentials and the SOPS age
 identities still need an independent recovery copy.
 
+Do not assume that job protects the active PVCs. Duplicati mounts only the Pi's
+legacy `/home/reza/persistent` tree, while migrated application state lives on
+Longhorn. As of 2026-07-14, Longhorn's default BackupTarget has an empty URL and
+is unavailable, with no Backup or BackupVolume objects. Check the gap directly:
+
+```bash
+sudo k3s kubectl -n longhorn-system get backuptargets.longhorn.io \
+  -o custom-columns=NAME:.metadata.name,AVAILABLE:.status.available,URL:.spec.backupTargetURL
+sudo k3s kubectl -n longhorn-system get backups.longhorn.io,backupvolumes.longhorn.io
+```
+
+Choose the remote target, credential scope, encryption, retention, and restore
+test before enabling it. A second Longhorn replica or a snapshot on either
+cluster node is not an off-site backup.
+
+The security-remediation rollback set is root-only at:
+
+```text
+/srv/home-server-backups/remediation-prechange-20260714T004819Z/
+```
+
+It includes a consistency-safe K3s server-state archive, cluster inventory,
+pre-restore PVC archives, quarantined Open WebUI extensions, Syncthing state,
+and the age-key rotation rollback material. The Pi also has root-only/current
+PVC recovery archives under `/home/reza/security-recovery-current/`. These are
+rollback aids on the same two machines, not independent backups.
+
 Duplicati runs as root so it can read application-owned state. It is pinned to
 the Pi and uses a read-only host path for `/home/reza/persistent`; routing this
 source through the root-squashed NFS PersistentVolume silently excludes
 protected directories. Check the newest Duplicati result for permission
-warnings after any storage or identity change.
+warnings after any storage or identity change. Its pod egress is limited to
+Kubernetes DNS and public TCP 443 for Backblaze B2; do not restore unrestricted
+egress to support a private destination without adding the exact destination
+and port instead.
+
+Never use a Duplicati `repair-update`, purge, compact, or remote delete while
+diagnosing an incomplete remote set. Snapshot the local database first, prefer
+a remote-only database recreate and verification, and preserve the original
+database until a new backup and restore test have succeeded.
+
+As of the 2026-07-14 recovery, Duplicati's local database has been recreated
+from B2, its integrity and a remote sample test pass, and a new backup completed
+without errors. The scheduler is intentionally paused: the pre-existing
+`1W:1D,4W:1W,12M:1M` retention policy automatically removed one old file-list
+during the verification backup. Review that policy and the required recovery
+points before resuming; then perform a restore test to a disposable path.
+
+For a one-time directory-to-PVC migration, stop every writer and take a
+consistency-safe source snapshot before acknowledging quiescence:
+
+```bash
+scripts/migrate-directory-to-pvc.sh NAMESPACE PVC /absolute/snapshot/path \
+  --source-is-read-only-snapshot --target-controllers-are-suspended pi beelink
+```
+
+Mount the consistency-safe source snapshot read-only; a stopped application on a
+writable directory is not sufficient. Scale built-in PVC-owning controllers to
+zero, suspend Jobs/CronJobs and their complete Flux Kustomization/HelmRelease
+ownership chain, and remove any matching HPA before acknowledging the target.
+The helper checks Flux status inventories as well as labels, monitors controller
+and consumer state throughout the copy and verification, and fails closed if any
+cluster query or JSON proof fails. It refuses a mounted or non-empty PVC, an
+invalid/non-empty `lost+found`, mutable or unsupported source metadata, nested
+mounts, sparse files, and hard links that leave the snapshot.
+
+The helper streams the snapshot over SSH without creating a Kubernetes
+`hostPath`, restores symbolic-link ownership explicitly, recomputes source and
+target fingerprints, and verifies file contents, ownership, modes, hard-link
+counts, and symlink targets. On success it waits for the helper pod to release
+the PVC before returning zero. A failed copy can still leave a partial target;
+inspect and clear it deliberately rather than rerunning blindly. Kubernetes RWO
+does not prevent a custom controller from mounting on the same node, so the
+operator acknowledgement is still required for controllers the helper cannot
+enumerate.
 
 ## Media VPN checks
 
@@ -203,10 +330,31 @@ configuration. Root-only recovery identities are stored at:
 
 - Beelink: `/root/.config/sops/age/keys.txt`
 - Pi: `/root/.config/sops/age/home-server.txt`
+- Operator workstation: `~/.config/sops/age/keys.txt` (mode `0600`)
 - Cluster: `flux-system/sops-age`
 
 Never print a private identity, put it in shell history, or commit it. Store an
 additional recovery copy in a password manager or on encrypted removable media.
+
+Rotating the age recipient protects future access to the current ciphertext;
+it does not revoke application credentials present in old Git history or other
+copies. Rotate provider tokens, passwords, API keys, and OIDC credentials at
+their issuing systems, then re-encrypt the updated Kubernetes Secrets. Preserve
+application encryption keys such as Speedtest Tracker's `APP_KEY` until the
+matching database has been successfully decrypted and migrated: substituting a
+new key can make existing encrypted fields unrecoverable.
+
+The remaining coordinated rotation set includes Cloudflare API tokens,
+Telegram and ProtonVPN credentials, Authentik/OIDC client secrets, and
+application passwords or API keys. Rotate one integration at a time, update its
+SOPS Secret, reconcile, and prove the dependent workload before revoking the
+old value.
+
+The legacy Speedtest Tracker database must not replace the current PVC until a
+trusted copy of its matching `APP_KEY` is recovered and proven. The database is
+healthy, but encrypted fields cannot be validated from a hash or a newly
+generated key. Keep the legacy source read-only and preserve the current PVC
+until that prerequisite is satisfied.
 
 ## Planned maintenance
 

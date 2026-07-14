@@ -3,9 +3,11 @@
 ## Operating model
 
 K3s is the only production application platform. Flux reconciles this public
-repository, decrypts SOPS resources in the cluster, and prunes objects removed
-from the cluster entry point. GitHub Actions validates configuration; it does
-not SSH into either node or run Docker Compose.
+repository and decrypts SOPS resources in the cluster. The root Kustomization
+intentionally has `prune: false`; resource retirement is a reviewed, explicit
+operation rather than an automatic consequence of removing a manifest. GitHub
+Actions validates configuration; it does not SSH into either node or run Docker
+Compose.
 
 The former Compose containers and SWAG reverse proxy are retired. Their
 definitions are no longer part of this repository.
@@ -53,10 +55,27 @@ cert-manager uses Cloudflare DNS-01 to issue and renew a wildcard Let's Encrypt
 certificate for `reza.network`. Traefik's CRD provider is also enabled so
 Gateway API extension filters can reference LAN/VPN IP allow-list middleware.
 
-Pi-hole uses the Pi host network for DNS, DHCP, and NTP. Samba and Syncthing also
-use the Pi host network for LAN discovery. wg-easy is pinned to the Pi and maps
-the router-facing UDP port 1234 to its WireGuard listener. These constraints are
+wg-easy masquerades client traffic before it leaves its pod, so Traefik and the
+application access proxies see the Pi node's fixed pod CIDR (`10.42.1.0/24`)
+rather than the original `10.8.0.0/24` client address. Administrative allow
+lists therefore include that one node CIDR. This deliberately trusts pods on
+the Pi for those routes; it must never be broadened to the cluster-wide
+`10.42.0.0/16`. The high-risk-policy check records every such exception so a
+new or wider pod-CIDR allow-list requires explicit review.
+
+Pi-hole uses the Pi host network for DNS, DHCP, and NTP, but its web server is
+bound to loopback and reached only through a colocated proxy. That host-network
+proxy requires a cert-manager-managed client certificate presented by Traefik;
+source allow-lists are evaluated only after backend mTLS succeeds. A pod cannot
+bypass the Gateway merely by reaching the node port or forging forwarded headers.
+Samba and Syncthing also use the Pi host network for LAN discovery; Syncthing's
+GUI is likewise TLS loopback-only. wg-easy is pinned to the Pi and maps the
+router-facing UDP port 1234 to its WireGuard listener. These constraints are
 physical requirements rather than general scheduling policy.
+
+Syncthing's automatic UPnP/NAT-PMP port mapping is disabled. LAN discovery,
+WireGuard access, global discovery, and relays remain available, but Syncthing
+must not silently create a new Internet-facing router mapping.
 
 Pi-hole's split-horizon overrides point HTTP hostnames at the Traefik VIP
 `192.168.1.240`, so application pod placement is independent of DNS. Pi-specific
@@ -105,7 +124,16 @@ Pi application-state tree and consistency-safe PostgreSQL dumps. It is a local
 recovery set, not an off-site backup. Duplicati writes encrypted backup archives
 to Backblaze B2. Because it is pinned to the Pi, its source is a read-only host
 path; this lets the backup process traverse application-owned directories
-without weakening NFS root-squashing for the rest of the cluster.
+without weakening NFS root-squashing for the rest of the cluster. NetworkPolicy
+limits this high-access pod to cluster DNS and public HTTPS for Backblaze B2.
+
+Duplicati's current `/source` mount covers only the legacy Pi
+`/home/reza/persistent` tree; it cannot see the active Longhorn PVC filesystems.
+Longhorn currently has no remote BackupTarget. Its two replicas, local snapshots,
+and the same-site recovery archives therefore protect availability but are not
+an independent backup of migrated application state. Configuring an encrypted
+off-site Longhorn-compatible S3 target (or a consistency-aware PVC export into
+Duplicati's source) remains a required backup-design decision.
 
 ## Application boundaries
 
@@ -120,6 +148,17 @@ Namespace default-deny policies and workload-specific rules permit only the
 required ingress and egress. Administrative routes use LAN/WireGuard allow
 lists. SOPS/age-encrypted Secret manifests are safe to store in the public
 repository; the private age identity remains root-only outside Git.
+
+The protected `main` branch requires a GitHub-hosted validation job. It checks
+helper syntax and tests, rejects plaintext or malformed SOPS Secrets, renders
+the complete cluster, validates pinned Kubernetes/CRD schemas, and rejects
+unreviewed additions to a precise high-risk-policy baseline. Workload and
+chart-selected images are pinned by digest. The Gateway API source is pinned by
+commit; cert-manager, Traefik, and MetalLB use digest-pinned OCI charts; and
+Longhorn's chart is built from an exact upstream Git commit. CI independently
+fetches, checksums, renders, schema-validates, and policy-scans the immutable
+chart output. Route, access-proxy, middleware, and NetworkPolicy ingress
+boundaries are hashed for the same reason.
 
 Headlamp provides read-only cluster and metrics permissions at
 `headlamp.reza.network`. It is available only from the LAN or WireGuard and
@@ -139,7 +178,12 @@ This design prioritizes a complete K3s migration over adding hardware:
 - maintenance on the Pi interrupts DNS/DHCP, public ingress, WireGuard, SMB,
   Syncthing discovery, and NFS-backed applications;
 - maintenance on the Beelink interrupts cluster administration and most
-  compute workloads.
+  compute workloads;
+- Jellyfin's host-network port 8096 remains reachable from the LAN because the
+  same network namespace is required for DLNA; Jellyfin authentication is the
+  final control on that direct path;
+- Traefik's Kubernetes providers require cluster-wide Node and Secret reads,
+  so a Traefik compromise has a larger disclosure radius than an ordinary app.
 
 These are current operating assumptions, not pending migration steps. Revisit
 them only if a third node or independent storage is intentionally introduced.
