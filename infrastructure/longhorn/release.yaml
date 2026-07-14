@@ -64,6 +64,7 @@ spec:
       reclaimPolicy: Retain
       volumeBindingMode: WaitForFirstConsumer
     defaultSettings:
+      allowRecurringJobWhileVolumeDetached: "true"
       allowVolumeCreationWithDegradedAvailability: "false"
       createDefaultDiskLabeledNodes: "true"
       defaultDataLocality: best-effort
@@ -74,6 +75,12 @@ spec:
       storageOverProvisioningPercentage: "100"
       storageReservedPercentageForDefaultDisk: "15"
       upgradeChecker: "false"
+    # These chart values let Longhorn retain ownership of the singleton
+    # BackupTarget it creates, avoiding server-side-apply conflicts with Flux.
+    defaultBackupStore:
+      backupTarget: s3://rezanmz-home-server-longhorn-backups@ca-east-006/
+      backupTargetCredentialSecret: longhorn-backblaze-b2
+      pollInterval: 300
     csi:
       attacherReplicaCount: 2
       provisionerReplicaCount: 2

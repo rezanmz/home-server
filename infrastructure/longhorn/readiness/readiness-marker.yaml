@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longhorn-gitops-readiness
+  namespace: longhorn-system
+data:
+  purpose: Wait for the Longhorn HelmRelease before applying CRD-backed resources.

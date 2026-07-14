@@ -301,22 +301,107 @@ encrypted repository to Backblaze B2, but restore credentials and the SOPS age
 identities still need an independent recovery copy.
 
 Do not assume that job protects the active PVCs. Duplicati mounts only the Pi's
-legacy `/home/reza/persistent` tree, while migrated application state lives on
-Longhorn. As of 2026-07-14, Longhorn's default BackupTarget has an empty URL and
-is unavailable, with no Backup or BackupVolume objects. Check the gap directly:
+`/home/reza/persistent` tree, while migrated application state lives on
+Longhorn. Longhorn's default BackupTarget is the dedicated private
+`rezanmz-home-server-longhorn-backups` Backblaze B2 bucket in `ca-east-006`.
+Its S3 credential exists only as the SOPS-encrypted
+`longhorn-system/longhorn-backblaze-b2` Secret. Check the target and backup
+inventory directly:
 
 ```bash
 sudo k3s kubectl -n longhorn-system get backuptargets.longhorn.io \
-  -o custom-columns=NAME:.metadata.name,AVAILABLE:.status.available,URL:.spec.backupTargetURL
+  -o custom-columns=NAME:.metadata.name,AVAILABLE:.status.available,URL:.spec.backupTargetURL,CREDENTIAL:.spec.credentialSecret
+sudo k3s kubectl -n longhorn-system get recurringjobs.longhorn.io
 sudo k3s kubectl -n longhorn-system get backups.longhorn.io,backupvolumes.longhorn.io
 ```
 
-Provision a dedicated Backblaze B2 bucket and least-privilege S3-compatible key,
-then define encryption, retention, and a disposable restore test before enabling
-recurring Longhorn backups. A second Longhorn replica or a snapshot on either
-cluster node is not an off-site backup. Keep Duplicati paused until that restore
-test succeeds; then preserve any still-required legacy recovery metadata before
-removing the Duplicati workload and configuration.
+The target must report `AVAILABLE=true`. `b2-nightly` runs at 06:17 UTC, retains
+14 logical backups per volume, processes one volume at a time, and requests a
+full backup after every seven completed incremental backups. Normal backup jobs
+skip unchanged data, so that full interval is count-based rather than a strict
+weekly calendar. Longhorn may temporarily attach an otherwise detached volume
+at backup time. A second Longhorn replica or a local snapshot on either node is
+not an off-site backup.
+
+The B2 bucket must stay private with default SSE-B2 encryption enabled. Do not
+enable Object Lock or add a bucket lifecycle expiry rule: Longhorn must control
+logical backup deletion. Backblaze's `Keep all versions` setting can retain
+hidden historical versions after a logical delete, so monitor physical bucket
+growth separately from Longhorn's retention count. The every-seven-backups full
+refresh can also replace block objects and create additional hidden versions.
+
+Review the bucket's billed size and hidden/noncurrent version count in the
+Backblaze console at least monthly and after any large restore or retention
+cleanup. Treat unexplained continued growth after Longhorn reaches steady-state
+retention as an incident. Do not add an automated B2 lifecycle rule as a quick
+cost fix; first verify a noncurrent-version-only policy with both Longhorn and
+Backblaze support because deleting current backupstore objects can invalidate
+the backup index.
+
+Longhorn backups are crash-consistent per volume. They do not coordinate writes
+between an application and its PostgreSQL, Redis, or Elasticsearch PVC, or
+between multiple PVCs. Periodic native database exports and application-level
+restore tests remain desirable even after the block-level restore proof passes.
+Keep Duplicati until the first remote backup and disposable B2 restore test
+succeed. Retiring its workload does not authorize deleting the existing B2
+repository, retained Longhorn config volume, or `/home/reza/persistent` legacy
+tree; preserve those until their remaining recovery value is reviewed.
+
+The Longhorn target does not cover any `nfs-media` PersistentVolume. In
+particular, active Syncthing data remains at
+`/home/reza/persistent/syncthing/data` and is inside Duplicati's current source,
+while `/home/reza/media` is outside the configured Duplicati job as well as
+Longhorn. Do not remove Duplicati until the Syncthing/NFS data is deliberately
+migrated, covered by a replacement file-level backup, or accepted as an
+unprotected/reconstructible data class.
+
+The Longhorn HelmRelease owns the BackupTarget and detached-volume values through
+Longhorn's supported chart configuration; `longhorn-manager` then owns the
+singleton custom resources. The `longhorn-backups` child is the stable prunable
+owner for only the credential and recurring job. This split avoids Flux
+server-side-apply conflicts with Longhorn-managed fields.
+
+For a planned Git rollback, keep the child Kustomization and remove its Secret
+and RecurringJob resources so its next successful reconcile prunes them. In the
+same change, explicitly set `defaultBackupStore.backupTarget` and
+`defaultBackupStore.backupTargetCredentialSecret` to empty strings and
+`defaultSettings.allowRecurringJobWhileVolumeDetached` to `"false"` in the
+Longhorn HelmRelease. Do not merely omit those Helm values: Longhorn preserves
+an existing value when the corresponding default-resource key is absent. Verify
+the recurring job and Secret are gone and the default BackupTarget is blank
+before removing the child itself.
+
+Because the root Flux Kustomization intentionally has pruning disabled, removing
+the child manifest from Git does not delete the live child object. After the
+rollback commit has reconciled and the owned resources are absent, remove it
+explicitly:
+
+```bash
+sudo k3s kubectl -n flux-system delete kustomization longhorn-backups
+```
+
+For an emergency stop before a Git change is ready, suspend both the root and
+backup Kustomizations first so they cannot immediately restore the desired
+state:
+
+```bash
+sudo k3s kubectl -n flux-system patch kustomization flux-system \
+  --type=merge -p '{"spec":{"suspend":true}}'
+sudo k3s kubectl -n flux-system patch kustomization longhorn-backups \
+  --type=merge -p '{"spec":{"suspend":true}}'
+sudo k3s kubectl -n longhorn-system delete recurringjob b2-nightly \
+  --ignore-not-found
+sudo k3s kubectl -n longhorn-system patch backuptarget default \
+  --type=merge -p '{"spec":{"backupTargetURL":"","credentialSecret":""}}'
+sudo k3s kubectl -n longhorn-system patch setting \
+  allow-recurring-job-while-volume-detached --type=merge -p '{"value":"false"}'
+sudo k3s kubectl -n longhorn-system delete secret longhorn-backblaze-b2 \
+  --ignore-not-found
+```
+
+The emergency stop deliberately creates GitOps drift. Commit the matching
+rollback before resuming the root Kustomization and then `longhorn-backups`;
+otherwise Flux and Longhorn restore the target, credential, and schedule.
 
 The security-remediation rollback set is root-only at:
 

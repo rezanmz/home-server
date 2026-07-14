@@ -79,6 +79,12 @@ kubectl kustomize clusters/home-server >/tmp/home-server.yaml
 printf '\n---\n' >>/tmp/home-server.yaml
 kubectl kustomize infrastructure/snapshot-controller/storage \
   >>/tmp/home-server.yaml
+printf '\n---\n' >>/tmp/home-server.yaml
+kubectl kustomize infrastructure/longhorn/readiness \
+  >>/tmp/home-server.yaml
+printf '\n---\n' >>/tmp/home-server.yaml
+kubectl kustomize infrastructure/longhorn/backups \
+  >>/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \
