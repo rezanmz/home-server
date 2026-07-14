@@ -17,6 +17,7 @@ from yaml_documents import ManifestError, github_error, iter_kubernetes_objects,
 
 MUTABLE_TAGS = {"develop", "edge", "latest", "main", "master", "nightly", "snapshot"}
 DIGEST_IMAGE = re.compile(r"@sha256:[0-9a-fA-F]{64}$")
+SHA256_DIGEST = re.compile(r"^sha256:[0-9a-fA-F]{64}$")
 IMAGE_FLAG = re.compile(r"^--[A-Za-z0-9][A-Za-z0-9_.-]*image$")
 IMAGE_ENVIRONMENT = re.compile(r"(?:^|_)IMAGE$")
 FULL_GIT_COMMIT = re.compile(r"^[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?$")
@@ -26,6 +27,10 @@ EXACT_SEMVER = re.compile(
     r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
 )
 CLUSTER_POD_NETWORKS = (ipaddress.ip_network("10.42.0.0/16"),)
+K3S_NODE_ADDRESSES = (
+    ipaddress.ip_address("192.168.1.2"),
+    ipaddress.ip_address("192.168.1.3"),
+)
 REQUIRED_DEFAULT_DENY_NAMESPACES = {"apps", "media", "monitoring", "network-services"}
 
 
@@ -398,6 +403,29 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
         if isinstance(labels, dict) and labels.get("pod-security.kubernetes.io/enforce") == "privileged":
             results.add(finding("privileged-namespace", identity, "pod-security-enforce"))
 
+    if kind == "Kustomization" and str(document.get("apiVersion", "")).startswith(
+        "kustomize.toolkit.fluxcd.io/"
+    ):
+        results.add(
+            finding(
+                "flux-kustomization-boundary",
+                identity,
+                f"spec/sha256/{canonical_sha256(spec)}",
+            )
+        )
+        images = spec.get("images")
+        if isinstance(images, list):
+            for index, image in enumerate(images):
+                digest = image.get("digest") if isinstance(image, dict) else None
+                if not isinstance(digest, str) or SHA256_DIGEST.fullmatch(digest) is None:
+                    results.add(
+                        finding(
+                            "mutable-kustomize-image",
+                            identity,
+                            f"spec.images/{index}/digest/{text(digest, '<unset>')}",
+                        )
+                    )
+
     if kind == "Middleware" and str(document.get("apiVersion", "")).startswith("traefik.io/"):
         results.add(
             finding("middleware-boundary", identity, f"spec/sha256/{canonical_sha256(spec)}")
@@ -414,6 +442,20 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
                             f"spec.ipAllowList.sourceRange/{text(cidr, '<unset>')}",
                         )
                     )
+                try:
+                    network = ipaddress.ip_network(str(cidr), strict=False)
+                except ValueError:
+                    continue
+                for node_address in K3S_NODE_ADDRESSES:
+                    if node_address in network:
+                        results.add(
+                            finding(
+                                "node-snat-ip-allowlist",
+                                identity,
+                                "spec.ipAllowList.sourceRange/"
+                                f"{text(cidr, '<unset>')}/node/{node_address}",
+                            )
+                        )
 
     if kind == "ConfigMap" and re.fullmatch(
         r".+-access-proxy(?:-[a-z0-9]+)?",
@@ -591,6 +633,25 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
         if isinstance(external_ips, list) and external_ips:
             ips = ",".join(sorted(text(value, "<unset>") for value in external_ips))
             results.add(finding("service-external-ips", identity, f"spec.externalIPs/{ips}"))
+
+    if kind == "VolumeSnapshotClass" and str(document.get("apiVersion", "")).startswith(
+        "snapshot.storage.k8s.io/"
+    ):
+        metadata = document.get("metadata")
+        annotations = metadata.get("annotations") if isinstance(metadata, dict) else None
+        snapshot_boundary = {
+            "annotations": annotations if isinstance(annotations, dict) else {},
+            "driver": document.get("driver"),
+            "deletionPolicy": document.get("deletionPolicy"),
+            "parameters": document.get("parameters", {}),
+        }
+        results.add(
+            finding(
+                "snapshot-class-boundary",
+                identity,
+                f"spec/sha256/{canonical_sha256(snapshot_boundary)}",
+            )
+        )
 
     if kind == "GitRepository":
         source_url = text(spec.get("url"), "<unset>")

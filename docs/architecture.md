@@ -54,6 +54,11 @@ Gateway API HTTPRoutes attach applications to the shared Traefik Gateway.
 cert-manager uses Cloudflare DNS-01 to issue and renew a wildcard Let's Encrypt
 certificate for `reza.network`. Traefik's CRD provider is also enabled so
 Gateway API extension filters can reference LAN/VPN IP allow-list middleware.
+The administrative LAN ranges deliberately omit the two node addresses
+(`192.168.1.2` and `.3`). K3s SNATs some cross-node pod-to-hostPort traffic to
+the peer node address, so trusting those addresses would let an unrelated pod
+inherit LAN access. Requests originating on a node itself are denied for the
+same reason; use the MetalLB VIP from a normal LAN client for administration.
 
 wg-easy masquerades client traffic before it leaves its pod, so Traefik and the
 application access proxies see the Pi node's fixed pod CIDR (`10.42.1.0/24`)
@@ -67,11 +72,16 @@ Pi-hole uses the Pi host network for DNS, DHCP, and NTP, but its web server is
 bound to loopback and reached only through a colocated proxy. That host-network
 proxy requires a cert-manager-managed client certificate presented by Traefik;
 source allow-lists are evaluated only after backend mTLS succeeds. A pod cannot
-bypass the Gateway merely by reaching the node port or forging forwarded headers.
-Samba and Syncthing also use the Pi host network for LAN discovery; Syncthing's
-GUI is likewise TLS loopback-only. wg-easy is pinned to the Pi and maps the
-router-facing UDP port 1234 to its WireGuard listener. These constraints are
-physical requirements rather than general scheduling policy.
+bypass the backend merely by reaching its node port or forging forwarded headers.
+Gateway allow-lists also reject the ambiguous K3s node addresses; the Pi pod
+CIDR remains the explicit wg-easy exception described above.
+Samba and Syncthing also use the Pi host network for LAN discovery. Syncthing's
+GUI is TLS loopback-only, and its colocated proxy uses the same dedicated
+cert-manager backend-mTLS pattern as Pi-hole; port 18384 must never serve
+plaintext or accept a client without Traefik's certificate. wg-easy is pinned
+to the Pi and maps the router-facing UDP port 1234 to its WireGuard listener.
+These constraints are physical requirements rather than general scheduling
+policy.
 
 Syncthing's automatic UPnP/NAT-PMP port mapping is disabled. LAN discovery,
 WireGuard access, global discovery, and relays remain available, but Syncthing
@@ -113,6 +123,12 @@ Two storage mechanisms serve different data classes:
   Syncthing data, an optional local Duplicati repository tree, and read-only
   access to the former persistent-data tree.
 
+K3s does not bundle the Kubernetes CSI snapshot APIs. The cluster therefore
+reconciles the upstream external-snapshotter CRDs and common snapshot controller
+from the exact `v8.5.0` commit used by Longhorn's snapshotter sidecars; the
+controller image is pinned to a multi-architecture digest. This restores the
+snapshot API, but local snapshots are not an independent backup target.
+
 The Pi NFS exports are the current authoritative shared storage. No independent
 NAS is planned at present. This is an accepted single point of failure: the two
 Longhorn replicas protect small state against one disk or node loss, but they do
@@ -131,9 +147,11 @@ Duplicati's current `/source` mount covers only the legacy Pi
 `/home/reza/persistent` tree; it cannot see the active Longhorn PVC filesystems.
 Longhorn currently has no remote BackupTarget. Its two replicas, local snapshots,
 and the same-site recovery archives therefore protect availability but are not
-an independent backup of migrated application state. Configuring an encrypted
-off-site Longhorn-compatible S3 target (or a consistency-aware PVC export into
-Duplicati's source) remains a required backup-design decision.
+an independent backup of migrated application state. The selected follow-up
+design is a dedicated, encrypted Backblaze B2 S3-compatible BackupTarget used
+directly by Longhorn. Duplicati will not be expanded to mount active PVCs; it
+remains paused only as a recovery fallback until a Longhorn B2 backup and
+disposable restore test succeed, after which its workload can be retired.
 
 ## Application boundaries
 
@@ -159,6 +177,9 @@ Longhorn's chart is built from an exact upstream Git commit. CI independently
 fetches, checksums, renders, schema-validates, and policy-scans the immutable
 chart output. Route, access-proxy, middleware, and NetworkPolicy ingress
 boundaries are hashed for the same reason.
+Flux itself is a bootstrap exception to self-management: the bootstrap script
+checks the exact release-manifest SHA-256 and immediately replaces every
+controller tag with its reviewed multi-architecture image digest.
 
 Headlamp provides read-only cluster and metrics permissions at
 `headlamp.reza.network`. It is available only from the LAN or WireGuard and

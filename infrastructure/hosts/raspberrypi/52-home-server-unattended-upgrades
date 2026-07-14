@@ -1,0 +1,15 @@
+// Debian's 50unattended-upgrades permits the base Debian archive as well as
+// Debian Security. Lists append across apt.conf.d fragments, so clear both
+// supported origin-list forms before defining the cluster's narrower policy.
+#clear Unattended-Upgrade::Allowed-Origins;
+#clear Unattended-Upgrade::Origins-Pattern;
+
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+
+// Reboots and package removals require an explicit maintenance window.
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "false";
+Unattended-Upgrade::Remove-Unused-Dependencies "false";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "false";

@@ -76,6 +76,9 @@ scripts/ci/validate-shell.sh
 python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 python3 scripts/ci/validate-secrets.py
 kubectl kustomize clusters/home-server >/tmp/home-server.yaml
+printf '\n---\n' >>/tmp/home-server.yaml
+kubectl kustomize infrastructure/snapshot-controller/storage \
+  >>/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \

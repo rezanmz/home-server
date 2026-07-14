@@ -1,0 +1,5 @@
+// Refresh package metadata and evaluate unattended upgrades once per day.
+// systemd's apt timers add randomized delay; these values do not set a fixed
+// wall-clock maintenance time.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";

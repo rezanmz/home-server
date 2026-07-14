@@ -114,6 +114,12 @@ The `letsencrypt-production` ClusterIssuer uses Cloudflare DNS-01. The wildcard
 certificate is stored as `traefik/reza-network-tls` and renews automatically.
 An HTTP 403 from an administrative hostname can be correct when the request
 does not originate from an allowed LAN or WireGuard range.
+Administrative allow-lists intentionally exclude the K3s node addresses `.2`
+and `.3`: cross-node pod-to-hostPort traffic can be SNATed to the peer node and
+must not inherit LAN trust. A request issued directly from either node should
+therefore receive 403, while the same request from an ordinary LAN client via
+the `.240` VIP should succeed. The high-risk policy rejects any Traefik
+IP allow-list range that contains either node address.
 
 ## Pi network services
 
@@ -126,6 +132,44 @@ sudo k3s kubectl -n network-services get deployments,pods,pvc -o wide
 sudo k3s kubectl -n network-services logs deployment/pihole --tail=100
 sudo k3s kubectl -n network-services logs deployment/wg-easy --tail=100
 ```
+
+The legacy `network-watchdog.timer` must remain disabled and inactive. It used
+a public TCP/53 probe to decide whether to restart NetworkManager and reload a
+Wi-Fi driver, which can disconnect the Ethernet K3s/NFS/DNS node during an
+unrelated upstream failure. Its files are retained for forensics only:
+
+```bash
+systemctl is-enabled network-watchdog.timer  # expected: disabled
+systemctl is-active network-watchdog.timer   # expected: inactive
+```
+
+### Pi unattended security updates
+
+The Pi refreshes package metadata daily and applies packages only from the
+Debian Security archive. Ordinary Debian point updates remain a planned
+maintenance task. Repository-owned fragments `20auto-upgrades` and
+`52-home-server-unattended-upgrades` replace Debian's broader default origin
+list and explicitly disable automatic reboots and automatic dependency or
+kernel cleanup. `scripts/join-k3s-agent.sh` installs the policy, verifies its
+effective apt configuration, performs a non-installing resolver dry run, and
+only then enables the apt timers.
+
+Audit the effective policy after changing apt sources or configuration:
+
+```bash
+ssh pi 'sudo apt-config dump | grep -E "^(APT::Periodic::(Update-Package-Lists|Unattended-Upgrade)|Unattended-Upgrade::(Origins-Pattern|Allowed-Origins|Automatic-Reboot))"'
+ssh pi 'sudo unattended-upgrade --dry-run --debug'
+ssh pi 'systemctl is-enabled unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer'
+```
+
+The effective output must contain exactly one list entry under
+`Unattended-Upgrade::Origins-Pattern`: Debian's
+`${distro_codename}-security` suite with the `Debian-Security` label. It must
+not contain the base `${distro_codename}` archive or any legacy
+`Allowed-Origins` list entries. The dry run may identify and download eligible
+packages into APT's cache, but it must not install them. A pending reboot or
+non-security upgrade is handled only during a maintenance window after storage
+and cluster health checks.
 
 From a LAN machine, verify DNS and the host-level listeners:
 
@@ -160,6 +204,13 @@ cannot ask the router to expose port 22000 through UPnP or NAT-PMP. LAN
 discovery, global discovery, relays, and connections over WireGuard remain
 enabled. Verify the persistent setting from the running pod after replacing its
 configuration:
+
+Its GUI remains HTTPS on loopback and is reached through the TLS listener on
+port 18384. That listener requires the dedicated `syncthing-mtls-client`
+certificate from Traefik and must return 400 (or fail TLS) to a direct request,
+including from another pod. The `syncthing-mtls-ca`, `-server`, and `-client`
+Certificates must all remain Ready; only the CA public certificate may be
+projected into nginx.
 
 ```bash
 pod=$(sudo k3s kubectl -n network-services get pod \
@@ -205,6 +256,24 @@ Every attached Longhorn volume should be `healthy`. A degraded volume means one
 of the two nodes or replicas needs attention; do not delete its PVC as a repair
 step.
 
+Kubernetes CSI snapshots require all three layers: the snapshot CRDs, the
+common `kube-system/snapshot-controller`, and Longhorn's CSI snapshotter
+sidecars. Verify them together; green Longhorn sidecars alone are insufficient:
+
+```bash
+sudo k3s kubectl get crd | grep 'snapshot.storage.k8s.io'
+sudo k3s kubectl -n kube-system get deployment,pods -l \
+  app.kubernetes.io/name=snapshot-controller
+sudo k3s kubectl -n longhorn-system logs deployment/csi-snapshotter \
+  --since=10m | grep -i 'the server could not find the requested resource'
+```
+
+The last command should produce no output. CSI snapshots remain local Longhorn
+state and do not replace an authenticated off-cluster BackupTarget. Use the
+`longhorn-snapshot` VolumeSnapshotClass. Longhorn 1.12's exact local snapshot
+parameter is `type: snap`; omitting it requests a remote backup, which fails
+while no BackupTarget is configured.
+
 Large and shared data remains on NFS exported by the Pi. Check the server and
 exports directly when media, downloads, books, Syncthing data, or backups all
 fail at once:
@@ -242,9 +311,12 @@ sudo k3s kubectl -n longhorn-system get backuptargets.longhorn.io \
 sudo k3s kubectl -n longhorn-system get backups.longhorn.io,backupvolumes.longhorn.io
 ```
 
-Choose the remote target, credential scope, encryption, retention, and restore
-test before enabling it. A second Longhorn replica or a snapshot on either
-cluster node is not an off-site backup.
+Provision a dedicated Backblaze B2 bucket and least-privilege S3-compatible key,
+then define encryption, retention, and a disposable restore test before enabling
+recurring Longhorn backups. A second Longhorn replica or a snapshot on either
+cluster node is not an off-site backup. Keep Duplicati paused until that restore
+test succeeds; then preserve any still-required legacy recovery metadata before
+removing the Duplicati workload and configuration.
 
 The security-remediation rollback set is root-only at:
 
@@ -257,6 +329,11 @@ pre-restore PVC archives, quarantined Open WebUI extensions, Syncthing state,
 and the age-key rotation rollback material. The Pi also has root-only/current
 PVC recovery archives under `/home/reza/security-recovery-current/`. These are
 rollback aids on the same two machines, not independent backups.
+
+Never stage Open WebUI user-import CSV files under
+`/app/backend/data/static`: that directory is served without application
+authentication. Keep recovery imports outside the static tree with mode 0600
+and verify the former URL returns 404 after cleanup.
 
 Duplicati runs as root so it can read application-owned state. It is pinned to
 the Pi and uses a read-only host path for `/home/reza/persistent`; routing this
