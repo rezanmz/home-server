@@ -411,6 +411,7 @@ Generate the Job locally before applying it so the normal backup command cannot
 race the command override:
 
 ```bash
+set -euo pipefail
 name="syncthing-backup-init-$(date -u +%Y%m%d%H%M%S)"
 sudo k3s kubectl -n network-services create job "$name" \
   --from=cronjob/syncthing-backup --dry-run=client -o json |
@@ -436,6 +437,7 @@ preventing a bucket-prefix typo from silently starting a second history.
 To start an on-demand run from the exact scheduled template:
 
 ```bash
+set -euo pipefail
 test "$(sudo k3s kubectl -n network-services get jobs \
   -l app.kubernetes.io/name=syncthing-backup -o json | \
   jq '[.items[] | select((.status.active // 0) > 0)] | length')" -eq 0
@@ -455,6 +457,7 @@ Run a complete encrypted-data check before retiring another backup path and at
 least quarterly:
 
 ```bash
+set -euo pipefail
 test "$(sudo k3s kubectl -n network-services get jobs \
   -l app.kubernetes.io/name=syncthing-backup -o json | \
   jq '[.items[] | select((.status.active // 0) > 0)] | length')" -eq 0
@@ -476,6 +479,7 @@ Longhorn PVC, derives a Job from the reviewed CronJob, mounts that PVC only at
 `restore_size` above the snapshot's restored size when the data grows.
 
 ```bash
+set -euo pipefail
 snapshot_id=REPLACE_WITH_64_CHARACTER_TRUSTED_SNAPSHOT_ID
 restore_size=1Gi
 case "$snapshot_id" in
@@ -534,8 +538,51 @@ only aggregate file/directory counts. Delete the disposable objects only after
 the log says `restore proof passed`; retain them for diagnosis after a failure:
 
 ```bash
+set -euo pipefail
+pv_json=$(sudo k3s kubectl -n network-services get pvc "$pvc" -o json |
+  jq -e 'select(.status.phase == "Bound" and (.spec.volumeName | length > 0))')
+pv=$(jq -r '.spec.volumeName' <<<"$pv_json")
+pvc_uid=$(jq -r '.metadata.uid' <<<"$pv_json")
+volume_handle=$(sudo k3s kubectl get pv "$pv" -o json |
+  jq -er --arg pvc "$pvc" --arg pvc_uid "$pvc_uid" '
+    select(.spec.claimRef.namespace == "network-services"
+           and .spec.claimRef.name == $pvc
+           and .spec.claimRef.uid == $pvc_uid
+           and .spec.storageClassName == "longhorn"
+           and .spec.csi.driver == "driver.longhorn.io")
+    | .spec.csi.volumeHandle
+    | select(type == "string" and length > 0)
+  ')
+
+# The default Longhorn StorageClass is Retain. Change only this proven
+# disposable PV before deleting its claim so the restored data is not orphaned.
+sudo k3s kubectl patch pv "$pv" --type=merge \
+  -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 sudo k3s kubectl -n network-services delete job "$job" --wait=true
 sudo k3s kubectl -n network-services delete pvc "$pvc" --wait=true
+
+for _ in $(seq 1 120); do
+  if ! sudo k3s kubectl get pv "$pv" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+if sudo k3s kubectl get pv "$pv" >/dev/null 2>&1; then
+  printf 'disposable PV still exists: %s\n' "$pv" >&2
+  exit 1
+fi
+for _ in $(seq 1 120); do
+  if ! sudo k3s kubectl -n longhorn-system get volume.longhorn.io \
+    "$volume_handle" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+if sudo k3s kubectl -n longhorn-system get volume.longhorn.io \
+  "$volume_handle" >/dev/null 2>&1; then
+  printf 'disposable Longhorn volume still exists: %s\n' "$volume_handle" >&2
+  exit 1
+fi
 ```
 
 After initial backup, full-data check, and isolated restore all pass, the
@@ -730,6 +777,14 @@ The second, third, and final commands should return no rows. As of the
 integrity and a remote sample test passed, and a new backup completed without
 errors. Its scheduler was paused; the pre-existing `1W:1D,4W:1W,12M:1M`
 retention policy removed one old file-list during that verification backup.
+
+After the final pod shutdown, Longhorn snapshot
+`duplicati-final-snap-20260714t163445z` and backup
+`duplicati-final-backup-20260714t163445z` completed for the detached
+`duplicati-config` volume. They carry only the `purpose=duplicati-retirement`
+label, so the recurring job's normal retention does not own this archival point.
+Do not delete that Backup CR: deletion can remove the corresponding remote
+backup object.
 
 Never use Duplicati `repair-update`, purge, compact, or remote delete while
 diagnosing the retained set. Snapshot the config volume/database first, prefer
