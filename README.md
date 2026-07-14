@@ -4,8 +4,10 @@ This repository is the declarative source of truth for a two-node K3s home
 cluster. Flux reconciles `main`; GitHub Actions validates the manifests but does
 not deploy them. The former Docker Compose deployment and SWAG edge are retired.
 
-For operating details, see the [cluster architecture](docs/architecture.md) and
-the [operator runbook](docs/runbook.md).
+For operating details, see the [cluster architecture](docs/architecture.md),
+the [service lifecycle manual](docs/service-operations.md), the
+[cluster and node operations manual](docs/cluster-operations.md), and the
+[incident runbook](docs/runbook.md).
 
 ## Production topology
 
@@ -22,8 +24,9 @@ GitHub -> Flux -> K3s
 - `beelink` (`192.168.1.3`, amd64) is the only K3s server and the main compute
   node.
 - `raspberrypi` (`192.168.1.2`, arm64) runs network-facing workloads such as
-  Pi-hole, WireGuard, Samba, and Syncthing. It also exports the media,
-  downloads, books, Syncthing, and backup trees over NFS.
+  Pi-hole, WireGuard, Samba, and Syncthing. It also exports the media tree
+  (including downloads and books), Syncthing data, and the read-only legacy
+  tree over NFS.
 - Traefik runs as a DaemonSet with host ports 80 and 443. The router can retain
   the Pi as its public forwarding target, while `192.168.1.240` is the MetalLB
   address for the same Gateway inside the LAN.
@@ -33,8 +36,21 @@ GitHub -> Flux -> K3s
   replicas. The Pi NFS exports remain the single source for large shared data.
 
 This is intentionally not a highly available cluster. There is no third K3s
-server or independent storage system planned at present. The Beelink control
-plane and the Pi NFS server are known single points of failure.
+server or independent shared-storage/NAS system planned at present. The
+Beelink control plane and the Pi NFS server are known single points of failure.
+
+## Operator manuals
+
+| Task | Start here |
+| --- | --- |
+| Understand the topology, traffic, storage, and security boundaries | [Cluster architecture](docs/architecture.md) |
+| Add, modify, roll back, or retire an application | [Service lifecycle manual](docs/service-operations.md) |
+| Understand placement, add/remove a node, or move a workload | [Cluster and node operations manual](docs/cluster-operations.md) |
+| Diagnose an outage, reconcile Flux, or restore data | [Incident runbook](docs/runbook.md) |
+
+The node operations manual also records current live deviations that still need
+follow-up. Do not infer that a YAML file is active merely because it exists;
+each directory's `kustomization.yaml` defines the desired resources.
 
 ## Workloads
 
@@ -72,22 +88,21 @@ cluster. Open WebUI remains the supported local LLM interface.
 Useful local checks:
 
 ```bash
+set -euo pipefail
 scripts/ci/validate-shell.sh
 python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 python3 scripts/ci/validate-secrets.py
-kubectl kustomize clusters/home-server >/tmp/home-server.yaml
-printf '\n---\n' >>/tmp/home-server.yaml
-kubectl kustomize infrastructure/snapshot-controller/storage \
-  >>/tmp/home-server.yaml
-printf '\n---\n' >>/tmp/home-server.yaml
-kubectl kustomize infrastructure/longhorn/readiness \
-  >>/tmp/home-server.yaml
-printf '\n---\n' >>/tmp/home-server.yaml
-kubectl kustomize infrastructure/longhorn/backups \
-  >>/tmp/home-server.yaml
-printf '\n---\n' >>/tmp/home-server.yaml
-kubectl kustomize apps/syncthing/backups \
-  >>/tmp/home-server.yaml
+{
+  kubectl kustomize clusters/home-server
+  printf '\n---\n'
+  kubectl kustomize infrastructure/snapshot-controller/storage
+  printf '\n---\n'
+  kubectl kustomize infrastructure/longhorn/readiness
+  printf '\n---\n'
+  kubectl kustomize infrastructure/longhorn/backups
+  printf '\n---\n'
+  kubectl kustomize apps/syncthing/backups
+} >/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \
@@ -119,9 +134,13 @@ docs/                    architecture and operations documentation
   consolidated download workload.
 - Never commit plaintext credentials or an age private identity. See the
   runbook for the locations of the root-only recovery copies.
-- Workload and Helm-selected images are pinned by digest. cert-manager,
-  Traefik, and MetalLB charts use digest-pinned OCI artifacts; Longhorn's chart
-  uses its exact upstream Git commit. CI independently fetches, checksums,
-  renders, schema-validates, and policy-scans those immutable charts.
+- Git-defined workload and Helm-selected images are pinned by digest.
+  cert-manager, Traefik, and MetalLB charts use digest-pinned OCI artifacts;
+  Longhorn's chart uses its exact upstream Git commit. CI independently
+  fetches, checksums, renders, schema-validates, and policy-scans those
+  immutable charts. Existing Longhorn volumes retain tag-only EngineImage
+  metadata that currently resolves to the same reviewed digest; same-version
+  normalization is intentionally deferred until a future supported engine
+  upgrade because Longhorn warns against upgrading between identical commits.
 - GitHub Actions uses GitHub-hosted runners only. Do not register either cluster
   node as a repository runner or store deployment credentials in Actions.

@@ -25,9 +25,10 @@ The cluster has two wired nodes:
 
 K3s uses its single-server SQLite datastore. Embedded etcd is not enabled
 because two control-plane members cannot provide useful failure quorum. There
-is no third node planned, so a Beelink outage is an accepted control-plane
-outage. Existing pods on the Pi may continue temporarily, but the cluster
-cannot reconcile or reschedule until the server returns.
+is no third server/control-plane member planned, so a Beelink outage is an
+accepted control-plane outage. Additional agents do not change that. Existing
+pods on the Pi may continue temporarily, but the cluster cannot reconcile or
+reschedule until the server returns.
 
 ## Traffic flow
 
@@ -120,8 +121,7 @@ Two storage mechanisms serve different data classes:
   default StorageClass uses two replicas, `Retain`, and
   `WaitForFirstConsumer`.
 - Static NFS volumes exported by the Pi store media, downloads, books, shared
-  Syncthing data, an optional local Duplicati repository tree, and read-only
-  access to the former persistent-data tree.
+  Syncthing data, and read-only access to the former persistent-data tree.
 
 K3s does not bundle the Kubernetes CSI snapshot APIs. The cluster therefore
 reconciles the upstream external-snapshotter CRDs and common snapshot controller
@@ -162,6 +162,12 @@ instead of creating a server-side-apply conflict with Flux. The dedicated
 recurring job with pruning enabled. The separate `longhorn-ready` gate waits for
 the existing HelmRelease without changing its root Flux ownership or creating
 an uninstall race during rollout.
+
+The same HelmRelease pins storage scheduling off for cordoned Kubernetes nodes
+and keeps concurrent automatic engine upgrades at zero. These settings prevent
+new replicas from landing during maintenance and prevent Longhorn from trying
+to treat the current identical-commit EngineImage reference difference as a
+real version upgrade.
 
 Backblaze Object Lock and bucket lifecycle expiry remain disabled because
 Longhorn owns logical backup retention. B2's `Keep all versions` behavior can
@@ -250,13 +256,21 @@ repository; the private age identity remains root-only outside Git.
 The protected `main` branch requires a GitHub-hosted validation job. It checks
 helper syntax and tests, rejects plaintext or malformed SOPS Secrets, renders
 the complete cluster, validates pinned Kubernetes/CRD schemas, and rejects
-unreviewed additions to a precise high-risk-policy baseline. Workload and
-chart-selected images are pinned by digest. The Gateway API source is pinned by
-commit; cert-manager, Traefik, and MetalLB use digest-pinned OCI charts; and
-Longhorn's chart is built from an exact upstream Git commit. CI independently
-fetches, checksums, renders, schema-validates, and policy-scans the immutable
-chart output. Route, access-proxy, middleware, and NetworkPolicy ingress
-boundaries are hashed for the same reason.
+unreviewed additions to a precise high-risk-policy baseline. Git-defined
+workload and chart-selected images are pinned by digest. The Gateway API source
+is pinned by commit; cert-manager, Traefik, and MetalLB use digest-pinned OCI
+charts; and Longhorn's chart is built from an exact upstream Git commit. CI
+independently fetches, checksums, renders, schema-validates, and policy-scans
+the immutable chart output. Route, access-proxy, middleware, and NetworkPolicy
+ingress boundaries are hashed for the same reason.
+
+Two live-state exceptions remain recorded in the cluster operations manual:
+existing Longhorn Volume CRs still reference the tag-only form of the otherwise
+matching reviewed engine image, and CoreDNS has an undocumented live-only
+Beelink selector. The same-version Longhorn reference is intentionally left
+alone until a future supported engine upgrade because Longhorn warns against
+upgrading between identical commits; CoreDNS still needs a declarative
+placement decision. Neither exception is represented as intended Git state.
 Flux itself is a bootstrap exception to self-management: the bootstrap script
 checks the exact release-manifest SHA-256 and immediately replaces every
 controller tag with its reviewed multi-architecture image digest.

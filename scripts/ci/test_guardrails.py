@@ -7,6 +7,9 @@ import contextlib
 import importlib.util
 import io
 import os
+import stat
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
@@ -679,6 +682,111 @@ class HighRiskPolicyTests(unittest.TestCase):
         after = policy.detect([release])
         self.assertNotEqual(before, after)
         self.assertTrue(any(item.startswith("helm-release-boundary|") for item in after))
+
+
+class BootstrapIntegrityTests(unittest.TestCase):
+    def test_k3s_bootstraps_use_the_checksum_pinned_installer(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        helper = (root / "scripts" / "install-k3s.sh").read_text()
+        self.assertIn("01b6f04aaa69e8b09303f0393d4b4f1811da23aa", helper)
+        self.assertIn(
+            "46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a7161e152fbfad",
+            helper,
+        )
+        self.assertIn("raw.githubusercontent.com/k3s-io/k3s/", helper)
+        self.assertNotIn("get.k3s.io", helper)
+
+        for name in ("bootstrap-k3s-server.sh", "join-k3s-agent.sh"):
+            script = (root / "scripts" / name).read_text()
+            self.assertIn("scripts/install-k3s.sh", script)
+            self.assertNotIn("get.k3s.io", script)
+            self.assertIn("/var/lib/rancher/k3s", script)
+            self.assertIn("fresh-", script)
+
+    def test_k3s_installer_rejects_shell_metacharacters_before_network_use(self) -> None:
+        helper = Path(__file__).resolve().parents[2] / "scripts" / "install-k3s.sh"
+        malicious_inputs = (
+            [str(helper), "node;touch-pwn", "agent"],
+            [str(helper), "beelink", "agent", "v1.36.2;touch-pwn"],
+        )
+        for command in malicious_inputs:
+            with self.subTest(command=command):
+                completed = subprocess.run(command, capture_output=True, check=False)
+                self.assertEqual(completed.returncode, 2)
+
+    def test_agent_join_uses_an_expiring_bootstrap_token(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        join = (root / "scripts" / "join-k3s-agent.sh").read_text()
+        installer = (root / "scripts" / "install-k3s.sh").read_text()
+        helper_path = root / "scripts" / "install-k3s-agent-token.sh"
+        helper = helper_path.read_text()
+
+        self.assertTrue(helper_path.stat().st_mode & stat.S_IXUSR)
+        self.assertIn("install-k3s-agent-token.sh", join)
+        self.assertNotIn("server/node-token", join)
+        self.assertNotIn("server/token", join)
+        self.assertIn("StrictHostKeyChecking=yes", helper)
+        self.assertIn("k3s token create", helper)
+        self.assertIn("--ttl 1h", helper)
+        for script in (join, installer, helper):
+            self.assertIn("BatchMode=yes", script)
+            self.assertIn("ControlMaster=no", script)
+            self.assertIn("ControlPath=none", script)
+            self.assertIn("PasswordAuthentication=no", script)
+            self.assertIn("StrictHostKeyChecking=yes", script)
+        self.assertIn("fresh-agent join helper", join)
+        self.assertIn("fresh-host installer", installer)
+
+    def test_agent_token_receiver_is_fail_closed_and_atomic(self) -> None:
+        helper = Path(__file__).resolve().parents[2] / "scripts" / "install-k3s-agent-token.sh"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            target = Path(temporary_directory) / "node-token"
+            target.write_text("old-token\n")
+            environment = os.environ | {"K3S_AGENT_TOKEN_TARGET": str(target)}
+
+            rejected = subprocess.run(
+                [str(helper), "--receive"],
+                input=b"K10incomplete\n",
+                capture_output=True,
+                check=False,
+                env=environment,
+            )
+            self.assertEqual(rejected.returncode, 1)
+            self.assertEqual(target.read_text(), "old-token\n")
+            self.assertEqual(list(target.parent.glob(".node-token.*")), [])
+
+            token = f"K10{'a' * 64}::abcdef.0123456789abcdef\n"
+            accepted = subprocess.run(
+                [str(helper), "--receive"],
+                input=token.encode(),
+                capture_output=True,
+                check=False,
+                env=environment,
+            )
+            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+            self.assertEqual(target.read_text(), token)
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+            self.assertEqual(list(target.parent.glob(".node-token.*")), [])
+
+    def test_nfs_export_helper_requires_known_live_state_for_replacement(self) -> None:
+        helper = Path(__file__).resolve().parents[2] / "scripts" / "prepare-nfs-media.sh"
+        script = helper.read_text()
+        environment = os.environ | {"EXPECTED_LIVE_EXPORTS_SHA256": "not-a-hash"}
+
+        rejected = subprocess.run(
+            [str(helper), "pi"],
+            capture_output=True,
+            check=False,
+            env=environment,
+        )
+        self.assertEqual(rejected.returncode, 2)
+        self.assertIn("EXPECTED_LIVE_EXPORTS_SHA256", rejected.stderr.decode())
+        self.assertIn("replacement_active=true", script)
+        self.assertIn("restoring the previous file", script)
+        self.assertGreaterEqual(script.count("exportfs -ra"), 2)
+        self.assertIn("ControlPath=none", script)
+        self.assertIn('remote_expected_live_sha256="${expected_live_sha256:--}"', script)
+        self.assertIn('if [[ "$expected_live_sha256" == - ]]', script)
 
 
 if __name__ == "__main__":

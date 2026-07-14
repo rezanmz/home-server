@@ -66,10 +66,12 @@ spec:
     defaultSettings:
       allowRecurringJobWhileVolumeDetached: "true"
       allowVolumeCreationWithDegradedAvailability: "false"
+      concurrentAutomaticEngineUpgradePerNodeLimit: "0"
       createDefaultDiskLabeledNodes: "true"
       defaultDataLocality: best-effort
       defaultDataPath: /var/lib/longhorn
       defaultReplicaCount: '{"v1":"2","v2":"2"}'
+      disableSchedulingOnCordonedNode: "true"
       replicaAutoBalance: best-effort
       storageMinimalAvailablePercentage: "25"
       storageOverProvisioningPercentage: "100"
