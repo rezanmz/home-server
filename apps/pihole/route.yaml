@@ -35,5 +35,6 @@ spec:
             kind: Middleware
             name: pihole-lan-only
       backendRefs:
-        - name: pihole
-          port: 8181
+        - group: traefik.io
+          kind: TraefikService
+          name: pihole-mtls

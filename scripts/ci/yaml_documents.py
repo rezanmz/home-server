@@ -66,8 +66,12 @@ def iter_kubernetes_objects(document: Any) -> Iterator[dict[str, Any]]:
 def github_error(message: str, *, path: Path | None = None) -> None:
     """Emit a GitHub Actions error annotation without command injection."""
 
+    # os.fsdecode deliberately preserves non-UTF-8 filename bytes as surrogate
+    # code points. Convert those to printable escape sequences before writing
+    # to the UTF-8 Actions log so an unusual tracked path cannot crash CI.
+    safe_message = message.encode("utf-8", "backslashreplace").decode("utf-8")
     escaped = (
-        message.replace("%", "%25")
+        safe_message.replace("%", "%25")
         .replace("\r", "%0D")
         .replace("\n", "%0A")
     )
@@ -75,8 +79,9 @@ def github_error(message: str, *, path: Path | None = None) -> None:
         print(f"::error title=Cluster validation::{escaped}")
         return
 
+    safe_path = str(path).encode("utf-8", "backslashreplace").decode("utf-8")
     escaped_path = (
-        str(path)
+        safe_path
         .replace("%", "%25")
         .replace("\r", "%0D")
         .replace("\n", "%0A")

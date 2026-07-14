@@ -1,0 +1,109 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: pihole-mtls-bootstrap
+  namespace: network-services
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pihole-mtls-ca
+  namespace: network-services
+spec:
+  secretName: pihole-mtls-ca
+  commonName: Pi-hole backend CA
+  isCA: true
+  duration: 87600h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    # Keep the trust-anchor key stable. Rotate this CA only with a staged
+    # server/client re-issuance and Pi-hole proxy rollout.
+    rotationPolicy: Never
+  usages:
+    - cert sign
+    - crl sign
+  issuerRef:
+    name: pihole-mtls-bootstrap
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: pihole-mtls-ca
+  namespace: network-services
+spec:
+  ca:
+    secretName: pihole-mtls-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pihole-mtls-server
+  namespace: network-services
+spec:
+  secretName: pihole-mtls-server
+  duration: 2160h
+  renewBefore: 360h
+  dnsNames:
+    - pihole.network-services.svc
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+  issuerRef:
+    name: pihole-mtls-ca
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pihole-mtls-client
+  namespace: network-services
+spec:
+  secretName: pihole-mtls-client
+  commonName: traefik-pihole
+  duration: 2160h
+  renewBefore: 360h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - client auth
+  issuerRef:
+    name: pihole-mtls-ca
+    kind: Issuer
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: pihole-mtls
+  namespace: network-services
+spec:
+  serverName: pihole.network-services.svc
+  rootCAs:
+    - secret: pihole-mtls-ca
+  certificatesSecrets:
+    - pihole-mtls-client
+---
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: pihole-mtls
+  namespace: network-services
+spec:
+  weighted:
+    services:
+      - name: pihole
+        kind: Service
+        port: 8181
+        scheme: https
+        serversTransport: pihole-mtls

@@ -142,9 +142,18 @@ Expected Pi-facing services include DNS on TCP/UDP 53, DHCP on UDP 67, NTP on
 UDP 123, SMB on TCP 139/445, Syncthing on TCP/UDP 22000 and UDP 21027, and
 WireGuard on UDP 1234. The Pi-hole UI listens internally on port 8181 and is
 published through the Gateway rather than directly as the public service.
-The FTL listener must be `127.0.0.1:8181`; the colocated proxy listens on 18181,
-accepts only the cluster pod network, and should return 403 to a direct LAN
-request.
+The FTL listener must be `127.0.0.1:8181`; the colocated proxy listens with TLS
+on 18181 and requires Traefik's cert-manager-managed backend client certificate.
+The HTTPRoute reaches it through `TraefikService/pihole-mtls` and
+`ServersTransport/pihole-mtls`. A direct request without that certificate must
+return HTTP 400 (or fail its TLS handshake), even with a forged
+`X-Forwarded-For`; the Gateway route must return 200 from an allowed source.
+All three `pihole-mtls-*` Certificates must remain Ready. This backend identity
+is separate from the public wildcard certificate. The server leaf is loaded
+through nginx's one-minute certificate cache so normal Secret renewal does not
+need a restart. The private CA intentionally keeps the same key for its ten-year
+lifetime; rotate it only as a staged maintenance operation that reissues both
+leaf certificates and rolls the Pi-hole pod after proving the new trust chain.
 
 Syncthing must have automatic NAT traversal disabled (`natenabled=false`) so it
 cannot ask the router to expose port 22000 through UPnP or NAT-PMP. LAN

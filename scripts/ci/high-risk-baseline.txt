@@ -16,7 +16,7 @@ access-proxy-boundary|v1/ConfigMap|media|shelfmark-access-proxy|data/sha256/077d
 access-proxy-boundary|v1/ConfigMap|media|sonarr-access-proxy|data/sha256/4ef931967e6a9ad696b2b2792e56e310a2c28631196d5404263756a745e29e24
 access-proxy-boundary|v1/ConfigMap|monitoring|headlamp-access-proxy|data/sha256/6624020b5e14dec81f49a62c7fea34313e6ab670a33df38a59b520335ffb0e5b
 access-proxy-boundary|v1/ConfigMap|network-services|duplicati-access-proxy|data/sha256/bedb45e709a0268af7dad7eff4238354184336fdcd842196bc9b6e650f5f94e6
-access-proxy-boundary|v1/ConfigMap|network-services|pihole-access-proxy|data/sha256/d92b761e5b69064ebad1596fdcb66f49e15291f56e7febb9173da56512c54f40
+access-proxy-boundary|v1/ConfigMap|network-services|pihole-access-proxy-t95dhtc96k|data/sha256/52912f4d0b2cf65f0a0c34ac0d762ff6a2f8d52e2d820330a4f9a8e8af679ef5
 access-proxy-boundary|v1/ConfigMap|network-services|syncthing-access-proxy|data/sha256/7e9ae1a0dfa99d8fc2ad5bd41a2630e00ae3a111dbfa00486f499191ba76607e
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/CHOWN
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/DAC_OVERRIDE
@@ -51,7 +51,7 @@ helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/9a2154d2481d75f5312e49d23b57b862a8a5392b288d3259538619a85fdbfd43
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/a5437f0515c8f085f2ffae7862195fd258f970bfb13350122e8f729d0df2da03
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/23ef4cc928121f8e2bee4afe68f2107aef5b71c10527e0fc95d21a1468ed1531
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/7068faa2a79f5a1031703c0236488cdd207b53a03af4531531f751eaa66d7844
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/4694094902637506b7ca80dde556a544cecc7bd21f0dbf90b4386e0810612a5a
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|pihole|pod-spec
 host-network|apps/v1/Deployment|network-services|samba|pod-spec
@@ -147,11 +147,13 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|shelfmark|spec/sha25
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|sonarr|spec/sha256/3cf356d1d8a89de253764c39db9d9049474a79c86769f6f760189d381be7389a
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|monitoring|headlamp|spec/sha256/529f435b352be73ee21faf1097292ddaa76138c7cf93f6e0b30705ed3f8cc895
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|duplicati|spec/sha256/e237b31eab6366aa60db809f27b18fd9c92ec3100cdbd7ddcb77ea9eb189b2d8
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|pihole|spec/sha256/b9fdf785714e27d23605a1de0147012db37d0f5b791b17ce8844456ea1de39cf
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|pihole|spec/sha256/5097ca127093f3ee06ddd63b570d523358aa545c7465c3a34566b266021c4e8c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|syncthing|spec/sha256/648686df21320cc383dd1dff9747707961890998970d0f3d21e7f19f345ad9e8
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|wg-easy|spec/sha256/d7813910e6a2814a5658e4090a4c58d5378dcdf3c8dc0a9e56b09002d54bd39d
 service-account-token-mounted|apps/v1/Deployment|monitoring|headlamp|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|loggifly|pod-spec
+traefik-backend-boundary|traefik.io/v1alpha1/ServersTransport|network-services|pihole-mtls|spec/sha256/b404dbc362cdacd2fedf4b0f769bee0eddaf83af413c51c103cfd4f44ba0bbff
+traefik-backend-boundary|traefik.io/v1alpha1/TraefikService|network-services|pihole-mtls|spec/sha256/1ed6e95101ddd6985c203265dc5144c302837b7b21e6bb0df83aa67096ffa0dd
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|egress/0/all-destinations

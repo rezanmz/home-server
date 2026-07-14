@@ -135,11 +135,11 @@ spec:
         - name: access-proxy
           image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           imagePullPolicy: IfNotPresent
-          command: [nginx, -g, "daemon off;"]
+          command: [nginx, -c, /etc/nginx-config/nginx.conf, -g, "daemon off;"]
           ports:
-            - {name: access-http, containerPort: 18181, protocol: TCP}
-          readinessProbe: {tcpSocket: {port: access-http}, periodSeconds: 10}
-          livenessProbe: {tcpSocket: {port: access-http}, periodSeconds: 30}
+            - {name: access-https, containerPort: 18181, protocol: TCP}
+          readinessProbe: {tcpSocket: {port: access-https}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: access-https}, periodSeconds: 30}
           resources:
             requests: {cpu: 10m, memory: 16Mi}
             limits: {cpu: 100m, memory: 64Mi}
@@ -151,7 +151,9 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
-            - {name: proxy-config, mountPath: /etc/nginx, readOnly: true}
+            - {name: proxy-config, mountPath: /etc/nginx-config, readOnly: true}
+            - {name: backend-tls, mountPath: /etc/nginx/tls, readOnly: true}
+            - {name: backend-ca, mountPath: /etc/nginx/ca, readOnly: true}
             - {name: nginx-tmp, mountPath: /tmp}
             - {name: nginx-cache, mountPath: /var/cache/nginx}
       volumes:
@@ -160,5 +162,16 @@ spec:
             claimName: pihole-config
         - name: proxy-config
           configMap: {name: pihole-access-proxy}
+        - name: backend-tls
+          secret:
+            secretName: pihole-mtls-server
+            defaultMode: 0444
+        - name: backend-ca
+          secret:
+            secretName: pihole-mtls-ca
+            defaultMode: 0444
+            items:
+              - key: tls.crt
+                path: ca.crt
         - {name: nginx-tmp, emptyDir: {}}
         - {name: nginx-cache, emptyDir: {}}

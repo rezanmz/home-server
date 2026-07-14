@@ -3,12 +3,16 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import os
 import unittest
 from pathlib import Path
 from types import ModuleType
+from unittest import mock
 
-from yaml_documents import iter_kubernetes_objects
+from yaml_documents import github_error, iter_kubernetes_objects
 
 
 def load_script(module_name: str, filename: str) -> ModuleType:
@@ -54,6 +58,50 @@ def encrypted_secret() -> dict:
 
 
 class SecretValidationTests(unittest.TestCase):
+    def test_tracked_non_utf8_filename_uses_filesystem_surrogate_decoding(self) -> None:
+        completed = mock.Mock(stdout=b"normal.yaml\0invalid-\xff.yaml\0")
+        with (
+            mock.patch.object(secrets.subprocess, "run", return_value=completed) as run,
+            mock.patch.object(Path, "exists", return_value=True),
+        ):
+            paths = secrets.tracked_files()
+        self.assertIn(b"invalid-\xff.yaml", {os.fsencode(path) for path in paths})
+        run.assert_called_once_with(
+            [
+                "git",
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ],
+            check=True,
+            stdout=secrets.subprocess.PIPE,
+        )
+
+    def test_tracked_files_skip_deleted_worktree_paths(self) -> None:
+        completed = mock.Mock(stdout=b"present.yaml\0deleted.yaml\0")
+        with (
+            mock.patch.object(secrets.subprocess, "run", return_value=completed),
+            mock.patch.object(
+                Path,
+                "exists",
+                autospec=True,
+                side_effect=lambda path: path.name == "present.yaml",
+            ),
+        ):
+            self.assertEqual(secrets.tracked_files(), [Path("present.yaml")])
+
+    def test_github_annotation_safely_prints_surrogates_and_delimiters(self) -> None:
+        output = io.StringIO()
+        path = Path("invalid-\udcff,colon:name%line\n.yaml")
+        with contextlib.redirect_stdout(output):
+            github_error("bad\r\nmessage", path=path)
+        annotation = output.getvalue()
+        self.assertEqual(annotation.count("\n"), 1)
+        self.assertIn(r"invalid-\udcff%2Ccolon%3Aname%25line%0A.yaml", annotation)
+        self.assertIn("bad%0D%0Amessage", annotation)
+
     def test_valid_encrypted_secret_passes(self) -> None:
         self.assertEqual(secrets.validate_secret(encrypted_secret(), Path("fixture.sops.yaml")), [])
 
@@ -106,6 +154,29 @@ class SecretValidationTests(unittest.TestCase):
 
 
 class HighRiskPolicyTests(unittest.TestCase):
+    def test_name_hashed_access_proxy_configmap_is_a_boundary(self) -> None:
+        resource = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "pihole-access-proxy-abc123", "namespace": "test"},
+            "data": {"nginx.conf": "deny all;"},
+        }
+        findings = policy.resource_findings(resource)
+        self.assertTrue(any(item.startswith("access-proxy-boundary|") for item in findings))
+
+    def test_traefik_backend_transport_and_service_are_hashed_boundaries(self) -> None:
+        for kind in ("ServersTransport", "TraefikService"):
+            resource = {
+                "apiVersion": "traefik.io/v1alpha1",
+                "kind": kind,
+                "metadata": {"name": "backend", "namespace": "test"},
+                "spec": {"serverName": "backend.test.svc"},
+            }
+            findings = policy.resource_findings(resource)
+            self.assertTrue(
+                any(item.startswith("traefik-backend-boundary|") for item in findings)
+            )
+
     def test_privileged_latest_image_and_host_path_are_detected(self) -> None:
         workload = {
             "apiVersion": "apps/v1",

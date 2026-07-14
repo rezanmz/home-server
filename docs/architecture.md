@@ -64,7 +64,10 @@ the Pi for those routes; it must never be broadened to the cluster-wide
 new or wider pod-CIDR allow-list requires explicit review.
 
 Pi-hole uses the Pi host network for DNS, DHCP, and NTP, but its web server is
-bound to loopback and reached only through a restricted colocated proxy.
+bound to loopback and reached only through a colocated proxy. That host-network
+proxy requires a cert-manager-managed client certificate presented by Traefik;
+source allow-lists are evaluated only after backend mTLS succeeds. A pod cannot
+bypass the Gateway merely by reaching the node port or forging forwarded headers.
 Samba and Syncthing also use the Pi host network for LAN discovery; Syncthing's
 GUI is likewise TLS loopback-only. wg-easy is pinned to the Pi and maps the
 router-facing UDP port 1234 to its WireGuard listener. These constraints are

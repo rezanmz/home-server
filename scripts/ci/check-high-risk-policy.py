@@ -415,14 +415,26 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
                         )
                     )
 
-    if kind == "ConfigMap" and str(
-        document.get("metadata", {}).get("name", "")
-    ).endswith("-access-proxy"):
+    if kind == "ConfigMap" and re.fullmatch(
+        r".+-access-proxy(?:-[a-z0-9]+)?",
+        str(document.get("metadata", {}).get("name", "")),
+    ):
         results.add(
             finding(
                 "access-proxy-boundary",
                 identity,
                 f"data/sha256/{canonical_sha256(document.get('data', {}))}",
+            )
+        )
+
+    if kind in {"ServersTransport", "TraefikService"} and str(
+        document.get("apiVersion", "")
+    ).startswith("traefik.io/"):
+        results.add(
+            finding(
+                "traefik-backend-boundary",
+                identity,
+                f"spec/sha256/{canonical_sha256(spec)}",
             )
         )
 

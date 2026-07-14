@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import os
 import re
 import subprocess
 import sys
@@ -27,11 +28,14 @@ MANIFEST_SUFFIXES = (".yaml", ".yml", ".json")
 
 def tracked_files() -> list[Path]:
     process = subprocess.run(
-        ["git", "ls-files", "-z"],
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
         check=True,
         stdout=subprocess.PIPE,
     )
-    return sorted(Path(raw.decode("utf-8")) for raw in process.stdout.split(b"\0") if raw)
+    paths = (Path(os.fsdecode(raw)) for raw in process.stdout.split(b"\0") if raw)
+    # Model the prospective worktree: include non-ignored new files, but do not
+    # try to open indexed paths that have been deleted locally.
+    return sorted(path for path in paths if path.exists())
 
 
 def is_probably_text(path: Path) -> bool:
