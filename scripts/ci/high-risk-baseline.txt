@@ -5,6 +5,7 @@
 # baseline change for review. Format: rule|apiVersion/kind|namespace|name|location
 access-proxy-boundary|v1/ConfigMap|apps|actual-budget-access-proxy|data/sha256/8422ad499ea37a7b936365dde880cf69491a08e77a1c92f4a64e60d2dbae81eb
 access-proxy-boundary|v1/ConfigMap|apps|heimdall-access-proxy|data/sha256/9cebfc5e0c33772967bc8d164a498e612498a9866a5d484185967040a05ea97a
+access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-h648dh44m7|data/sha256/ae543ae4cb72fc4718a8dcc67acd631140e8db5687c5e74ef19db45da6708da5
 access-proxy-boundary|v1/ConfigMap|apps|jellyseerr-access-proxy|data/sha256/9904042157d0308934dfbe9f85c4e30f3bf9cce098885a59febc67879abcbdd5
 access-proxy-boundary|v1/ConfigMap|apps|mcphub-access-proxy|data/sha256/c02a93be7038899d154bccf2a7b51ef07b039ef73b0bb8bbab2956ae75bf2792
 access-proxy-boundary|v1/ConfigMap|apps|speedtest-tracker-access-proxy|data/sha256/170041eb9f12f7150f8aecea1cd523715b7466d515977ad8925b62868965dc96
@@ -28,6 +29,8 @@ added-capability|apps/v1/Deployment|network-services|pihole|container/pihole/NET
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_ADMIN
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_RAW
 allow-privilege-escalation|apps/v1/Deployment|network-services|pihole|container/pihole
+explicit-root-group|apps/v1/Deployment|apps|home-assistant|container/home-assistant
+explicit-root-user|apps/v1/Deployment|apps|home-assistant|container/home-assistant
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec/sha256/fe01f773ad1269971adc797b996a1bfc8bd0d590a58abbaa65aa9ff1efded1a6
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec/sha256/ec39ed3f8b3be6b9508be7c0e55284e3deb2783ca80348711796ed6e5e04749d
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|gateway-api|spec/sha256/4a526a21af5a49c01d174e60be7bb89b93759814796aef8995dbf9c0f2168ca9
@@ -55,7 +58,7 @@ helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/9a2154d2481d75f5312e49d23b57b862a8a5392b288d3259538619a85fdbfd43
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/f02fded6a4fd0235dc4113d0d1676577a5a45ef91413fde7445dae55a68694e4
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/23ef4cc928121f8e2bee4afe68f2107aef5b71c10527e0fc95d21a1468ed1531
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/4694094902637506b7ca80dde556a544cecc7bd21f0dbf90b4386e0810612a5a
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/be3f9c40daa9a4d7ee68c2b6b4bbfdebd810eb2f77f98b2efa6f2fc4b8ae91ce
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|pihole|pod-spec
 host-network|apps/v1/Deployment|network-services|samba|pod-spec
@@ -67,6 +70,7 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|heimdall|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|egress/1/peer/0/cidr/0.0.0.0/0/except/none
@@ -98,6 +102,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authenti
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|heimdall|spec/sha256/00417858228b43dc4ae78cbf161abcbafa63b299fa52202033c22482ee4bee81
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/cd46cf55de956f1868c69d54efe01b367139c46b3fa59397d8c0fe20403c7d5b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/459d59fd95b0046b67c12d71706d6147dab3457b90a838da9d4fd7608866e671
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/249429c943462499c3521ee99660f7ba9f352e1e718ada63f78bbcceb968d751
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de

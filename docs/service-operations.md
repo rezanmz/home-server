@@ -106,7 +106,7 @@ Make these decisions before writing manifests.
 
 | Namespace | Intended use | Pod Security enforcement |
 | --- | --- | --- |
-| `apps` | Identity, personal applications, and ordinary web services | Baseline; restricted audited and warned |
+| `apps` | Identity, home automation, personal applications, and ordinary web services | Baseline; restricted audited and warned |
 | `media` | Media, download automation, and VPN-isolated workloads | Privileged; restricted audited and warned |
 | `network-services` | DNS, DHCP, VPN, SMB, Syncthing, and LAN protocols | Privileged; restricted audited and warned |
 | `monitoring` | Read-only dashboards and event reporting | Baseline; restricted audited and warned |

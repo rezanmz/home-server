@@ -116,6 +116,7 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 | `media/calibre-web` | Must be colocated with downloads because both controllers mount the `calibre-web-ingest` Longhorn RWO claim | Longhorn configuration and shared ingest claim plus Pi NFS books |
 | `media/downloads` | Consolidated VPN/download topology, host device, and shared RWO claim with Calibre-Web | `/dev/net/tun`, multiple Longhorn configs including `calibre-web-ingest`, Pi NFS library/downloads |
 | `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, Pi NFS library |
+| `apps/home-assistant` | Keeps third-party integration code and future selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; explicit per-device network policy is required for LAN integrations |
 | `network-services/syncthing-backup-freshness` | Checks B2 from the node that is not the data source | B2 only; no Syncthing data PVC |
 | K3s server processes | Single-server design | Beelink host filesystem and SQLite datastore |
 
@@ -189,9 +190,9 @@ Longhorn manager/CSI, and applicable Longhorn engine-image DaemonSet pods.
 
 ## Storage placement and impact
 
-Longhorn currently has 26 RWO volumes. The default is two replicas, and every
-volume has one replica on each existing node. The workload frontend attaches to
-the node running the consuming pod. A floating RWO workload can relocate after
+Longhorn-backed application state uses RWO volumes with two replicas by
+default, one on each existing node. The workload frontend attaches to the node
+running the consuming pod. A floating RWO workload can relocate after
 detach/reattach; it cannot mount the same volume concurrently from both nodes.
 
 The Pi has three actual NFS export roots:
@@ -803,7 +804,7 @@ not be forgotten.
 ### 1. Longhorn volume EngineImage metadata is still tag-only
 
 Longhorn's manager, desired default engine setting, and new EngineImage are
-digest-qualified. All 26 existing V1 volumes still select the legacy
+digest-qualified. All 26 pre-existing V1 volumes still select the legacy
 `longhorn-engine:v1.12.0` EngineImage without the digest. Both EngineImages are
 currently pulled as the same reviewed binary digest, so this is metadata and
 future-repull exposure—not evidence that foreign code is running.
