@@ -109,6 +109,8 @@ jobs:
             kubectl kustomize infrastructure/longhorn/readiness
             printf '\n---\n'
             kubectl kustomize infrastructure/longhorn/backups
+            printf '\n---\n'
+            kubectl kustomize apps/syncthing/backups
           } > "$RUNNER_TEMP/home-server.yaml"
           test -s "$RUNNER_TEMP/home-server.yaml"
 

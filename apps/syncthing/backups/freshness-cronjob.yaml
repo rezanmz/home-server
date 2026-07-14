@@ -1,0 +1,104 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: syncthing-backup-freshness
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: syncthing-backup
+    app.kubernetes.io/component: freshness-check
+    app.kubernetes.io/part-of: syncthing
+spec:
+  schedule: "13 12 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 82800
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: syncthing-backup
+            app.kubernetes.io/component: freshness-check
+            app.kubernetes.io/part-of: syncthing
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          nodeSelector:
+            kubernetes.io/hostname: beelink
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: restic
+              image: ghcr.io/restic/restic:0.19.1@sha256:2f0373803493361f9304a57150d464677f69a9dad487afec202105aafb2592f2
+              imagePullPolicy: IfNotPresent
+              command: [/bin/sh, /opt/syncthing-backup/backup.sh, check-freshness]
+              env:
+                - name: AWS_DEFAULT_REGION
+                  value: ca-east-006
+                - name: RESTIC_REPOSITORY
+                  value: s3:https://s3.ca-east-006.backblazeb2.com/rezanmz-home-server-syncthing-backups/syncthing
+                - name: RESTIC_HOST
+                  value: home-server-syncthing-nfs
+                - name: EXPECTED_REPOSITORY_ID
+                  value: 49a95da0513b07815d69f6f42519e0b7cfaeab7912b89521bbbd059574cb4d1b
+                - name: MAX_TRUSTED_SNAPSHOT_AGE_SECONDS
+                  value: "129600"
+                - name: RESTIC_CACHE_DIR
+                  value: /cache
+                - name: TMPDIR
+                  value: /tmp
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 250m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: credentials
+                  mountPath: /credentials
+                  readOnly: true
+                - name: policy
+                  mountPath: /opt/syncthing-backup/backup.sh
+                  subPath: backup.sh
+                  readOnly: true
+                - name: cache
+                  mountPath: /cache
+                - name: work
+                  mountPath: /work
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: credentials
+              secret:
+                secretName: syncthing-backup-credentials
+                defaultMode: 0400
+            - name: policy
+              configMap:
+                name: syncthing-backup-policy
+                defaultMode: 0444
+            - name: cache
+              emptyDir:
+                sizeLimit: 256Mi
+            - name: work
+              emptyDir:
+                sizeLimit: 16Mi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 16Mi

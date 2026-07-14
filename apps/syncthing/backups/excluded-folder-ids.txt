@@ -1,0 +1,7 @@
+# Every configured Syncthing folder is backed up by default. Add one stable
+# Syncthing folder ID per line to opt that folder out. The job resolves IDs to
+# the current live /data path, so renaming or moving a folder does not silently
+# re-include it.
+#
+# Example (the current Vault folder; intentionally still included):
+# mbjfk-vepmo

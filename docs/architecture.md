@@ -137,15 +137,9 @@ not make the K3s control plane or Pi-hosted NFS data highly available.
 The pre-migration rollback snapshot at
 `/srv/home-server-backups/pre-k3s-20260712` on the Beelink contains a copy of the
 Pi application-state tree and consistency-safe PostgreSQL dumps. It is a local
-recovery set, not an off-site backup. Duplicati writes encrypted backup archives
-to Backblaze B2. Because it is pinned to the Pi, its source is a read-only host
-path; this lets the backup process traverse application-owned directories
-without weakening NFS root-squashing for the rest of the cluster. NetworkPolicy
-limits this high-access pod to cluster DNS and public HTTPS for Backblaze B2.
+recovery set, not an off-site backup.
 
-Duplicati's current `/source` mount covers only the Pi
-`/home/reza/persistent` tree; it cannot see the active Longhorn PVC filesystems.
-Longhorn therefore uses the dedicated private
+Longhorn uses the dedicated private
 `rezanmz-home-server-longhorn-backups` Backblaze B2 bucket as its default
 S3-compatible BackupTarget. The credential is stored only in the SOPS-encrypted
 `longhorn-system/longhorn-backblaze-b2` Secret. Backblaze provides default
@@ -177,15 +171,67 @@ create billable hidden versions, so bucket size and hidden-version growth
 require operational monitoring. Indefinite physical version retention is
 accepted initially because Longhorn prohibits a backupstore lifecycle rule; it
 is not a bounded 14-copy guarantee.
-Duplicati is not expanded to mount active PVCs and remains only until a real B2
-backup and disposable restore proof succeed. Its old remote repository and the
-legacy Pi source tree are preserved separately from workload retirement.
 
-The Longhorn BackupTarget covers only Longhorn volumes. It does not include the
-Pi's NFS exports, including `/home/reza/media` and the active Syncthing data at
-`/home/reza/persistent/syncthing/data`. The current Duplicati source includes
-that Syncthing tree, so removing Duplicati also requires an explicit decision to
-accept that gap, migrate the data, or replace its file-level backup path.
+The Longhorn BackupTarget does not include the Pi's NFS exports. Media remains
+an explicitly reconstructible data class, while the active Syncthing tree at
+`/home/reza/persistent/syncthing/data` has a separate file-level Restic backup.
+The hardened `network-services/syncthing-backup` CronJob mounts that NFS PVC
+read-only plus only `config.xml` from Syncthing's config PVC. It writes a
+client-side encrypted repository to the dedicated private
+`rezanmz-home-server-syncthing-backups` B2 bucket. It has no Kubernetes API
+token, no inbound network access, and egress only to cluster DNS and public
+HTTPS. The bucket is independent of both Longhorn's backupstore and the old
+Duplicati repository so their lifecycle rules, credentials, object formats,
+and deletion blast radii cannot interfere.
+
+The CronJob backs up the complete Syncthing data root. Every current and future
+folder is therefore included by default, along with currently unclassified
+root-level data. A Git-reviewed stable-folder-ID list provides explicit
+per-folder opt-outs. The preflight reads only folder IDs and paths from the live
+Syncthing config, requires every configured folder to remain below `/data`,
+rejects path overlap and symlinks, and resolves excluded IDs to their current
+paths. A durable root canary prevents an empty or wrong NFS export from being
+accepted. Restic keeps 14 daily,
+8 weekly, 12 monthly, and 3 yearly snapshots. Weekly pruning is followed by a
+structural repository check, and the job cycles through deterministic
+encrypted-data subsets each month. A quarterly isolated restore remains the
+stronger end-to-end proof. These are live-file backups rather than atomic
+filesystem snapshots, so a partial scan is a failed job and is retried.
+
+New snapshots initially receive only a candidate tag. Restic can save an
+incomplete snapshot before returning its partial-backup exit code, so only an
+exit-zero snapshot is promoted to the trusted recovery tag. Restore and trusted
+retention ignore unpromoted candidates; a separate keep-last-three policy bounds
+failed candidates without ever pruning from the failure path. The repository's
+immutable ID is also pinned after one-time initialization, so backups fail if
+the bucket, prefix, password, or repository identity differs.
+
+A separate `syncthing-backup-freshness` CronJob runs on the Beelink after the
+daily backup window. It mounts no Syncthing data or configuration, reads only
+the B2 credential, and fails when the newest exact trusted snapshot is older
+than 36 hours. A failed Job emits a Kubernetes Warning event for the existing
+event-alert pipeline, covering the case where the data-reading CronJob never
+started or stopped producing recovery points.
+
+The Restic bucket uses SSE-B2 in addition to Restic's client-side encryption and
+has Object Lock disabled so repository maintenance can hide obsolete packs. It
+currently keeps all hidden object versions. Those versions are object-level
+forensic history, not an atomic or tested point-in-time rollback of the Restic
+repository, and their unbounded storage growth must be monitored. The Restic
+password and bucket-scoped S3 key are stored in the SOPS-encrypted
+`network-services/syncthing-backup-credentials` Secret. Losing the Restic
+password makes the repository unrecoverable. The rollout key is restricted to
+the dedicated bucket but has broader capabilities than Restic normally needs;
+rotating it to the `syncthing/` prefix and name-only list/read/write operations
+is a worthwhile defense-in-depth follow-up after the exact reduced key passes
+init, prune, check, and restore tests. Object Lock would require a separately
+designed maintenance and retention model.
+
+Duplicati's active workload, route, Services, and live Secret are retired.
+Its historical native-B2 repository, AES passphrase dependency, SOPS settings
+key, retained config PVC, and local repository tree remain recovery artifacts.
+Restic must never share that bucket: the old root-scoped Duplicati job treats
+foreign repository objects as unsupported.
 
 ## Application boundaries
 
@@ -193,7 +239,7 @@ Applications are separated into four operational namespaces:
 
 - `apps` for identity, personal, and general web applications;
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
-- `network-services` for Pi-hole, WireGuard, Samba, Syncthing, and Duplicati;
+- `network-services` for Pi-hole, WireGuard, Samba, Syncthing, and backups;
 - `monitoring` for Headlamp and Kubernetes event export.
 
 Namespace default-deny policies and workload-specific rules permit only the

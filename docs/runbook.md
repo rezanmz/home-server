@@ -123,7 +123,7 @@ IP allow-list range that contains either node address.
 
 ## Pi network services
 
-Pi-hole, Samba, Syncthing, wg-easy, and Duplicati are Kubernetes workloads in
+Pi-hole, Samba, Syncthing, and wg-easy are Kubernetes workloads in
 the `network-services` namespace. They are pinned to the Pi when they require
 its address or data.
 
@@ -296,13 +296,11 @@ The local pre-migration recovery set is on the Beelink:
 └── SHA256SUMS
 ```
 
-This set and the age identities are not off-site backups. Duplicati sends its
-encrypted repository to Backblaze B2, but restore credentials and the SOPS age
-identities still need an independent recovery copy.
+This set and the age identities are not off-site backups. Restore credentials,
+the Restic repository password, and the SOPS age identities still need an
+independent recovery copy.
 
-Do not assume that job protects the active PVCs. Duplicati mounts only the Pi's
-`/home/reza/persistent` tree, while migrated application state lives on
-Longhorn. Longhorn's default BackupTarget is the dedicated private
+Longhorn's default BackupTarget is the dedicated private
 `rezanmz-home-server-longhorn-backups` Backblaze B2 bucket in `ca-east-006`.
 Its S3 credential exists only as the SOPS-encrypted
 `longhorn-system/longhorn-backblaze-b2` Secret. Check the target and backup
@@ -342,18 +340,305 @@ Longhorn backups are crash-consistent per volume. They do not coordinate writes
 between an application and its PostgreSQL, Redis, or Elasticsearch PVC, or
 between multiple PVCs. Periodic native database exports and application-level
 restore tests remain desirable even after the block-level restore proof passes.
-Keep Duplicati until the first remote backup and disposable B2 restore test
-succeed. Retiring its workload does not authorize deleting the existing B2
-repository, retained Longhorn config volume, or `/home/reza/persistent` legacy
-tree; preserve those until their remaining recovery value is reviewed.
 
-The Longhorn target does not cover any `nfs-media` PersistentVolume. In
-particular, active Syncthing data remains at
-`/home/reza/persistent/syncthing/data` and is inside Duplicati's current source,
-while `/home/reza/media` is outside the configured Duplicati job as well as
-Longhorn. Do not remove Duplicati until the Syncthing/NFS data is deliberately
-migrated, covered by a replacement file-level backup, or accepted as an
-unprotected/reconstructible data class.
+### Syncthing file-level backups
+
+The Longhorn target does not cover any `nfs-media` PersistentVolume. Media is
+accepted as reconstructible. Active Syncthing data is protected separately by
+Restic in the private `rezanmz-home-server-syncthing-backups` bucket. Never put
+Restic objects in the Longhorn or historical Duplicati bucket.
+
+The B2 bucket must stay private with SSE-B2 enabled and Object Lock disabled.
+It currently uses `Keep all versions`: hidden object versions are useful
+forensic material but are not a coherent or tested point-in-time rollback of a
+multi-object Restic repository. Monitor their unbounded billable growth. If a
+bounded rule is introduced later, it may expire only hidden prior versions and
+must never expire current objects based on upload age.
+
+Restic 0.19.1's normal S3 operations use object listing, reads, writes, and
+name-only deletes that create hide markers. A future least-privilege key should
+be restricted to bucket `rezanmz-home-server-syncthing-backups`, name prefix
+`syncthing/` including the trailing slash, and begin with only `listFiles`,
+`readFiles`, and `writeFiles`. Prove initialization, two changed backups, lock
+cleanup, forget/prune, full check, and restore with that exact key. Add
+`listBuckets` plus `listAllBucketNames` only if B2's bucket probe requires them,
+and add `deleteFiles` only if a name-only cleanup is proven to fail without it.
+Do not grant bucket creation/deletion, lifecycle changes, sharing, logging,
+notifications, replication, or Object Lock administration.
+
+The rollout key is bucket-scoped but was created with broader capabilities and
+no name-prefix restriction. Rotation to the proven reduced key is a worthwhile
+hardening task; until then, compromise of the backup pod can use Backblaze's
+native API to destroy historical versions. Treat unexpected backup-pod
+execution, key use, or object-count drops as an incident. Restic separately
+encrypts every repository object with the password in the SOPS Secret. Preserve
+that password offline; Backblaze cannot recover it.
+
+`network-services/syncthing-backup` runs at 07:43 UTC. It retains 14 daily,
+8 weekly, 12 monthly, and 3 yearly snapshots, prunes on Sunday, performs a
+structural check after pruning, and reads one deterministic quarter of the
+repository on the first day of each month. The entire `/source` mount is backed
+up, so new folders are protected without a manifest change. The stable host,
+source path, and tag in the CronJob are part of Restic's snapshot grouping and
+must not be changed casually. The initial 2026-07-14 backup processed 21 files
+and 18 directories (5.27 MiB), the full encrypted-data check passed, and the
+same trusted snapshot restored successfully into an isolated volume.
+At 12:13 UTC, `syncthing-backup-freshness` checks the same pinned repository
+from the Beelink and fails when no exact trusted snapshot is newer than 36
+hours. It mounts the credential but no Syncthing data or configuration. Its
+failed Job emits a Warning event consumed by the existing event-alert pipeline.
+
+Inspect the schedule and the newest jobs directly:
+
+```bash
+sudo k3s kubectl -n network-services get cronjob syncthing-backup
+sudo k3s kubectl -n network-services get cronjob syncthing-backup-freshness
+sudo k3s kubectl -n network-services get jobs \
+  -l app.kubernetes.io/name=syncthing-backup \
+  --sort-by=.metadata.creationTimestamp
+sudo k3s kubectl -n network-services logs \
+  -l app.kubernetes.io/name=syncthing-backup \
+  --all-containers --tail=200 --prefix
+```
+
+Any nonzero Restic result, including exit 3 for an incomplete live-file scan,
+is a failed backup. Do not suppress it. Do not add `--no-lock`, and never run an
+automatic `restic unlock`; first prove no backup, check, prune, or restore pod is
+alive.
+
+The repository is initialized exactly once after the SOPS Secret reconciles.
+Generate the Job locally before applying it so the normal backup command cannot
+race the command override:
+
+```bash
+name="syncthing-backup-init-$(date -u +%Y%m%d%H%M%S)"
+sudo k3s kubectl -n network-services create job "$name" \
+  --from=cronjob/syncthing-backup --dry-run=client -o json |
+  jq '
+    .spec.template.spec.containers[0].command[-1] = "init-repository"
+    | (.spec.template.spec.containers[0].env[]
+        | select(.name == "ALLOW_REPOSITORY_INIT").value) = "true"
+  ' |
+  sudo k3s kubectl apply -f -
+sudo k3s kubectl -n network-services wait \
+  --for=condition=complete "job/$name" --timeout=15m
+sudo k3s kubectl -n network-services logs "job/$name"
+```
+
+Initialization is idempotent only when the existing repository password is
+correct. Exit 10 permits creation only in the explicitly modified one-shot Job;
+authorization, network, and wrong-password failures refuse to create a second
+repository. Copy the 64-character `repository-id` from the successful log into
+`EXPECTED_REPOSITORY_ID` in the CronJob and reconcile it while `suspend: true`.
+Every backup and integrity check compares the live ID with that pinned value,
+preventing a bucket-prefix typo from silently starting a second history.
+
+To start an on-demand run from the exact scheduled template:
+
+```bash
+test "$(sudo k3s kubectl -n network-services get jobs \
+  -l app.kubernetes.io/name=syncthing-backup -o json | \
+  jq '[.items[] | select((.status.active // 0) > 0)] | length')" -eq 0
+name="syncthing-backup-manual-$(date -u +%Y%m%d%H%M%S)"
+sudo k3s kubectl -n network-services create job "$name" \
+  --from=cronjob/syncthing-backup
+sudo k3s kubectl -n network-services wait \
+  --for=condition=complete "job/$name" --timeout=12h
+sudo k3s kubectl -n network-services logs "job/$name"
+```
+
+The CronJob's `Forbid` policy does not serialize independently created Jobs.
+Run manual backup, check, prune, and restore work away from 07:43 UTC and only
+after the active-job check above returns zero.
+
+Run a complete encrypted-data check before retiring another backup path and at
+least quarterly:
+
+```bash
+test "$(sudo k3s kubectl -n network-services get jobs \
+  -l app.kubernetes.io/name=syncthing-backup -o json | \
+  jq '[.items[] | select((.status.active // 0) > 0)] | length')" -eq 0
+name="syncthing-backup-full-check-$(date -u +%Y%m%d%H%M%S)"
+sudo k3s kubectl -n network-services create job "$name" \
+  --from=cronjob/syncthing-backup --dry-run=client -o json |
+  jq '.spec.template.spec.containers[0].command[-1] = "check-repository-data"' |
+  sudo k3s kubectl apply -f -
+sudo k3s kubectl -n network-services wait \
+  --for=condition=complete "job/$name" --timeout=12h
+sudo k3s kubectl -n network-services logs "job/$name"
+```
+
+A successful `restic check --read-data` is necessary but not a restore proof.
+Copy the full 64-character trusted snapshot ID from a successful backup log;
+never use an unpromoted candidate. The following procedure creates a disposable
+Longhorn PVC, derives a Job from the reviewed CronJob, mounts that PVC only at
+`/restore`, and invokes the script's fail-closed `restore-proof` mode. Increase
+`restore_size` above the snapshot's restored size when the data grows.
+
+```bash
+snapshot_id=REPLACE_WITH_64_CHARACTER_TRUSTED_SNAPSHOT_ID
+restore_size=1Gi
+case "$snapshot_id" in
+  *[!0-9a-f]*|'') printf 'invalid snapshot ID\n' >&2; exit 1 ;;
+esac
+test "${#snapshot_id}" -eq 64
+test "$(sudo k3s kubectl -n network-services get jobs \
+  -l app.kubernetes.io/name=syncthing-backup -o json | \
+  jq '[.items[] | select((.status.active // 0) > 0)] | length')" -eq 0
+
+stamp=$(date -u +%Y%m%d%H%M%S)
+pvc="syncthing-restore-proof-$stamp"
+job="syncthing-restore-proof-$stamp"
+sudo k3s kubectl apply -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $pvc
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: syncthing-backup
+    app.kubernetes.io/component: restore-proof
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: $restore_size
+EOF
+
+sudo k3s kubectl -n network-services create job "$job" \
+  --from=cronjob/syncthing-backup --dry-run=client -o json |
+  jq --arg snapshot "$snapshot_id" --arg pvc "$pvc" '
+    .spec.template.spec.containers[0].command[-1] = "restore-proof"
+    | .spec.template.spec.containers[0].env += [
+        {"name": "RESTORE_SNAPSHOT_ID", "value": $snapshot}
+      ]
+    | .spec.template.spec.containers[0].volumeMounts += [
+        {"name": "restore", "mountPath": "/restore"}
+      ]
+    | .spec.template.spec.volumes += [
+        {"name": "restore", "persistentVolumeClaim": {"claimName": $pvc}}
+      ]
+  ' |
+  sudo k3s kubectl apply -f -
+sudo k3s kubectl -n network-services wait \
+  --for=condition=complete "job/$job" --timeout=12h
+sudo k3s kubectl -n network-services logs "job/$job"
+```
+
+The proof rejects a snapshot unless its exact ID, host
+`home-server-syncthing-nfs`, path `/source`, and trusted tag all match. It then
+checks the restored canary, requires every included configured folder and its
+real `.stfolder`, requires every opted-out folder to be absent, and reports
+only aggregate file/directory counts. Delete the disposable objects only after
+the log says `restore proof passed`; retain them for diagnosis after a failure:
+
+```bash
+sudo k3s kubectl -n network-services delete job "$job" --wait=true
+sudo k3s kubectl -n network-services delete pvc "$pvc" --wait=true
+```
+
+After initial backup, full-data check, and isolated restore all pass, the
+CronJob may be unsuspended. Repeat both the full-data check and isolated restore
+at least quarterly.
+
+Every Syncthing folder is included unless its stable folder ID appears in
+`apps/syncthing/backups/excluded-folder-ids.txt`. The policy intentionally
+starts empty.
+
+The storage-identity canary is the regular file
+`/home/reza/persistent/syncthing/data/.restic-source-canary` on the Pi. It is
+owned by UID/GID 1000, mode `0444`, and its expected SHA-256 is
+`6665ae1d8e206b61b16d6a199c5bb76a292e5ed4906337fb0dbcdaad5415d840`.
+Do not remove or casually edit it: every backup refuses an empty, wrong, or
+substituted NFS root when the checksum differs. To recreate it after a deliberate
+storage rebuild, first prove the path is the intended Syncthing export, then run:
+
+```bash
+printf 'home-server-syncthing-source-canary-v1\n' |
+  ssh pi 'sudo tee /home/reza/persistent/syncthing/data/.restic-source-canary >/dev/null'
+ssh pi 'sudo chown 1000:1000 /home/reza/persistent/syncthing/data/.restic-source-canary &&
+  sudo chmod 0444 /home/reza/persistent/syncthing/data/.restic-source-canary &&
+  sha256sum /home/reza/persistent/syncthing/data/.restic-source-canary'
+```
+
+If the intentional content ever changes, update `SOURCE_CANARY_SHA256` in the
+CronJob in the same reviewed change and complete a fresh backup/check/restore
+proof before accepting the new identity.
+
+To review the live folder IDs and paths without dumping secret-bearing
+`config.xml` or device membership:
+
+```bash
+pod=$(sudo k3s kubectl -n network-services get pod \
+  -l app.kubernetes.io/name=syncthing -o jsonpath='{.items[0].metadata.name}')
+for id in $(sudo k3s kubectl -n network-services exec "$pod" -c syncthing -- \
+  syncthing cli --home=/config config folders list); do
+  printf 'id=%s label=' "$id"
+  sudo k3s kubectl -n network-services exec "$pod" -c syncthing -- \
+    syncthing cli --home=/config config folders "$id" label get
+  printf 'id=%s path=' "$id"
+  sudo k3s kubectl -n network-services exec "$pod" -c syncthing -- \
+    syncthing cli --home=/config config folders "$id" path get
+done
+```
+
+Add only the exact folder ID, for example `mbjfk-vepmo`; keep labels and paths in
+comments if useful for review. The preflight resolves that ID through the live
+config, so a path rename remains excluded. It rejects unknown or duplicate IDs,
+folders outside `/data`, path overlap, symlinks, and directories without a real
+`.stfolder`. Removing an ID includes the folder again at the next successful
+backup. A policy or storage-identity error fails the entire job instead of
+silently backing up or omitting the wrong folder.
+
+Restic gives each new snapshot a candidate tag first. Exit 0 is required before
+the exact snapshot is promoted to the trusted `syncthing-nfs` tag; incomplete
+exit-3 snapshots remain candidates and are never selected by trusted retention
+or the restore procedure. A best-effort failure-path rule and every later
+successful run retain only the newest three candidate snapshots without
+pruning repository data. Always select the trusted tag and record the exact
+snapshot ID used for a restore.
+
+The `flux-system/syncthing-backups` child owns the credential, data-backup and
+freshness CronJobs, policy ConfigMap, and NetworkPolicy with pruning enabled.
+For a planned rollback, first commit `suspend: true` on both CronJobs and wait
+for reconciliation, delete any running backup Jobs, then remove the child
+resources in a second commit while leaving the child Kustomization present so
+it can prune them. Only after the inventory is empty should the child manifest
+be removed from the parent. The root reconciler has pruning disabled, so
+explicitly delete the now-empty child object afterward.
+
+For an immediate stop, suspend the child before touching its resources:
+
+```bash
+sudo k3s kubectl -n flux-system patch kustomization syncthing-backups \
+  --type=merge -p '{"spec":{"suspend":true}}'
+sudo k3s kubectl -n network-services patch cronjob syncthing-backup \
+  --type=merge -p '{"spec":{"suspend":true}}'
+sudo k3s kubectl -n network-services patch cronjob syncthing-backup-freshness \
+  --type=merge -p '{"spec":{"suspend":true}}'
+sudo k3s kubectl -n network-services delete job \
+  -l app.kubernetes.io/name=syncthing-backup --wait=true
+sudo k3s kubectl -n network-services delete cronjob \
+  syncthing-backup syncthing-backup-freshness \
+  --ignore-not-found
+sudo k3s kubectl -n network-services delete secret \
+  syncthing-backup-credentials --ignore-not-found
+```
+
+This does not delete the remote Restic repository. Commit the matching desired
+state before resuming the child, or Flux will recreate the backup plane.
+
+Duplicati was retired after the Restic backup, full-data check, and isolated
+restore proof passed. Its Deployment, Services, HTTPRoute, NetworkPolicy,
+access-proxy ConfigMap, and live Secret are absent. This retirement does not
+authorize deleting the existing `rezanmz-homeserver-backup` B2 repository, AES
+passphrase, SOPS settings key, retained `duplicati-config` PVC,
+or `/home/reza/persistent` legacy tree. The unused `duplicati-backups` NFS
+PV/PVC and dedicated writable export were removed, but their empty underlying
+directory remains on the Pi. The old repository is native Duplicati B2 format
+at the bucket root and must not be compacted, purged, repaired with deletion,
+or reused by Restic.
 
 The Longhorn HelmRelease owns the BackupTarget and detached-volume values through
 Longhorn's supported chart configuration; `longhorn-manager` then owns the
@@ -420,26 +705,39 @@ Never stage Open WebUI user-import CSV files under
 authentication. Keep recovery imports outside the static tree with mode 0600
 and verify the former URL returns 404 after cleanup.
 
-Duplicati runs as root so it can read application-owned state. It is pinned to
-the Pi and uses a read-only host path for `/home/reza/persistent`; routing this
-source through the root-squashed NFS PersistentVolume silently excludes
-protected directories. Check the newest Duplicati result for permission
-warnings after any storage or identity change. Its pod egress is limited to
-Kubernetes DNS and public TCP 443 for Backblaze B2; do not restore unrestricted
-egress to support a private destination without adding the exact destination
-and port instead.
+### Retired Duplicati recovery artifacts
 
-Never use a Duplicati `repair-update`, purge, compact, or remote delete while
-diagnosing an incomplete remote set. Snapshot the local database first, prefer
-a remote-only database recreate and verification, and preserve the original
-database until a new backup and restore test have succeeded.
+`apps/duplicati/kustomization.yaml` reconciles only `storage.yaml`. The retired
+workload manifests and SOPS-encrypted settings key remain unreferenced recovery
+artifacts in that directory; do not re-add them as an ordinary rollback. The
+live `duplicati-config` Longhorn PVC remains deliberately present and unmounted.
+The obsolete `duplicati-backups` NFS PVC/PV and writable export must remain
+absent. Confirm that state with:
 
-As of the 2026-07-14 recovery, Duplicati's local database has been recreated
-from B2, its integrity and a remote sample test pass, and a new backup completed
-without errors. The scheduler is intentionally paused: the pre-existing
-`1W:1D,4W:1W,12M:1M` retention policy automatically removed one old file-list
-during the verification backup. Review that policy and the required recovery
-points before resuming; then perform a restore test to a disposable path.
+```bash
+sudo k3s kubectl -n network-services get pvc duplicati-config
+sudo k3s kubectl -n network-services get pvc duplicati-backups --ignore-not-found
+sudo k3s kubectl get pv duplicati-backups-network-services --ignore-not-found
+sudo k3s kubectl -n network-services get \
+  deployment/duplicati service/duplicati service/duplicati-access \
+  httproute/duplicati networkpolicy/duplicati \
+  configmap/duplicati-access-proxy secret/duplicati-secrets \
+  --ignore-not-found
+```
+
+The second, third, and final commands should return no rows. As of the
+2026-07-14 recovery, Duplicati's local database had been recreated from B2, its
+integrity and a remote sample test passed, and a new backup completed without
+errors. Its scheduler was paused; the pre-existing `1W:1D,4W:1W,12M:1M`
+retention policy removed one old file-list during that verification backup.
+
+Never use Duplicati `repair-update`, purge, compact, or remote delete while
+diagnosing the retained set. Snapshot the config volume/database first, prefer
+a remote-only database recreate and read-only verification, and preserve the
+original. Any temporary recovery pod would again need root-level read access to
+the historical source because the NFS export is root-squashed; give it the
+smallest exact mounts and network egress, keep the source read-only, do not
+publish a route, and delete it after a disposable restore test.
 
 For a one-time directory-to-PVC migration, stop every writer and take a
 consistency-safe source snapshot before acknowledging quiescence:
@@ -524,7 +822,7 @@ The two-node design has deliberate single points of failure:
 
 - Beelink maintenance removes the K3s control plane and most compute workloads.
 - Pi maintenance removes DNS/DHCP, public ingress, WireGuard, SMB, Syncthing
-  discovery, Duplicati, and all NFS-backed data.
+  discovery, scheduled Syncthing backups, and all NFS-backed data.
 
 Before rebooting either node, confirm the other node is healthy, check Longhorn
 volume health, and expect the services tied to the maintained node to be
