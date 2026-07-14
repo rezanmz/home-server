@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: server
-          image: argilla/argilla-server:v2.8.0
+          image: argilla/argilla-server:v2.8.0@sha256:6f4af8fcf4b809d25aa88a6a4f8838dbacab9296c83b055a9a58f1db7526431a
           imagePullPolicy: IfNotPresent
           env: &argilla-env
             - name: ARGILLA_HOME_PATH
@@ -97,7 +97,7 @@ spec:
             - name: data
               mountPath: /var/lib/argilla
         - name: worker
-          image: argilla/argilla-server:v2.8.0
+          image: argilla/argilla-server:v2.8.0@sha256:6f4af8fcf4b809d25aa88a6a4f8838dbacab9296c83b055a9a58f1db7526431a
           imagePullPolicy: IfNotPresent
           command: [sh, -c]
           args: ["python -m argilla_server worker --num-workers 2"]
@@ -164,7 +164,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgres
-          image: postgres:14
+          image: postgres:14@sha256:9e279cc7fc6e908da071befe389c576bd6752dbd295a9c078f96a75bab03e54c
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_USER
@@ -246,7 +246,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: elasticsearch
-          image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0@sha256:2f602552550869fb29b6fd5848c5118d3ef3a2e1d5d45802e3ab9088cb2de8e2
           imagePullPolicy: IfNotPresent
           env:
             - name: ES_JAVA_OPTS
@@ -340,7 +340,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: redis
-          image: redis:8.8.0
+          image: redis:8.8.0@sha256:77cb4599f0121142e25139cea1aafaf45fe765c74a0a41b38f4a4ea9fc8cb846
           imagePullPolicy: IfNotPresent
           args: [redis-server, --appendonly, "yes"]
           ports:

@@ -20,19 +20,17 @@ spec:
         - {port: 18989, protocol: TCP}
         - {port: 19696, protocol: TCP}
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: media
+        # Jellyseerr is the only separate workload that calls the raw Arr
+        # APIs. Every other UI must use its access proxy through Traefik.
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jellyseerr
       ports:
         - {port: 7878, protocol: TCP}
-        - {port: 8080, protocol: TCP}
-        - {port: 8084, protocol: TCP}
-        - {port: 8191, protocol: TCP}
         - {port: 8989, protocol: TCP}
-        - {port: 9696, protocol: TCP}
   egress:
     # Gluetun owns this Pod's routes, firewall and VPN kill switch. Kubernetes
     # egress filtering here interferes with its tunnel and encrypted DNS.

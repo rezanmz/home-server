@@ -18,16 +18,6 @@ spec:
         app.kubernetes.io/name: actual-budget
     spec:
       automountServiceAccountToken: false
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-      # Keep Actual beside Authentik/Traefik so server-side OIDC requests can
-      # use the node-local HTTPS listener instead of hairpinning through VIP.
-      nodeSelector:
-        kubernetes.io/hostname: raspberrypi
-      hostAliases:
-        - ip: 127.0.0.1
-          hostnames:
-            - auth.reza.network
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -38,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-budget
-          image: actualbudget/actual-server:26.7.0
+          image: actualbudget/actual-server:26.7.0@sha256:e18b7fbfec6157a368fad4146563f397502e9da70a120aeaeac63b4977405d1c
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
@@ -48,6 +38,10 @@ spec:
             - name: ACTUAL_ALLOWED_LOGIN_METHODS
               value: openid
             - name: ACTUAL_OPENID_DISCOVERY_URL
+              # Use the public issuer URL through the exact Traefik VIP path.
+              # Authentik derives issuer/browser endpoints from the request
+              # host, so direct service discovery would publish an internal,
+              # browser-unreachable issuer.
               value: https://auth.reza.network/application/o/actual-budget/.well-known/openid-configuration
             - name: ACTUAL_OPENID_AUTH_METHOD
               value: openid
@@ -113,7 +107,7 @@ spec:
             - name: data
               mountPath: /data
         - name: access-proxy
-          image: nginx:1.27.4-alpine
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
@@ -138,7 +132,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
-            - {name: access-proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: access-proxy-config, mountPath: /etc/nginx, readOnly: true}
             - {name: nginx-tmp, mountPath: /tmp}
             - {name: nginx-cache, mountPath: /var/cache/nginx}
       volumes:

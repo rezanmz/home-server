@@ -19,9 +19,47 @@ spec:
       ports:
         - port: 8080
           protocol: TCP
-  # Model backends and OpenAI-compatible endpoints are user-configured.
   egress:
-    - {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: open-webui
+              app.kubernetes.io/component: tika
+      ports:
+        - {port: 9998, protocol: TCP}
+    # Authentik's public issuer is reached through the split-horizon Traefik
+    # VIP. Include both the pre- and post-DNAT destinations used by K3s.
+    - to:
+        - ipBlock: {cidr: 192.168.1.240/32}
+      ports:
+        - {port: 443, protocol: TCP}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - {port: 8443, protocol: TCP}
+    # OpenAI-compatible Internet APIs use HTTPS. Private address space is
+    # excluded so a compromised public chat pod cannot probe the homelab.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - {port: 443, protocol: TCP}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

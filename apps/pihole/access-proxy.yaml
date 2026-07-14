@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-access-proxy
+  namespace: network-services
+data:
+  nginx.conf: |
+    pid /tmp/nginx.pid;
+    events {}
+    http {
+      access_log /dev/stdout;
+      error_log /dev/stderr warn;
+      server {
+        listen 18181;
+        # Pi-hole needs host networking for DNS and DHCP, but its web server
+        # is loopback-only. Accept only the Traefik pod-network hop here.
+        allow 10.42.0.0/16;
+        allow 127.0.0.0/8;
+        deny all;
+        location / {
+          proxy_pass http://127.0.0.1:8181;
+          proxy_http_version 1.1;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        }
+      }
+    }

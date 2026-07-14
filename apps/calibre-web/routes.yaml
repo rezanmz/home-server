@@ -6,7 +6,18 @@ spec:
     - {name: home, namespace: traefik}
   hostnames: [library.reza.network]
   rules:
-    - backendRefs:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: lan-vpn-only
+      backendRefs:
         - {name: calibre-web, port: 8083}
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -23,5 +34,10 @@ spec:
             group: traefik.io
             kind: Middleware
             name: custom-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: lan-vpn-only
       backendRefs:
         - {name: shelfmark-access, port: 80}

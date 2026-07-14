@@ -21,22 +21,44 @@ spec:
         app.kubernetes.io/component: application
     spec:
       automountServiceAccountToken: false
-      hostAliases:
-        - ip: 192.168.1.3
-          hostnames:
-            - host.docker.internal
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: open-webui
-          image: ghcr.io/open-webui/open-webui:v0.10.2
+          image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
           imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - /app/backend/start.sh
+          args:
+            - --workers
+            - "1"
+            - --no-access-log
           env:
             - name: TZ
               value: America/Toronto
+            - name: HOME
+              value: /tmp
+            - name: XDG_CACHE_HOME
+              value: /app/backend/data/cache
+            # The image's bundled static directory is root-owned. Keep generated
+            # customizations on the writable data volume when running non-root.
+            - name: STATIC_DIR
+              value: /app/backend/data/static
+            # Open WebUI re-attaches Uvicorn's access logger for audit capture by
+            # default, which can expose OAuth callback query parameters in pod logs.
+            - name: AUDIT_UVICORN_LOGGER_NAMES
+              value: uvicorn.error
+            # Loguru's diagnostic tracebacks include local variable values. OAuth
+            # callback errors can otherwise disclose the authorization code/state.
+            - name: LOGURU_DIAGNOSE
+              value: "false"
             - name: ENABLE_OLLAMA_API
               value: "False"
             - name: CONTENT_EXTRACTION_ENGINE
@@ -44,9 +66,19 @@ spec:
             - name: TIKA_SERVER_URL
               value: http://tika:9998
             - name: BYPASS_MODEL_ACCESS_CONTROL
-              value: "True"
+              value: "False"
             - name: WEBUI_URL
               value: https://chat.reza.network
+            - name: CORS_ALLOW_ORIGIN
+              value: https://chat.reza.network
+            - name: WEBUI_SESSION_COOKIE_SECURE
+              value: "True"
+            - name: WEBUI_AUTH_COOKIE_SECURE
+              value: "True"
+            - name: WEBUI_SESSION_COOKIE_SAME_SITE
+              value: lax
+            - name: WEBUI_AUTH_COOKIE_SAME_SITE
+              value: lax
             - name: WEBUI_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -54,12 +86,17 @@ spec:
                   key: webui-secret-key
             - name: ENABLE_SIGNUP
               value: "False"
+            - name: ENABLE_INITIAL_ADMIN_SIGNUP
+              value: "False"
             - name: ENABLE_LOGIN_FORM
               value: "False"
             - name: ENABLE_PASSWORD_AUTH
               value: "False"
+            # v0.10.2 promotes the first OAuth-created account to administrator
+            # before applying role gates. Keep creation closed until a trusted
+            # administrator is restored or explicitly pre-provisioned.
             - name: ENABLE_OAUTH_SIGNUP
-              value: "True"
+              value: "False"
             - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
               value: "True"
             - name: ENABLE_OAUTH_PERSISTENT_CONFIG
@@ -131,6 +168,9 @@ spec:
             timeoutSeconds: 10
             failureThreshold: 3
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
             allowPrivilegeEscalation: false
             capabilities:
               drop:
@@ -170,7 +210,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: tika
-          image: apache/tika:3.3.1.0-full
+          image: apache/tika:3.3.1.0-full@sha256:d8e6ed96260ad89307a93195a1b856102987a818ac648502f8efbaf313d32470
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -17,7 +17,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: duplicati
-          image: linuxserver/duplicati:v2.3.0.3_stable_2026-06-10-ls299
+          image: linuxserver/duplicati:v2.3.0.3_stable_2026-06-10-ls299@sha256:724e4f9cec948ace811d4895820d6ec888b6c62690667c5a67f72d92f4c11d2c
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "0"}
@@ -52,7 +52,7 @@ spec:
             - {name: source, mountPath: /source, readOnly: true}
             - {name: media, mountPath: /media, readOnly: true}
         - name: access-proxy
-          image: nginx:1.27.4-alpine
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           command: [nginx, -g, "daemon off;"]
           ports:
             - {name: access-http, containerPort: 18200}
@@ -69,7 +69,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
-            - {name: proxy-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: proxy-config, mountPath: /etc/nginx, readOnly: true}
             - {name: nginx-tmp, mountPath: /tmp}
             - {name: nginx-cache, mountPath: /var/cache/nginx}
       volumes:

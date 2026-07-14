@@ -23,29 +23,19 @@ spec:
       # contract without giving the whole pod the host network namespace.
       nodeSelector:
         kubernetes.io/hostname: raspberrypi
-      # Kubelet does not allow these two names through Pod sysctls by default.
-      # A privileged init container sets them inside this pod's network
-      # namespace before wg-easy starts.
-      initContainers:
-        - name: configure-network
-          image: busybox:1.37.0
-          imagePullPolicy: IfNotPresent
-          command:
-            - /bin/sh
-            - -ec
-            - sysctl -w net.ipv4.ip_forward=1 net.ipv4.conf.all.src_valid_mark=1
-          securityContext:
-            privileged: true
-          resources:
-            requests:
-              cpu: 1m
-              memory: 4Mi
-            limits:
-              cpu: 25m
-              memory: 16Mi
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        # These network-namespace settings are allowlisted only on the Pi
+        # kubelet; declaring them here replaces the former privileged init.
+        sysctls:
+          - name: net.ipv4.ip_forward
+            value: "1"
+          - name: net.ipv4.conf.all.src_valid_mark
+            value: "1"
       containers:
         - name: wg-easy
-          image: ghcr.io/wg-easy/wg-easy:15.3.0
+          image: ghcr.io/wg-easy/wg-easy:15.3.0@sha256:93bbd593e07bab98d02807a28770ac87ab6c48818e319e68c1f66561feb99876
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
@@ -90,20 +80,17 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
+              drop:
+                - ALL
               add:
                 - NET_ADMIN
-                - SYS_MODULE
+                # iptables-legacy opens a raw control socket before applying
+                # rules; wg-quick needs this alongside NET_ADMIN.
+                - NET_RAW
           volumeMounts:
             - name: config
               mountPath: /etc/wireguard
-            - name: modules
-              mountPath: /lib/modules
-              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: wg-easy-config
-        - name: modules
-          hostPath:
-            path: /lib/modules
-            type: Directory

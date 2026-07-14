@@ -1,9 +1,15 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: OCIRepository
 metadata:
   name: traefik
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 12h
   timeout: 2m
-  url: https://traefik.github.io/charts
+  url: oci://ghcr.io/traefik/helm/traefik
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    tag: 41.0.2
+    digest: sha256:b64212403e056c14dbcac5bfd0030f89f0e08fccae370dd7cd96592ee745848e

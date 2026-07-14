@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - secrets.sops.yaml
   - pvc.yaml
+  - access-proxy.yaml
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml

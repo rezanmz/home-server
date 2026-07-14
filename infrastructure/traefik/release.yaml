@@ -6,15 +6,10 @@ metadata:
 spec:
   interval: 30m
   timeout: 10m
-  chart:
-    spec:
-      chart: traefik
-      version: 41.0.2
-      sourceRef:
-        kind: HelmRepository
-        name: traefik
-        namespace: flux-system
-      interval: 12h
+  chartRef:
+    kind: OCIRepository
+    name: traefik
+    namespace: flux-system
   install:
     remediation:
       retries: 3
@@ -23,6 +18,9 @@ spec:
       retries: 3
       strategy: rollback
   values:
+    image:
+      digest: sha256:21a3d83696379bac6434bb32e1dde0aff0e84ef2abd053ed3db87d3f45e749b2
+    versionOverride: v3.7.6
     deployment:
       kind: DaemonSet
     # Traefik binds host ports 80/443 on every node, so a surge pod cannot be

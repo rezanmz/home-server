@@ -62,16 +62,24 @@ cluster. Open WebUI remains the supported local LLM interface.
 1. Change application or infrastructure manifests.
 2. Encrypt any new Secret with SOPS before it enters Git.
 3. Render and validate the cluster locally.
-4. Push to `main`. The validation workflow checks shell syntax, Kustomize
-   rendering, and encrypted-secret metadata.
-5. Flux pulls the revision and reconciles it into the cluster.
+4. Push a branch and open a pull request. The protected `main` branch requires
+   the validation workflow, including shell and Python checks, SOPS structure,
+   Kustomize rendering, Kubernetes schemas, and the reviewed high-risk-policy
+   baseline.
+5. Merge only after the required check passes. Flux then pulls the protected
+   `main` revision and reconciles it into the cluster.
 
 Useful local checks:
 
 ```bash
-bash -n scripts/*.sh
+scripts/ci/validate-shell.sh
+python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
+python3 scripts/ci/validate-secrets.py
 kubectl kustomize clusters/home-server >/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
+python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
+python3 scripts/ci/check-high-risk-policy.py \
+  /tmp/home-server.yaml scripts/ci/high-risk-baseline.txt
 ```
 
 The former Compose definitions have been removed. New work belongs in the
@@ -99,3 +107,9 @@ docs/                    architecture and operations documentation
   consolidated download workload.
 - Never commit plaintext credentials or an age private identity. See the
   runbook for the locations of the root-only recovery copies.
+- Workload and Helm-selected images are pinned by digest. cert-manager,
+  Traefik, and MetalLB charts use digest-pinned OCI artifacts; Longhorn's chart
+  uses its exact upstream Git commit. CI independently fetches, checksums,
+  renders, schema-validates, and policy-scans those immutable charts.
+- GitHub Actions uses GitHub-hosted runners only. Do not register either cluster
+  node as a repository runner or store deployment credentials in Actions.

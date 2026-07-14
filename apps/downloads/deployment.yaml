@@ -41,7 +41,7 @@ spec:
         # namespace, preserving the old Docker `network_mode: container:gluetun`
         # topology and a single Proton WireGuard session/forwarded port.
         - name: gluetun
-          image: qmcgaw/gluetun:v3.41.1
+          image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
           imagePullPolicy: IfNotPresent
           restartPolicy: Always
           env:
@@ -97,7 +97,7 @@ spec:
             - {name: gluetun-config, mountPath: /gluetun}
       containers:
         - name: qbittorrent
-          image: linuxserver/qbittorrent:5.2.3_v2.0.13-ls466
+          image: linuxserver/qbittorrent:5.2.3_v2.0.13-ls466@sha256:d8488fb24969bb0954cf64a1ca1cf7a763031641ba4246734964faea6f0b807a
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
@@ -133,7 +133,7 @@ spec:
             - {name: qbittorrent-config, mountPath: /config}
             - {name: media-library, mountPath: /media}
         - name: flaresolverr
-          image: flaresolverr/flaresolverr:v3.5.0
+          image: flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
           imagePullPolicy: IfNotPresent
           env:
             - {name: LOG_LEVEL, value: info}
@@ -162,7 +162,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: prowlarr
-          image: linuxserver/prowlarr:2.5.1-develop
+          image: linuxserver/prowlarr:2.5.1-develop@sha256:c234f7e67d01017761662ec058a2a7f74538a63aeb1114f3ee14616fd2af81aa
           imagePullPolicy: IfNotPresent
           env: &linuxserver-env
             - {name: PUID, value: "1000"}
@@ -192,7 +192,7 @@ spec:
           volumeMounts:
             - {name: prowlarr-config, mountPath: /config}
         - name: radarr
-          image: linuxserver/radarr:6.2.1.10461-ls308
+          image: linuxserver/radarr:6.2.1.10461-ls308@sha256:39da107b5a9371fdaa651bd188049b863716a815385eb3a30d41071b7e1aeb33
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -220,7 +220,7 @@ spec:
             - {name: radarr-config, mountPath: /config}
             - {name: media-library, mountPath: /media}
         - name: sonarr
-          image: linuxserver/sonarr:4.0.19.2979-ls317
+          image: linuxserver/sonarr:4.0.19.2979-ls317@sha256:633e0e66d85ce4e9172608a37d3d24e124b3e485fc0d946f533c3bb5875227e9
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -248,7 +248,7 @@ spec:
             - {name: sonarr-config, mountPath: /config}
             - {name: media-library, mountPath: /media}
         - name: shelfmark
-          image: ghcr.io/calibrain/shelfmark:v1.3.2
+          image: ghcr.io/calibrain/shelfmark:v1.3.2@sha256:8700c1d3b6bb94e1b5f9482bac12e39652ed737de02f256920e1ad982a7ac0f1
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -278,7 +278,7 @@ spec:
             - {name: media-downloads, mountPath: /media/downloads}
         - &access-proxy
           name: qbittorrent-access-proxy
-          image: nginx:1.27.4-alpine
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
@@ -302,7 +302,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           volumeMounts:
-            - {name: qb-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: qb-access-config, mountPath: /etc/nginx, readOnly: true}
             - {name: qb-nginx-tmp, mountPath: /tmp}
             - {name: qb-nginx-cache, mountPath: /var/cache/nginx}
         - <<: *access-proxy
@@ -318,7 +318,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
           volumeMounts:
-            - {name: pr-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: pr-access-config, mountPath: /etc/nginx, readOnly: true}
             - {name: pr-nginx-tmp, mountPath: /tmp}
             - {name: pr-nginx-cache, mountPath: /var/cache/nginx}
         - <<: *access-proxy
@@ -334,7 +334,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
           volumeMounts:
-            - {name: ra-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: ra-access-config, mountPath: /etc/nginx, readOnly: true}
             - {name: ra-nginx-tmp, mountPath: /tmp}
             - {name: ra-nginx-cache, mountPath: /var/cache/nginx}
         - <<: *access-proxy
@@ -350,7 +350,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
           volumeMounts:
-            - {name: so-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: so-access-config, mountPath: /etc/nginx, readOnly: true}
             - {name: so-nginx-tmp, mountPath: /tmp}
             - {name: so-nginx-cache, mountPath: /var/cache/nginx}
         - <<: *access-proxy
@@ -366,7 +366,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
           volumeMounts:
-            - {name: sh-access-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: sh-access-config, mountPath: /etc/nginx, readOnly: true}
             - {name: sh-nginx-tmp, mountPath: /tmp}
             - {name: sh-nginx-cache, mountPath: /var/cache/nginx}
       volumes:

@@ -34,6 +34,25 @@ spec:
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
       ports:
         - port: 443
+          protocol: TCP
+    # Authentik's public issuer is reached through the split-horizon Traefik
+    # VIP. Include both the pre- and post-DNAT destinations used by K3s.
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.240/32
+      ports:
+        - port: 443
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8443
           protocol: TCP

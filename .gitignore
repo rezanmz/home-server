@@ -37,6 +37,8 @@ services/*/config/*.pem
 *.tmp
 *.temp
 .cache/
+__pycache__/
+*.py[cod]
 
 # Backup files
 *.bak
