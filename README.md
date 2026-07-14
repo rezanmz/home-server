@@ -22,7 +22,7 @@ GitHub -> Flux -> K3s
 - `beelink` (`192.168.1.3`, amd64) is the only K3s server and the main compute
   node.
 - `raspberrypi` (`192.168.1.2`, arm64) runs network-facing workloads such as
-  Pi-hole, WireGuard, Samba, Syncthing, and Duplicati. It also exports the media,
+  Pi-hole, WireGuard, Samba, and Syncthing. It also exports the media,
   downloads, books, Syncthing, and backup trees over NFS.
 - Traefik runs as a DaemonSet with host ports 80 and 443. The router can retain
   the Pi as its public forwarding target, while `192.168.1.240` is the MetalLB
@@ -47,7 +47,7 @@ plane and the Pi NFS server are known single points of failure.
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
 | Books | Calibre-Web, Shelfmark | `library.reza.network`, `shelfmark.reza.network` |
 | Network services | Pi-hole, wg-easy, Samba, Syncthing | `pihole.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
-| Operations | Duplicati, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `duplicati.reza.network`, `headlamp.reza.network`, Telegram alerts, background DNS updates |
+| Operations | Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
 Headlamp is the read-only Kubernetes dashboard at `headlamp.reza.network`;
 Glances is no longer deployed. The former Loggifly function is now a
@@ -84,6 +84,9 @@ kubectl kustomize infrastructure/longhorn/readiness \
   >>/tmp/home-server.yaml
 printf '\n---\n' >>/tmp/home-server.yaml
 kubectl kustomize infrastructure/longhorn/backups \
+  >>/tmp/home-server.yaml
+printf '\n---\n' >>/tmp/home-server.yaml
+kubectl kustomize apps/syncthing/backups \
   >>/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml

@@ -1,10 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - secrets.sops.yaml
+  # Duplicati was retired on 2026-07-14 after the Syncthing Restic backup,
+  # full-data check, and isolated restore proof passed. Keep only its config
+  # PVC under GitOps; the workload and credential remain unreferenced historical
+  # artifacts in this directory.
   - storage.yaml
-  - access-proxy.yaml
-  - deployment.yaml
-  - service.yaml
-  - networkpolicy.yaml
-  - route.yaml
