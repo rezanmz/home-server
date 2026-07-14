@@ -1,0 +1,53 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: longhorn-ready
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 20m
+  path: ./infrastructure/longhorn/readiness
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: longhorn
+      namespace: longhorn-system
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: longhorn-backups
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 10m
+  path: ./infrastructure/longhorn/backups
+  # Keep this child as the stable owner of the credential and scheduler.
+  # Removing them from its path then reliably stops and prunes them.
+  prune: true
+  dependsOn:
+    - name: longhorn-ready
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  healthChecks:
+    - apiVersion: longhorn.io/v1beta2
+      kind: BackupTarget
+      name: default
+      namespace: longhorn-system
+  healthCheckExprs:
+    - apiVersion: longhorn.io/v1beta2
+      kind: BackupTarget
+      current: status.available == true
+  wait: true

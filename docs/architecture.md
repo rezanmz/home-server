@@ -143,15 +143,49 @@ path; this lets the backup process traverse application-owned directories
 without weakening NFS root-squashing for the rest of the cluster. NetworkPolicy
 limits this high-access pod to cluster DNS and public HTTPS for Backblaze B2.
 
-Duplicati's current `/source` mount covers only the legacy Pi
+Duplicati's current `/source` mount covers only the Pi
 `/home/reza/persistent` tree; it cannot see the active Longhorn PVC filesystems.
-Longhorn currently has no remote BackupTarget. Its two replicas, local snapshots,
-and the same-site recovery archives therefore protect availability but are not
-an independent backup of migrated application state. The selected follow-up
-design is a dedicated, encrypted Backblaze B2 S3-compatible BackupTarget used
-directly by Longhorn. Duplicati will not be expanded to mount active PVCs; it
-remains paused only as a recovery fallback until a Longhorn B2 backup and
-disposable restore test succeed, after which its workload can be retired.
+Longhorn therefore uses the dedicated private
+`rezanmz-home-server-longhorn-backups` Backblaze B2 bucket as its default
+S3-compatible BackupTarget. The credential is stored only in the SOPS-encrypted
+`longhorn-system/longhorn-backblaze-b2` Secret. Backblaze provides default
+SSE-B2 encryption at rest; transport uses the regional HTTPS endpoint.
+
+The `b2-nightly` recurring job applies to Longhorn's `default` job group and
+runs at 06:17 UTC with one backup at a time, 14 retained recovery points, and a
+full backup after every seven completed incremental backups. Volumes that are
+detached at that time may be attached temporarily so they are not silently
+skipped. These block-level backups are crash-consistent, not coordinated
+application-consistent backups across PostgreSQL, Redis, Elasticsearch, or
+multi-PVC applications. Native database exports remain a worthwhile additional
+recovery layer.
+
+The Longhorn HelmRelease configures the default BackupTarget and detached-volume
+setting through Longhorn's supported `defaultBackupStore` and `defaultSettings`
+values. This leaves the singleton resources under `longhorn-manager` ownership
+instead of creating a server-side-apply conflict with Flux. The dedicated
+`flux-system/longhorn-backups` Kustomization owns the encrypted credential and
+recurring job with pruning enabled. The separate `longhorn-ready` gate waits for
+the existing HelmRelease without changing its root Flux ownership or creating
+an uninstall race during rollout.
+
+Backblaze Object Lock and bucket lifecycle expiry remain disabled because
+Longhorn owns logical backup retention. B2's `Keep all versions` behavior can
+retain hidden historical object versions after Longhorn deletes a logical
+backup. Periodic full backups may also replace already-present block objects and
+create billable hidden versions, so bucket size and hidden-version growth
+require operational monitoring. Indefinite physical version retention is
+accepted initially because Longhorn prohibits a backupstore lifecycle rule; it
+is not a bounded 14-copy guarantee.
+Duplicati is not expanded to mount active PVCs and remains only until a real B2
+backup and disposable restore proof succeed. Its old remote repository and the
+legacy Pi source tree are preserved separately from workload retirement.
+
+The Longhorn BackupTarget covers only Longhorn volumes. It does not include the
+Pi's NFS exports, including `/home/reza/media` and the active Syncthing data at
+`/home/reza/persistent/syncthing/data`. The current Duplicati source includes
+that Syncthing tree, so removing Duplicati also requires an explicit decision to
+accept that gap, migrate the data, or replace its file-level backup path.
 
 ## Application boundaries
 

@@ -101,10 +101,15 @@ jobs:
 
       - name: Render home cluster
         run: |
-          kubectl kustomize clusters/home-server > "$RUNNER_TEMP/home-server.yaml"
-          printf '\n---\n' >> "$RUNNER_TEMP/home-server.yaml"
-          kubectl kustomize infrastructure/snapshot-controller/storage \
-            >> "$RUNNER_TEMP/home-server.yaml"
+          {
+            kubectl kustomize clusters/home-server
+            printf '\n---\n'
+            kubectl kustomize infrastructure/snapshot-controller/storage
+            printf '\n---\n'
+            kubectl kustomize infrastructure/longhorn/readiness
+            printf '\n---\n'
+            kubectl kustomize infrastructure/longhorn/backups
+          } > "$RUNNER_TEMP/home-server.yaml"
           test -s "$RUNNER_TEMP/home-server.yaml"
 
       - name: Reject generated plaintext Kubernetes Secrets

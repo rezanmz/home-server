@@ -1,0 +1,20 @@
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: b2-nightly
+  namespace: longhorn-system
+spec:
+  # Longhorn schedules in UTC. This is 02:17 Toronto during daylight time and
+  # 01:17 during standard time, away from the other routine cluster work.
+  cron: "17 6 * * *"
+  task: backup
+  groups:
+    - default
+  retain: 14
+  concurrency: 1
+  labels:
+    backup-schedule: nightly
+  parameters:
+    # Periodically overwrite every remote block instead of relying forever on
+    # an incremental chain. Longhorn otherwise uploads only changed blocks.
+    full-backup-interval: "7"
