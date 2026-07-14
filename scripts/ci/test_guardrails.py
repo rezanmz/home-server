@@ -470,6 +470,110 @@ class HighRiskPolicyTests(unittest.TestCase):
         self.assertTrue(any(item.startswith("pod-cidr-ip-allowlist|") for item in findings))
         self.assertTrue(any(item.endswith("/10.42.1.0/24") for item in findings))
 
+    def test_flux_kustomization_images_require_digests_and_exact_boundary(self) -> None:
+        resource = {
+            "apiVersion": "kustomize.toolkit.fluxcd.io/v1",
+            "kind": "Kustomization",
+            "metadata": {"name": "upstream", "namespace": "flux-system"},
+            "spec": {
+                "path": "./deploy",
+                "images": [
+                    {
+                        "name": "registry.example.invalid/controller",
+                        "digest": "sha256:" + "a" * 64,
+                    }
+                ],
+            },
+        }
+        findings = policy.detect([resource])
+        self.assertTrue(
+            any(item.startswith("flux-kustomization-boundary|") for item in findings)
+        )
+        self.assertFalse(any(item.startswith("mutable-kustomize-image|") for item in findings))
+
+        resource["spec"]["images"][0].pop("digest")
+        findings = policy.detect([resource])
+        self.assertTrue(any(item.startswith("mutable-kustomize-image|") for item in findings))
+
+    def test_volume_snapshot_class_is_an_exact_boundary(self) -> None:
+        resource = {
+            "apiVersion": "snapshot.storage.k8s.io/v1",
+            "kind": "VolumeSnapshotClass",
+            "metadata": {
+                "name": "longhorn-snapshot",
+                "annotations": {
+                    "example.invalid/owner": "storage",
+                    "snapshot.storage.kubernetes.io/is-default-class": "false",
+                },
+            },
+            "driver": "driver.longhorn.io",
+            "deletionPolicy": "Delete",
+            "parameters": {"replicas": "2", "type": "snap"},
+        }
+        before = policy.detect([resource])
+        self.assertTrue(any(item.startswith("snapshot-class-boundary|") for item in before))
+        resource["deletionPolicy"] = "Retain"
+        self.assertNotEqual(before, policy.detect([resource]))
+
+    def test_volume_snapshot_class_default_annotation_is_in_exact_boundary(self) -> None:
+        resource = {
+            "apiVersion": "snapshot.storage.k8s.io/v1",
+            "kind": "VolumeSnapshotClass",
+            "metadata": {
+                "name": "longhorn-snapshot",
+                "annotations": {
+                    "example.invalid/owner": "storage",
+                    "snapshot.storage.kubernetes.io/is-default-class": "false",
+                },
+            },
+            "driver": "driver.longhorn.io",
+            "deletionPolicy": "Delete",
+            "parameters": {"replicas": "2", "type": "snap"},
+        }
+
+        not_default = policy.detect([resource])
+        resource["metadata"]["annotations"][
+            "snapshot.storage.kubernetes.io/is-default-class"
+        ] = "true"
+        default = policy.detect([resource])
+        self.assertNotEqual(not_default, default)
+
+        resource["metadata"]["annotations"] = {
+            "snapshot.storage.kubernetes.io/is-default-class": "true",
+            "example.invalid/owner": "storage",
+        }
+        resource["parameters"] = {"type": "snap", "replicas": "2"}
+        self.assertEqual(default, policy.detect([resource]))
+
+    def test_traefik_allowlist_rejects_ranges_containing_node_snat_addresses(self) -> None:
+        middleware = {
+            "apiVersion": "traefik.io/v1alpha1",
+            "kind": "Middleware",
+            "metadata": {"name": "internal", "namespace": "test"},
+            "spec": {"ipAllowList": {"sourceRange": ["192.168.1.0/24"]}},
+        }
+        findings = policy.detect([middleware])
+        node_findings = {
+            item for item in findings if item.startswith("node-snat-ip-allowlist|")
+        }
+        self.assertEqual(len(node_findings), 2)
+        self.assertTrue(any(item.endswith("/node/192.168.1.2") for item in node_findings))
+        self.assertTrue(any(item.endswith("/node/192.168.1.3") for item in node_findings))
+
+        middleware["spec"]["ipAllowList"]["sourceRange"] = [
+            "192.168.1.0/31",
+            "192.168.1.4/30",
+            "192.168.1.8/29",
+            "192.168.1.16/28",
+            "192.168.1.32/27",
+            "192.168.1.64/26",
+            "192.168.1.128/25",
+        ]
+        findings = policy.detect([middleware])
+        self.assertFalse(
+            any(item.startswith("node-snat-ip-allowlist|") for item in findings)
+        )
+
     def test_route_and_middleware_changes_alter_exact_boundaries(self) -> None:
         route = {
             "apiVersion": "gateway.networking.k8s.io/v1",

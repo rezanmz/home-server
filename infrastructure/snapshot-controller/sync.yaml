@@ -1,0 +1,95 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: snapshot-api-crds
+  namespace: flux-system
+spec:
+  interval: 24h
+  retryInterval: 1m
+  timeout: 10m
+  path: ./client/config/crd
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: external-snapshotter
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: longhorn-snapshot-class
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./infrastructure/snapshot-controller/storage
+  prune: false
+  dependsOn:
+    - name: snapshot-api-crds
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: snapshot-controller
+  namespace: flux-system
+spec:
+  interval: 24h
+  retryInterval: 1m
+  timeout: 10m
+  path: ./deploy/kubernetes/snapshot-controller
+  prune: false
+  dependsOn:
+    - name: snapshot-api-crds
+  sourceRef:
+    kind: GitRepository
+    name: external-snapshotter
+  images:
+    - name: registry.k8s.io/sig-storage/snapshot-controller
+      newName: registry.k8s.io/sig-storage/snapshot-controller
+      digest: sha256:74ca61ab13e978f03cf0f336a607281d15f04cda0a38a881306365473b28a3d8
+  patches:
+    - target:
+        group: apps
+        version: v1
+        kind: Deployment
+        name: snapshot-controller
+      patch: |-
+        - op: add
+          path: /spec/template/spec/securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+        - op: add
+          path: /spec/template/spec/affinity
+          value:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: snapshot-controller
+                  topologyKey: kubernetes.io/hostname
+        - op: add
+          path: /spec/template/spec/containers/0/securityContext
+          value:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+        - op: add
+          path: /spec/template/spec/containers/0/resources
+          value:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+  wait: true

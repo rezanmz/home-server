@@ -123,8 +123,9 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           securityContext:
-            # Pi-hole's entrypoint drops from root to UID 1000 while retaining
-            # low-port and DHCP capabilities; no-new-privileges blocks that.
+            # The upstream entrypoint currently requires root and NET_ADMIN for
+            # DHCP. This remains an explicitly audited host-network privilege;
+            # do not claim no-new-privileges while escalation is enabled.
             allowPrivilegeEscalation: true
             capabilities:
               add:

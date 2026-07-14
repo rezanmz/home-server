@@ -6,7 +6,15 @@ metadata:
 spec:
   ipAllowList:
     sourceRange:
-      - 192.168.1.0/24
+      # Exclude both K3s node IPs (.2/.3); cross-node pod traffic is SNATed
+      # to the peer node and must not inherit LAN trust.
+      - 192.168.1.0/31
+      - 192.168.1.4/30
+      - 192.168.1.8/29
+      - 192.168.1.16/28
+      - 192.168.1.32/27
+      - 192.168.1.64/26
+      - 192.168.1.128/25
       - 10.8.0.0/24
       # wg-easy masquerades VPN clients to the Pi's fixed node PodCIDR.
       - 10.42.1.0/24
@@ -35,5 +43,6 @@ spec:
             kind: Middleware
             name: syncthing-lan-only
       backendRefs:
-        - name: syncthing
-          port: 8384
+        - group: traefik.io
+          kind: TraefikService
+          name: syncthing-mtls
