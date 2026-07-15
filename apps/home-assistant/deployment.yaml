@@ -17,9 +17,10 @@ spec:
       labels:
         app.kubernetes.io/name: home-assistant
       annotations:
-        # Change to "true" only after creating the durable owner marker. The
-        # value triggers the activation rollout but is not itself trusted.
-        home-assistant.reza.network/owner-onboarded: "false"
+        # The existing PVC contains an active native owner and its durable
+        # marker. This annotation forces the activation rollout; the init
+        # container still verifies the marker independently on every start.
+        home-assistant.reza.network/owner-onboarded: "true"
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false

@@ -151,6 +151,16 @@ Choose one of these deliberately:
 
 The wildcard certificate normally covers a new `*.reza.network` hostname.
 
+For a user-facing service, use Authentik through the application's built-in
+OIDC, OAuth2, or SAML support whenever that support exists. Do not install
+third-party authentication code solely to force SSO into an application that
+does not support it. In that case, use the application's native authentication,
+keep the narrowest practical exposure, and document the exception. Generic
+forward-auth is allowed only after proving that it does not break APIs,
+webhooks, WebSockets, native clients, or callback flows. Home Assistant is the
+current native-auth exception because upstream Home Assistant has no built-in
+OIDC provider.
+
 ## Add a service
 
 ### 1. Start from the closest security model

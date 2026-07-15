@@ -6,9 +6,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml
-  # Home Assistant's first visitor can create the owner account. Keep the
-  # normal route disabled until onboarding is completed through the documented
-  # loopback-only SSH tunnel, then add route.yaml here in a reviewed change.
+  - route.yaml
 configMapGenerator:
   # A content-hashed name makes proxy-policy changes roll the pod. Root pruning
   # is disabled, so retire superseded generated ConfigMaps after reference checks.

@@ -117,6 +117,10 @@ Home Assistant is a security-placement exception to ordinary floating apps. It
 is pinned to the Beelink and begins with no LAN egress so third-party integration
 code cannot inherit the Pi node's access to trusted NFS exports. LAN devices are
 opened individually by address, protocol, and port as integrations are approved.
+It uses Home Assistant's built-in authentication because the upstream service
+does not provide native OIDC; no custom auth component or generic Authentik
+forward-auth layer is installed. Its private hostname is limited to LAN and
+WireGuard at both the Gateway and colocated access proxy.
 
 ## Storage
 
