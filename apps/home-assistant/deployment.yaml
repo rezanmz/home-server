@@ -81,6 +81,86 @@ spec:
             - {name: bootstrap, mountPath: /bootstrap, readOnly: true}
             - {name: access-proxy-config, mountPath: /proxy-source, readOnly: true}
             - {name: nginx-runtime, mountPath: /proxy-runtime}
+        - name: bootstrap-hacs
+          image: busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          imagePullPolicy: IfNotPresent
+          env:
+            # This is a recovery/bootstrap floor, not an update pin. Once HACS
+            # exists on the PVC, HACS owns its version and this container leaves
+            # it untouched. Updating these values changes only future installs.
+            - {name: HACS_VERSION, value: "2.0.5"}
+            - name: HACS_URL
+              value: https://github.com/hacs/integration/releases/download/2.0.5/hacs.zip
+            - name: HACS_SHA256
+              value: 97be6b824a4f38e683728cc6dd72367f6b8bad0a43428b1b3b987a3087adf413
+          command:
+            - sh
+            - -ec
+            - |
+              umask 007
+              components=/config/custom_components
+              target="${components}/hacs"
+
+              # Refuse unexpected filesystem objects instead of following a
+              # PVC-resident symlink while running supply-chain bootstrap code.
+              if [ -L "${components}" ] || { [ -e "${components}" ] && [ ! -d "${components}" ]; }; then
+                echo "ERROR: ${components} is not a normal directory" >&2
+                exit 1
+              fi
+              mkdir -p "${components}"
+
+              if [ -L "${target}" ]; then
+                echo "ERROR: refusing to use symlink at ${target}" >&2
+                exit 1
+              fi
+              if [ -d "${target}" ]; then
+                if [ ! -f "${target}/manifest.json" ] || [ -L "${target}/manifest.json" ]; then
+                  echo "ERROR: existing HACS directory is incomplete or unsafe" >&2
+                  exit 1
+                fi
+                echo "HACS is already present; leaving the PVC-managed version unchanged"
+                exit 0
+              fi
+              if [ -e "${target}" ]; then
+                echo "ERROR: ${target} exists but is not a directory" >&2
+                exit 1
+              fi
+
+              workdir="$(mktemp -d "${components}/.hacs-bootstrap.XXXXXX")"
+              cleanup() { rm -rf "${workdir}"; }
+              trap cleanup EXIT HUP INT TERM
+
+              archive="${workdir}/hacs.zip"
+              wget -q -O "${archive}" "${HACS_URL}"
+              printf '%s  %s\n' "${HACS_SHA256}" "${archive}" | sha256sum -c -
+
+              mkdir "${workdir}/hacs"
+              unzip -q "${archive}" -d "${workdir}/hacs"
+              manifest="${workdir}/hacs/manifest.json"
+              if [ ! -f "${manifest}" ] || [ -L "${manifest}" ]; then
+                echo "ERROR: HACS archive does not contain a regular manifest.json" >&2
+                exit 1
+              fi
+              if ! grep -Fq "\"version\": \"${HACS_VERSION}\"" "${manifest}"; then
+                echo "ERROR: HACS archive version does not match ${HACS_VERSION}" >&2
+                exit 1
+              fi
+
+              chmod -R u=rwX,g=rwX,o= "${workdir}/hacs"
+              mv "${workdir}/hacs" "${target}"
+              echo "Bootstrapped HACS ${HACS_VERSION} into ${target}"
+          resources:
+            requests: {cpu: 5m, memory: 8Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /config}
       containers:
         - name: home-assistant
           image: ghcr.io/home-assistant/home-assistant:2026.7.2@sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b
