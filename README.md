@@ -56,7 +56,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 
 | Area | Workloads | Entry points |
 | --- | --- | --- |
-| Identity and home | Authentik, Heimdall, Home Assistant | `auth.reza.network`, `homepage.reza.network`; `homeassistant.reza.network` is disabled pending first-owner onboarding |
+| Identity and home | Authentik, Heimdall, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
 | Personal apps | Actual Budget, MCPHub, Open WebUI with Tika, Speedtest Tracker | `budget.reza.network`, `mcphub.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Jellyseerr | `jellyfin.reza.network`, `jellyseerr.reza.network` |

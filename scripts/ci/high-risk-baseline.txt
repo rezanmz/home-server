@@ -5,7 +5,7 @@
 # baseline change for review. Format: rule|apiVersion/kind|namespace|name|location
 access-proxy-boundary|v1/ConfigMap|apps|actual-budget-access-proxy|data/sha256/8422ad499ea37a7b936365dde880cf69491a08e77a1c92f4a64e60d2dbae81eb
 access-proxy-boundary|v1/ConfigMap|apps|heimdall-access-proxy|data/sha256/9cebfc5e0c33772967bc8d164a498e612498a9866a5d484185967040a05ea97a
-access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-h648dh44m7|data/sha256/ae543ae4cb72fc4718a8dcc67acd631140e8db5687c5e74ef19db45da6708da5
+access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-5842t754cb|data/sha256/72da011a272ec3c91d4445af9399f65ec85df8839a245043215083a88ce1466a
 access-proxy-boundary|v1/ConfigMap|apps|jellyseerr-access-proxy|data/sha256/9904042157d0308934dfbe9f85c4e30f3bf9cce098885a59febc67879abcbdd5
 access-proxy-boundary|v1/ConfigMap|apps|mcphub-access-proxy|data/sha256/c02a93be7038899d154bccf2a7b51ef07b039ef73b0bb8bbab2956ae75bf2792
 access-proxy-boundary|v1/ConfigMap|apps|speedtest-tracker-access-proxy|data/sha256/170041eb9f12f7150f8aecea1cd523715b7466d515977ad8925b62868965dc96
@@ -140,6 +140,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-budget|spec/sh
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|argilla|spec/sha256/df649e03aea7a44ef10f397b125d269c1b543791f162e2817a7fd5f2bcdb83ca
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256/a68303017aa042969ba9eb139f6227fb3e3e67b477e1dd6c376c964d2808a6bb
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|heimdall|spec/sha256/f6758bc2ed61023a765ddcb741955b497939901d522b5ad549b95c449ae7c341
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|home-assistant|spec/sha256/2b63d459534b84ad7429c127cfd79590303e269643d469ff2e1a0bc27cf7ecf3
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|jellyseerr|spec/sha256/25e156ee08b67968746420ed5860b8d8053767266c01c92f39a67731edeb107a
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c6cb8bde71d6bed19e47c796e5c2d0adc5148549b033e8bf847cf705a18d59e
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4

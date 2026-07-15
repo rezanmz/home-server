@@ -121,6 +121,16 @@ therefore receive 403, while the same request from an ordinary LAN client via
 the `.240` VIP should succeed. The high-risk policy rejects any Traefik
 IP allow-list range that contains either node address.
 
+### Home Assistant recovery gate
+
+Home Assistant uses its built-in authentication and is private to LAN and
+WireGuard at `homeassistant.reza.network`. Its init container serves a deny-only
+proxy unless the PVC contains a regular `/config/.owner-onboarded` file. After
+restoring or replacing that PVC, validate an active owner through a loopback-only
+port-forward before recreating the marker and restarting the Deployment. Never
+create the marker merely to clear an HTTP 503; a genuinely empty instance would
+otherwise expose first-owner creation to every allowed client.
+
 ## Pi network services
 
 Pi-hole, Samba, Syncthing, and wg-easy are Kubernetes workloads in

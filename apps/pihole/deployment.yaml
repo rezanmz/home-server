@@ -69,6 +69,7 @@ spec:
                 192.168.1.240 chat.reza.network
                 192.168.1.240 headlamp.reza.network
                 192.168.1.240 homepage.reza.network
+                192.168.1.240 homeassistant.reza.network
                 192.168.1.240 jellyfin.reza.network
                 192.168.1.240 jellyseerr.reza.network
                 192.168.1.240 library.reza.network
