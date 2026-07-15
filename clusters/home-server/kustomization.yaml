@@ -19,6 +19,7 @@ resources:
   - ../../apps/open-webui
   - ../../apps/speedtest-tracker
   - ../../apps/argilla
+  - ../../apps/audiobookshelf
   - ../../apps/calibre-web
   - ../../apps/cloudflare-ddns
   - ../../apps/downloads

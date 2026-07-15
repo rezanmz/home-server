@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: audiobookshelf
+  namespace: media
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: audiobookshelf
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - {port: 13378, protocol: TCP}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    # Authentik's public issuer resolves to the split-horizon Traefik VIP.
+    # Include the pre- and post-DNAT paths used by K3s.
+    - to:
+        - ipBlock: {cidr: 192.168.1.240/32}
+      ports:
+        - {port: 443, protocol: TCP}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - {port: 8443, protocol: TCP}
+    # Metadata providers and podcast sources use public HTTP(S). Private
+    # address space remains unreachable from this Internet-facing workload.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - {port: 80, protocol: TCP}
+        - {port: 443, protocol: TCP}

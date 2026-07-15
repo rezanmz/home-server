@@ -72,6 +72,7 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudfl
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|heimdall|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|egress/1/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -109,6 +110,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-d
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|spec/sha256/9e8889aa30075eb5715602faa8bc6ef3b41957d1d88c3e674f58780d916919e1
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|tika|spec/sha256/75787649c5cc65abdb9d4b53762cfbb17b685080007a1cf68a2fa7c4ef003d03
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|spec/sha256/2d4344f4b1c91c64c784bf14c9e172b0bf08717181145edb8ad11a72a3f1876b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|spec/sha256/67ba0f809134cd806cf0229cca8d7d6b99fecfde40972c4121bfce36d6c979ef
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/ddf6b1f216f22a17d48c643ad536ba8300cebf7b14f89a5b459a3ba1eb41aa30
@@ -145,6 +147,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|jellyseerr|spec/sha25
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c6cb8bde71d6bed19e47c796e5c2d0adc5148549b033e8bf847cf705a18d59e
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|speedtest-tracker|spec/sha256/fc47882c3b744cf189b7032b9ed5dc7016568744b09b03eb05d5eed48004a0f0
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|audiobookshelf|spec/sha256/9be2497d352f2f4fa032722a81ec64ff535be8738805732e80d2926d6dae99d7
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|calibre-web|spec/sha256/d4b5c2cb40f15ebef544c2b9b81b351312fa0bbcf6d888e0184a940036c8228d
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|jellyfin|spec/sha256/8a55160b112d428a95f1acccd8cea3b0efb22f0df6d896d7286cd3770171e219
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|prowlarr|spec/sha256/b45a1bb03c081043f0e8bc74a2b9949674ada63fe8243aa29eb8dd373bbb346d

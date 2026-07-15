@@ -122,6 +122,9 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - worker
+          envFrom:
+            - secretRef:
+                name: authentik-oidc-client-secrets
           env:
             - name: AUTHENTIK_SECRET_KEY
               valueFrom:
@@ -206,6 +209,9 @@ spec:
               subPath: custom-templates
             - name: shared-memory
               mountPath: /dev/shm
+            - name: application-blueprints
+              mountPath: /blueprints/custom
+              readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -214,6 +220,9 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 512Mi
+        - name: application-blueprints
+          configMap:
+            name: authentik-application-blueprints
 ---
 apiVersion: apps/v1
 kind: StatefulSet

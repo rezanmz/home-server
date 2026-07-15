@@ -116,6 +116,7 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 | `media/calibre-web` | Must be colocated with downloads because both controllers mount the `calibre-web-ingest` Longhorn RWO claim | Longhorn configuration and shared ingest claim plus Pi NFS books |
 | `media/downloads` | Consolidated VPN/download topology, host device, and shared RWO claim with Calibre-Web | `/dev/net/tun`, multiple Longhorn configs including `calibre-web-ingest`, Pi NFS library/downloads |
 | `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, Pi NFS library |
+| `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, Pi NFS media, Authentik OIDC |
 | `apps/home-assistant` | Keeps third-party integration code and future selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; explicit per-device network policy is required for LAN integrations |
 | `network-services/syncthing-backup-freshness` | Checks B2 from the node that is not the data source | B2 only; no Syncthing data PVC |
 | K3s server processes | Single-server design | Beelink host filesystem and SQLite datastore |

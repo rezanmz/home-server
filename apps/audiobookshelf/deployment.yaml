@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audiobookshelf
+  namespace: media
+  labels:
+    app.kubernetes.io/name: audiobookshelf
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: audiobookshelf
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: audiobookshelf
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: audiobookshelf
+          image: ghcr.io/advplyr/audiobookshelf:2.35.0@sha256:89276ff2e0b3d2f07dd334b641f27a34ab7f02e1047c60b7b8a30126cb0813a5
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: TZ, value: America/Toronto}
+            - {name: PORT, value: "13378"}
+            - {name: AUDIOBOOKSHELF_ROOT_USERNAME, value: rezanmz}
+            - {name: AUDIOBOOKSHELF_OIDC_CLIENT_ID, value: audiobookshelf}
+            - name: AUDIOBOOKSHELF_OIDC_DISCOVERY_URL
+              value: https://auth.reza.network/application/o/audiobookshelf/.well-known/openid-configuration
+            - name: AUDIOBOOKSHELF_BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: audiobookshelf-secrets
+                  key: bootstrap-password
+            - name: AUDIOBOOKSHELF_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: audiobookshelf-secrets
+                  key: oidc-client-secret
+          ports:
+            - name: http
+              containerPort: 13378
+              protocol: TCP
+          lifecycle:
+            postStart:
+              exec:
+                command: [node, /opt/audiobookshelf-bootstrap/bootstrap.js]
+          startupProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - |
+                  const crypto = require('node:crypto')
+                  const fs = require('node:fs')
+                  const hash = crypto.createHash('sha256')
+                    .update(process.env.AUDIOBOOKSHELF_OIDC_CLIENT_SECRET)
+                    .digest('hex')
+                  const expected = `version=1\noidc-client-secret-sha256=${hash}\n`
+                  if (fs.readFileSync('/config/.gitops-bootstrap-complete', 'utf8') !== expected) process.exit(1)
+                  fetch('http://127.0.0.1:13378/status', {signal: AbortSignal.timeout(3000)})
+                    .then((response) => response.ok ? response.json() : Promise.reject())
+                    .then((status) => {
+                      if (!status.isInit || !status.authMethods?.includes('openid')) process.exit(1)
+                    })
+                    .catch(() => process.exit(1))
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - {name: config, mountPath: /config}
+            - {name: metadata, mountPath: /metadata}
+            - {name: audiobooks, mountPath: /audiobooks}
+            - {name: podcasts, mountPath: /podcasts}
+            - {name: ebooks, mountPath: /ebooks, readOnly: true}
+            - {name: bootstrap, mountPath: /opt/audiobookshelf-bootstrap, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: audiobookshelf-config
+        - name: metadata
+          persistentVolumeClaim:
+            claimName: audiobookshelf-metadata
+        - name: audiobooks
+          persistentVolumeClaim:
+            claimName: media-audiobooks
+        - name: podcasts
+          persistentVolumeClaim:
+            claimName: media-podcasts
+        - name: ebooks
+          persistentVolumeClaim:
+            claimName: media-books
+        - name: bootstrap
+          configMap:
+            name: audiobookshelf-bootstrap
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi
