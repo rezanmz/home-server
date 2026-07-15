@@ -125,6 +125,17 @@ Assistant receives the original client address for login throttling and IP bans;
 every administrator must use a unique password and enable TOTP MFA. The durable
 owner marker keeps a new or unsafe replacement PVC fail-closed before onboarding.
 
+Audiobookshelf is pinned to the Beelink as a security-placement constraint. Its
+public route uses Audiobookshelf's native OIDC implementation with an Authentik
+provider, including the official mobile client's PKCE callback. Keeping this
+Internet-facing workload off the Pi prevents it from inheriting the Pi pod
+CIDR's deliberate trust on private routes for masqueraded WireGuard clients. A
+post-start bootstrap keeps the pod out of Service endpoints until the local
+recovery root, OIDC settings, and initial libraries exist, preventing a public
+visitor from claiming an empty instance. Dedicated audiobook and podcast NFS
+paths are writable so uploads, subscriptions, and downloaded episodes persist;
+the shared Calibre ebook library is mounted separately and read-only.
+
 ## Storage
 
 Two storage mechanisms serve different data classes:
@@ -132,7 +143,7 @@ Two storage mechanisms serve different data classes:
 - Longhorn stores small databases, configuration, and application state. Its
   default StorageClass uses two replicas, `Retain`, and
   `WaitForFirstConsumer`.
-- Static NFS volumes exported by the Pi store media, downloads, books, shared
+- Static NFS volumes exported by the Pi store media, downloads, audiobooks, books, shared
   Syncthing data, and read-only access to the former persistent-data tree.
 
 K3s does not bundle the Kubernetes CSI snapshot APIs. The cluster therefore
@@ -264,6 +275,13 @@ Namespace default-deny policies and workload-specific rules permit only the
 required ingress and egress. Administrative routes use LAN/WireGuard allow
 lists. SOPS/age-encrypted Secret manifests are safe to store in the public
 repository; the private age identity remains root-only outside Git.
+
+Authentik's native OIDC providers and applications are also desired state. One
+shared ConfigMap mounts a separate, independently reconciled blueprint document
+for each relying application, while one aggregate SOPS Secret supplies the
+provider-side client secrets to the worker. Adding an OIDC client therefore
+changes those two shared resources and the relying application only; it does
+not add another Authentik Deployment patch or per-service Authentik manifest.
 
 The protected `main` branch requires a GitHub-hosted validation job. It checks
 helper syntax and tests, rejects plaintext or malformed SOPS Secrets, renders

@@ -1,0 +1,180 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-application-blueprints
+  namespace: apps
+data:
+  actual-budget.yaml: |
+    version: 1
+    metadata:
+      name: Actual Budget OIDC
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.scopemapping
+        id: actual-budget-profile
+        identifiers:
+          name: actual-budget-profile-email-username
+        attrs:
+          scope_name: profile
+          description: Actual Budget uses preferred_username as its user key, so send email for this app.
+          expression: |
+            return {
+                "preferred_username": request.user.email,
+                "name": request.user.name or request.user.email,
+            }
+      - model: authentik_providers_oauth2.oauth2provider
+        id: actual-budget-provider
+        identifiers:
+          name: Provider for Actual Budget
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          client_id: actual-budget-60d8e2eef4cf4c928ee18cd2
+          client_secret: !Env [AUTHENTIK_OIDC_ACTUAL_BUDGET_CLIENT_SECRET, null]
+          grant_types: [authorization_code, refresh_token]
+          issuer_mode: per_provider
+          include_claims_in_id_token: true
+          redirect_uris:
+            - matching_mode: strict
+              url: https://budget.reza.network/openid/callback
+              redirect_uri_type: authorization
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !KeyOf actual-budget-profile
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      - model: authentik_core.application
+        identifiers:
+          slug: actual-budget
+        attrs:
+          name: Actual Budget
+          provider: !KeyOf actual-budget-provider
+          meta_launch_url: https://budget.reza.network
+
+  open-webui.yaml: |
+    version: 1
+    metadata:
+      name: Open WebUI OIDC
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        id: open-webui-provider
+        identifiers:
+          name: Provider for Open WebUI
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          client_id: open-webui-82ebaa452b0b4916f1f9406e
+          client_secret: !Env [AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET, null]
+          grant_types: [authorization_code, refresh_token]
+          issuer_mode: per_provider
+          include_claims_in_id_token: true
+          redirect_uris:
+            - matching_mode: strict
+              url: https://chat.reza.network/oauth/oidc/callback
+              redirect_uri_type: authorization
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      - model: authentik_core.application
+        identifiers:
+          slug: open-webui
+        attrs:
+          name: Open WebUI
+          provider: !KeyOf open-webui-provider
+          meta_launch_url: https://chat.reza.network/
+
+  headlamp.yaml: |
+    version: 1
+    metadata:
+      name: Headlamp OIDC
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.scopemapping
+        id: headlamp-username
+        identifiers:
+          name: Headlamp username profile
+        attrs:
+          scope_name: profile
+          description: Headlamp uses the Authentik username as preferred_username.
+          expression: |
+            return {"preferred_username": request.user.username}
+      - model: authentik_providers_oauth2.oauth2provider
+        id: headlamp-provider
+        identifiers:
+          name: Headlamp OIDC
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          client_id: headlamp
+          client_secret: !Env [AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET, null]
+          grant_types: [authorization_code]
+          issuer_mode: per_provider
+          include_claims_in_id_token: true
+          redirect_uris:
+            - matching_mode: strict
+              url: https://headlamp.reza.network/oidc-callback
+              redirect_uri_type: authorization
+          property_mappings:
+            - !KeyOf headlamp-username
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      - model: authentik_core.application
+        identifiers:
+          slug: headlamp
+        attrs:
+          name: Headlamp
+          provider: !KeyOf headlamp-provider
+
+  audiobookshelf.yaml: |
+    version: 1
+    metadata:
+      name: Audiobookshelf OIDC
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        id: audiobookshelf-provider
+        identifiers:
+          name: Provider for Audiobookshelf
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          client_id: audiobookshelf
+          client_secret: !Env [AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET, null]
+          grant_types: [authorization_code, refresh_token]
+          issuer_mode: per_provider
+          include_claims_in_id_token: true
+          redirect_uris:
+            - matching_mode: strict
+              url: https://audiobooks.reza.network/auth/openid/callback
+              redirect_uri_type: authorization
+            - matching_mode: strict
+              url: https://audiobooks.reza.network/auth/openid/mobile-redirect
+              redirect_uri_type: authorization
+            - matching_mode: strict
+              url: https://audiobooks.reza.network/audiobookshelf/login
+              redirect_uri_type: logout
+            - matching_mode: strict
+              url: https://audiobooks.reza.network/login
+              redirect_uri_type: logout
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      - model: authentik_core.application
+        identifiers:
+          slug: audiobookshelf
+        attrs:
+          name: Audiobookshelf
+          provider: !KeyOf audiobookshelf-provider
+          meta_launch_url: https://audiobooks.reza.network/

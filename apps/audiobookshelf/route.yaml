@@ -1,0 +1,15 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: audiobookshelf
+  namespace: media
+spec:
+  parentRefs:
+    - name: home
+      namespace: traefik
+  hostnames:
+    - audiobooks.reza.network
+  rules:
+    - backendRefs:
+        - name: audiobookshelf
+          port: 13378

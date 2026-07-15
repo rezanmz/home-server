@@ -161,6 +161,45 @@ webhooks, WebSockets, native clients, or callback flows. Home Assistant is the
 current native-auth exception because upstream Home Assistant has no built-in
 OIDC provider.
 
+Before implementing authentication for a new user-facing service:
+
+1. Check the current upstream documentation and release for native OIDC,
+   OAuth2, or SAML support. Native support is the default when available.
+2. Register exact browser, logout, and native/mobile callback URIs in
+   Authentik. Use authorization code flow with PKCE where the application
+   supports it; do not enable implicit, password, device, or client-credential
+   grants unless the application actually requires them.
+3. Keep the OIDC client secret in SOPS-encrypted Secrets and send only the
+   minimum required scopes. Prefer stable subject matching; never grant
+   administrator access merely because any Authentik user can authenticate.
+4. Add the Authentik issuer path to the workload's NetworkPolicy, including
+   the split-horizon Traefik pre- and post-DNAT destinations. Verify discovery,
+   login, callback, logout, and any official mobile client before exposure.
+5. Keep an uninitialized first-user or first-owner page off the public route.
+   Automate a fail-closed bootstrap or complete onboarding through a private
+   path before the Service receives public traffic.
+
+Authentik's native-OIDC application state is repository-managed. Add each
+application as a separate blueprint document in the shared application
+blueprints module and add its provider-side secret to the shared encrypted OIDC
+client Secret. The Authentik worker imports that Secret with one `envFrom` and
+reconciles all mounted blueprint documents. Do not add a new Authentik manifest
+or a new worker environment block per application. Keep each application in a
+separate blueprint document so validation and reconciliation remain isolated.
+
+The relying application still needs the same client secret in its own
+namespace. Rotate both encrypted copies in one reviewed change, then restart
+the Authentik Deployment so the worker receives the new environment value.
+Verify that the provider and application blueprint instance is Successful before
+rolling the relying application. This duplication is preferable to adding a
+cluster-wide Secret replication controller or granting cross-namespace Secret
+access.
+
+If native integration is unavailable or unsuitable, record what upstream
+capability was checked, why it cannot be used, the chosen authentication
+boundary, and the narrowest practical exposure. Revisit that exception when
+upstream authentication support changes.
+
 ## Add a service
 
 ### 1. Start from the closest security model

@@ -133,6 +133,30 @@ and restarting the Deployment. Never create the marker merely to clear an HTTP
 503; a genuinely empty instance would otherwise expose first-owner creation to
 the public internet.
 
+### Audiobookshelf recovery and OIDC bootstrap
+
+Audiobookshelf is internet-accessible at `audiobooks.reza.network` and uses its
+native Authentik OIDC flow for browsers and the official mobile app. Its local
+root account is a recovery path; the generated password is stored only in the
+SOPS-encrypted `media/audiobookshelf-secrets` Secret. Do not disable local auth
+without replacing and testing that recovery path.
+
+The lifecycle bootstrap writes `/config/.gitops-bootstrap-complete` only after
+the root account, OIDC settings, and initial libraries are configured. The
+marker includes a one-way hash of the OIDC client secret: ordinary restarts do
+not need the recovery login, while a secret rotation reconciles the application
+settings before writing a new marker. The pod cannot become Ready on an empty
+PVC before that hook succeeds. If the hook fails, inspect the previous
+container log and verify the Authentik OIDC provider/application and discovery
+document, encrypted secrets, NFS mounts, and root credential; do not bypass the
+hook or create the marker manually to clear the outage.
+
+Longhorn and its B2 target protect `/config` and `/metadata`. The writable
+`/home/reza/media/audiobooks` and `/home/reza/media/podcasts` NFS directories,
+including downloaded podcast episodes, are not included in Longhorn backups.
+Neither is the read-only Calibre source; all three remain part of the
+reconstructible media data class.
+
 ## Pi network services
 
 Pi-hole, Samba, Syncthing, and wg-easy are Kubernetes workloads in

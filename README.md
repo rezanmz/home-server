@@ -61,7 +61,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Jellyseerr | `jellyfin.reza.network`, `jellyseerr.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
-| Books | Calibre-Web, Shelfmark | `library.reza.network`, `shelfmark.reza.network` |
+| Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
 | Network services | Pi-hole, wg-easy, Samba, Syncthing | `pihole.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
 | Operations | Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
@@ -128,7 +128,11 @@ docs/                    architecture and operations documentation
   ranges by an application-side proxy or a Traefik middleware. Headlamp also
   requires an Authentik session.
 - Argilla and the explicitly public application routes are reachable through
-  the public Gateway. Authentik supplies OIDC where the application supports it.
+  the public Gateway. A user-facing application that supports OIDC, OAuth2, or
+  SAML natively must use that native integration with Authentik. Proxy or
+  forward-auth is an exception for applications without suitable native
+  support, not the default. The service lifecycle manual records the required
+  integration and exception checks.
 - Default-deny network policies and explicit egress rules limit namespace
   traffic. The Gluetun pod provides the VPN firewall and kill switch for the
   consolidated download workload.
