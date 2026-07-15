@@ -123,13 +123,15 @@ IP allow-list range that contains either node address.
 
 ### Home Assistant recovery gate
 
-Home Assistant uses its built-in authentication and is private to LAN and
-WireGuard at `homeassistant.reza.network`. Its init container serves a deny-only
-proxy unless the PVC contains a regular `/config/.owner-onboarded` file. After
-restoring or replacing that PVC, validate an active owner through a loopback-only
-port-forward before recreating the marker and restarting the Deployment. Never
-create the marker merely to clear an HTTP 503; a genuinely empty instance would
-otherwise expose first-owner creation to every allowed client.
+Home Assistant uses its built-in authentication and is internet-accessible at
+`homeassistant.reza.network`. Every administrator must use a unique password and
+enable TOTP MFA from the Home Assistant profile security page. Its init container
+serves a deny-only proxy unless the PVC contains a regular
+`/config/.owner-onboarded` file. After restoring or replacing that PVC, validate
+an active owner through a loopback-only port-forward before recreating the marker
+and restarting the Deployment. Never create the marker merely to clear an HTTP
+503; a genuinely empty instance would otherwise expose first-owner creation to
+the public internet.
 
 ## Pi network services
 

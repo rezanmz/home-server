@@ -119,8 +119,11 @@ code cannot inherit the Pi node's access to trusted NFS exports. LAN devices are
 opened individually by address, protocol, and port as integrations are approved.
 It uses Home Assistant's built-in authentication because the upstream service
 does not provide native OIDC; no custom auth component or generic Authentik
-forward-auth layer is installed. Its private hostname is limited to LAN and
-WireGuard at both the Gateway and colocated access proxy.
+forward-auth layer is installed. `homeassistant.reza.network` is intentionally
+internet-accessible through the TLS Gateway and colocated access proxy. Home
+Assistant receives the original client address for login throttling and IP bans;
+every administrator must use a unique password and enable TOTP MFA. The durable
+owner marker keeps a new or unsafe replacement PVC fail-closed before onboarding.
 
 ## Storage
 
