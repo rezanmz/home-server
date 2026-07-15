@@ -9,6 +9,13 @@ data:
     # After first boot it is application state and may be edited normally.
     default_config:
 
+    homeassistant:
+      # Both Home Assistant and a user's browser must be able to reach this
+      # URL during callback-based integration setup (for example, Alexa Media
+      # Player's authentication proxy).
+      internal_url: https://homeassistant.reza.network
+      external_url: https://homeassistant.reza.network
+
     frontend:
       themes: !include_dir_merge_named themes
 

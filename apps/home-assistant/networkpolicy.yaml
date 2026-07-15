@@ -55,3 +55,12 @@ spec:
               - 240.0.0.0/4
       ports:
         - {port: 443, protocol: TCP}
+    # Permit Home Assistant to reach its own canonical HTTPS URL through the
+    # Traefik MetalLB VIP. Callback-based integrations require the URL to be
+    # reachable by both the server and the user's browser. Keep this exception
+    # limited to the single ingress address and TLS port.
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.240/32
+      ports:
+        - {port: 443, protocol: TCP}
