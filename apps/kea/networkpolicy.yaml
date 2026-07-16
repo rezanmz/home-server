@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kea-dhcp4
+  namespace: network-services
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kea-dhcp4
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # An unconfigured DHCP client legitimately sends from 0.0.0.0.
+    - from:
+        - ipBlock: {cidr: 0.0.0.0/32}
+        - ipBlock: {cidr: 192.168.1.0/24}
+      ports:
+        - {port: 67, protocol: UDP}
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: prometheus}
+        - ipBlock: {cidr: 10.42.0.0/16}
+      ports:
+        - {port: 9547, protocol: TCP}
+  egress:
+    # DHCP broadcasts and the conflict-detection ICMP ping stay on the LAN.
+    - to:
+        - ipBlock: {cidr: 192.168.1.0/24}
+    - to:
+        - ipBlock: {cidr: 255.255.255.255/32}
+      ports:
+        - {port: 68, protocol: UDP}

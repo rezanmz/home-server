@@ -48,8 +48,8 @@ Traefik runs on both nodes as a DaemonSet and claims host ports 80 and 443. The
 Pi therefore preserves the router's previous public-forwarding contract without
 SWAG. MetalLB also advertises `192.168.1.240` for the Traefik LoadBalancer
 Service, providing a stable cluster VIP for LAN access and direct validation.
-The reserved MetalLB range is `192.168.1.240-192.168.1.249`, outside Pi-hole's
-DHCP range of `192.168.1.10-192.168.1.239`.
+The reserved MetalLB range is `192.168.1.240-192.168.1.249`, outside Kea's DHCP
+range of `192.168.1.10-192.168.1.239`.
 
 Gateway API HTTPRoutes attach applications to the shared Traefik Gateway.
 cert-manager uses Cloudflare DNS-01 to issue and renew a wildcard Let's Encrypt
@@ -69,16 +69,33 @@ the Pi for those routes; it must never be broadened to the cluster-wide
 `10.42.0.0/16`. The high-risk-policy check records every such exception so a
 new or wider pod-CIDR allow-list requires explicit review.
 
-Pi-hole uses the Pi host network for DNS, DHCP, and NTP, but its web server is
-bound to loopback and reached only through a colocated proxy. That host-network
-proxy requires a cert-manager-managed client certificate presented by Traefik;
-source allow-lists are evaluated only after backend mTLS succeeds. A pod cannot
-bypass the backend merely by reaching its node port or forging forwarded headers.
-Gateway allow-lists also reject the ambiguous K3s node addresses; the Pi pod
-CIDR remains the explicit wg-easy exception described above.
+Blocky uses the Pi host network and keeps DNS on `192.168.1.2:53`, preserving
+the resolver address already used by LAN clients, WireGuard, the nodes, and
+CoreDNS. Its HTTP control and Prometheus endpoint binds only to the Pi's CNI
+gateway (`10.42.1.1:4000`); there is no LAN listener, UI route, or public
+control surface. The downloaded denylist cache is a reproducible Longhorn
+volume excluded from B2 backups.
+
+Kea DHCP uses the Beelink host network and physical `enp1s0` interface because
+ISC's official Kea image is amd64-only. It serves the same
+`192.168.1.10-192.168.1.239` pool with router `.1`, DNS `.2`, one-hour leases,
+and an authoritative response. The open-source ping-check hook probes an
+address before offering it, protecting the cutover from clients whose old
+Pi-hole leases are not in Kea's new memfile database. The lease database is a
+two-replica Longhorn volume included in nightly B2 backups. Kea exposes only a
+group-protected Unix control socket to its exporter; no HTTP control agent is
+enabled. Exporter metrics bind only to `10.42.0.1:9547`.
+
+Neither service has an application web route. Prometheus reaches their
+cluster-only metrics through selectorless Services with static Endpoints for
+the current discovery role and matching EndpointSlices for a future migration.
+The `DNS and DHCP` Grafana dashboard provides query, blocking, lease-pool, and
+packet views. Host-network listeners, rather than NetworkPolicy alone, are the
+management-plane boundary.
+
 Samba and Syncthing also use the Pi host network for LAN discovery. Syncthing's
-GUI is TLS loopback-only, and its colocated proxy uses the same dedicated
-cert-manager backend-mTLS pattern as Pi-hole; port 18384 must never serve
+GUI is TLS loopback-only, and its colocated proxy uses a dedicated
+cert-manager backend-mTLS pattern; port 18384 must never serve
 plaintext or accept a client without Traefik's certificate. wg-easy is pinned
 to the Pi and maps the router-facing UDP port 1234 to its WireGuard listener.
 These constraints are physical requirements rather than general scheduling
@@ -88,11 +105,12 @@ Syncthing's automatic UPnP/NAT-PMP port mapping is disabled. LAN discovery,
 WireGuard access, global discovery, and relays remain available, but Syncthing
 must not silently create a new Internet-facing router mapping.
 
-Pi-hole's split-horizon overrides point HTTP hostnames at the Traefik VIP
-`192.168.1.240`, so application pod placement is independent of DNS. Pi-specific
-protocols such as SMB, NFS, DNS/DHCP, and WireGuard continue to use
-`192.168.1.2`. Jellyfin advertises its Traefik HTTPS hostname; its host network
-is retained only for LAN discovery and DLNA multicast.
+Blocky's split-horizon mappings point HTTP hostnames at the Traefik VIP
+`192.168.1.240`, so application pod placement is independent of DNS. DNS, SMB,
+NFS, and WireGuard continue to use `192.168.1.2`; DHCP replies come from Kea at
+`192.168.1.3` while advertising `.2` as the resolver. Jellyfin advertises its
+Traefik HTTPS hostname; its host network is retained only for LAN discovery and
+DLNA multicast.
 
 ## Workload placement
 
@@ -268,7 +286,7 @@ Applications are separated into four operational namespaces:
 
 - `apps` for identity, personal, home-automation, and general web applications;
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
-- `network-services` for Pi-hole, WireGuard, Samba, Syncthing, and backups;
+- `network-services` for Blocky, Kea, WireGuard, Samba, Syncthing, and backups;
 - `monitoring` for Prometheus, Alertmanager, Grafana, Headlamp, and Kubernetes
   event export.
 
@@ -343,9 +361,9 @@ This design prioritizes a complete K3s migration over adding hardware:
 - Pi-hosted NFS means no shared-storage HA;
 - two Longhorn replicas tolerate only one replica failure and still depend on
   the single control plane for orchestration;
-- maintenance on the Pi interrupts DNS/DHCP, public ingress, WireGuard, SMB,
+- maintenance on the Pi interrupts DNS, public ingress, WireGuard, SMB,
   Syncthing discovery, and NFS-backed applications;
-- maintenance on the Beelink interrupts cluster administration and most
+- maintenance on the Beelink interrupts DHCP, cluster administration, and most
   compute workloads;
 - Jellyfin's host-network port 8096 remains reachable from the LAN because the
   same network namespace is required for DLNA; Jellyfin authentication is the

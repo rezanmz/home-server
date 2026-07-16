@@ -35,7 +35,7 @@ spec:
                   name: cloudflare-ddns-secrets
                   key: api-token
             - name: DOMAINS
-              value: reza.network,auth.reza.network,audiobooks.reza.network,budget.reza.network,vpn.reza.network,homeassistant.reza.network,jellyfin.reza.network,radarr.reza.network,sonarr.reza.network,prowlarr.reza.network,jellyseerr.reza.network,qbittorrent.reza.network,homepage.reza.network,pihole.reza.network,headlamp.reza.network,grafana.reza.network,speedtest.reza.network,mcphub.reza.network,chat.reza.network,argilla.reza.network,syncthing.reza.network,library.reza.network,shelfmark.reza.network
+              value: reza.network,auth.reza.network,audiobooks.reza.network,budget.reza.network,vpn.reza.network,homeassistant.reza.network,jellyfin.reza.network,radarr.reza.network,sonarr.reza.network,prowlarr.reza.network,jellyseerr.reza.network,qbittorrent.reza.network,homepage.reza.network,headlamp.reza.network,grafana.reza.network,speedtest.reza.network,mcphub.reza.network,chat.reza.network,argilla.reza.network,syncthing.reza.network,library.reza.network,shelfmark.reza.network
             - {name: PROXIED, value: "false"}
             - {name: UPDATE_CRON, value: "@every 5m"}
             - {name: UPDATE_ON_START, value: "true"}

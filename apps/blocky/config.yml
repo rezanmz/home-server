@@ -1,0 +1,106 @@
+upstreams:
+  init:
+    strategy: fast
+  groups:
+    default:
+      - tcp+udp:8.8.8.8
+      - tcp+udp:8.8.4.4
+  strategy: parallel_best
+  timeout: 2s
+
+# The LAN has IPv6 addressing but no routed IPv6 internet connection.
+connectIPVersion: v4
+
+customDNS:
+  customTTL: 5m
+  filterUnmappedTypes: true
+  mapping:
+    argilla.reza.network: 192.168.1.240
+    audiobooks.reza.network: 192.168.1.240
+    auth.reza.network: 192.168.1.240
+    budget.reza.network: 192.168.1.240
+    chat.reza.network: 192.168.1.240
+    grafana.reza.network: 192.168.1.240
+    headlamp.reza.network: 192.168.1.240
+    homeassistant.reza.network: 192.168.1.240
+    homepage.reza.network: 192.168.1.240
+    jellyfin.reza.network: 192.168.1.240
+    jellyseerr.reza.network: 192.168.1.240
+    library.reza.network: 192.168.1.240
+    mcphub.reza.network: 192.168.1.240
+    prowlarr.reza.network: 192.168.1.240
+    qbittorrent.reza.network: 192.168.1.240
+    radarr.reza.network: 192.168.1.240
+    shelfmark.reza.network: 192.168.1.240
+    sonarr.reza.network: 192.168.1.240
+    speedtest.reza.network: 192.168.1.240
+    syncthing.reza.network: 192.168.1.240
+    vpn.reza.network: 192.168.1.240
+
+blocking:
+  denylists:
+    ads:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+  clientGroupsBlock:
+    default:
+      - ads
+  blockType: zeroIp
+  blockTTL: 1m
+  loading:
+    refreshPeriod: 4h
+    downloads:
+      cachePath: /var/cache/blocky/lists
+      timeout: 15s
+      readTimeout: 30s
+      readHeaderTimeout: 10s
+      attempts: 3
+      cooldown: 2s
+    concurrency: 2
+    # DNS must start even when GitHub is temporarily unreachable. The durable
+    # download cache supplies the last good list while refresh retries happen.
+    strategy: fast
+    maxErrorsPerSource: 20
+
+caching:
+  minTime: 30s
+  maxTime: 30m
+  maxItemsCount: 10000
+  prefetching: true
+  prefetchExpires: 2h
+  prefetchThreshold: 5
+  prefetchMaxItemsCount: 2000
+  cacheTimeNegative: 5m
+
+prometheus:
+  enable: true
+  path: /metrics
+
+bootstrapDns:
+  - tcp+udp:8.8.8.8
+  - tcp+udp:8.8.4.4
+
+rebindingProtection:
+  enable: true
+  allowedDomains:
+    - reza.network
+
+specialUseDomains:
+  enable: true
+  rfc6762-appendixG: true
+
+ports:
+  dns:
+    - :53
+  # Bind management and metrics to the Pi's cluster-only CNI gateway. There
+  # is deliberately no LAN or HTTPRoute exposure for Blocky's control API.
+  http:
+    - 10.42.1.1:4000
+
+log:
+  level: info
+  format: json
+  timestamp: true
+  privacy: true
+
+ede:
+  enable: true

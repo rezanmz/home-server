@@ -7,6 +7,7 @@ resources:
   - grafana-secrets.sops.yaml
   - alertmanager-config.sops.yaml
   - dashboard.yaml
+  - network-services-dashboard.yaml
   - rbac.yaml
   - release.yaml
   - networkpolicy.yaml

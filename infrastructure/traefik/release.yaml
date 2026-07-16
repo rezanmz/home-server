@@ -47,7 +47,7 @@ spec:
         enabled: true
         experimentalChannel: false
         # Only this namespace may bridge a Gateway API backendRef into a
-        # TraefikService. Pi-hole uses it for authenticated backend mTLS.
+        # TraefikService. Syncthing uses it for authenticated backend mTLS.
         crossProviderNamespaces:
           - network-services
         statusAddress:

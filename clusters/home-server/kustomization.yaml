@@ -27,7 +27,8 @@ resources:
   - ../../apps/prowlarr
   - ../../apps/radarr
   - ../../apps/sonarr
-  - ../../apps/pihole
+  - ../../apps/blocky
+  - ../../apps/kea
   - ../../apps/samba
   - ../../apps/syncthing
   - ../../apps/vpn

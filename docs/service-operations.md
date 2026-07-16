@@ -147,8 +147,9 @@ Choose one of these deliberately:
   proxy; the Service targets the proxy, not the application directly.
 - **Public route:** no LAN middleware. The application must supply suitable
   authentication and the public exposure must be explicitly reviewed.
-- **Host-network admin UI:** use the Pi-hole/Syncthing loopback and backend-mTLS
-  pattern. Do not expose the loopback service through an ordinary pod Service.
+- **Host-network admin UI:** use Syncthing's loopback and backend-mTLS pattern.
+  Do not expose the loopback service through an ordinary pod Service. Blocky
+  and Kea deliberately have no HTTP route; do not add one merely for convenience.
 
 The wildcard certificate normally covers a new `*.reza.network` hostname.
 
@@ -209,9 +210,10 @@ upstream authentication support changes.
 
 Create `apps/<service>/` and compare with an existing service that has the same
 exposure and storage model. Actual Budget is the best ordinary private-web-app
-example. Pi-hole and Syncthing are specialized host-network examples; the
-downloads pod is a specialized shared-network-namespace example. Do not copy a
-privileged exception into an ordinary app merely because it is convenient.
+example. Blocky and Kea are specialized host-network protocol examples;
+Syncthing is the host-network backend-mTLS UI example; the downloads pod is a
+specialized shared-network-namespace example. Do not copy a privileged
+exception into an ordinary app merely because it is convenient.
 
 A typical application Kustomization explicitly lists:
 
@@ -497,7 +499,7 @@ Administrative allow-lists deliberately exclude node addresses
 For a new hostname:
 
 1. Add it to the Cloudflare DDNS domain list if it needs public DNS.
-2. Add `192.168.1.240 <hostname>` to Pi-hole's static host list for
+2. Add `<hostname>: 192.168.1.240` to `apps/blocky/config.yml` for
    split-horizon LAN resolution.
 3. Verify the HTTPRoute is accepted and its backend references resolve.
 4. Test public, direct Pi host-port, and MetalLB VIP paths as appropriate.
@@ -826,8 +828,9 @@ That host change is outside Flux.
 
 ### 5. Remove DNS and external state
 
-- Remove the Pi-hole static host entry and reload Pi-hole if it serves a cached
-  answer.
+- Remove the Blocky `customDNS.mapping` entry. Allow the configured five-minute
+  custom-record TTL to expire on clients, or flush only the affected client
+  cache when absence must be immediate.
 - Remove the hostname from Cloudflare DDNS desired state.
 - Explicitly delete the exact Cloudflare record: `DELETE_ON_STOP=false`, so
   removing a name from the list does not remove the provider record.
@@ -836,7 +839,7 @@ That host change is outside Flux.
   service accounts, and integrations selected for destruction. Record why any
   surviving credential is retained; deleting its Kubernetes Secret does not
   invalidate it.
-- Verify authoritative and Pi-hole A, AAAA, and CNAME responses are absent.
+- Verify authoritative public and Blocky A, AAAA, and CNAME responses are absent.
 
 ### 6. Final proof
 
@@ -877,7 +880,7 @@ the retained manifests.
 - [ ] Desired state no longer owns retired runtime objects.
 - [ ] Root-owned objects were explicitly deleted, or child pruning was proven.
 - [ ] PVC/PV/Longhorn/NFS cleanup followed an identity-checked plan.
-- [ ] Cloudflare, Pi-hole, router, NFS, and provider credentials/integrations
+- [ ] Cloudflare, Blocky/Kea, router, NFS, and provider credentials/integrations
       were retained or destroyed as documented.
 - [ ] Absence and retained recovery artifacts were verified.
 

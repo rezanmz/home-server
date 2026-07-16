@@ -21,7 +21,7 @@ Flux.
 | K3s server and agent configuration | Repository bootstrap inputs copied to `/etc/rancher/k3s/config.yaml` by scripts | A Git merge does not update a running host automatically |
 | Pi NFS and host security configuration | Repository inputs applied by SSH helper scripts | Desired and live host files must be verified separately |
 | CoreDNS, Metrics Server, and other K3s-packaged components | K3s Addon manifests on the Beelink | They are not ordinary Flux resources |
-| Router, Cloudflare, and DHCP reservations | External systems | Kubernetes cannot reconcile or roll them back |
+| Router and Cloudflare | External systems | Kubernetes cannot reconcile or roll them back; Kea reservations are Git-managed |
 
 When a host-level file changes, the pull request must say how and when it will
 be applied. After application, compare the installed file with the repository
@@ -40,6 +40,8 @@ copy and verify the affected service.
 | API authentication | Authentik OIDC configured for Headlamp; API reachable only through the LAN/server |
 | Disabled K3s packages | Bundled Traefik, ServiceLB, and local-storage |
 | Ingress | Flux-managed Traefik DaemonSet on host ports 80/443 plus MetalLB VIP `192.168.1.240` |
+| DNS | Blocky on the Pi host network at `192.168.1.2:53` |
+| DHCP | Kea on the Beelink host network and `enp1s0`, pool `192.168.1.10-192.168.1.239` |
 | Shared storage | Pi NFS at `192.168.1.2` |
 | Application block storage | Longhorn V1 engine, two replicas, one default disk per labeled node |
 | Longhorn node/upgrade safety | Storage scheduling disabled on cordoned nodes; automatic engine upgrades disabled |
@@ -52,10 +54,10 @@ The two nodes are schedulable workers as well as their special roles:
 | `beelink` | `192.168.1.3`, amd64 | Sole K3s server, SQLite datastore, main compute, AMD GPU | amd64, NVMe, AMD GPU, Longhorn default disk |
 | `raspberrypi` | `192.168.1.2`, arm64 | K3s agent, NFS server, LAN/broadcast protocols, router-forwarded WireGuard | arm64, NVMe, Longhorn default disk |
 
-Both are currently untainted. A Beelink outage removes the Kubernetes control
-plane. A Pi outage removes DNS/DHCP, NFS, WireGuard, SMB, and the physical data
-behind every NFS volume. The design is not highly available even when a pod can
-be rescheduled.
+Both are currently untainted. A Beelink outage removes DHCP and the Kubernetes
+control plane. A Pi outage removes DNS, NFS, WireGuard, SMB, and the physical
+data behind every NFS volume. The design is not highly available even when a
+pod can be rescheduled.
 
 ## Networking assumptions
 
@@ -72,8 +74,8 @@ be rescheduled.
 - MetalLB speakers run on every node and advertise the L2 VIP range
   `192.168.1.240-192.168.1.249`.
 - The router forwards public TCP 80/443 and WireGuard UDP 1234 to the Pi.
-- Pi-hole's DHCP range ends at `.239`; node addresses and the MetalLB range are
-  statically reserved outside it.
+- Kea's DHCP range ends at `.239`; node addresses and the MetalLB range are
+  statically assigned outside it.
 - Administrative allow-lists deliberately do not trust `.2` or `.3`. Do not
   add a new node address merely because it belongs to the cluster.
 - wg-easy masquerades clients to the Pi pod CIDR, so the exact
@@ -118,6 +120,7 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 | `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, Pi NFS library |
 | `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, Pi NFS media, Authentik OIDC |
 | `apps/home-assistant` | Keeps third-party integration code and future selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; explicit per-device network policy is required for LAN integrations |
+| `network-services/kea-dhcp4` | ISC's official image is amd64-only and DHCP must use a real LAN interface | Beelink host network, `enp1s0`, Longhorn lease database |
 | `network-services/syncthing-backup-freshness` | Checks B2 from the node that is not the data source | B2 only; no Syncthing data PVC |
 | K3s server processes | Single-server design | Beelink host filesystem and SQLite datastore |
 
@@ -130,7 +133,7 @@ upgrade unit.
 
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
-| `network-services/pihole` | Stable DNS/DHCP/NTP LAN address | Host network and Longhorn config |
+| `network-services/blocky` | Preserves the established resolver address `192.168.1.2` | Pi host network and reproducible Longhorn list cache |
 | `network-services/samba` | SMB/NetBIOS LAN broadcast behavior | Host network and Pi NFS media |
 | `network-services/syncthing` | LAN discovery and stable direct-sync ports | Host network, Longhorn config, Pi-local NFS data |
 | `network-services/wg-easy` | Router forwards UDP 1234 to the Pi; exact unsafe sysctls are allowed only there | Host port 1234 and Longhorn config |
@@ -241,7 +244,7 @@ new host.
   different OS needs a reviewed equivalent for K3s and every Longhorn host
   dependency; do not run the apt helper and hope it is portable.
 - Assign a unique hostname and a stable/reserved wired LAN address outside the
-  Pi-hole DHCP pool (`192.168.1.10-192.168.1.239`), the MetalLB range
+  Kea DHCP pool (`192.168.1.10-192.168.1.239`), the MetalLB range
   (`192.168.1.240-192.168.1.249`), every administrative allow-list CIDR, and
   every existing infrastructure reservation. The current `192.168.1.32/27`
   admin range is not a valid node-address pool even though adding an address
@@ -677,10 +680,10 @@ The current Longhorn drain policy is `block-if-contains-last-replica`. Do not
 weaken it merely to make a drain finish. A blocked drain is evidence that the
 remaining data placement is unsafe.
 
-For the Pi, explicitly expect loss of DNS/DHCP, NFS, public ingress target,
+For the Pi, explicitly expect loss of DNS, NFS, public ingress target,
 WireGuard, SMB, Syncthing, and Pi-pinned pods. For the Beelink, expect loss of
-the API/control plane and most compute. The other node being Ready does not
-remove those physical dependencies.
+DHCP, the API/control plane, and most compute. The other node being Ready does
+not remove those physical dependencies.
 
 ## Permanently remove an agent
 
@@ -691,8 +694,10 @@ space and is ready to receive replicas.
 ### 1. Remove application dependencies first
 
 - Move or retire every hostname-pinned workload through Git.
-- If removing the Pi, migrate NFS, DNS/DHCP, SMB, Syncthing, WireGuard, router
+- If removing the Pi, migrate NFS, DNS, SMB, Syncthing, WireGuard, router
   forwards, static PV endpoints, and the trusted Pi PodCIDR design first.
+- If removing the Beelink, migrate Kea DHCP before taking down its physical
+  `enp1s0` listener; a replacement must be proven on the same broadcast domain.
 - Remove the node address from Pi NFS exports only after no mount uses it.
 - Confirm Longhorn's B2 target and recent backups are complete.
 - Require every attached volume to be `healthy`, with its requested replica
@@ -788,8 +793,9 @@ an old `/var/lib/longhorn` directory and assume the replica directories are
 valid members of the current cluster.
 
 Replacing the Pi is a storage/network migration, not an ordinary agent swap.
-Preserve its NFS data, ownership, exports, DNS/DHCP settings, Syncthing identity,
-WireGuard configuration, router target, and PodCIDR-dependent access rules.
+Preserve its NFS data, ownership, exports, `192.168.1.2` Blocky DNS endpoint,
+Syncthing identity, WireGuard configuration, router target, and
+PodCIDR-dependent access rules.
 
 Replacing the Beelink is a control-plane recovery or migration, not an agent
 operation. It is **not currently runbook-supported**: the repository has no
@@ -797,7 +803,9 @@ tested consistency-safe, checksummed, off-host backup and restore procedure for
 the SQLite datastore plus server token. The existing dated archive is local to
 the Beelink and does not protect against its disk loss. Do not run the agent
 removal procedure against it or claim a routine replacement is possible until
-that recovery gap is closed and restore-tested.
+that recovery gap is closed and restore-tested. Kea DHCP and its lease volume
+must also move to a proven amd64 host on the same LAN before the old `enp1s0`
+listener stops.
 
 ## Current live deviations requiring follow-up
 
