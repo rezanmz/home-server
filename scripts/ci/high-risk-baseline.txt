@@ -60,7 +60,7 @@ helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/9a2154d2481d75f5312e49d23b57b862a8a5392b288d3259538619a85fdbfd43
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/f02fded6a4fd0235dc4113d0d1676577a5a45ef91413fde7445dae55a68694e4
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/23ef4cc928121f8e2bee4afe68f2107aef5b71c10527e0fc95d21a1468ed1531
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/030275689d0a32f46a75a71cee45313c40b080e6f06ac47d3fc4fc838288f9ef
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/537e2ca5648719880cda64ac1521e3d1822671b1466abc7f47e80a1e4361f5db
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/020fb185bc357ae641f2543bbb5699dd1b1ed375a2c69a663ec32161fa4b9ed9
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|pihole|pod-spec

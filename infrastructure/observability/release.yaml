@@ -217,6 +217,11 @@ spec:
         retentionSize: 20GB
         walCompression: true
         enableAdminAPI: false
+        # Alert GeneratorURLs stay behind Grafana's native Authentik session.
+        # Grafana strips this datasource-proxy prefix before forwarding to the
+        # internal Prometheus service, which continues to serve from `/`.
+        externalUrl: https://grafana.reza.network/api/datasources/proxy/uid/prometheus
+        routePrefix: /
         resources:
           requests: {cpu: 500m, memory: 1Gi}
           limits: {cpu: "2", memory: 3Gi}

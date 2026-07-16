@@ -297,8 +297,11 @@ not the only signal available during an incident.
 Only Grafana has a Gateway API route. The route and an in-pod access proxy both
 enforce the LAN/WireGuard boundary, and Grafana performs native Authentik OIDC
 with `home-admins` mapped to Grafana administrators. Prometheus and Alertmanager
-remain ClusterIP-only and require a deliberate `kubectl port-forward` for their
-diagnostic UIs. Prometheus retains at most 14 days or 20 GB in a 30 GiB PVC;
+remain ClusterIP-only and require a deliberate `kubectl port-forward` for direct
+access to their diagnostic UIs. Alert GeneratorURLs use Grafana's authenticated
+Prometheus datasource proxy. This lets Telegram recipients investigate the exact
+query without creating another external service. Prometheus retains at most 14 days
+or 20 GB in a 30 GiB PVC;
 Grafana and Alertmanager use smaller persistent volumes. These three volumes
 use `longhorn-observability`, whose non-default recurring-job selector keeps
 reproducible metrics data out of the nightly Backblaze backup set.
