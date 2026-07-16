@@ -295,6 +295,10 @@ spec:
           root_url: https://grafana.reza.network/
           enforce_domain: true
       hostAliases:
+        # Grafana enforces its canonical domain. Resolve that domain to this
+        # pod for sidecar provisioning reloads instead of disabling the check.
+        - ip: 127.0.0.1
+          hostnames: [grafana.reza.network]
         - ip: 192.168.1.240
           hostnames: [auth.reza.network]
       rbac:
@@ -315,6 +319,7 @@ spec:
           searchNamespace: monitoring
           resource: configmap
           folderAnnotation: grafana_folder
+          reloadURL: http://grafana.reza.network:3000/api/admin/provisioning/dashboards/reload
           provider:
             allowUiUpdates: false
             foldersFromFilesStructure: true
@@ -322,6 +327,7 @@ spec:
           enabled: true
           searchNamespace: monitoring
           resource: configmap
+          reloadURL: http://grafana.reza.network:3000/api/admin/provisioning/datasources/reload
       defaultDashboardsEditable: false
       defaultDashboardsTimezone: browser
       initChownData:
