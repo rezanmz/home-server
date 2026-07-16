@@ -14,10 +14,10 @@ kind: Endpoints
 metadata:
   name: blocky-metrics
   namespace: network-services
-  annotations:
+  labels:
     # Prometheus currently uses Endpoints discovery. Keep the separately
     # managed EndpointSlice below for a future discovery-role migration.
-    endpoints.kubernetes.io/skip-mirror: "true"
+    endpointslice.kubernetes.io/skip-mirror: "true"
 subsets:
   - addresses: [{ip: 10.42.1.1}]
     ports: [{name: http-metrics, port: 4000, protocol: TCP}]
