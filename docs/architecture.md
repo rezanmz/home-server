@@ -280,9 +280,11 @@ repository; the private age identity remains root-only outside Git.
 Authentik's native OIDC providers and applications are also desired state. One
 shared ConfigMap mounts a separate, independently reconciled blueprint document
 for each relying application, while one aggregate SOPS Secret supplies the
-provider-side client secrets to the worker. Adding an OIDC client therefore
-changes those two shared resources and the relying application only; it does
-not add another Authentik Deployment patch or per-service Authentik manifest.
+provider-side client secrets to the worker. Each key is referenced explicitly in
+the worker's shared OIDC environment list so adding a client rolls the pod and a
+missing key fails visibly. Adding an OIDC client therefore changes those shared
+resources and the relying application only; it does not add a per-service
+Authentik manifest or Deployment patch.
 
 The metrics path is deliberately separate from the event-notification path.
 Prometheus scrapes K3s, kube-state-metrics, both node exporters, Longhorn,
