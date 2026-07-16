@@ -5,7 +5,12 @@ spec:
   podSelector:
     matchLabels: {app.kubernetes.io/name: loggifly}
   policyTypes: [Ingress, Egress]
-  ingress: []
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: prometheus}
+      ports:
+        - {port: 2112, protocol: TCP}
   egress:
     - to:
         - namespaceSelector:

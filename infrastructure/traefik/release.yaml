@@ -91,6 +91,15 @@ spec:
           defaultMode: drop
         queryParameters:
           defaultMode: drop
+    metrics:
+      prometheus:
+        addEntryPointsLabels: true
+        addRoutersLabels: true
+        addServicesLabels: true
+        service:
+          enabled: true
+          labels:
+            observability.reza.network/scrape: traefik
     ports:
       web:
         hostPort: 80

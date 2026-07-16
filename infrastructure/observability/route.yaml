@@ -1,0 +1,45 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: grafana-lan-only
+  namespace: monitoring
+spec:
+  ipAllowList:
+    sourceRange:
+      # Exclude both K3s node IPs (.2/.3); cross-node pod traffic is SNATed
+      # to the peer node and must not inherit LAN trust.
+      - 192.168.1.0/31
+      - 192.168.1.4/30
+      - 192.168.1.8/29
+      - 192.168.1.16/28
+      - 192.168.1.32/27
+      - 192.168.1.64/26
+      - 192.168.1.128/25
+      - 10.8.0.0/24
+      - 10.42.1.0/24
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  parentRefs:
+    - name: home
+      namespace: traefik
+  hostnames: [grafana.reza.network]
+  rules:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: grafana-lan-only
+      backendRefs:
+        - name: observability-grafana
+          port: 16121

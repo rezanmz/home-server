@@ -109,7 +109,7 @@ Make these decisions before writing manifests.
 | `apps` | Identity, home automation, personal applications, and ordinary web services | Baseline; restricted audited and warned |
 | `media` | Media, download automation, and VPN-isolated workloads | Privileged; restricted audited and warned |
 | `network-services` | DNS, DHCP, VPN, SMB, Syncthing, and LAN protocols | Privileged; restricted audited and warned |
-| `monitoring` | Read-only dashboards and event reporting | Baseline; restricted audited and warned |
+| `monitoring` | Metrics, read-only cluster dashboards, alerting, and event reporting | Baseline; restricted audited and warned |
 
 Prefer an existing namespace. A new namespace needs explicit Pod Security
 labels, a default-deny NetworkPolicy, and any namespace-scoped Traefik
@@ -124,6 +124,7 @@ existing security policy is not acceptable.
 | Large/shared media, downloads, and books | Static Pi NFS PV/PVC | None; media is treated as reproducible | Every consumer still fails when the Pi or its disk is unavailable |
 | Syncthing file data | Pi NFS plus the dedicated Syncthing PVC | Daily encrypted Restic B2 backup | Live-file scan, not an atomic filesystem snapshot |
 | Stateless/cache data | `emptyDir` or no PVC | Not backed up | Lost on pod replacement |
+| Reproducible observability state | `longhorn-observability` RWO PVC | Deliberately excluded from the default B2 recurring job | Grafana preferences and recent metrics can be lost; dashboards and configuration remain in Git |
 
 A newly added NFS path is **not** automatically covered by either Longhorn or
 the Syncthing backup. If the data is not reproducible, define its independent

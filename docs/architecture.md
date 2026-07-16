@@ -269,7 +269,8 @@ Applications are separated into four operational namespaces:
 - `apps` for identity, personal, home-automation, and general web applications;
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
 - `network-services` for Pi-hole, WireGuard, Samba, Syncthing, and backups;
-- `monitoring` for Headlamp and Kubernetes event export.
+- `monitoring` for Prometheus, Alertmanager, Grafana, Headlamp, and Kubernetes
+  event export.
 
 Namespace default-deny policies and workload-specific rules permit only the
 required ingress and egress. Administrative routes use LAN/WireGuard allow
@@ -282,6 +283,23 @@ for each relying application, while one aggregate SOPS Secret supplies the
 provider-side client secrets to the worker. Adding an OIDC client therefore
 changes those two shared resources and the relying application only; it does
 not add another Authentik Deployment patch or per-service Authentik manifest.
+
+The metrics path is deliberately separate from the event-notification path.
+Prometheus scrapes K3s, kube-state-metrics, both node exporters, Longhorn,
+Traefik, cert-manager, Flux, Headlamp, and the event exporter. Alertmanager
+groups and inhibits Prometheus alerts before sending warning and critical
+notifications to the existing Telegram destination. The event exporter still
+sends noteworthy Kubernetes events directly, so a failed Prometheus scrape is
+not the only signal available during an incident.
+
+Only Grafana has a Gateway API route. The route and an in-pod access proxy both
+enforce the LAN/WireGuard boundary, and Grafana performs native Authentik OIDC
+with `home-admins` mapped to Grafana administrators. Prometheus and Alertmanager
+remain ClusterIP-only and require a deliberate `kubectl port-forward` for their
+diagnostic UIs. Prometheus retains at most 14 days or 20 GB in a 30 GiB PVC;
+Grafana and Alertmanager use smaller persistent volumes. These three volumes
+use `longhorn-observability`, whose non-default recurring-job selector keeps
+reproducible metrics data out of the nightly Backblaze backup set.
 
 The protected `main` branch requires a GitHub-hosted validation job. It checks
 helper syntax and tests, rejects plaintext or malformed SOPS Secrets, renders
@@ -329,6 +347,10 @@ This design prioritizes a complete K3s migration over adding hardware:
   final control on that direct path;
 - Traefik's Kubernetes providers require cluster-wide Node and Secret reads,
   so a Traefik compromise has a larger disclosure radius than an ordinary app.
+- The Prometheus Operator's upstream chart grants cluster-wide reconciliation
+  over monitoring CRs plus StatefulSets, ConfigMaps, and Secrets. Its watch loop
+  is scoped to the `monitoring` release namespace, but compromise of its service
+  account remains a high-impact cluster event.
 
 These are current operating assumptions, not pending migration steps. Revisit
 them only if a third node or independent storage is intentionally introduced.

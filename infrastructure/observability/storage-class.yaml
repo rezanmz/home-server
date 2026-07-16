@@ -1,0 +1,19 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-observability
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  numberOfReplicas: "2"
+  dataLocality: best-effort
+  fsType: ext4
+  staleReplicaTimeout: "30"
+  # A non-empty, intentionally unused recurring-job group prevents these
+  # reproducible time-series volumes from inheriting the default B2 job.
+  recurringJobSelector: '[{"name":"observability-local","isGroup":true}]'
+
