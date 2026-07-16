@@ -183,10 +183,12 @@ Before implementing authentication for a new user-facing service:
 Authentik's native-OIDC application state is repository-managed. Add each
 application as a separate blueprint document in the shared application
 blueprints module and add its provider-side secret to the shared encrypted OIDC
-client Secret. The Authentik worker imports that Secret with one `envFrom` and
-reconciles all mounted blueprint documents. Do not add a new Authentik manifest
-or a new worker environment block per application. Keep each application in a
-separate blueprint document so validation and reconciliation remain isolated.
+client Secret. Add an explicit, required `secretKeyRef` for that key to the
+worker's existing OIDC environment list. This changes the pod template so the
+new key is loaded immediately and makes a missing key stop the pod instead of
+silently breaking only its blueprint. Do not add a new Authentik manifest or
+Deployment patch per application. Keep each application in a separate blueprint
+document so validation and reconciliation remain isolated.
 
 The relying application still needs the same client secret in its own
 namespace. Rotate both encrypted copies in one reviewed change, then restart
