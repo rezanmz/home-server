@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kea-dhcp4
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: kea-dhcp4
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kea-dhcp4
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kea-dhcp4
+    spec:
+      automountServiceAccountToken: false
+      # ISC's official image is amd64-only. Kea listens for broadcasts on the
+      # Beelink's physical Ethernet interface while Blocky retains DNS on .2.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        supplementalGroups: [101]
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: prepare-state-directories
+          image: busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          imagePullPolicy: IfNotPresent
+          command: [sh, -ec]
+          args:
+            - |-
+              chmod 0750 /leases /runtime
+              chown 100:101 /leases /runtime
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN]
+          volumeMounts:
+            - {name: leases, mountPath: /leases}
+            - {name: runtime, mountPath: /runtime}
+      containers:
+        - name: kea-dhcp4
+          image: docker.cloudsmith.io/isc/docker/kea-dhcp4:3.2.0@sha256:9c67ace6719e846cab3dcbac594530f6b45f3c6aa74be1ca41702bca2cfa3176
+          imagePullPolicy: IfNotPresent
+          command: [/usr/sbin/kea-dhcp4]
+          args: [-c, /etc/kea/kea-dhcp4.conf]
+          ports:
+            - {name: dhcp, containerPort: 67, protocol: UDP}
+          startupProbe:
+            exec:
+              command: [sh, -ec, "test -S /var/run/kea/kea4-ctrl-socket && kill -0 1"]
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: [sh, -ec, "test -S /var/run/kea/kea4-ctrl-socket && kill -0 1"]
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: [sh, -ec, "test -S /var/run/kea/kea4-ctrl-socket && kill -0 1"]
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_BIND_SERVICE, NET_RAW]
+          volumeMounts:
+            - {name: config, mountPath: /etc/kea, readOnly: true}
+            - {name: leases, mountPath: /var/lib/kea}
+            - {name: runtime, mountPath: /var/run/kea}
+            - {name: tmp, mountPath: /tmp}
+        - name: kea-exporter
+          image: ghcr.io/mweinelt/kea-exporter:v0.7.1@sha256:d7b77020e924e45626fd447a174b9885b3c3cd4cc398dba749fd8596d30e6956
+          imagePullPolicy: IfNotPresent
+          command: [/bin/sh, -ec]
+          args:
+            - |-
+              until [ -S /var/run/kea/kea4-ctrl-socket ]; do sleep 1; done
+              exec kea-exporter /var/run/kea/kea4-ctrl-socket \
+                --address 10.42.0.1 --port 9547 --interval 15
+          ports:
+            - {name: http-metrics, containerPort: 9547, protocol: TCP}
+          readinessProbe:
+            exec:
+              command:
+                - /usr/local/bin/python
+                - -c
+                - import urllib.request; urllib.request.urlopen('http://10.42.0.1:9547/metrics', timeout=2).read(1)
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /usr/local/bin/python
+                - -c
+                - import urllib.request; urllib.request.urlopen('http://10.42.0.1:9547/metrics', timeout=3).read(1)
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 15m, memory: 32Mi}
+            limits: {cpu: 150m, memory: 128Mi}
+          securityContext:
+            runAsNonRoot: true
+            # Keep the image's own account (its home directory is private).
+            # The pod's supplemental group 101 grants access to Kea's protected
+            # Unix control socket without exposing an HTTP control API.
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: runtime, mountPath: /var/run/kea}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap:
+            name: kea-dhcp4-config
+            defaultMode: 0444
+        - name: leases
+          persistentVolumeClaim:
+            claimName: kea-leases
+        - {name: runtime, emptyDir: {}}
+        - {name: tmp, emptyDir: {}}

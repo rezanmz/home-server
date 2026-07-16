@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kea-leases
+  namespace: network-services
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+  # DHCP leases are operational state. The default Longhorn class gives this
+  # volume two local replicas and the nightly Backblaze recurring-job group.
+  storageClassName: longhorn

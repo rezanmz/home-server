@@ -22,9 +22,9 @@ GitHub -> Flux -> K3s
 ```
 
 - `beelink` (`192.168.1.3`, amd64) is the only K3s server and the main compute
-  node.
+  node. Kea DHCP is pinned here because ISC's official image is amd64-only.
 - `raspberrypi` (`192.168.1.2`, arm64) runs network-facing workloads such as
-  Pi-hole, WireGuard, Samba, and Syncthing. It also exports the media tree
+  Blocky DNS, WireGuard, Samba, and Syncthing. It also exports the media tree
   (including downloads and books), Syncthing data, and the read-only legacy
   tree over NFS.
 - Traefik runs as a DaemonSet with host ports 80 and 443. The router can retain
@@ -62,7 +62,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Media | Jellyfin, Jellyseerr | `jellyfin.reza.network`, `jellyseerr.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
 | Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
-| Network services | Pi-hole, wg-easy, Samba, Syncthing | `pihole.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
+| Network services | Blocky DNS, Kea DHCP, wg-easy, Samba, Syncthing | DNS at `192.168.1.2`, DHCP from `192.168.1.3`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
 | Operations | Grafana, Prometheus, Alertmanager, Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `grafana.reza.network`, scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
 Headlamp is the read-only Kubernetes dashboard at `headlamp.reza.network`;

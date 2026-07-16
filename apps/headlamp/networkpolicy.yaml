@@ -34,7 +34,7 @@ spec:
       ports:
         - {port: 6443, protocol: TCP}
     # Headlamp exchanges the OIDC authorization code with Authentik through the
-    # Traefik MetalLB VIP returned by Pi-hole's local DNS override.
+    # Traefik MetalLB VIP returned by Blocky's split-horizon mapping.
     - to:
         - ipBlock: {cidr: 192.168.1.240/32}
       ports:

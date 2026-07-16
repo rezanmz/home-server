@@ -83,12 +83,12 @@ uncommitted live drift.
 - Traefik host ports: TCP 80 and 443 on both cluster nodes
 - Traefik MetalLB VIP: `192.168.1.240`
 - MetalLB pool: `192.168.1.240-192.168.1.249`
-- Pi-hole DHCP range: `192.168.1.10-192.168.1.239`
+- Kea DHCP range: `192.168.1.10-192.168.1.239`
 
-Pi-hole's local overrides point HTTP hostnames at the Traefik VIP (`.240`),
+Blocky's split-horizon mappings point HTTP hostnames at the Traefik VIP (`.240`),
 not at an application node. Kubernetes Services then follow pods as they move
-between nodes. Pi-specific protocols such as DNS/DHCP, SMB, NFS, and the
-WireGuard UDP endpoint continue to use the Pi address (`.2`).
+between nodes. DNS, SMB, NFS, and the WireGuard UDP endpoint use the Pi address
+(`.2`). Kea answers DHCP from the Beelink (`.3`) and advertises `.2` as DNS.
 
 Check the edge and certificate objects:
 
@@ -157,16 +157,108 @@ including downloaded podcast episodes, are not included in Longhorn backups.
 Neither is the read-only Calibre source; all three remain part of the
 reconstructible media data class.
 
-## Pi network services
+## DNS and DHCP
 
-Pi-hole, Samba, Syncthing, and wg-easy are Kubernetes workloads in
-the `network-services` namespace. They are pinned to the Pi when they require
-its address or data.
+Blocky provides DNS and filtering from the Pi at `192.168.1.2` on TCP/UDP 53.
+Kea provides DHCPv4 from the Beelink at `192.168.1.3` on UDP 67. This preserves
+the resolver address already configured on clients while separating the two
+failure domains. Kea serves `192.168.1.10-192.168.1.239`, advertises router
+`192.168.1.1` and DNS `192.168.1.2`, and issues one-hour leases. There is no
+DHCPv6 server.
+
+Desired configuration lives in `apps/blocky/config.yml` and
+`apps/kea/kea-dhcp4.conf`. Blocky's split-horizon mappings must be changed in
+Git whenever an internal application hostname is added or removed. Kea client
+reservations, if introduced, also belong in Git, but do not commit a device MAC
+address without deciding that public-repository disclosure is acceptable. A
+Kea reservation does not automatically create a Blocky DNS record; add the
+corresponding Blocky mapping if the client hostname must resolve.
+
+The previous dnsmasq lease-name integration is intentionally absent: ordinary
+dynamic DHCP client hostnames are not synthesized into local DNS. Application
+hostnames under `reza.network` remain explicit and deterministic. Pi-hole's NTP
+listener is also retired; DHCP never advertised it, and the nodes and clients
+use their own configured time sources. Do not restore UDP 123 merely to match
+the old listener inventory.
+
+There is no Blocky administration route or LAN-facing HTTP API. Its management
+and metrics endpoint binds only to the Pi CNI gateway at `10.42.1.1:4000`.
+Kea exposes a Unix control socket shared only with the exporter, whose metrics
+bind to the Beelink CNI gateway at `10.42.0.1:9547`. The `DNS and DHCP` Grafana
+dashboard shows availability, query results, denylist state, DHCP traffic, and
+pool usage. Warning and critical alerts are `BlockyUnavailable`,
+`BlockyQueryErrors`, `BlockyDenylistStale`, `KeaDHCPUnavailable`,
+`KeaDHCPPoolNearlyFull`, and `KeaDHCPAllocationFailures`.
+
+Check workload state and storage from the Beelink:
 
 ```bash
-sudo k3s kubectl -n network-services get deployments,pods,pvc -o wide
-sudo k3s kubectl -n network-services logs deployment/pihole --tail=100
-sudo k3s kubectl -n network-services logs deployment/wg-easy --tail=100
+ssh beelink 'sudo k3s kubectl -n network-services get deployments,pods,pvc -o wide'
+ssh beelink 'sudo k3s kubectl -n network-services logs deployment/blocky --tail=100'
+ssh beelink 'sudo k3s kubectl -n network-services logs deployment/kea-dhcp4 -c kea-dhcp4 --tail=100'
+ssh beelink 'sudo k3s kubectl -n network-services logs deployment/kea-dhcp4 -c kea-exporter --tail=100'
+ssh beelink 'sudo k3s kubectl -n network-services get servicemonitor,prometheusrule,endpoints,endpointslice | grep -E "blocky|kea"'
+```
+
+From a LAN machine, prove all three DNS paths: ordinary upstream resolution,
+split-horizon routing, and blocking. A blocked name should return a zero address
+and the application hostname should return the MetalLB VIP.
+
+```bash
+dig +short @192.168.1.2 github.com A
+dig +short @192.168.1.2 homepage.reza.network A
+dig +short @192.168.1.2 doubleclick.net A
+```
+
+Check host listeners independently; DNS must be on the Pi and DHCP must be on
+the Beelink. Blocky's control port and the exporter must bind only to their CNI
+gateway addresses, not `0.0.0.0` or the LAN address.
+
+```bash
+ssh pi 'sudo ss -lntup | grep -E "(:53|:4000)\\b"'
+ssh beelink 'sudo ss -lntup | grep -E "(:67|:9547)\\b"'
+ssh beelink 'curl -fsS http://10.42.0.1:9547/metrics | grep -E "^kea_dhcp4_addresses_(assigned|total)"'
+ssh pi 'curl -fsS http://10.42.1.1:4000/metrics | grep -E "^blocky_(build_info|query_total|denylist_cache_entries)"'
+```
+
+The durable Kea lease database is `/var/lib/kea/kea-leases4.csv` inside the
+`kea-dhcp4` container and is backed by `network-services/kea-leases`. It is in
+the default Longhorn recurring-job group and must have a recent B2 backup.
+Blocky's list cache is `network-services/blocky-cache`; it uses
+`longhorn-observability` because it is reproducible and deliberately excluded
+from B2.
+
+If DNS fails, check the Pi node, Blocky pod, TCP/UDP 53 listeners, upstream
+reachability to `8.8.8.8` and `8.8.4.4`, list-cache mount, and Blocky logs. A
+Blocky outage affects new DNS lookups immediately. If DHCP fails, existing
+clients normally keep their current address until renewal, while new clients
+may fail immediately; check the Beelink, UDP 67, `enp1s0`, the lease PVC,
+control socket, and Kea logs. The ping-check hook can decline an address that is
+already answering on the LAN; that is collision protection, not necessarily a
+pool defect.
+
+Never start the retired Pi-hole Deployment alongside Blocky or Kea: its
+host-network TCP/UDP 53 and UDP 67 listeners conflict with the replacements.
+For migration rollback, suspend Flux, stop both replacement Deployments,
+restore the last Pi-hole manifests and its config volume from the final
+Longhorn backup, verify Pi-hole owns both ports, then resume Flux only after the
+rollback revision is merged. Do not run both DHCP servers during rollback.
+
+The retained migration recovery points are Longhorn Snapshot
+`pihole-pre-blocky-20260716t211514z` and completed B2 Backup
+`pihole-pre-blocky-backup-20260716t211514z` for volume
+`pvc-5ccd4ed4-e195-4c47-a408-ecc1d5091122`. Keep them until the DNS/DHCP
+migration recovery window is deliberately closed; the Backup is the independent
+off-node copy, while the Snapshot alone is not.
+
+## Other Pi network services
+
+Samba, Syncthing, and wg-easy are Kubernetes workloads in the
+`network-services` namespace. They are pinned to the Pi when they require its
+address or data.
+
+```bash
+ssh beelink 'sudo k3s kubectl -n network-services logs deployment/wg-easy --tail=100'
 ```
 
 The legacy `network-watchdog.timer` must remain disabled and inactive. It used
@@ -207,33 +299,14 @@ packages into APT's cache, but it must not install them. A pending reboot or
 non-security upgrade is handled only during a maintenance window after storage
 and cluster health checks.
 
-From a LAN machine, verify DNS and the host-level listeners:
-
-```bash
-dig @192.168.1.2 github.com
-ssh pi 'sudo ss -lntup'
-```
-
 Keep `127.0.1.1 raspberrypi` in the Pi's `/etc/hosts`. Administrative commands
-must be able to resolve the local hostname while Pi-hole is stopped or being
+must be able to resolve the local hostname while Blocky is stopped or being
 replaced; relying on the DNS workload for `sudo` can otherwise break recovery.
 
-Expected Pi-facing services include DNS on TCP/UDP 53, DHCP on UDP 67, NTP on
-UDP 123, SMB on TCP 139/445, Syncthing on TCP/UDP 22000 and UDP 21027, and
-WireGuard on UDP 1234. The Pi-hole UI listens internally on port 8181 and is
-published through the Gateway rather than directly as the public service.
-The FTL listener must be `127.0.0.1:8181`; the colocated proxy listens with TLS
-on 18181 and requires Traefik's cert-manager-managed backend client certificate.
-The HTTPRoute reaches it through `TraefikService/pihole-mtls` and
-`ServersTransport/pihole-mtls`. A direct request without that certificate must
-return HTTP 400 (or fail its TLS handshake), even with a forged
-`X-Forwarded-For`; the Gateway route must return 200 from an allowed source.
-All three `pihole-mtls-*` Certificates must remain Ready. This backend identity
-is separate from the public wildcard certificate. The server leaf is loaded
-through nginx's one-minute certificate cache so normal Secret renewal does not
-need a restart. The private CA intentionally keeps the same key for its ten-year
-lifetime; rotate it only as a staged maintenance operation that reissues both
-leaf certificates and rolls the Pi-hole pod after proving the new trust chain.
+Expected Pi-facing services include DNS on TCP/UDP 53, SMB on TCP 139/445,
+Syncthing on TCP/UDP 22000 and UDP 21027, and WireGuard on UDP 1234. DHCP on UDP
+67 is expected on the Beelink. UDP 123 and the former Pi-hole web/backend-mTLS
+ports are not expected.
 
 Syncthing must have automatic NAT traversal disabled (`natenabled=false`) so it
 cannot ask the router to expose port 22000 through UPnP or NAT-PMP. LAN
@@ -988,8 +1061,8 @@ until that prerequisite is satisfied.
 
 The two-node design has deliberate single points of failure:
 
-- Beelink maintenance removes the K3s control plane and most compute workloads.
-- Pi maintenance removes DNS/DHCP, public ingress, WireGuard, SMB, Syncthing
+- Beelink maintenance removes DHCP, the K3s control plane, and most compute workloads.
+- Pi maintenance removes DNS, public ingress, WireGuard, SMB, Syncthing
   discovery, scheduled Syncthing backups, and all NFS-backed data.
 
 Before rebooting either node, confirm the other node is healthy, check Longhorn
