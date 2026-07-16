@@ -241,9 +241,10 @@ pool defect.
 Never start the retired Pi-hole Deployment alongside Blocky or Kea: its
 host-network TCP/UDP 53 and UDP 67 listeners conflict with the replacements.
 For migration rollback, suspend Flux, stop both replacement Deployments,
-restore the last Pi-hole manifests and its config volume from the final
-Longhorn backup, verify Pi-hole owns both ports, then resume Flux only after the
-rollback revision is merged. Do not run both DHCP servers during rollback.
+restore the last Pi-hole manifests, reuse the retained config PVC while it
+exists (or restore it from the final Longhorn backup), verify Pi-hole owns both
+ports, then resume Flux only after the rollback revision is merged. Do not run
+both DHCP servers during rollback.
 
 The retained migration recovery points are Longhorn Snapshot
 `pihole-pre-blocky-20260716t211514z` and completed B2 Backup
@@ -251,6 +252,15 @@ The retained migration recovery points are Longhorn Snapshot
 `pvc-5ccd4ed4-e195-4c47-a408-ecc1d5091122`. Keep them until the DNS/DHCP
 migration recovery window is deliberately closed; the Backup is the independent
 off-node copy, while the Snapshot alone is not.
+
+The detached `network-services/pihole-config` PVC is retained only for the
+initial rollback window. It is labeled
+`home-server.reza.network/retention=pihole-migration-rollback` and annotated
+with that B2 backup plus `home-server.reza.network/review-after=2026-07-23`.
+No pod may mount it while Blocky or Kea is active. On or after the review date,
+either record a new retention decision or remove the PVC/PV/Longhorn volume
+through the identity-checked storage procedure; do not let an unlabeled orphan
+persist. Deleting the local volume must not delete the retained B2 Backup.
 
 ## Other Pi network services
 
