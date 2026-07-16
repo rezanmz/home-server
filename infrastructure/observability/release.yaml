@@ -316,6 +316,8 @@ spec:
           limits: {cpu: 200m, memory: 128Mi}
         dashboards:
           enabled: true
+          env:
+            HEALTH_PORT: "8083"
           searchNamespace: monitoring
           resource: configmap
           folderAnnotation: grafana_folder
@@ -325,6 +327,8 @@ spec:
             foldersFromFilesStructure: true
         datasources:
           enabled: true
+          env:
+            HEALTH_PORT: "8081"
           searchNamespace: monitoring
           resource: configmap
           reloadURL: http://grafana.reza.network:3000/api/admin/provisioning/datasources/reload
