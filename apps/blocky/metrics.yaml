@@ -41,10 +41,12 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: blocky
-  namespace: network-services
+  namespace: monitoring
   labels:
     release: observability
 spec:
+  namespaceSelector:
+    matchNames: [network-services]
   selector:
     matchLabels:
       app.kubernetes.io/name: blocky
@@ -55,7 +57,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: blocky
-  namespace: network-services
+  namespace: monitoring
   labels:
     release: observability
 spec:
