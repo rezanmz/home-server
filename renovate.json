@@ -4,6 +4,16 @@
     "config:recommended"
   ],
   "dependencyDashboard": true,
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/^(?:apps|clusters|infrastructure)/.+\\.ya?ml$/"
+    ]
+  },
+  "flux": {
+    "managerFilePatterns": [
+      "/^(?:clusters|infrastructure)/.+\\.ya?ml$/"
+    ]
+  },
   "packageRules": [
     {
       "description": "All LinuxServer.io images use non-SemVer compound tag formats. Apply loose versioning, exclude nightly/development builds, and exclude stale Ubuntu-era tags (e.g. '14.3.9.xxx...ubuntu20.04.1-ls166') which sort higher than real app-version tags under loose versioning.",
