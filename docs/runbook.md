@@ -898,13 +898,18 @@ means the endpoint, TLS setting, or NetworkPolicy path is wrong. Check the
 generated scrape configuration and the selected Service/Pod before widening a
 NetworkPolicy.
 
-Alertmanager sends warning and critical alerts to Telegram, suppresses
-`Watchdog` and informational alerts, groups by namespace and alert name, and
-sends resolved notifications. Use the Alertmanager UI through the port-forward
-to create a time-bounded silence during planned work. Never disable a rule or
-route globally merely to hide an unexplained alert. The Kubernetes event
-exporter is an independent Telegram signal and can still report events when
-Prometheus or Alertmanager is unavailable.
+Alertmanager is fail-closed for Telegram: only alerts explicitly labeled
+`warning` or `critical` are delivered. `Watchdog`, `InfoInhibitor`, informational
+alerts, and unknown or missing severities go to the null receiver. The canonical
+`InfoInhibitor` rule also inhibits informational alerts in the same namespace.
+Notifications are grouped by namespace and alert name and include resolved
+messages. Their `Source` link uses Grafana's Authentik-protected Prometheus
+datasource proxy, so it requires a Grafana session and LAN or WireGuard access;
+Prometheus itself remains ClusterIP-only. Use the Alertmanager UI through the
+port-forward to create a time-bounded silence during planned work. Never disable
+a rule or route globally merely to hide an unexplained alert. The Kubernetes
+event exporter is an independent Telegram signal and can still report events
+when Prometheus or Alertmanager is unavailable.
 
 The `Home Server Overview` dashboard is repository-managed and read-only.
 Upstream Kubernetes dashboards are also provisioned by ConfigMap. UI-created
