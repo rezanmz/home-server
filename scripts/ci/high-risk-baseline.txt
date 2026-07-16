@@ -60,7 +60,7 @@ helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/9a2154d2481d75f5312e49d23b57b862a8a5392b288d3259538619a85fdbfd43
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/f02fded6a4fd0235dc4113d0d1676577a5a45ef91413fde7445dae55a68694e4
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/23ef4cc928121f8e2bee4afe68f2107aef5b71c10527e0fc95d21a1468ed1531
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/fa2c588fe6edb88a3870421f16a3e2dd89f7d97553932e6034c2ca30541e1f28
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/02af1eff23ba962ba4e33e7439b0a06e08686f431e42b0844e6c49246e0f17ba
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/020fb185bc357ae641f2543bbb5699dd1b1ed375a2c69a663ec32161fa4b9ed9
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|pihole|pod-spec
@@ -127,7 +127,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|lo
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|spec/sha256/e26d285a6653da494a4fcb483ecdc7d11785fc7637582884318dcc31335aa187
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-grafana|spec/sha256/13de3076df0fdb65cd1b8dd74ae9af8eea116ab0b5e2ee8c6b625232db0f670a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-kube-state-metrics|spec/sha256/568e4e3adc59dee5d715cfbbc7a0bff80b3a6100a2650817ed97e704ce8da22a
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-operator|spec/sha256/95c8e9944ca8d0dc5982adae06ff2db7b0058801c8d43ae312330797479b70a7
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-operator|spec/sha256/1c5aef742f3f252182bd96aabb081249df5d120e668fbd989a3be190c06d4989
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-prometheus|spec/sha256/b7ebb5cda7c3367b90b7ddbd1219c81337c968cb08ef963bb5b01ab2c01f59cc
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|pihole|spec/sha256/a3f3ed0485f65c5a7766eb06b0df464aaed5eadcc988a7be7000ae98317f75fa

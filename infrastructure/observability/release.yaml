@@ -89,6 +89,11 @@ spec:
     prometheusOperator:
       admissionWebhooks:
         enabled: false
+      # Operator-native TLS reuses the admission-webhook certificate Secret.
+      # Keep both disabled together so a webhook-free install does not wait for
+      # a certificate-generation Job that is intentionally not deployed.
+      tls:
+        enabled: false
       namespaces:
         releaseNamespace: true
       automountServiceAccountToken: true

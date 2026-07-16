@@ -164,7 +164,7 @@ spec:
         - podSelector:
             matchLabels: {app.kubernetes.io/name: prometheus}
       ports:
-        - {port: 10250, protocol: TCP}
+        - {port: 8080, protocol: TCP}
   egress:
     - to:
         - namespaceSelector:
