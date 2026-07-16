@@ -197,7 +197,8 @@ ssh beelink 'sudo k3s kubectl -n network-services get deployments,pods,pvc -o wi
 ssh beelink 'sudo k3s kubectl -n network-services logs deployment/blocky --tail=100'
 ssh beelink 'sudo k3s kubectl -n network-services logs deployment/kea-dhcp4 -c kea-dhcp4 --tail=100'
 ssh beelink 'sudo k3s kubectl -n network-services logs deployment/kea-dhcp4 -c kea-exporter --tail=100'
-ssh beelink 'sudo k3s kubectl -n network-services get servicemonitor,prometheusrule,endpoints,endpointslice | grep -E "blocky|kea"'
+ssh beelink 'sudo k3s kubectl -n network-services get endpoints,endpointslice | grep -E "blocky|kea"'
+ssh beelink 'sudo k3s kubectl -n monitoring get servicemonitor,prometheusrule | grep -E "blocky|kea"'
 ```
 
 From a LAN machine, prove all three DNS paths: ordinary upstream resolution,
