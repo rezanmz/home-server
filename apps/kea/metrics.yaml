@@ -14,10 +14,10 @@ kind: Endpoints
 metadata:
   name: kea-metrics
   namespace: network-services
-  annotations:
+  labels:
     # Prometheus currently uses Endpoints discovery. Keep the separately
     # managed EndpointSlice below for a future discovery-role migration.
-    endpoints.kubernetes.io/skip-mirror: "true"
+    endpointslice.kubernetes.io/skip-mirror: "true"
 subsets:
   - addresses: [{ip: 10.42.0.1}]
     ports: [{name: http-metrics, port: 9547, protocol: TCP}]
