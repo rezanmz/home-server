@@ -22,7 +22,7 @@ spec:
         - name: headlamp
           image: ghcr.io/headlamp-k8s/headlamp:v0.43.0@sha256:5d03caa26df7a715079405df2949907160518750b9b62b6bf4de8d1a6142c541
           imagePullPolicy: IfNotPresent
-          args: [-in-cluster, -plugins-dir=/headlamp/plugins]
+          args: [-in-cluster, -plugins-dir=/headlamp/plugins, -metrics-enabled]
           env:
             - {name: HEADLAMP_CONFIG_OIDC_CLIENT_ID, value: headlamp}
             - name: HEADLAMP_CONFIG_OIDC_CLIENT_SECRET
@@ -35,7 +35,6 @@ spec:
             - {name: HEADLAMP_CONFIG_OIDC_SCOPES, value: "openid,email,profile"}
           ports:
             - {name: http, containerPort: 4466}
-            - {name: metrics, containerPort: 9090}
           startupProbe: {httpGet: {path: /, port: http}, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 24}
           readinessProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 6}
           livenessProbe: {httpGet: {path: /, port: http}, periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 3}
