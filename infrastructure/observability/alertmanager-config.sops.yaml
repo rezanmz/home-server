@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: observability-alertmanager
+    namespace: monitoring
+type: Opaque
+stringData:
+    alertmanager.yaml: ENC[AES256_GCM,data:fM8tNaumcohIqnJKiOslOxKVk7XyQ4pn9GUVh+MrsivdGvXayqZVYJF/MsqOgYRmJHSvAY5CM4mc9CKhwc9e4UU73l0rI/xYnxvLmxnJJxxTU+X9mMwIOQY+IMcqRO9glnJRtpY02MOqaY34hb+4xEaHw4dqb42qhQV5MJsk48+aI27aqEZrZp7IrnFsdgkHnO4DLJY19CKsC8o2MWKyi6laJTGzHhXW4CinhsJQS2AnjB/IjgH4knaWJmupM8EVneD/3kRJd+UXDFn4A5j1L7Rra2ewJNfYr738Ir6YDekhKOz0MpO39SRhkyH1BcOWD15xwP1NXvjMwB9BzlRVxeOyUEr9WFnAwQ8O0TzwwhPwQJ9DgrgA9+18WsdGew7SBREF8kzSLXCqpMt2PbvC9ytHOxc3mXEQB3fmfqcbEY+JXivQk+8IOJsI6PxgNSzDeS8F/deMh9xCHTbbm05M3A5XyOwspOR6tgHvSJbf4hTrfsdqK4Y0mpy1UC6BI4i5gogTOgstjHGA1T30ynUnncQFlwGKrlIlXMPpHXmZy2KgMkwIci0O6VSUuvc+U9RQG1P1EDepFMXwKI/kUMcW2geR9gHdw7gTeyaeahb4Dgadw36RQ71V0yDP90t79aCt6pvWmPWL6BY5VvCRNPqHnG+CTfdE72Eps5dBskA52Fr8nqgZTAk3Sm0m/2vQmwrGbiLg9hPKaK0M9/kb3hGlQbdaN59CwjaWImv/+sObSE6Qs49tFDvyl/0NEkluDeRaqxw1+EC+5bdxXWmjsqQNe9BjaF3UZa6aG13d46vlGQqJlopM+2O1VsPk/WFope77OINxGt8fy9iEbskHuJWerjbsgr3hwVQ76Ii+LyNYUH1uKBZTuowP/KL/LUF3QsWs1ZovmTUcpx5COAWIqDUrtppvFm2Awkhltqw7KMgrgi8P1H5U+MS907dMBul2zJ73DyEyWRiJaDMH9q2smQQ5teuhJoSk30qKvl3qKTNJJgSFtYFnN7ZfPR4+KqlF9K+7tsozztyX0htBPAG7zqlvGwVUEXWXN8sEIED4S1iV0Q==,iv:lTNWVd0mqguKfnhYNPXD45jiajSVXW9aKSpcCzOtce0=,tag:C2+UGaqm7rcLw8KVkhkMxg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA3cElRVkMvR3pxUVZZKzZ6
+            a2xBZDJQQWVyZS9EWXIvNmZBTDlNblZERXpBCjZHWWxTeEFTMVF1SlNVNDhrY3BH
+            ZFJIQnZmMHFMb0dPa2k3VDlRdGJyYncKLS0tICtwZHJaWWtRR3B6NDRFcWE0UkJP
+            c1QvZHBPa0hHbEZmenRkQmorNnZUVmcKNwNMYqYq60Jtgr/TVj1qiqPudc9PpaKt
+            HyhxYz0TaBMFeNiAhRb0OcJEAfJ8VPq38w4NL4xuZGQscZ8y4hLeDg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1rnzcjl2fzkcxm6u2mjrm8w902edn9vtym9hr8a5ve66leayau99qs9xna5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-16T14:41:59Z"
+    mac: ENC[AES256_GCM,data:LE6JN/sDANmHS32IOjceqbaZljOD/5D5UmCO0nS3JxL7rKV2OCLzk59IoPlZO1zf/8359a36GBSwhJITMmuDV09vQOpYt7ksavJWi1j/Orbqu3M4uOTLx0SIe5Wdgo+bg5OtZCiTc9bYRBbepnNuKeChuFR9+Ju9/DANO8cpVAM=,iv:bp7F5ZndswwMoJszlgBNbi8z1IOn4n1b7UmJORISikk=,tag:2K5kgnEIYiEcD2y2ZNFPsw==,type:str]
+    version: 3.13.2

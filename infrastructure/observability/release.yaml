@@ -1,0 +1,369 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: observability
+  namespace: monitoring
+spec:
+  interval: 30m
+  timeout: 20m
+  chartRef:
+    kind: OCIRepository
+    name: kube-prometheus-stack
+    namespace: flux-system
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    fullnameOverride: observability
+
+    defaultRules:
+      create: true
+      rules:
+        # K3s embeds these control-plane components and does not expose the
+        # standalone endpoints expected by the upstream kubeadm rules.
+        etcd: false
+        kubeControllerManager: false
+        kubeProxy: false
+        kubeSchedulerAlerting: false
+        kubeSchedulerRecording: false
+        windows: false
+      additionalRuleLabels:
+        cluster: home-server
+    kubeEtcd: {enabled: false}
+    kubeControllerManager: {enabled: false}
+    kubeProxy: {enabled: false}
+    kubeScheduler: {enabled: false}
+
+    additionalPrometheusRulesMap:
+      home-server-storage:
+        groups:
+          - name: home-server.longhorn
+            rules:
+              - alert: LonghornVolumeDegraded
+                expr: max by (pvc_namespace, pvc, volume) (longhorn_volume_robustness{state="degraded"}) == 1
+                for: 10m
+                labels:
+                  severity: warning
+                  cluster: home-server
+                annotations:
+                  summary: Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is degraded
+                  description: The volume has had fewer healthy replicas than intended for at least 10 minutes.
+                  runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#observability-and-alerting
+              - alert: LonghornVolumeFaulted
+                expr: max by (pvc_namespace, pvc, volume) (longhorn_volume_robustness{state="faulted"}) == 1
+                for: 2m
+                labels:
+                  severity: critical
+                  cluster: home-server
+                annotations:
+                  summary: Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is faulted
+                  description: Longhorn cannot provide the volume from its available replicas.
+                  runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#observability-and-alerting
+              - alert: LonghornNodeNotReady
+                expr: max by (node) (longhorn_node_status{condition="ready"}) == 0
+                for: 10m
+                labels:
+                  severity: critical
+                  cluster: home-server
+                annotations:
+                  summary: Longhorn node {{ $labels.node }} is not ready
+                  description: Longhorn has reported the storage node as unavailable for at least 10 minutes.
+                  runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#observability-and-alerting
+              - alert: LonghornNodeUnschedulable
+                expr: max by (node) (longhorn_node_status{condition="schedulable"}) == 0
+                for: 15m
+                labels:
+                  severity: warning
+                  cluster: home-server
+                annotations:
+                  summary: Longhorn cannot schedule replicas on {{ $labels.node }}
+                  description: Check disk free space, reservations, node readiness, and Longhorn scheduling conditions.
+                  runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#observability-and-alerting
+
+    prometheusOperator:
+      admissionWebhooks:
+        enabled: false
+      namespaces:
+        releaseNamespace: true
+      automountServiceAccountToken: true
+      image:
+        tag: v0.92.1
+        sha: 7d9247d2351480fc74587e24681578f815f387bafb2ee7b86a852a94c4cd3774
+      prometheusConfigReloader:
+        image:
+          tag: v0.92.1
+          sha: 74550ba3e8bf93f47bc574231090d340ae9c01d25cd11ff74799e65f9fdb9a48
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+      thanosImage:
+        tag: v0.42.0
+        sha: cc1975aaeb64a744dc11319892345f4822f72860f0efcff030111fe08328bfa4
+      resources:
+        requests: {cpu: 50m, memory: 128Mi}
+        limits: {cpu: 500m, memory: 384Mi}
+
+    kube-state-metrics:
+      image:
+        tag: v2.19.1
+        sha: sha256:85108987d044b18a098126732f98602df408888c0f7d456241f5abefb9744bc1
+      resources:
+        requests: {cpu: 50m, memory: 128Mi}
+        limits: {cpu: 500m, memory: 384Mi}
+      collectors:
+        - cronjobs
+        - daemonsets
+        - deployments
+        - endpointslices
+        - horizontalpodautoscalers
+        - jobs
+        - namespaces
+        - nodes
+        - persistentvolumeclaims
+        - persistentvolumes
+        - poddisruptionbudgets
+        - pods
+        - replicasets
+        - replicationcontrollers
+        - resourcequotas
+        - services
+        - statefulsets
+        - storageclasses
+        - volumeattachments
+
+    prometheus-node-exporter:
+      namespaceOverride: kube-system
+      image:
+        tag: v1.12.1
+        distroless: true
+        digest: sha256:8c9bac11973b94b59be88d6e11fee4429aa743c8846cdc75d65b18db33f6a106
+      prometheus:
+        monitor:
+          enabled: false
+      hostNetwork: false
+      hostPID: false
+      resources:
+        requests: {cpu: 25m, memory: 48Mi}
+        limits: {cpu: 250m, memory: 192Mi}
+      tolerations:
+        - operator: Exists
+
+    prometheus:
+      additionalServiceMonitors:
+        - name: node-exporter
+          namespaceSelector: {matchNames: [kube-system]}
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus-node-exporter
+              app.kubernetes.io/instance: observability
+          endpoints:
+            - {port: http-metrics, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+        - name: longhorn
+          namespaceSelector: {matchNames: [longhorn-system]}
+          selector: {matchLabels: {app: longhorn-manager}}
+          endpoints:
+            - {port: manager, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+        - name: cert-manager
+          namespaceSelector: {matchNames: [cert-manager]}
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: cert-manager
+              app.kubernetes.io/component: controller
+          endpoints:
+            - {port: http-metrics, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+        - name: traefik
+          namespaceSelector: {matchNames: [traefik]}
+          selector:
+            matchLabels:
+              observability.reza.network/scrape: traefik
+          endpoints:
+            - {port: metrics, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+        - name: loggifly
+          namespaceSelector: {matchNames: [monitoring]}
+          selector: {matchLabels: {app.kubernetes.io/name: loggifly}}
+          endpoints:
+            - {port: metrics, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+        - name: headlamp
+          namespaceSelector: {matchNames: [monitoring]}
+          selector: {matchLabels: {app.kubernetes.io/name: headlamp}}
+          endpoints:
+            - {port: metrics, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+      additionalPodMonitors:
+        - name: flux-controllers
+          namespaceSelector: {matchNames: [flux-system]}
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: flux
+          podMetricsEndpoints:
+            - {port: http-prom, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+      prometheusSpec:
+        image:
+          tag: v3.13.1-distroless
+          sha: 214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80
+        scrapeInterval: 30s
+        evaluationInterval: 30s
+        retention: 14d
+        retentionSize: 20GB
+        walCompression: true
+        enableAdminAPI: false
+        resources:
+          requests: {cpu: 500m, memory: 1Gi}
+          limits: {cpu: "2", memory: 3Gi}
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: longhorn-observability
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests: {storage: 30Gi}
+
+    alertmanager:
+      alertmanagerSpec:
+        useExistingSecret: true
+        configSecret: observability-alertmanager
+        automountServiceAccountToken: false
+        image:
+          tag: v0.33.1
+          sha: 9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
+        retention: 120h
+        resources:
+          requests: {cpu: 50m, memory: 64Mi}
+          limits: {cpu: 500m, memory: 256Mi}
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: longhorn-observability
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests: {storage: 2Gi}
+
+    grafana:
+      image:
+        tag: 13.1.0
+        sha: 121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63
+      testFramework:
+        enabled: false
+      admin:
+        existingSecret: grafana-secrets
+        userKey: admin-user
+        passwordKey: admin-password
+      envValueFrom:
+        GF_AUTH_GENERIC_OAUTH_CLIENT_ID:
+          secretKeyRef: {name: grafana-secrets, key: GF_AUTH_GENERIC_OAUTH_CLIENT_ID}
+        GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+          secretKeyRef: {name: grafana-secrets, key: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+      grafana.ini:
+        analytics:
+          check_for_updates: false
+          reporting_enabled: false
+        auth:
+          disable_login_form: false
+          oauth_auto_login: false
+        auth.generic_oauth:
+          enabled: true
+          name: Authentik
+          allow_sign_up: true
+          client_id: $__env{GF_AUTH_GENERIC_OAUTH_CLIENT_ID}
+          client_secret: $__env{GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+          scopes: openid profile email
+          auth_url: https://auth.reza.network/application/o/authorize/
+          token_url: https://auth.reza.network/application/o/token/
+          api_url: https://auth.reza.network/application/o/userinfo/
+          signout_redirect_url: https://auth.reza.network/application/o/grafana/end-session/
+          use_pkce: true
+          use_refresh_token: true
+          role_attribute_path: contains(groups[*], 'home-admins') && 'Admin' || 'Viewer'
+          role_attribute_strict: true
+        security:
+          cookie_secure: true
+          cookie_samesite: strict
+          disable_gravatar: true
+          strict_transport_security: true
+        server:
+          domain: grafana.reza.network
+          root_url: https://grafana.reza.network/
+          enforce_domain: true
+      hostAliases:
+        - ip: 192.168.1.240
+          hostnames: [auth.reza.network]
+      rbac:
+        namespaced: true
+        namespaces: []
+        useExistingRole: grafana-dashboard-reader
+      serviceAccount:
+        automountServiceAccountToken: true
+      sidecar:
+        image:
+          tag: 2.8.1
+          sha: abb55b2165c60e8f97e473862c7a3123df6f67d44f592949577c29b8fb2df9d6
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+        dashboards:
+          enabled: true
+          searchNamespace: monitoring
+          resource: configmap
+          folderAnnotation: grafana_folder
+          provider:
+            allowUiUpdates: false
+            foldersFromFilesStructure: true
+        datasources:
+          enabled: true
+          searchNamespace: monitoring
+          resource: configmap
+      defaultDashboardsEditable: false
+      defaultDashboardsTimezone: browser
+      initChownData:
+        enabled: false
+      persistence:
+        enabled: true
+        storageClassName: longhorn-observability
+        accessModes: [ReadWriteOnce]
+        size: 5Gi
+      deploymentStrategy:
+        type: Recreate
+      service:
+        port: 80
+        portName: http-web
+      extraExposePorts:
+        - {name: public, port: 16121, targetPort: 16121}
+      serviceMonitor:
+        enabled: true
+      extraContainers: |
+        - name: access-proxy
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: access-http, containerPort: 16121}
+          readinessProbe: {tcpSocket: {port: access-http}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: access-http}, periodSeconds: 30}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/nginx, readOnly: true}
+            - {name: nginx-tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+      extraVolumes:
+        - name: proxy-config
+          configMap: {name: grafana-access-proxy}
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+      resources:
+        requests: {cpu: 200m, memory: 256Mi}
+        limits: {cpu: "1", memory: 1Gi}

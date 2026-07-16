@@ -11,6 +11,11 @@ spec:
             matchLabels: {kubernetes.io/metadata.name: traefik}
       ports:
         - {port: 16120, protocol: TCP}
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: prometheus}
+      ports:
+        - {port: 9090, protocol: TCP}
   egress:
     - to:
         - namespaceSelector:

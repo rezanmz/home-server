@@ -63,12 +63,14 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
 | Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
 | Network services | Pi-hole, wg-easy, Samba, Syncthing | `pihole.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
-| Operations | Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
+| Operations | Grafana, Prometheus, Alertmanager, Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `grafana.reza.network`, scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
 Headlamp is the read-only Kubernetes dashboard at `headlamp.reza.network`;
-Glances is no longer deployed. The former Loggifly function is now a
-Kubernetes event exporter that sends warning events to Telegram. Its historical
-application name is retained in the manifests.
+Grafana is the metrics dashboard at `grafana.reza.network`. Both are limited to
+the LAN or WireGuard. Grafana uses native Authentik OIDC; Prometheus and
+Alertmanager have no external routes. Glances is no longer deployed. The former
+Loggifly function is now a Kubernetes event exporter that sends warning events
+to Telegram. Its historical application name is retained in the manifests.
 
 AnythingLLM and the Gemini Telegram bot are intentionally excluded from the
 cluster. Open WebUI remains the supported local LLM interface.

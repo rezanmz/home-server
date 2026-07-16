@@ -860,6 +860,76 @@ does not prevent a custom controller from mounting on the same node, so the
 operator acknowledgement is still required for controllers the helper cannot
 enumerate.
 
+## Observability and alerting
+
+Grafana is available at `https://grafana.reza.network` only from the LAN or
+WireGuard. Choose **Sign in with Authentik**. Membership in `home-admins` maps
+to the Grafana Admin role; other authenticated users are Viewers. The local
+`reza` account is a break-glass path whose generated password is stored only in
+the SOPS-encrypted `monitoring/grafana-secrets` Secret. Do not expose the login
+form publicly or copy that password into documentation.
+
+Prometheus and Alertmanager intentionally have no HTTPRoute. Inspect them from
+an operator workstation through short-lived port forwards:
+
+```bash
+ssh beelink
+sudo k3s kubectl -n monitoring port-forward svc/observability-prometheus 9090:9090
+# In a second session, use 9093:9093 for svc/observability-alertmanager.
+```
+
+The first status pass is:
+
+```bash
+sudo k3s kubectl -n monitoring get helmrelease observability
+sudo k3s kubectl -n monitoring get prometheus,alertmanager,pods,svc,pvc
+sudo k3s kubectl -n monitoring get servicemonitor,podmonitor,prometheusrule
+sudo k3s kubectl -n monitoring logs deployment/observability-operator --tail=100
+sudo k3s kubectl -n monitoring logs statefulset/prometheus-observability-prometheus -c prometheus --tail=100
+sudo k3s kubectl -n monitoring logs statefulset/alertmanager-observability-alertmanager -c alertmanager --tail=100
+```
+
+In Prometheus, `/targets` must show the API server, kubelets, both node
+exporters, CoreDNS, kube-state-metrics, Longhorn managers, Traefik,
+cert-manager, Flux controllers, Grafana, Headlamp, Loggifly, Alertmanager,
+Prometheus, and the operator as healthy. A target that is absent usually means
+its ServiceMonitor selector does not match; a present but down target usually
+means the endpoint, TLS setting, or NetworkPolicy path is wrong. Check the
+generated scrape configuration and the selected Service/Pod before widening a
+NetworkPolicy.
+
+Alertmanager sends warning and critical alerts to Telegram, suppresses
+`Watchdog` and informational alerts, groups by namespace and alert name, and
+sends resolved notifications. Use the Alertmanager UI through the port-forward
+to create a time-bounded silence during planned work. Never disable a rule or
+route globally merely to hide an unexplained alert. The Kubernetes event
+exporter is an independent Telegram signal and can still report events when
+Prometheus or Alertmanager is unavailable.
+
+The `Home Server Overview` dashboard is repository-managed and read-only.
+Upstream Kubernetes dashboards are also provisioned by ConfigMap. UI-created
+dashboards and preferences live on the Grafana PVC, but important dashboards
+must be exported back into Git rather than relying on that local database.
+There is currently no Loki deployment; use `kubectl logs` for logs.
+
+Prometheus is capped by both `14d` retention and `20GB` retention size on a
+30 GiB PVC. If it approaches the cap, first identify unexpected cardinality or
+an accidentally broad scrape before increasing storage. Confirm that the three
+observability volumes do not inherit `b2-nightly`:
+
+```bash
+sudo k3s kubectl -n monitoring get pvc
+sudo k3s kubectl -n longhorn-system get volumes.longhorn.io \
+  -o custom-columns=VOLUME:.metadata.name,CLAIM:.status.kubernetesStatus.pvcName,JOBS:.spec.recurringJobSelector
+```
+
+The matching volumes must select only the intentionally unused
+`observability-local` group. Their data is reproducible and must not consume B2
+backup capacity. If Grafana OIDC fails, check the `grafana.yaml` Authentik
+blueprint status, the exact `/login/generic_oauth` redirect URI, client-secret
+equality through SOPS, and Grafana logs. Preserve the local admin path until
+OIDC has been verified after every authentication change.
+
 ## Media VPN checks
 
 The consolidated downloads pod shares Gluetun's network namespace. A healthy

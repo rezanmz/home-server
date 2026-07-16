@@ -1,0 +1,11 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grafana-dashboard-reader
+  namespace: monitoring
+rules:
+  # The Grafana sidecars only provision repository-managed ConfigMaps. They do
+  # not need the chart's broader default permission to list every Secret.
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, watch]

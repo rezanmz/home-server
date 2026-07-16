@@ -201,6 +201,17 @@ git -C "${longhorn_checkout}" checkout -q --detach FETCH_HEAD
 longhorn_chart_path="$(yq -r '.spec.chart.spec.chart' "${longhorn_release}")"
 render_release "${longhorn_release}" "${longhorn_checkout}/${longhorn_chart_path#./}"
 
+observability_release="${tmp}/observability-release.yaml"
+observability_source="${tmp}/observability-source.yaml"
+extract_resource HelmRelease monitoring observability "${observability_release}"
+extract_resource OCIRepository flux-system kube-prometheus-stack "${observability_source}"
+validate_release_reference \
+  "${observability_release}" OCIRepository flux-system kube-prometheus-stack
+observability_chart="$(pull_oci_chart \
+  "${observability_source}" \
+  153c69faae66a313dc07ed36f77741fd17cc7da86d3d7790b34bf4d4902fe7f4)"
+render_release "${observability_release}" "${observability_chart}"
+
 : >"${expected_releases}"
 release_output="${tmp}/release-output.txt"
 yq -r '

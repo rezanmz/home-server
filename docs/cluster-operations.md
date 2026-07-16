@@ -159,6 +159,7 @@ allow it.
 | `apps` | Cloudflare DDNS | Stateless; Cloudflare API dependency |
 | `monitoring` | Headlamp | Stateless; Kubernetes API and Authentik dependencies |
 | `monitoring` | Loggifly/event-exporter | Stateless; Kubernetes API and Telegram dependency |
+| `monitoring` | Grafana, Prometheus, Alertmanager, Prometheus Operator, kube-state-metrics | Floating multi-architecture workloads; Longhorn observability PVCs; Authentik and Telegram dependencies |
 | `traefik` | Shared error-pages Deployment | Stateless |
 
 Prowlarr, Radarr, and Sonarr directories contain their PVCs, routes, Services,
@@ -171,6 +172,7 @@ are grouped with the Calibre-Web module.
 | Component | Placement behavior |
 | --- | --- |
 | Traefik | DaemonSet on every node, host ports 80/443 |
+| Prometheus node exporter | Privileged host-observer DaemonSet in `kube-system` on every node |
 | MetalLB speaker | Host-network DaemonSet on every Linux node |
 | MetalLB controller | Floating singleton |
 | Longhorn manager and CSI plugin | DaemonSets on every eligible Kubernetes node |

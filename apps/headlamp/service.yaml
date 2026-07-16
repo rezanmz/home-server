@@ -5,3 +5,4 @@ spec:
   selector: {app.kubernetes.io/name: headlamp}
   ports:
     - {name: http, port: 80, targetPort: access-http}
+    - {name: metrics, port: 9090, targetPort: metrics}
