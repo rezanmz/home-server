@@ -2,7 +2,7 @@ diff --git a/docker/images/stork.Dockerfile b/docker/images/stork.Dockerfile
 index a187185..4c9e884 100644
 --- a/docker/images/stork.Dockerfile
 +++ b/docker/images/stork.Dockerfile
-@@ -179,6 +179,23 @@ COPY --from=agent-builder /app/dist/agent /
+@@ -179,6 +179,24 @@ COPY --from=agent-builder /app/dist/agent /
  ENTRYPOINT [ "/usr/bin/stork-agent" ]
  # Incoming port
  EXPOSE 8080
@@ -20,6 +20,7 @@ index a187185..4c9e884 100644
 +        && printf 'stork-agent:x:1000:\n' >> /etc/group \
 +        && mkdir -p /var/lib/stork-agent \
 +        && ln -s ld-musl-x86_64.so.1 /lib/libc.musl-x86_64.so.1 \
++        && chown 0:0 /usr/sbin/kea-dhcp4 \
 +        && chmod 0755 /usr/sbin/kea-dhcp4 \
 +        && chown 1000:1000 /var/lib/stork-agent
 +USER 1000:1000
