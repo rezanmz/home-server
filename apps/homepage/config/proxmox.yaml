@@ -1,0 +1,3 @@
+---
+# Proxmox integration is intentionally disabled. Keep this file present because
+# Homepage otherwise tries to copy its skeleton into the read-only config mount.
