@@ -86,5 +86,5 @@ spec:
           labels: {severity: warning, cluster: home-server}
           annotations:
             summary: Blocky's denylist has not refreshed for more than one day
-            description: DNS remains available from the durable list cache, but the StevenBlack source is stale.
+            description: DNS remains available from the durable list cache, but the HaGeZi Multi PRO source is stale.
             runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#dns-and-dhcp
