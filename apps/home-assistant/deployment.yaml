@@ -39,7 +39,7 @@ spec:
         kubernetes.io/hostname: beelink
       initContainers:
         - name: initialize-config
-          image: busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -82,7 +82,7 @@ spec:
             - {name: access-proxy-config, mountPath: /proxy-source, readOnly: true}
             - {name: nginx-runtime, mountPath: /proxy-runtime}
         - name: bootstrap-hacs
-          image: busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
           imagePullPolicy: IfNotPresent
           env:
             # This is a recovery/bootstrap floor, not an update pin. Once HACS
@@ -214,7 +214,7 @@ spec:
             - name: config
               mountPath: /config
         - name: access-proxy
-          image: nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1
+          image: nginx:1.31.3-alpine@sha256:2776cd5b70d8983e27e9f5c90abee3d24c690014ae8ecbb529572d954a459096
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:

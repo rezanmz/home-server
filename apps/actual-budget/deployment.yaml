@@ -107,7 +107,7 @@ spec:
             - name: data
               mountPath: /data
         - name: access-proxy
-          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
+          image: nginx:1.31.3-alpine@sha256:2776cd5b70d8983e27e9f5c90abee3d24c690014ae8ecbb529572d954a459096
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:

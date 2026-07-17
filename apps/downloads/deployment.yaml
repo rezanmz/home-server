@@ -97,7 +97,7 @@ spec:
             - {name: gluetun-config, mountPath: /gluetun}
       containers:
         - name: qbittorrent
-          image: linuxserver/qbittorrent:5.2.3_v2.0.13-ls466@sha256:d8488fb24969bb0954cf64a1ca1cf7a763031641ba4246734964faea6f0b807a
+          image: linuxserver/qbittorrent:5.2.3@sha256:352371a7242e8b4aa10958ca02076d1023758070519b89a10251475fb9f1a35a
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
@@ -192,7 +192,7 @@ spec:
           volumeMounts:
             - {name: prowlarr-config, mountPath: /config}
         - name: radarr
-          image: linuxserver/radarr:6.2.1.10461-ls308@sha256:39da107b5a9371fdaa651bd188049b863716a815385eb3a30d41071b7e1aeb33
+          image: linuxserver/radarr:6.3.0.10514-ls311@sha256:2b2c1c05eb3f648d2c80dfab9486147dd7bb0ad4d77fa972fc1c5de8f1da3738
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -220,7 +220,7 @@ spec:
             - {name: radarr-config, mountPath: /config}
             - {name: media-library, mountPath: /media}
         - name: sonarr
-          image: linuxserver/sonarr:4.0.19.2979-ls317@sha256:633e0e66d85ce4e9172608a37d3d24e124b3e485fc0d946f533c3bb5875227e9
+          image: linuxserver/sonarr:4.0.19.2979-ls319@sha256:4b025354d338999e03bf6dbdadcdde94815d39d4a5aba5de3cdc86a56d7d6c51
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -278,7 +278,7 @@ spec:
             - {name: media-downloads, mountPath: /media/downloads}
         - &access-proxy
           name: qbittorrent-access-proxy
-          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
+          image: nginx:1.31.3-alpine@sha256:2776cd5b70d8983e27e9f5c90abee3d24c690014ae8ecbb529572d954a459096
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
