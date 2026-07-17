@@ -4,6 +4,13 @@
     "config:recommended"
   ],
   "dependencyDashboard": true,
+  "timezone": "America/Toronto",
+  "schedule": [
+    "* 3-8 * * 6"
+  ],
+  "updateNotScheduled": false,
+  "rebaseWhen": "conflicted",
+  "draftPR": true,
   "kubernetes": {
     "managerFilePatterns": [
       "/^(?:apps|clusters|infrastructure)/.+\\.ya?ml$/"
@@ -32,6 +39,13 @@
       "description": "pgvector uses channel tags like 'pg16' — not version numbers. Disable updates entirely to prevent bogus PRs.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["pgvector/pgvector"],
+      "enabled": false
+    },
+    {
+      "description": "PostgreSQL major upgrades require an explicit database migration and rollback plan.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres", "docker.io/library/postgres"],
+      "matchUpdateTypes": ["major"],
       "enabled": false
     },
     {
