@@ -21,6 +21,11 @@ SHA256_DIGEST = re.compile(r"^sha256:[0-9a-fA-F]{64}$")
 IMAGE_FLAG = re.compile(r"^--[A-Za-z0-9][A-Za-z0-9_.-]*image$")
 IMAGE_ENVIRONMENT = re.compile(r"(?:^|_)IMAGE$")
 FULL_GIT_COMMIT = re.compile(r"^[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?$")
+FULL_SHA256 = re.compile(r"^(?:sha256:)?[0-9a-fA-F]{64}$")
+PINNED_IMAGE_REFERENCE = re.compile(
+    r"(?P<name>(?:(?:[A-Za-z0-9._-]+(?::[0-9]+)?/)*[A-Za-z0-9._-]+))"
+    r"(?P<tag>:[A-Za-z0-9][A-Za-z0-9_.-]*)?@sha256:[0-9a-fA-F]{64}"
+)
 EXACT_SEMVER = re.compile(
     r"^v?(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
     r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
@@ -168,6 +173,130 @@ def git_ref_token(ref: Any) -> str:
         if ref.get(key) is not None
     ]
     return ",".join(parts) if parts else "<unset>"
+
+
+def clone_structure(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: clone_structure(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [clone_structure(child) for child in value]
+    return value
+
+
+def normalize_pinned_image_text(value: str) -> str:
+    """Remove only version/digest values from immutable image references."""
+
+    def replacement(match: re.Match[str]) -> str:
+        tag = ":<immutable-tag>" if match.group("tag") else ""
+        return f"{match.group('name')}{tag}@sha256:<immutable-digest>"
+
+    return PINNED_IMAGE_REFERENCE.sub(replacement, value)
+
+
+def normalize_pinned_image_values(value: Any) -> Any:
+    """Clone Helm values while retaining structure and non-pin configuration."""
+    if isinstance(value, str):
+        return normalize_pinned_image_text(value)
+    if isinstance(value, list):
+        return [normalize_pinned_image_values(child) for child in value]
+    if not isinstance(value, dict):
+        return value
+
+    normalized = {
+        key: normalize_pinned_image_values(child) for key, child in value.items()
+    }
+    image_like = any(key in value for key in ("repository", "registry", "tag"))
+    digest_keys = [
+        key
+        for key in ("digest", "sha")
+        if isinstance(value.get(key), str)
+        and FULL_SHA256.fullmatch(str(value[key])) is not None
+    ]
+    if image_like and digest_keys:
+        for key in digest_keys:
+            prefix = "sha256:" if str(value[key]).startswith("sha256:") else ""
+            normalized[key] = f"{prefix}<immutable-digest>"
+        if isinstance(value.get("tag"), str):
+            normalized["tag"] = "<immutable-tag>"
+    return normalized
+
+
+def normalized_git_ref(ref: Any) -> Any:
+    normalized = clone_structure(ref)
+    if not isinstance(ref, dict) or not isinstance(normalized, dict):
+        return normalized
+    commit = ref.get("commit")
+    if not isinstance(commit, str) or FULL_GIT_COMMIT.fullmatch(commit) is None:
+        return normalized
+    normalized["commit"] = "<immutable-commit>"
+    for key in ("branch", "tag", "semver", "name"):
+        if isinstance(ref.get(key), str):
+            normalized[key] = "<immutable-selector>"
+    return normalized
+
+
+def normalized_source_spec(kind: Any, spec: dict[str, Any]) -> dict[str, Any]:
+    normalized = clone_structure(spec)
+    if not isinstance(normalized, dict):
+        return {}
+    ref = spec.get("ref")
+    if kind == "GitRepository":
+        normalized["ref"] = normalized_git_ref(ref)
+    elif kind == "OCIRepository" and isinstance(ref, dict):
+        digest = ref.get("digest")
+        if isinstance(digest, str) and SHA256_DIGEST.fullmatch(digest):
+            normalized_ref = normalized.get("ref")
+            if isinstance(normalized_ref, dict):
+                normalized_ref["digest"] = "sha256:<immutable-digest>"
+                for key in ("tag", "semver"):
+                    if isinstance(ref.get(key), str):
+                        normalized_ref[key] = "<immutable-selector>"
+    return normalized
+
+
+def normalized_kustomization_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    normalized = clone_structure(spec)
+    images = spec.get("images")
+    normalized_images = normalized.get("images") if isinstance(normalized, dict) else None
+    if not isinstance(images, list) or not isinstance(normalized_images, list):
+        return normalized
+    for index, image in enumerate(images):
+        if (
+            not isinstance(image, dict)
+            or index >= len(normalized_images)
+            or not isinstance(normalized_images[index], dict)
+        ):
+            continue
+        digest = image.get("digest")
+        if isinstance(digest, str) and SHA256_DIGEST.fullmatch(digest):
+            normalized_images[index]["digest"] = "sha256:<immutable-digest>"
+            if isinstance(image.get("newTag"), str):
+                normalized_images[index]["newTag"] = "<immutable-tag>"
+    return normalized
+
+
+def normalized_helm_release_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    normalized = clone_structure(spec)
+    if not isinstance(normalized, dict):
+        return {}
+
+    chart = spec.get("chart")
+    normalized_chart = normalized.get("chart")
+    chart_spec = chart.get("spec") if isinstance(chart, dict) else None
+    normalized_chart_spec = (
+        normalized_chart.get("spec") if isinstance(normalized_chart, dict) else None
+    )
+    version = chart_spec.get("version") if isinstance(chart_spec, dict) else None
+    if (
+        isinstance(version, str)
+        and EXACT_SEMVER.fullmatch(version)
+        and isinstance(normalized_chart_spec, dict)
+    ):
+        normalized_chart_spec["version"] = "<exact-version>"
+
+    if "values" in spec:
+        normalized["values"] = normalize_pinned_image_values(spec.get("values"))
+    return normalized
 
 
 def selector_is_universal(selector: Any) -> bool:
@@ -410,7 +539,7 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
             finding(
                 "flux-kustomization-boundary",
                 identity,
-                f"spec/sha256/{canonical_sha256(spec)}",
+                f"spec/sha256/{canonical_sha256(normalized_kustomization_spec(spec))}",
             )
         )
         images = spec.get("images")
@@ -656,7 +785,7 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
     if kind == "GitRepository":
         source_url = text(spec.get("url"), "<unset>")
         ref = spec.get("ref")
-        ref_token = git_ref_token(ref)
+        ref_token = git_ref_token(normalized_git_ref(ref))
         if not isinstance(spec.get("verify"), dict):
             results.add(
                 finding(
@@ -676,7 +805,7 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
             finding(
                 "external-source-boundary",
                 identity,
-                f"spec/sha256/{canonical_sha256(spec)}",
+                f"spec/sha256/{canonical_sha256(normalized_source_spec(kind, spec))}",
             )
         )
         url = spec.get("url")
@@ -694,7 +823,8 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
 
     if kind == "OCIRepository":
         ref = spec.get("ref")
-        if not isinstance(ref, dict) or not ref.get("digest"):
+        digest = ref.get("digest") if isinstance(ref, dict) else None
+        if not isinstance(digest, str) or SHA256_DIGEST.fullmatch(digest) is None:
             reference = ref.get("tag") if isinstance(ref, dict) else None
             reference = reference or (ref.get("semver") if isinstance(ref, dict) else None)
             results.add(
@@ -710,7 +840,7 @@ def resource_findings(document: dict[str, Any]) -> set[str]:
             finding(
                 "helm-release-boundary",
                 identity,
-                f"spec/sha256/{canonical_sha256(spec)}",
+                f"spec/sha256/{canonical_sha256(normalized_helm_release_spec(spec))}",
             )
         )
         chart = spec.get("chart")
