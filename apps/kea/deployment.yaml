@@ -119,6 +119,7 @@ spec:
               port: 9547
               path: /metrics
               scheme: HTTP
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
@@ -128,6 +129,7 @@ spec:
               port: 9547
               path: /metrics
               scheme: HTTP
+            initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
