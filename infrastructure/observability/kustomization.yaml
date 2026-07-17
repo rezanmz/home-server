@@ -8,6 +8,8 @@ resources:
   - alertmanager-config.sops.yaml
   - dashboard.yaml
   - network-services-dashboard.yaml
+  - backup-dashboard.yaml
+  - backup-health-rules.yaml
   - rbac.yaml
   - release.yaml
   - networkpolicy.yaml
