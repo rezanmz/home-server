@@ -110,7 +110,7 @@ data:
           "gridPos": {"h": 5, "w": 4, "x": 0, "y": 5},
           "id": 7,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-          "targets": [{"expr": "sum(longhorn_backup_state == 3)", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "count(longhorn_backup_state == 3)", "instant": true, "refId": "A"}],
           "title": "Retained Longhorn backups",
           "type": "stat"
         },
@@ -192,7 +192,7 @@ data:
           "id": 14,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "sum(longhorn_backup_state == 3)", "legendFormat": "completed retained backups", "refId": "A"},
+            {"expr": "count(longhorn_backup_state == 3)", "legendFormat": "completed retained backups", "refId": "A"},
             {"expr": "max(longhorn_backup_target_backup_volume_count)", "legendFormat": "backup volumes", "refId": "B"}
           ],
           "title": "Longhorn retained inventory history",
