@@ -226,7 +226,7 @@ and the application hostname should return the MetalLB VIP.
 ```bash
 dig +short @192.168.1.2 github.com A
 dig +short @192.168.1.2 homepage.reza.network A
-dig +short @192.168.1.2 doubleclick.net A
+dig +short @192.168.1.2 securepubads.g.doubleclick.net A
 ```
 
 Check host listeners independently; DNS must be on the Pi and DHCP must be on
