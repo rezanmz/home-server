@@ -211,10 +211,11 @@ upstream tag and commit with:
 scripts/build-stork-images.sh
 ```
 
-The helper refuses a moved tag, applies the repository's minimal named-user
-patch to the agent target, publishes SBOM/provenance attestations, and prints
-the resulting manifest digests. Review upstream's development-release status
-and update all three pins together.
+The helper refuses a moved tag, applies the repository's minimal non-root
+sidecar patch, and imports the exact pinned Kea runtime that Stork must execute
+to identify the colocated daemon's version. It publishes SBOM/provenance
+attestations and prints the resulting manifest digests. Review upstream's
+development-release status and update the Stork and Kea pins together.
 
 If native integration is unavailable or unsuitable, record what upstream
 capability was checked, why it cannot be used, the chosen authentication
