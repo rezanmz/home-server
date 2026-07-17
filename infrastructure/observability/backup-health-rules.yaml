@@ -18,7 +18,13 @@ spec:
         # The intentionally reproducible longhorn-observability PVCs are not.
         - record: home_server_longhorn_backup_age_seconds
           expr: |
-            (time() - max by (pvc_namespace, pvc, volume) (longhorn_volume_last_backup_at))
+            (
+              time()
+              - (
+                max by (pvc_namespace, pvc, volume) (longhorn_volume_last_backup_at)
+                > 0
+              )
+            )
             and on (pvc_namespace, pvc)
             label_replace(
               label_replace(
