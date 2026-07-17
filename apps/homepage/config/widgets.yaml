@@ -1,0 +1,25 @@
+- kubernetes:
+    cluster:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+      label: home-server
+    nodes:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
+      hourCycle: h12
+
+- search:
+    provider: duckduckgo
+    target: _blank
+    focus: false
+    showSearchSuggestions: false

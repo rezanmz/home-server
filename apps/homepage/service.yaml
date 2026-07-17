@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: heimdall
+  name: homepage
   namespace: apps
   labels:
-    app.kubernetes.io/name: heimdall
+    app.kubernetes.io/name: homepage
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: heimdall
+    app.kubernetes.io/name: homepage
   ports:
     - name: http
-      port: 80
-      targetPort: access-http
+      port: 3000
+      targetPort: http
       protocol: TCP

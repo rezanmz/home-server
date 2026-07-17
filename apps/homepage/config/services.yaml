@@ -1,0 +1,189 @@
+- Home & Identity:
+    - Home Assistant:
+        icon: home-assistant.png
+        href: https://homeassistant.reza.network/
+        description: Home automation
+        namespace: apps
+        app: home-assistant
+    - Authentik:
+        icon: authentik.png
+        href: https://auth.reza.network/
+        description: Identity and single sign-on
+        namespace: apps
+        app: authentik
+    - Actual Budget:
+        icon: actual-budget.png
+        href: https://budget.reza.network/
+        description: Personal finance
+        namespace: apps
+        app: actual-budget
+    - Speedtest Tracker:
+        icon: speedtest-tracker.png
+        href: https://speedtest.reza.network/
+        description: Internet performance history
+        namespace: apps
+        app: speedtest-tracker
+
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://jellyfin.reza.network/
+        description: Movies and television
+        namespace: media
+        app: jellyfin
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://jellyseerr.reza.network/
+        description: Media requests
+        namespace: apps
+        app: jellyseerr
+    - Audiobookshelf:
+        icon: audiobookshelf.png
+        href: https://audiobooks.reza.network/
+        description: Audiobooks and podcasts
+        namespace: media
+        app: audiobookshelf
+    - Calibre-Web:
+        icon: calibre-web.png
+        href: https://library.reza.network/
+        description: Ebook library
+        namespace: media
+        app: calibre-web
+
+- Downloads & Automation:
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: https://qbittorrent.reza.network/
+        description: VPN-routed downloads
+        namespace: media
+        app: media-vpn
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://prowlarr.reza.network/
+        description: Indexer management
+        namespace: media
+        app: media-vpn
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.reza.network/
+        description: Movie automation
+        namespace: media
+        app: media-vpn
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.reza.network/
+        description: Television automation
+        namespace: media
+        app: media-vpn
+    - Shelfmark:
+        icon: mdi-bookshelf
+        href: https://shelfmark.reza.network/
+        description: Ebook acquisition
+        namespace: media
+        app: media-vpn
+
+- AI & Data:
+    - Open WebUI:
+        icon: open-webui.png
+        href: https://chat.reza.network/
+        description: Local AI chat
+        namespace: apps
+        app: open-webui
+    - MCPHub:
+        icon: mdi-hubspot
+        href: https://mcphub.reza.network/
+        description: MCP service registry
+        namespace: apps
+        app: mcphub
+    - Argilla:
+        icon: mdi-database-edit
+        href: https://argilla.reza.network/
+        description: Dataset curation and annotation
+        namespace: apps
+        app: argilla
+
+- Operations:
+    - Grafana:
+        icon: grafana.png
+        href: https://grafana.reza.network/
+        description: Metrics, alerts, and backup health
+        namespace: monitoring
+        app: grafana
+    - Headlamp:
+        icon: headlamp.png
+        href: https://headlamp.reza.network/
+        description: Read-only Kubernetes dashboard
+        namespace: monitoring
+        app: headlamp
+    - ISC Stork:
+        icon: mdi-bird
+        href: https://stork.reza.network/
+        description: Read-only DHCP inventory
+        namespace: network-services
+        podSelector: >-
+          app.kubernetes.io/name=stork,
+          app.kubernetes.io/component in (server,database)
+    - Syncthing:
+        icon: syncthing.png
+        href: https://syncthing.reza.network/
+        description: File synchronization
+        namespace: network-services
+        app: syncthing
+    - WireGuard:
+        icon: wireguard.png
+        href: https://vpn.reza.network/
+        description: Remote access VPN
+        namespace: network-services
+        app: wg-easy
+
+- Infrastructure:
+    - Blocky DNS:
+        icon: mdi-dns
+        description: Filtering DNS on the Pi
+        namespace: network-services
+        app: blocky
+    - Kea DHCP:
+        icon: mdi-router-network
+        description: Authoritative LAN DHCP
+        namespace: network-services
+        app: kea-dhcp4
+    - Longhorn:
+        icon: longhorn.png
+        description: Replicated persistent storage
+        namespace: longhorn-system
+        app: longhorn
+    - Prometheus:
+        icon: prometheus.png
+        description: Cluster metrics collection
+        namespace: monitoring
+        app: prometheus
+    - Alertmanager:
+        icon: alertmanager.png
+        description: Telegram alert routing
+        namespace: monitoring
+        app: alertmanager
+    - Flux:
+        icon: flux-cd.png
+        description: GitOps reconciliation
+        namespace: flux-system
+        podSelector: app.kubernetes.io/part-of=flux
+    - Traefik:
+        icon: traefik-proxy.png
+        description: Gateway and reverse proxy
+        namespace: traefik
+        app: traefik
+    - Cloudflare DDNS:
+        icon: cloudflare.png
+        description: Public DNS synchronization
+        namespace: apps
+        app: cloudflare-ddns
+    - Samba:
+        icon: mdi-folder-network
+        description: LAN file shares
+        namespace: network-services
+        app: samba
+    - Event Exporter:
+        icon: mdi-message-alert
+        description: Warning events to Telegram
+        namespace: monitoring
+        app: loggifly
