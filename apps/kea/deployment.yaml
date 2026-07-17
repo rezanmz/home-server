@@ -148,7 +148,7 @@ spec:
             - {name: runtime, mountPath: /var/run/kea}
             - {name: tmp, mountPath: /tmp}
         - name: stork-agent
-          image: docker.io/rezanmz/isc-stork-agent:2.5.0-kea3.2.0@sha256:54874e612a9ff1ab28f5a1cb0ef9d73e2931eaa9ff5bdfd9076358d32f91927e
+          image: docker.io/rezanmz/isc-stork-agent:2.5.0-kea3.2.0@sha256:89711766cbe99b268dfe937297c3d4c07f6d3ff722e66137df44072384a88fcb
           imagePullPolicy: IfNotPresent
           command: [/bin/sh, -ec]
           args:
