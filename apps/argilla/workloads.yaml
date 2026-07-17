@@ -164,7 +164,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgres
-          image: postgres:14@sha256:9e279cc7fc6e908da071befe389c576bd6752dbd295a9c078f96a75bab03e54c
+          image: postgres:18@sha256:32ca0af8e77bfb8c6610c488e4691f83f972a3e9e64d3b02facf3ab111ad5500
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_USER
