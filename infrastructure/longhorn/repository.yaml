@@ -9,7 +9,7 @@ spec:
   url: https://github.com/longhorn/longhorn.git
   ref:
     tag: v1.12.0
-    commit: 9990b6db0c5971d5b3bc58dd14095fcdc3c761b3
+    commit: d5d522b70cbd134e35e424fea9812d1c117fd8cf
   ignore: |
     /*
     !/chart/
