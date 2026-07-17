@@ -6,6 +6,8 @@ metadata:
   labels:
     app.kubernetes.io/name: home-server-backup-health
     app.kubernetes.io/part-of: observability
+    # kube-prometheus-stack's Prometheus ruleSelector requires this label.
+    release: observability
 spec:
   groups:
     - name: home-server.backup-recording
