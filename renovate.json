@@ -49,6 +49,13 @@
       "enabled": false
     },
     {
+      "description": "Flux GitRepository tags must advance together with their commits; digest-only updates detach the commit from the declared release tag.",
+      "matchManagers": ["flux"],
+      "matchDatasources": ["git-refs"],
+      "matchUpdateTypes": ["digest"],
+      "enabled": false
+    },
+    {
       "description": "Images pinned to a build-variant suffix (e.g. '-full') must only update within that same variant. Detected automatically via matchCurrentValue — no package list needed.",
       "matchDatasources": ["docker"],
       "matchCurrentValue": "/-full$/",

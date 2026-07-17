@@ -109,6 +109,7 @@ test -s /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \
   /tmp/home-server.yaml scripts/ci/high-risk-baseline.txt
+python3 scripts/ci/validate-git-source-pins.py /tmp/home-server.yaml
 ```
 
 The former Compose definitions have been removed. New work belongs in the
