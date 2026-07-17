@@ -224,6 +224,12 @@ upstream authentication support changes.
 
 ## Add a service
 
+Start with the [service integration catalog](service-catalog.md). The
+application manifests define runtime behavior; `catalog/services.yaml` records
+the cross-service decisions that must accompany them. CI requires an explicit
+Homepage card or omission, route/auth/DNS policy, placement, data protection,
+and observability level for every active application path.
+
 ### 1. Start from the closest security model
 
 Create `apps/<service>/` and compare with an existing service that has the same
@@ -514,13 +520,19 @@ Administrative allow-lists deliberately exclude node addresses
 `192.168.1.2` and `192.168.1.3`. A private route tested from a node should return
 403; test it from an ordinary LAN client through `192.168.1.240`.
 
-For a new hostname:
+For a new hostname, declare `web.hostname`, visibility, exact private-route
+middleware, authentication, and both DNS decisions in
+`catalog/services.yaml`, then run:
 
-1. Add it to the Cloudflare DDNS domain list if it needs public DNS.
-2. Add `<hostname>: 192.168.1.240` to `apps/blocky/config.yml` for
-   split-horizon LAN resolution.
-3. Verify the HTTPRoute is accepted and its backend references resolve.
-4. Test public, direct Pi host-port, and MetalLB VIP paths as appropriate.
+```bash
+python3 scripts/service_catalog.py render
+```
+
+This updates the Homepage service list, the hash-named Cloudflare DDNS domain
+ConfigMap input, and Blocky's split-horizon mapping. Do not edit those generated
+areas directly. Verify the HTTPRoute is accepted and its backend references
+resolve, then test public, direct Pi host-port, and MetalLB VIP paths as
+appropriate.
 
 ### 7. Connect it to the cluster tree
 
@@ -558,6 +570,7 @@ python3 scripts/ci/validate-secrets.py
 } >/tmp/home-server.yaml
 
 test -s /tmp/home-server.yaml
+python3 scripts/service_catalog.py check --rendered /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \
   /tmp/home-server.yaml scripts/ci/high-risk-baseline.txt
@@ -846,12 +859,15 @@ That host change is outside Flux.
 
 ### 5. Remove DNS and external state
 
-- Remove the Blocky `customDNS.mapping` entry. Allow the configured five-minute
-  custom-record TTL to expire on clients, or flush only the affected client
-  cache when absence must be immediate.
-- Remove the hostname from Cloudflare DDNS desired state.
+- Remove the service item from `catalog/services.yaml` only after its active
+  route and workload integration intent is gone, then run
+  `python3 scripts/service_catalog.py render`. This removes its generated
+  Homepage, Blocky, and Cloudflare DDNS entries together. A retained
+  recovery-only app path needs a narrow `registrationExclusions` reason.
+- Allow Blocky's configured five-minute custom-record TTL to expire on clients,
+  or flush only the affected client cache when absence must be immediate.
 - Explicitly delete the exact Cloudflare record: `DELETE_ON_STOP=false`, so
-  removing a name from the list does not remove the provider record.
+  removing a generated name from the list does not remove the provider record.
 - Remove router forwards only after confirming no retained service uses them.
 - Revoke or delete provider-side API keys, OAuth/OIDC clients, webhooks,
   service accounts, and integrations selected for destruction. Record why any
@@ -878,6 +894,7 @@ the retained manifests.
 - [ ] SOPS Secret contains no plaintext.
 - [ ] Default-deny NetworkPolicy opened only as required.
 - [ ] Route exposure and DNS are deliberate.
+- [ ] Service catalog entry and generated integrations are current.
 - [ ] App is connected to the root or an explicitly designed child.
 - [ ] Local checks and protected CI pass.
 - [ ] Flux revision, rollout, access, storage, and backup are proven live.
@@ -898,6 +915,8 @@ the retained manifests.
 - [ ] Desired state no longer owns retired runtime objects.
 - [ ] Root-owned objects were explicitly deleted, or child pruning was proven.
 - [ ] PVC/PV/Longhorn/NFS cleanup followed an identity-checked plan.
+- [ ] Catalog item was removed or replaced by a narrow retention exclusion, and
+      generated integrations were reviewed.
 - [ ] Cloudflare, Blocky/Kea, router, NFS, and provider credentials/integrations
       were retained or destroyed as documented.
 - [ ] Absence and retained recovery artifacts were verified.
@@ -905,6 +924,7 @@ the retained manifests.
 ## Related material
 
 - [Cluster architecture](architecture.md)
+- [Service integration catalog](service-catalog.md)
 - [Cluster operations and node lifecycle](cluster-operations.md)
 - [Incident and recovery runbook](runbook.md)
 - [Flux Kustomization pruning and inventory](https://fluxcd.io/flux/components/kustomize/kustomizations/)

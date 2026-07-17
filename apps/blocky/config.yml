@@ -15,6 +15,7 @@ customDNS:
   customTTL: 5m
   filterUnmappedTypes: true
   mapping:
+    # BEGIN SERVICE CATALOG GENERATED MAPPINGS
     argilla.reza.network: 192.168.1.240
     audiobooks.reza.network: 192.168.1.240
     auth.reza.network: 192.168.1.240
@@ -37,6 +38,7 @@ customDNS:
     stork.reza.network: 192.168.1.240
     syncthing.reza.network: 192.168.1.240
     vpn.reza.network: 192.168.1.240
+    # END SERVICE CATALOG GENERATED MAPPINGS
 
 blocking:
   denylists:

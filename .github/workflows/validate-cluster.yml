@@ -93,6 +93,7 @@ jobs:
         run: |
           actionlint
           scripts/ci/validate-shell.sh
+          python3 -m py_compile scripts/*.py
           python3 -m py_compile scripts/ci/*.py
           python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 
@@ -113,6 +114,11 @@ jobs:
             kubectl kustomize apps/syncthing/backups
           } > "$RUNNER_TEMP/home-server.yaml"
           test -s "$RUNNER_TEMP/home-server.yaml"
+
+      - name: Validate service integration catalog
+        run: >-
+          python3 scripts/service_catalog.py check
+          --rendered "$RUNNER_TEMP/home-server.yaml"
 
       - name: Reject generated plaintext Kubernetes Secrets
         run: >-

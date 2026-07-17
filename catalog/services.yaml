@@ -1,0 +1,916 @@
+version: 1
+
+# This catalog owns cross-service integration intent. Kubernetes manifests
+# remain the runtime source of truth; generated aggregate files are committed
+# so their changes remain visible in pull requests.
+dns:
+  splitHorizonAddress: 192.168.1.240
+  extraPublicNames:
+    - reza.network
+
+homepage:
+  groups:
+    - Home & Identity
+    - Media
+    - Downloads & Automation
+    - AI & Data
+    - Operations
+    - Infrastructure
+
+registrationExclusions:
+  - path: apps/duplicati
+    reason: Retired workload; only its rollback PVC remains in the root reconciliation.
+
+services:
+  - id: home-assistant
+    name: Home Assistant
+    path: apps/home-assistant
+    workload:
+      namespace: apps
+      app: home-assistant
+    homepage:
+      group: Home & Identity
+      icon: home-assistant.png
+      description: Home automation
+    web:
+      hostname: homeassistant.reza.network
+      route: apps/home-assistant/route.yaml
+      visibility: public
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Upstream Home Assistant has no built-in OIDC provider; use its native authentication.
+    placement:
+      mode: beelink
+      manifest: apps/home-assistant/deployment.yaml
+      reason: Keeps third-party integrations and selected LAN egress off the Pi's trusted NFS host.
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/home-assistant/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: homepage
+    name: Homepage
+    path: apps/homepage
+    workload:
+      namespace: apps
+      app: homepage
+    homepage:
+      enabled: false
+      reason: The dashboard does not need a card linking back to itself.
+    web:
+      hostname: homepage.reza.network
+      route: apps/homepage/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: forward-auth
+        blueprint: homepage.yaml
+        application: homepage
+        middleware: homepage-authentik
+    placement: {mode: floating}
+    data: {class: stateless, protection: not-applicable}
+    observability: {mode: kubernetes}
+
+  - id: authentik
+    name: Authentik
+    path: apps/authentik
+    workload:
+      namespace: apps
+      app: authentik
+    homepage:
+      group: Home & Identity
+      icon: authentik.png
+      description: Identity and single sign-on
+    web:
+      hostname: auth.reza.network
+      route: apps/authentik/route.yaml
+      visibility: public
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Authentik is the cluster identity provider and authenticates its own administrative UI.
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/authentik/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: actual-budget
+    name: Actual Budget
+    path: apps/actual-budget
+    workload:
+      namespace: apps
+      app: actual-budget
+    homepage:
+      group: Home & Identity
+      icon: actual-budget.png
+      description: Personal finance
+    web:
+      hostname: budget.reza.network
+      route: apps/actual-budget/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: oidc
+        blueprint: actual-budget.yaml
+        application: actual-budget
+        client: confidential
+        secretEnv: AUTHENTIK_OIDC_ACTUAL_BUDGET_CLIENT_SECRET
+        secretFiles:
+          - path: apps/authentik/oidc-client-secrets.sops.yaml
+            key: AUTHENTIK_OIDC_ACTUAL_BUDGET_CLIENT_SECRET
+          - path: apps/actual-budget/secrets.sops.yaml
+            key: openid-client-secret
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/actual-budget/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: speedtest-tracker
+    name: Speedtest Tracker
+    path: apps/speedtest-tracker
+    workload:
+      namespace: apps
+      app: speedtest-tracker
+    homepage:
+      group: Home & Identity
+      icon: speedtest-tracker.png
+      description: Internet performance history
+    web:
+      hostname: speedtest.reza.network
+      route: apps/speedtest-tracker/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Speedtest Tracker uses its built-in account; no supported native OIDC integration is configured.
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/speedtest-tracker/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: jellyfin
+    name: Jellyfin
+    path: apps/jellyfin
+    workload:
+      namespace: media
+      app: jellyfin
+    homepage:
+      group: Media
+      icon: jellyfin.png
+      description: Movies and television
+    web:
+      hostname: jellyfin.reza.network
+      route: apps/jellyfin/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Jellyfin uses its supported local user authentication and official clients.
+    placement:
+      mode: beelink
+      manifest: apps/jellyfin/deployment.yaml
+      reason: Requires the Beelink AMD GPU for hardware transcoding and LAN discovery.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/jellyfin/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Longhorn protects configuration; the NFS media library is deliberately reproducible.
+    observability: {mode: kubernetes}
+
+  - id: jellyseerr
+    name: Jellyseerr
+    path: apps/jellyseerr
+    workload:
+      namespace: apps
+      app: jellyseerr
+    homepage:
+      group: Media
+      icon: jellyseerr.png
+      description: Media requests
+    web:
+      hostname: jellyseerr.reza.network
+      route: apps/jellyseerr/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Jellyseerr uses its supported Jellyfin/local login; native OIDC is not available.
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/jellyseerr/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: audiobookshelf
+    name: Audiobookshelf
+    path: apps/audiobookshelf
+    workload:
+      namespace: media
+      app: audiobookshelf
+    homepage:
+      group: Media
+      icon: audiobookshelf.png
+      description: Audiobooks and podcasts
+    web:
+      hostname: audiobooks.reza.network
+      route: apps/audiobookshelf/route.yaml
+      visibility: public
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: oidc
+        blueprint: audiobookshelf.yaml
+        application: audiobookshelf
+        client: confidential
+        secretEnv: AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET
+        secretFiles:
+          - path: apps/authentik/oidc-client-secrets.sops.yaml
+            key: AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET
+          - path: apps/audiobookshelf/secrets.sops.yaml
+            key: oidc-client-secret
+    placement:
+      mode: beelink
+      manifest: apps/audiobookshelf/deployment.yaml
+      reason: Prevents a public workload from inheriting the Pi pod CIDR's private-route trust.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/audiobookshelf/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Configuration and metadata are backed up; NFS audiobooks and downloaded podcast media are outside Longhorn.
+    observability: {mode: kubernetes}
+
+  - id: calibre-web
+    name: Calibre-Web
+    path: apps/calibre-web
+    workload:
+      namespace: media
+      app: calibre-web
+    homepage:
+      group: Media
+      icon: calibre-web.png
+      description: Ebook library
+    web:
+      hostname: library.reza.network
+      route: apps/calibre-web/routes.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Calibre-Web uses its built-in account authentication; the route is LAN/WireGuard-only.
+    placement:
+      mode: beelink
+      manifest: apps/calibre-web/workloads.yaml
+      reason: Shares the calibre-web-ingest Longhorn RWO claim with the downloads pod.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/calibre-web/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Longhorn protects configuration and ingest state; the NFS book library is treated as reproducible.
+    observability: {mode: kubernetes}
+
+  - id: qbittorrent
+    name: qBittorrent
+    path: apps/downloads
+    workload:
+      namespace: media
+      app: media-vpn
+    homepage:
+      group: Downloads & Automation
+      icon: qbittorrent.png
+      description: VPN-routed downloads
+    web:
+      hostname: qbittorrent.reza.network
+      route: apps/downloads/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: qBittorrent uses its built-in Web UI authentication behind the LAN/WireGuard boundary.
+    placement:
+      mode: beelink
+      manifest: apps/downloads/deployment.yaml
+      reason: Runs in the shared Gluetun network namespace and mounts shared Longhorn RWO claims.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/downloads/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Longhorn protects application configuration; downloaded NFS media is reproducible.
+    observability: {mode: kubernetes}
+
+  - id: prowlarr
+    name: Prowlarr
+    path: apps/prowlarr
+    workload:
+      namespace: media
+      app: media-vpn
+    homepage:
+      group: Downloads & Automation
+      icon: prowlarr.png
+      description: Indexer management
+    web:
+      hostname: prowlarr.reza.network
+      route: apps/prowlarr/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Prowlarr uses its built-in authentication behind the LAN/WireGuard boundary.
+    placement:
+      mode: beelink
+      manifest: apps/downloads/deployment.yaml
+      reason: Its container shares the downloads pod's Gluetun network namespace.
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/prowlarr/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: radarr
+    name: Radarr
+    path: apps/radarr
+    workload:
+      namespace: media
+      app: media-vpn
+    homepage:
+      group: Downloads & Automation
+      icon: radarr.png
+      description: Movie automation
+    web:
+      hostname: radarr.reza.network
+      route: apps/radarr/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Radarr uses its built-in authentication behind the LAN/WireGuard boundary.
+    placement:
+      mode: beelink
+      manifest: apps/downloads/deployment.yaml
+      reason: Its container shares the downloads pod's Gluetun network namespace.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/radarr/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Longhorn protects configuration; downloaded NFS media is reproducible.
+    observability: {mode: kubernetes}
+
+  - id: sonarr
+    name: Sonarr
+    path: apps/sonarr
+    workload:
+      namespace: media
+      app: media-vpn
+    homepage:
+      group: Downloads & Automation
+      icon: sonarr.png
+      description: Television automation
+    web:
+      hostname: sonarr.reza.network
+      route: apps/sonarr/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Sonarr uses its built-in authentication behind the LAN/WireGuard boundary.
+    placement:
+      mode: beelink
+      manifest: apps/downloads/deployment.yaml
+      reason: Its container shares the downloads pod's Gluetun network namespace.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/sonarr/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Longhorn protects configuration; downloaded NFS media is reproducible.
+    observability: {mode: kubernetes}
+
+  - id: shelfmark
+    name: Shelfmark
+    path: apps/calibre-web
+    workload:
+      namespace: media
+      app: media-vpn
+    homepage:
+      group: Downloads & Automation
+      icon: mdi-bookshelf
+      description: Ebook acquisition
+    web:
+      hostname: shelfmark.reza.network
+      route: apps/calibre-web/routes.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: none
+        reason: Shelfmark has no supported native SSO; both route and in-pod proxy restrict it to LAN/WireGuard clients.
+    placement:
+      mode: beelink
+      manifest: apps/downloads/deployment.yaml
+      reason: Its container shares the downloads pod and calibre-web-ingest Longhorn RWO claim.
+    data:
+      class: mixed
+      protection: longhorn-b2
+      manifests:
+        - apps/calibre-web/pvc.yaml
+        - infrastructure/nfs-media/media.yaml
+      note: Longhorn protects configuration and ingest state; the NFS book library is reproducible.
+    observability: {mode: kubernetes}
+
+  - id: open-webui
+    name: Open WebUI
+    path: apps/open-webui
+    workload:
+      namespace: apps
+      app: open-webui
+    homepage:
+      group: AI & Data
+      icon: open-webui.png
+      description: Local AI chat
+    web:
+      hostname: chat.reza.network
+      route: apps/open-webui/route.yaml
+      visibility: public
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: oidc
+        blueprint: open-webui.yaml
+        application: open-webui
+        client: confidential
+        secretEnv: AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET
+        secretFiles:
+          - path: apps/authentik/oidc-client-secrets.sops.yaml
+            key: AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET
+          - path: apps/open-webui/secrets.sops.yaml
+            key: oauth-client-secret
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/open-webui/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: mcphub
+    name: MCPHub
+    path: apps/mcphub
+    workload:
+      namespace: apps
+      app: mcphub
+    homepage:
+      group: AI & Data
+      icon: mdi-hubspot
+      description: MCP service registry
+    web:
+      hostname: mcphub.reza.network
+      route: apps/mcphub/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: MCPHub has no supported native OIDC integration and is restricted to LAN/WireGuard.
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/mcphub/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: argilla
+    name: Argilla
+    path: apps/argilla
+    workload:
+      namespace: apps
+      app: argilla
+    homepage:
+      group: AI & Data
+      icon: mdi-database-edit
+      description: Dataset curation and annotation
+    web:
+      hostname: argilla.reza.network
+      route: apps/argilla/route.yaml
+      visibility: public
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Argilla uses its supported application users and API authentication; native OIDC is unavailable.
+    placement: {mode: floating}
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/argilla/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: grafana
+    name: Grafana
+    path: infrastructure/observability
+    workload:
+      namespace: monitoring
+      app: grafana
+    homepage:
+      group: Operations
+      icon: grafana.png
+      description: Metrics, alerts, and backup health
+    web:
+      hostname: grafana.reza.network
+      route: infrastructure/observability/route.yaml
+      visibility: private
+      accessMiddleware: grafana-lan-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: oidc
+        blueprint: grafana.yaml
+        application: grafana
+        client: confidential
+        secretEnv: AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET
+        secretFiles:
+          - path: apps/authentik/oidc-client-secrets.sops.yaml
+            key: AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET
+          - path: infrastructure/observability/grafana-secrets.sops.yaml
+            key: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+    placement: {mode: floating}
+    data:
+      class: longhorn-observability
+      protection: excluded-observability
+      manifests:
+        - infrastructure/observability/storage-class.yaml
+        - infrastructure/observability/release.yaml
+      note: UI preferences are expendable; repository-managed dashboards remain in Git.
+    observability:
+      mode: platform
+      manifests:
+        - infrastructure/observability/release.yaml
+        - infrastructure/observability/dashboard.yaml
+        - infrastructure/observability/backup-dashboard.yaml
+
+  - id: headlamp
+    name: Headlamp
+    path: apps/headlamp
+    workload:
+      namespace: monitoring
+      app: headlamp
+    homepage:
+      group: Operations
+      icon: headlamp.png
+      description: Read-only Kubernetes dashboard
+    web:
+      hostname: headlamp.reza.network
+      route: apps/headlamp/route.yaml
+      visibility: private
+      accessMiddleware: headlamp-lan-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: oidc
+        blueprint: headlamp.yaml
+        application: headlamp
+        client: confidential
+        secretEnv: AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET
+        secretFiles:
+          - path: apps/authentik/oidc-client-secrets.sops.yaml
+            key: AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET
+          - path: apps/headlamp/secrets.sops.yaml
+            key: client-secret
+    placement: {mode: floating}
+    data: {class: stateless, protection: not-applicable}
+    observability: {mode: kubernetes}
+
+  - id: stork
+    name: ISC Stork
+    path: apps/stork
+    workload:
+      namespace: network-services
+      podSelector: app.kubernetes.io/name=stork, app.kubernetes.io/component in (server,database)
+    homepage:
+      group: Operations
+      icon: mdi-bird
+      description: Read-only DHCP inventory
+    web:
+      hostname: stork.reza.network
+      route: apps/stork/route.yaml
+      visibility: private
+      accessMiddleware: lan-vpn-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: oidc
+        blueprint: stork.yaml
+        application: stork
+        client: public
+    placement:
+      mode: beelink
+      manifest: apps/stork/workloads.yaml
+      reason: Audited Stork images are amd64 and the agent monitors Beelink-hosted Kea.
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/stork/pvc.yaml]
+    observability:
+      mode: metrics
+      manifests:
+        - apps/stork/monitoring.yaml
+        - infrastructure/observability/network-services-dashboard.yaml
+
+  - id: syncthing
+    name: Syncthing
+    path: apps/syncthing
+    workload:
+      namespace: network-services
+      app: syncthing
+    homepage:
+      group: Operations
+      icon: syncthing.png
+      description: File synchronization
+    web:
+      hostname: syncthing.reza.network
+      route: apps/syncthing/route.yaml
+      visibility: private
+      accessMiddleware: syncthing-lan-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: Syncthing uses native GUI authentication behind a backend-mTLS and LAN/WireGuard boundary.
+    placement:
+      mode: raspberrypi
+      manifest: apps/syncthing/deployment.yaml
+      reason: Requires stable LAN discovery/direct-sync ports and Pi-local NFS data.
+    data:
+      class: mixed
+      protection: longhorn-and-restic-b2
+      manifests:
+        - apps/syncthing/storage.yaml
+        - apps/syncthing/backups/cronjob.yaml
+      note: Longhorn protects configuration while selected NFS folders use the independent Restic B2 policy.
+    observability: {mode: kubernetes}
+
+  - id: wireguard
+    name: WireGuard
+    path: apps/vpn
+    workload:
+      namespace: network-services
+      app: wg-easy
+    homepage:
+      group: Operations
+      icon: wireguard.png
+      description: Remote access VPN
+    web:
+      hostname: vpn.reza.network
+      route: apps/vpn/route.yaml
+      visibility: private
+      accessMiddleware: wg-easy-lan-only
+      dns: {cloudflare: true, splitHorizon: true}
+      auth:
+        mode: native
+        reason: wg-easy uses its native administrative authentication and is LAN/WireGuard-only.
+    placement:
+      mode: raspberrypi
+      manifest: apps/vpn/deployment.yaml
+      reason: The router forwards UDP 1234 to the Pi and the workload uses that host port.
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/vpn/pvc.yaml]
+    observability: {mode: kubernetes}
+
+  - id: blocky
+    name: Blocky DNS
+    path: apps/blocky
+    workload:
+      namespace: network-services
+      app: blocky
+    homepage:
+      group: Infrastructure
+      icon: mdi-dns
+      description: Filtering DNS on the Pi
+      link: false
+    placement:
+      mode: raspberrypi
+      manifest: apps/blocky/deployment.yaml
+      reason: Preserves the established LAN resolver address and host-network binding.
+    data:
+      class: longhorn-observability
+      protection: excluded-observability
+      manifests: [apps/blocky/pvc.yaml]
+      note: The denylist cache is reproducible and deliberately excluded from off-site backups.
+    observability:
+      mode: metrics
+      manifests:
+        - apps/blocky/metrics.yaml
+        - infrastructure/observability/network-services-dashboard.yaml
+
+  - id: kea
+    name: Kea DHCP
+    path: apps/kea
+    workload:
+      namespace: network-services
+      app: kea-dhcp4
+    homepage:
+      group: Infrastructure
+      icon: mdi-router-network
+      description: Authoritative LAN DHCP
+      link: false
+    placement:
+      mode: beelink
+      manifest: apps/kea/deployment.yaml
+      reason: Official image is amd64-only and DHCP requires the Beelink LAN interface.
+    data:
+      class: longhorn
+      protection: longhorn-b2
+      manifests: [apps/kea/pvc.yaml]
+    observability:
+      mode: metrics
+      manifests:
+        - apps/kea/metrics.yaml
+        - infrastructure/observability/network-services-dashboard.yaml
+
+  - id: longhorn
+    name: Longhorn
+    path: infrastructure/longhorn
+    workload:
+      namespace: longhorn-system
+      app: longhorn
+    homepage:
+      group: Infrastructure
+      icon: longhorn.png
+      description: Replicated persistent storage
+      link: false
+    placement:
+      mode: every-node
+      reason: Managers, CSI components, engines, and replicas run across eligible storage nodes.
+    data:
+      class: platform
+      protection: platform-managed
+      manifests: [infrastructure/longhorn/release.yaml]
+      note: Longhorn is the block-storage and B2 backup substrate rather than an application data consumer.
+    observability:
+      mode: platform
+      manifests:
+        - infrastructure/observability/release.yaml
+        - infrastructure/observability/dashboard.yaml
+        - infrastructure/observability/backup-dashboard.yaml
+
+  - id: prometheus
+    name: Prometheus
+    path: infrastructure/observability
+    workload:
+      namespace: monitoring
+      app: prometheus
+    homepage:
+      group: Infrastructure
+      icon: prometheus.png
+      description: Cluster metrics collection
+      link: false
+    placement: {mode: floating}
+    data:
+      class: longhorn-observability
+      protection: excluded-observability
+      manifests:
+        - infrastructure/observability/storage-class.yaml
+        - infrastructure/observability/release.yaml
+      note: Recent metrics are reproducible operational data and are excluded from B2.
+    observability:
+      mode: platform
+      manifests:
+        - infrastructure/observability/release.yaml
+        - infrastructure/observability/dashboard.yaml
+
+  - id: alertmanager
+    name: Alertmanager
+    path: infrastructure/observability
+    workload:
+      namespace: monitoring
+      app: alertmanager
+    homepage:
+      group: Infrastructure
+      icon: alertmanager.png
+      description: Telegram alert routing
+      link: false
+    placement: {mode: floating}
+    data:
+      class: longhorn-observability
+      protection: excluded-observability
+      manifests:
+        - infrastructure/observability/storage-class.yaml
+        - infrastructure/observability/release.yaml
+      note: Alert state is reproducible operational data and is excluded from B2.
+    observability:
+      mode: platform
+      manifests: [infrastructure/observability/release.yaml]
+
+  - id: flux
+    name: Flux
+    path: clusters/home-server/flux-system
+    workload:
+      namespace: flux-system
+      podSelector: app.kubernetes.io/part-of=flux
+    homepage:
+      group: Infrastructure
+      icon: flux-cd.png
+      description: GitOps reconciliation
+      link: false
+    placement: {mode: floating}
+    data: {class: stateless, protection: not-applicable}
+    observability:
+      mode: platform
+      manifests:
+        - infrastructure/observability/release.yaml
+        - infrastructure/observability/dashboard.yaml
+
+  - id: traefik
+    name: Traefik
+    path: infrastructure/traefik
+    workload:
+      namespace: traefik
+      app: traefik
+    homepage:
+      group: Infrastructure
+      icon: traefik-proxy.png
+      description: Gateway and reverse proxy
+      link: false
+    placement:
+      mode: every-node
+      reason: A host-port DaemonSet serves ports 80 and 443 on every eligible node.
+    data: {class: stateless, protection: not-applicable}
+    observability:
+      mode: platform
+      manifests:
+        - infrastructure/observability/release.yaml
+        - infrastructure/observability/dashboard.yaml
+
+  - id: cloudflare-ddns
+    name: Cloudflare DDNS
+    path: apps/cloudflare-ddns
+    workload:
+      namespace: apps
+      app: cloudflare-ddns
+    homepage:
+      group: Infrastructure
+      icon: cloudflare.png
+      description: Public DNS synchronization
+      link: false
+    placement: {mode: floating}
+    data: {class: stateless, protection: not-applicable}
+    observability: {mode: kubernetes}
+
+  - id: samba
+    name: Samba
+    path: apps/samba
+    workload:
+      namespace: network-services
+      app: samba
+    homepage:
+      group: Infrastructure
+      icon: mdi-folder-network
+      description: LAN file shares
+      link: false
+    placement:
+      mode: raspberrypi
+      manifest: apps/samba/deployment.yaml
+      reason: SMB and NetBIOS LAN behavior use the Pi host network and Pi NFS exports.
+    data:
+      class: nfs-reproducible
+      protection: excluded-reproducible
+      manifests: [infrastructure/nfs-media/network-services.yaml]
+      note: The shared media tree is deliberately treated as reproducible and has no off-site backup.
+    observability: {mode: kubernetes}
+
+  - id: event-exporter
+    name: Event Exporter
+    path: apps/loggifly
+    workload:
+      namespace: monitoring
+      app: loggifly
+    homepage:
+      group: Infrastructure
+      icon: mdi-message-alert
+      description: Warning events to Telegram
+      link: false
+    placement: {mode: floating}
+    data: {class: stateless, protection: not-applicable}
+    observability: {mode: kubernetes}
