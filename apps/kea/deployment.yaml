@@ -41,6 +41,7 @@ spec:
           command: [sh, -ec]
           args:
             - |-
+              chown 0:101 /leases /runtime
               chmod 0750 /leases /runtime
               chown 100:101 /leases /runtime
           resources:
