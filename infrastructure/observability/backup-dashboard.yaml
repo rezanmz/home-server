@@ -1,0 +1,266 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-backups
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: Home Server
+data:
+  backups.json: |
+    {
+      "annotations": {"list": []},
+      "description": "Freshness, coverage, inventory, and integrity evidence for Longhorn and Syncthing backups. Read the integrity notes before treating green panels as a restore guarantee.",
+      "editable": false,
+      "graphTooltip": 1,
+      "links": [
+        {
+          "icon": "doc",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Backup runbook",
+          "type": "link",
+          "url": "https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability"
+        },
+        {
+          "icon": "external link",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Longhorn operations",
+          "type": "link",
+          "url": "https://longhorn.reza.network/"
+        }
+      ],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "PVCs using the default backed-up Longhorn StorageClass that have ever emitted a successful backup timestamp. The four reproducible longhorn-observability PVCs are intentionally excluded.",
+          "fieldConfig": {"defaults": {"decimals": 0, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.9}, {"color": "green", "value": 1}]}, "unit": "percentunit"}},
+          "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_longhorn_backup_covered_pvcs / clamp_min(home_server_longhorn_backup_eligible_pvcs, 1)", "instant": true, "refId": "A"}],
+          "title": "Longhorn backup coverage",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Default Longhorn PVCs with no successful backup timestamp. A newly created PVC may appear here until the next nightly run.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_longhorn_backup_missing_pvcs", "instant": true, "refId": "A"}],
+          "title": "Longhorn PVCs never backed up",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Covered default Longhorn PVCs whose last successful backup is more than 36 hours old.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_longhorn_backup_stale_pvcs", "instant": true, "refId": "A"}],
+          "title": "Stale Longhorn PVC backups",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Age of the oldest successful backup among covered default Longhorn PVCs. Warning at 30 hours; critical at 36 hours.",
+          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 108000}, {"color": "red", "value": 129600}]}, "unit": "s"}},
+          "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(home_server_longhorn_backup_age_seconds)", "instant": true, "refId": "A"}],
+          "title": "Oldest Longhorn backup",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Age of the newest successful daily Syncthing Restic Job. A successful job includes repository identity, source canary, folder policy, and Restic exit-status checks.",
+          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 108000}, {"color": "red", "value": 129600}]}, "unit": "s"}},
+          "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
+          "id": 5,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_syncthing_backup_age_seconds", "instant": true, "refId": "A"}],
+          "title": "Syncthing Restic backup age",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Age of the last successful independent freshness Job. It pins the repository ID and requires an exact trusted snapshot newer than 36 hours; it is not a full-data check.",
+          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 108000}, {"color": "red", "value": 129600}]}, "unit": "s"}},
+          "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
+          "id": 6,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_syncthing_backup_freshness_check_age_seconds", "instant": true, "refId": "A"}],
+          "title": "Restic freshness-check age",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Longhorn backup CRs currently in Completed state. These are retained restore points, not unique protected volumes.",
+          "fieldConfig": {"defaults": {"decimals": 0, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 0, "y": 5},
+          "id": 7,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(longhorn_backup_state == 3)", "instant": true, "refId": "A"}],
+          "title": "Retained Longhorn backups",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Longhorn backup CRs in any state other than Completed. In-progress backups normally clear quickly; the alert waits 15 minutes.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 4, "y": 5},
+          "id": 8,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(longhorn_backup_state != bool 3) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "Non-completed Longhorn backups",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Backup-volume records visible through the configured Longhorn backup target.",
+          "fieldConfig": {"defaults": {"decimals": 0, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 8, "y": 5},
+          "id": 9,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(longhorn_backup_target_backup_volume_count)", "instant": true, "refId": "A"}],
+          "title": "Longhorn backup volumes",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Sum of Longhorn's logical actual-size metric across retained backup CRs. This is not the Backblaze bucket's physical or billable size.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 4, "x": 12, "y": 5},
+          "id": 10,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(longhorn_backup_actual_size_bytes)", "instant": true, "refId": "A"}],
+          "title": "Longhorn logical bytes",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Sum of Longhorn's uploaded-data metric across retained backup CRs. Deduplication and hidden B2 object versions mean this is not a billable bucket-size measurement.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 4, "x": 16, "y": 5},
+          "id": 11,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(longhorn_backup_uploaded_data_size_bytes)", "instant": true, "refId": "A"}],
+          "title": "Longhorn uploaded-data bytes",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Failed Syncthing backup, freshness, or integrity Jobs that started in the last 24 hours.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 20, "y": 5},
+          "id": 12,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_syncthing_recent_failed_jobs", "instant": true, "refId": "A"}],
+          "title": "Recent failed Restic jobs",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Age grows continuously and resets after a successful run. Gaps or a line crossing 36 hours are actionable.",
+          "fieldConfig": {"defaults": {"decimals": 1, "custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 108000}, {"color": "red", "value": 129600}]}, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 10},
+          "id": 13,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "max(home_server_longhorn_backup_age_seconds)", "legendFormat": "oldest Longhorn PVC", "refId": "A"},
+            {"expr": "home_server_syncthing_backup_age_seconds", "legendFormat": "Syncthing Restic backup", "refId": "B"},
+            {"expr": "home_server_syncthing_backup_freshness_check_age_seconds", "legendFormat": "Restic freshness check", "refId": "C"}
+          ],
+          "title": "Backup and verification age history",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Retained Longhorn restore-point count and the number of backed-up volumes visible through the remote target.",
+          "fieldConfig": {"defaults": {"decimals": 0, "custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "stepAfter", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 10},
+          "id": 14,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum(longhorn_backup_state == 3)", "legendFormat": "completed retained backups", "refId": "A"},
+            {"expr": "max(longhorn_backup_target_backup_volume_count)", "legendFormat": "backup volumes", "refId": "B"}
+          ],
+          "title": "Longhorn retained inventory history",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Every default Longhorn PVC and the age of its newest successful remote backup.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 11, "w": 12, "x": 0, "y": 19},
+          "id": 15,
+          "options": {"cellHeight": "sm", "footer": {"countRows": false, "enablePagination": true, "fields": "", "reducer": ["sum"], "show": false}},
+          "targets": [{"expr": "home_server_longhorn_backup_age_seconds", "format": "table", "instant": true, "refId": "A"}],
+          "title": "Longhorn backup age by PVC",
+          "transformations": [
+            {"id": "organize", "options": {"excludeByName": {"Time": true, "volume": true}, "indexByName": {"pvc_namespace": 0, "pvc": 1, "Value": 2}, "renameByName": {"Value": "Backup age", "pvc": "PVC", "pvc_namespace": "Namespace"}}}
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Completed retained backup CRs grouped by their current PVC mapping.",
+          "fieldConfig": {"defaults": {"decimals": 0, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 11, "w": 12, "x": 12, "y": 19},
+          "id": 16,
+          "options": {"cellHeight": "sm", "footer": {"countRows": false, "enablePagination": true, "fields": "", "reducer": ["sum"], "show": false}},
+          "targets": [{"expr": "count by (volume) (longhorn_backup_state == 3) * on (volume) group_left (pvc_namespace, pvc) (0 * max by (volume, pvc_namespace, pvc) (longhorn_volume_last_backup_at) + 1)", "format": "table", "instant": true, "refId": "A"}],
+          "title": "Retained Longhorn backups by PVC",
+          "transformations": [
+            {"id": "organize", "options": {"excludeByName": {"Time": true, "volume": true}, "indexByName": {"pvc_namespace": 0, "pvc": 1, "Value": 2}, "renameByName": {"Value": "Retained backups", "pvc": "PVC", "pvc_namespace": "Namespace"}}}
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Durations of retained Syncthing backup-related Jobs. Missing expected jobs or failed jobs matter more than duration alone.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 30},
+          "id": 17,
+          "options": {"cellHeight": "sm", "footer": {"countRows": false, "enablePagination": true, "fields": "", "reducer": ["sum"], "show": false}},
+          "targets": [{"expr": "max by (job_name) (kube_job_status_completion_time{namespace=\"network-services\",job_name=~\"syncthing-backup.*\"} - kube_job_status_start_time{namespace=\"network-services\",job_name=~\"syncthing-backup.*\"})", "format": "table", "instant": true, "refId": "A"}],
+          "title": "Recent Syncthing backup Job durations",
+          "transformations": [
+            {"id": "organize", "options": {"excludeByName": {"Time": true}, "indexByName": {"job_name": 0, "Value": 1}, "renameByName": {"Value": "Duration", "job_name": "Job"}}}
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Integrity evidence is layered; no single green metric proves every file can be restored.",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 30},
+          "id": 18,
+          "options": {
+            "code": {"language": "plaintext", "showLineNumbers": false, "showMiniMap": false},
+            "content": "### What “healthy” proves\n\n- **Longhorn:** a `Completed` backup is a remotely indexed, crash-consistent volume restore point. It is **not** an application-consistency or restore proof.\n- **Local Longhorn snapshots:** the cluster runs inherited `fast-check` snapshot data-integrity checks every 7 days. That protects local snapshot data and is separate from remote B2 backup verification.\n- **Syncthing / Restic:** every daily job pins the repository ID and validates the source canary and folder policy. Sunday prune runs a structural `restic check`; the first day of each month reads a deterministic quarter of repository data.\n- **Restore evidence:** a full encrypted-data check and isolated restore proof passed on **2026-07-14**. That is durable evidence, not a continuously refreshed metric; repeat it at least quarterly and after material backup changes.\n- **Storage accounting:** the byte panels are Longhorn logical/upload metrics. Backblaze physical billed bytes and hidden object versions are not exposed to Prometheus.\n\nUse the **Backup runbook** link above for exact check, restore-proof, and incident procedures.",
+            "mode": "markdown"
+          },
+          "title": "Integrity evidence and limits",
+          "type": "text"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 42,
+      "tags": ["backup", "b2", "longhorn", "restic", "syncthing"],
+      "templating": {"list": []},
+      "time": {"from": "now-7d", "to": "now"},
+      "timezone": "browser",
+      "title": "Backup Health and Integrity",
+      "uid": "home-server-backups",
+      "version": 1
+    }

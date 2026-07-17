@@ -593,6 +593,58 @@ The CronJob's `Forbid` policy does not serialize independently created Jobs.
 Run manual backup, check, prune, and restore work away from 07:43 UTC and only
 after the active-job check above returns zero.
 
+### Backup observability
+
+Grafana provisions the **Backup Health and Integrity** dashboard in the
+**Home Server** folder. It combines Longhorn's backup metrics with
+kube-state-metrics for the two Syncthing Restic CronJobs. The top row answers
+the operational questions first: whether every eligible PVC is covered,
+whether any backup is stale, and how old the oldest Longhorn, Restic, and
+independent freshness-check successes are.
+
+Only PVCs using the default `longhorn` StorageClass are eligible for nightly
+B2 coverage. PVCs using `longhorn-observability` are intentionally excluded
+because Prometheus, Alertmanager, Loki, and Tempo telemetry is reproducible and
+backing Prometheus up with the same Prometheus-dependent alert path would give a
+misleading coverage number. A new eligible PVC may be shown as missing until
+the next 06:17 UTC nightly Longhorn run. It alerts only if it remains uncovered
+for 36 hours.
+
+Dashboard and alert semantics are deliberately narrower than “the backup can
+definitely restore every application”:
+
+- `longhorn_backup_state == 3` means Longhorn reports the backup as Completed.
+  It does not prove application consistency across one or more PVCs.
+- The inherited Longhorn `fast-check` every seven days verifies local snapshot
+  data, not the remote Backblaze repository or a restored workload.
+- A successful Syncthing backup validates the pinned Restic repository ID,
+  source canary, exact folder policy, and Restic result. Sunday also runs a
+  structural repository check; the first day of each month reads a
+  deterministic quarter of repository data.
+- The dashboard records that a full Restic encrypted-data check and isolated
+  restore proof passed on 2026-07-14. This is evidence, not a live metric.
+  Repeat the full-data and restore procedures below at least quarterly and
+  after material changes.
+- Longhorn's logical and uploaded-data byte metrics are not Backblaze's billed
+  bucket size. Hidden B2 object versions are also not visible in Prometheus.
+
+Active backup alerts are routed through the normal Alertmanager Telegram path:
+
+```bash
+sudo k3s kubectl -n monitoring get prometheusrule home-server-backup-health
+sudo k3s kubectl -n monitoring port-forward \
+  service/observability-prometheus 9090:9090
+```
+
+Then open the internet-accessible, Authentik-protected Grafana dashboard or
+inspect the Prometheus **Alerts** page through Grafana's Prometheus datasource.
+For a stale or missing Longhorn PVC, open the per-PVC table, confirm the PVC and
+StorageClass, then inspect the `b2-nightly` recurring-job history and backup
+target. For a Syncthing alert,
+inspect the newest retained Jobs and logs using the commands in the previous
+section. Do not clear a Restic lock or create a replacement repository merely
+to make an alert green.
+
 Run a complete encrypted-data check before retiring another backup path and at
 least quarterly:
 

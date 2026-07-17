@@ -1,0 +1,186 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: home-server-backup-health
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: home-server-backup-health
+    app.kubernetes.io/part-of: observability
+spec:
+  groups:
+    - name: home-server.backup-recording
+      interval: 30s
+      rules:
+        # Join Longhorn's backup timestamp to kube-state-metrics so only PVCs
+        # using the backed-up default Longhorn StorageClass are included.
+        # The intentionally reproducible longhorn-observability PVCs are not.
+        - record: home_server_longhorn_backup_age_seconds
+          expr: |
+            (time() - max by (pvc_namespace, pvc, volume) (longhorn_volume_last_backup_at))
+            and on (pvc_namespace, pvc)
+            label_replace(
+              label_replace(
+                max by (namespace, persistentvolumeclaim) (
+                  kube_persistentvolumeclaim_info{storageclass="longhorn"}
+                ),
+                "pvc_namespace", "$1", "namespace", "(.*)"
+              ),
+              "pvc", "$1", "persistentvolumeclaim", "(.*)"
+            )
+        - record: home_server_longhorn_backup_eligible_pvcs
+          expr: |
+            count(
+              max by (namespace, persistentvolumeclaim) (
+                kube_persistentvolumeclaim_info{storageclass="longhorn"}
+              )
+            )
+        - record: home_server_longhorn_backup_covered_pvcs
+          expr: |
+            count(
+              (max by (pvc_namespace, pvc) (longhorn_volume_last_backup_at) > 0)
+              and on (pvc_namespace, pvc)
+              label_replace(
+                label_replace(
+                  max by (namespace, persistentvolumeclaim) (
+                    kube_persistentvolumeclaim_info{storageclass="longhorn"}
+                  ),
+                  "pvc_namespace", "$1", "namespace", "(.*)"
+                ),
+                "pvc", "$1", "persistentvolumeclaim", "(.*)"
+              )
+            )
+        - record: home_server_longhorn_backup_missing_pvcs
+          expr: |
+            clamp_min(
+              home_server_longhorn_backup_eligible_pvcs
+              - home_server_longhorn_backup_covered_pvcs,
+              0
+            )
+        - record: home_server_longhorn_backup_stale_pvcs
+          expr: count(home_server_longhorn_backup_age_seconds > 129600) or vector(0)
+        - record: home_server_syncthing_backup_age_seconds
+          expr: |
+            time()
+            - kube_cronjob_status_last_successful_time{
+                namespace="network-services",
+                cronjob="syncthing-backup"
+              }
+        - record: home_server_syncthing_backup_freshness_check_age_seconds
+          expr: |
+            time()
+            - kube_cronjob_status_last_successful_time{
+                namespace="network-services",
+                cronjob="syncthing-backup-freshness"
+              }
+        - record: home_server_syncthing_recent_failed_jobs
+          expr: |
+            sum(
+              (
+                kube_job_failed{
+                  namespace="network-services",
+                  job_name=~"syncthing-backup.*",
+                  condition="true"
+                } == 1
+              )
+              and on (namespace, job_name)
+              (
+                time()
+                - kube_job_status_start_time{
+                    namespace="network-services",
+                    job_name=~"syncthing-backup.*"
+                  }
+                < 86400
+              )
+            ) or vector(0)
+    - name: home-server.backup-alerting
+      rules:
+        - alert: LonghornBackupInventoryUnavailable
+          expr: |
+            absent(longhorn_backup_target_backup_volume_count)
+            or max(longhorn_backup_target_backup_volume_count) == 0
+          for: 15m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Longhorn backup inventory telemetry is unavailable
+            description: Prometheus has not received Longhorn backup-target inventory metrics for at least 15 minutes.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: LonghornBackupCoverageMissing
+          expr: home_server_longhorn_backup_missing_pvcs > 0
+          for: 36h
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Longhorn PVCs are missing from backup coverage
+            description: "{{ $value }} PVC(s) using the default Longhorn StorageClass have not produced a backup timestamp after a full nightly backup window."
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: LonghornBackupStale
+          expr: home_server_longhorn_backup_stale_pvcs > 0
+          for: 30m
+          labels:
+            severity: critical
+            cluster: home-server
+          annotations:
+            summary: Longhorn backups are stale
+            description: "{{ $value }} covered Longhorn PVC(s) have no successful backup newer than 36 hours."
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: LonghornBackupIncomplete
+          expr: max by (backup, volume) (longhorn_backup_state) != 3
+          for: 15m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Longhorn backup {{ $labels.backup }} is not complete
+            description: "Backup state code {{ $value }} has persisted for 15 minutes (0 New, 1 Pending, 2 InProgress, 3 Completed, 4 Error, 5 Unknown)."
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: SyncthingBackupTelemetryMissing
+          expr: |
+            count(
+              max by (cronjob) (
+                kube_cronjob_status_last_successful_time{
+                  namespace="network-services",
+                  cronjob=~"syncthing-backup|syncthing-backup-freshness"
+                }
+              )
+            ) < 2
+          for: 30m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Syncthing backup telemetry is missing
+            description: A required Syncthing backup CronJob has no last-successful timestamp in kube-state-metrics.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: SyncthingBackupStale
+          expr: home_server_syncthing_backup_age_seconds > 129600
+          for: 30m
+          labels:
+            severity: critical
+            cluster: home-server
+          annotations:
+            summary: Syncthing Restic backup is stale
+            description: The newest successful Syncthing backup job is more than 36 hours old.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: SyncthingBackupFreshnessCheckStale
+          expr: home_server_syncthing_backup_freshness_check_age_seconds > 129600
+          for: 30m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Syncthing repository freshness verification is stale
+            description: The last successful fail-closed repository freshness check is more than 36 hours old.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
+        - alert: SyncthingBackupJobFailed
+          expr: home_server_syncthing_recent_failed_jobs > 0
+          for: 2m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: A Syncthing backup or verification job failed
+            description: "{{ $value }} Syncthing backup-related Job(s) started in the last 24 hours have failed."
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#backup-observability
