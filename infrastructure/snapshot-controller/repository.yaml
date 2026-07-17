@@ -9,4 +9,4 @@ spec:
   url: https://github.com/kubernetes-csi/external-snapshotter.git
   ref:
     tag: v8.5.0
-    commit: 5aab051d1af135e2c852f6fb7fc27fa709d877bf
+    commit: c8edb651faee28c52d0f61796764b649253c988c
