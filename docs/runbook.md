@@ -174,6 +174,24 @@ address without deciding that public-repository disclosure is acceptable. A
 Kea reservation does not automatically create a Blocky DNS record; add the
 corresponding Blocky mapping if the client hostname must resolve.
 
+The default filtering policy is HaGeZi Multi PRO in Blocky's wildcard format.
+It is the balanced, stronger household tier: arbitrary subdomains are covered
+without combining several overlapping aggregate lists. Change only the source
+under `blocking.denylists.ads` when deliberately changing policy:
+
+- HaGeZi Normal is the more conservative choice.
+- HaGeZi Pro is the default balanced choice.
+- HaGeZi Pro++ is more aggressive and is more likely to need local exceptions.
+- OISD Big prioritizes avoiding false positives and preserving referral and
+  shopping links, so it can feel less strict despite its larger list.
+
+Do not stack these all-in-one lists by default. Overlap consumes memory and
+makes it unclear which source caused a false positive. If a legitimate domain
+is blocked, add the smallest exact entry to an `ads` allowlist in
+`apps/blocky/config.yml` rather than weakening the policy for every client.
+Blocky automatically refreshes the source every four hours and keeps the last
+downloaded copy on its cache PVC.
+
 The previous dnsmasq lease-name integration is intentionally absent: ordinary
 dynamic DHCP client hostnames are not synthesized into local DNS. Application
 hostnames under `reza.network` remain explicit and deterministic. Pi-hole's NTP

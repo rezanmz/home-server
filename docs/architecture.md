@@ -73,8 +73,9 @@ Blocky uses the Pi host network and keeps DNS on `192.168.1.2:53`, preserving
 the resolver address already used by LAN clients, WireGuard, the nodes, and
 CoreDNS. Its HTTP control and Prometheus endpoint binds only to the Pi's CNI
 gateway (`10.42.1.1:4000`); there is no LAN listener, UI route, or public
-control surface. The downloaded denylist cache is a reproducible Longhorn
-volume excluded from B2 backups.
+control surface. Filtering uses the HaGeZi Multi PRO wildcard list as a single
+balanced all-in-one source. The downloaded denylist cache is a reproducible
+Longhorn volume excluded from B2 backups.
 
 Kea DHCP uses the Beelink host network and physical `enp1s0` interface because
 ISC's official Kea image is amd64-only. It serves the same
