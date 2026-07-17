@@ -61,6 +61,14 @@ the peer node address, so trusting those addresses would let an unrelated pod
 inherit LAN access. Requests originating on a node itself are denied for the
 same reason; use the MetalLB VIP from a normal LAN client for administration.
 
+Homepage replaces the former Heimdall dashboard at `homepage.reza.network`.
+Its entire layout and service inventory are declarative YAML. The route remains
+LAN/WireGuard-only and uses Authentik's embedded outpost in single-application
+forward-auth mode because Homepage does not provide native authentication.
+Homepage has a dedicated service account whose cluster role can only list
+namespaces, nodes, pods, and their Metrics API usage. It cannot read Secrets,
+pod logs, or application APIs and cannot change cluster state.
+
 wg-easy masquerades client traffic before it leaves its pod, so Traefik and the
 application access proxies see the Pi node's fixed pod CIDR (`10.42.1.0/24`)
 rather than the original `10.8.0.0/24` client address. Administrative allow

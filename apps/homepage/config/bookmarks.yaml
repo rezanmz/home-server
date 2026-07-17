@@ -1,0 +1,13 @@
+- Maintainer Links:
+    - Repository:
+        - icon: si-github
+          href: https://github.com/rezanmz/home-server
+    - Architecture:
+        - icon: mdi-sitemap
+          href: https://github.com/rezanmz/home-server/blob/main/docs/architecture.md
+    - Service Manual:
+        - icon: mdi-book-open-page-variant
+          href: https://github.com/rezanmz/home-server/blob/main/docs/service-operations.md
+    - Incident Runbook:
+        - icon: mdi-lifebuoy
+          href: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md

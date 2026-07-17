@@ -1,0 +1,46 @@
+title: Home Server
+description: Reza's two-node K3s cluster
+theme: dark
+color: slate
+headerStyle: clean
+iconStyle: theme
+target: _blank
+hideVersion: true
+disableUpdateCheck: true
+showStats: true
+useEqualHeights: true
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  showSearchSuggestions: false
+  hideVisitURL: false
+  provider: duckduckgo
+layout:
+  Home & Identity:
+    style: row
+    columns: 4
+    icon: mdi-home-account
+  Media:
+    style: row
+    columns: 4
+    icon: mdi-multimedia
+  Downloads & Automation:
+    style: row
+    columns: 5
+    icon: mdi-download-network
+  AI & Data:
+    style: row
+    columns: 3
+    icon: mdi-creation
+  Operations:
+    style: row
+    columns: 5
+    icon: mdi-chart-line
+  Infrastructure:
+    style: row
+    columns: 5
+    icon: mdi-server-network
+  Maintainer Links:
+    style: row
+    columns: 4
+    iconsOnly: false

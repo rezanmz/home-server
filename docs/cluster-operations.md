@@ -155,7 +155,7 @@ allow it.
 
 | Namespace | Workloads | Storage or external dependency |
 | --- | --- | --- |
-| `apps` | Actual Budget, Heimdall, Jellyseerr, Speedtest Tracker | Longhorn |
+| `apps` | Actual Budget, Homepage, Jellyseerr, Speedtest Tracker | Longhorn for stateful workloads; Homepage is stateless |
 | `apps` | Argilla server/worker, PostgreSQL, Elasticsearch, Redis | Separate Longhorn PVCs; application is multi-component, not transactionally backed up as one unit |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
 | `apps` | MCPHub and PostgreSQL/pgvector StatefulSet | Longhorn |

@@ -56,7 +56,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 
 | Area | Workloads | Entry points |
 | --- | --- | --- |
-| Identity and home | Authentik, Heimdall, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
+| Identity and home | Authentik, Homepage, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
 | Personal apps | Actual Budget, MCPHub, Open WebUI with Tika, Speedtest Tracker | `budget.reza.network`, `mcphub.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Jellyseerr | `jellyfin.reza.network`, `jellyseerr.reza.network` |
@@ -73,6 +73,12 @@ Alertmanager have no external routes. Glances is no longer deployed. The
 former Loggifly function is now a Kubernetes event exporter that sends warning
 events to Telegram. Its historical application name is retained in the
 manifests.
+
+Homepage is the YAML-managed service directory at `homepage.reza.network`. It
+is limited to the LAN or WireGuard, requires an Authentik session through the
+embedded proxy outpost, and uses read-only Kubernetes and Metrics API access to
+show workload health and resource use. It has no permission to read Secrets,
+logs, or application data and cannot mutate cluster resources.
 
 AnythingLLM and the Gemini Telegram bot are intentionally excluded from the
 cluster. Open WebUI remains the supported local LLM interface.

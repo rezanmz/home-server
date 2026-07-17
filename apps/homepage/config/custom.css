@@ -1,0 +1,8 @@
+/* Keep visual overrides intentionally small so upstream layout upgrades remain safe. */
+:root {
+  --homepage-card-radius: 0.75rem;
+}
+
+.service-card {
+  border-radius: var(--homepage-card-radius);
+}
