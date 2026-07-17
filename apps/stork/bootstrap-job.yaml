@@ -1,0 +1,97 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: stork-lockdown-v1
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: bootstrap
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stork
+        app.kubernetes.io/component: bootstrap
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: OnFailure
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: lockdown
+          image: docker.io/library/postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+          imagePullPolicy: IfNotPresent
+          command: [sh, -ec]
+          args:
+            - |-
+              until pg_isready -h stork-postgresql -U stork -d stork; do sleep 2; done
+              # Stork 2.5.0's final migration is version 73. Waiting for the
+              # exact version avoids racing the server while it is moving
+              # password hashes into system_user_password.
+              until psql -h stork-postgresql -U stork -d stork -Atqc \
+                "SELECT version FROM gopg_migrations ORDER BY id DESC LIMIT 1" \
+                | grep -qx 73; do
+                sleep 2
+              done
+
+              psql -v ON_ERROR_STOP=1 -h stork-postgresql -U stork -d stork \
+                --set=bootstrap_token="$STORK_BOOTSTRAP_SERVER_TOKEN" <<'SQL'
+              UPDATE secret
+                 SET content = :'bootstrap_token'
+               WHERE name = 'srvtkn';
+              WITH disabled_admin AS (
+                  UPDATE public.system_user
+                     SET login = 'disabled-local-admin-' || encode(gen_random_bytes(16), 'hex')
+                   WHERE login = 'admin' AND auth_method = 'internal'
+               RETURNING id
+              )
+              UPDATE public.system_user_password AS password
+                 SET password_hash = encode(gen_random_bytes(32), 'hex')
+                FROM disabled_admin
+               WHERE password.id = disabled_admin.id;
+              SQL
+
+              until psql -h stork-postgresql -U stork -d stork -Atqc \
+                "SELECT count(*) FROM machine WHERE address = '10.42.0.1' AND agent_port = 8080 AND authorized" \
+                | grep -qx 1; do
+                sleep 3
+              done
+
+              psql -v ON_ERROR_STOP=1 -h stork-postgresql -U stork -d stork <<'SQL'
+              UPDATE secret
+                 SET content = substr(encode(gen_random_bytes(24), 'base64'), 1, 32)
+               WHERE name = 'srvtkn';
+              UPDATE setting SET value = 'false'
+               WHERE name IN ('enable_machine_registration', 'enable_online_software_versions');
+              SQL
+              echo "Stork bootstrap completed: agent authorized; bootstrap token and local admin invalidated."
+          env:
+            - {name: HOME, value: /tmp}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stork-secrets
+                  key: postgres-password
+            - name: STORK_BOOTSTRAP_SERVER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stork-secrets
+                  key: bootstrap-server-token
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}

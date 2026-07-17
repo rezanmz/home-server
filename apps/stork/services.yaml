@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stork-server
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: server
+spec:
+  selector:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: server
+  ports:
+    - {name: web, port: 80, targetPort: web-http, protocol: TCP}
+    - {name: metrics, port: 8080, targetPort: server-http, protocol: TCP}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stork-postgresql
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: database
+spec:
+  selector:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: database
+  ports:
+    - {name: postgresql, port: 5432, targetPort: postgresql, protocol: TCP}

@@ -34,6 +34,7 @@ customDNS:
     shelfmark.reza.network: 192.168.1.240
     sonarr.reza.network: 192.168.1.240
     speedtest.reza.network: 192.168.1.240
+    stork.reza.network: 192.168.1.240
     syncthing.reza.network: 192.168.1.240
     vpn.reza.network: 192.168.1.240
 

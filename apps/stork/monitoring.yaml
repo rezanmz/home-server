@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: stork
+  namespace: monitoring
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [network-services]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stork
+      app.kubernetes.io/component: server
+  endpoints:
+    - {port: metrics, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: stork
+  namespace: monitoring
+  labels:
+    release: observability
+spec:
+  groups:
+    - name: home-server.stork
+      rules:
+        - alert: StorkUnavailable
+          expr: absent(up{namespace="network-services",service="stork-server"}) or max(up{namespace="network-services",service="stork-server"}) == 0
+          for: 5m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: ISC Stork is unavailable
+            description: The read-only Kea monitoring UI or its PostgreSQL dependency is unavailable. DHCP continues independently.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#isc-stork

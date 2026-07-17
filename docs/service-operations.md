@@ -171,9 +171,11 @@ Before implementing authentication for a new user-facing service:
    Authentik. Use authorization code flow with PKCE where the application
    supports it; do not enable implicit, password, device, or client-credential
    grants unless the application actually requires them.
-3. Keep the OIDC client secret in SOPS-encrypted Secrets and send only the
-   minimum required scopes. Prefer stable subject matching; never grant
-   administrator access merely because any Authentik user can authenticate.
+3. Use a public client with authorization code plus PKCE when the application
+   implements PKCE and does not need a client secret. Otherwise, keep the OIDC
+   client secret in SOPS-encrypted Secrets. Send only the minimum required
+   scopes, prefer stable subject matching, and never grant administrator access
+   merely because any Authentik user can authenticate.
 4. Add the Authentik issuer path to the workload's NetworkPolicy, including
    the split-horizon Traefik pre- and post-DNAT destinations. Verify discovery,
    login, callback, logout, and any official mobile client before exposure.
@@ -183,21 +185,36 @@ Before implementing authentication for a new user-facing service:
 
 Authentik's native-OIDC application state is repository-managed. Add each
 application as a separate blueprint document in the shared application
-blueprints module and add its provider-side secret to the shared encrypted OIDC
-client Secret. Add an explicit, required `secretKeyRef` for that key to the
-worker's existing OIDC environment list. This changes the pod template so the
-new key is loaded immediately and makes a missing key stop the pod instead of
-silently breaking only its blueprint. Do not add a new Authentik manifest or
-Deployment patch per application. Keep each application in a separate blueprint
-document so validation and reconciliation remain isolated.
+blueprints module. For a confidential client, add its provider-side secret to
+the shared encrypted OIDC client Secret and an explicit, required
+`secretKeyRef` for that key to the worker's existing OIDC environment list.
+This changes the pod template so the new key is loaded immediately and makes a
+missing key stop the pod instead of silently breaking only its blueprint. A
+reviewed PKCE public client has no Secret or worker environment entry. Do not
+add a new Authentik manifest or Deployment patch per application. Keep each
+application in a separate blueprint document so validation and reconciliation
+remain isolated.
 
-The relying application still needs the same client secret in its own
-namespace. Rotate both encrypted copies in one reviewed change, then restart
-the Authentik Deployment so the worker receives the new environment value.
-Verify that the provider and application blueprint instance is Successful before
-rolling the relying application. This duplication is preferable to adding a
-cluster-wide Secret replication controller or granting cross-namespace Secret
-access.
+For a confidential client, the relying application still needs the same client
+secret in its own namespace. Rotate both encrypted copies in one reviewed
+change, then restart the Authentik Deployment so the worker receives the new
+environment value. Verify that the provider and application blueprint instance
+is Successful before rolling the relying application. This duplication is
+preferable to adding a cluster-wide Secret replication controller or granting
+cross-namespace Secret access.
+
+ISC does not publish supported production Stork container images. Rebuild the
+pinned Stork server, non-root agent, and web UI targets only from the reviewed
+upstream tag and commit with:
+
+```bash
+scripts/build-stork-images.sh
+```
+
+The helper refuses a moved tag, applies the repository's minimal named-user
+patch to the agent target, publishes SBOM/provenance attestations, and prints
+the resulting manifest digests. Review upstream's development-release status
+and update all three pins together.
 
 If native integration is unavailable or unsuitable, record what upstream
 capability was checked, why it cannot be used, the chosen authentication
