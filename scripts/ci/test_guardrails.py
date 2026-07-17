@@ -28,6 +28,7 @@ def load_script(module_name: str, filename: str) -> ModuleType:
 
 
 policy = load_script("high_risk_policy", "check-high-risk-policy.py")
+git_pins = load_script("git_source_pins", "validate-git-source-pins.py")
 schema = load_script("prepare_schema_manifest", "prepare-schema-manifest.py")
 secrets = load_script("validate_secrets", "validate-secrets.py")
 
@@ -773,6 +774,85 @@ class HighRiskPolicyTests(unittest.TestCase):
         self.assertTrue(
             any(item.startswith("helm-externally-exposed-service|") for item in after)
         )
+
+
+class GitSourcePinValidationTests(unittest.TestCase):
+    @staticmethod
+    def source(tag: str = "v1.2.3", commit: str = "a" * 40) -> dict:
+        return {
+            "apiVersion": "source.toolkit.fluxcd.io/v1",
+            "kind": "GitRepository",
+            "metadata": {"name": "upstream", "namespace": "flux-system"},
+            "spec": {
+                "url": "https://example.invalid/upstream.git",
+                "ref": {"tag": tag, "commit": commit},
+            },
+        }
+
+    def test_matching_tag_and_commit_pass(self) -> None:
+        errors = git_pins.validate(
+            [self.source()],
+            resolver=lambda _url, _tag: "a" * 40,
+        )
+        self.assertEqual([], errors)
+
+    def test_mismatched_tag_and_commit_fail(self) -> None:
+        errors = git_pins.validate(
+            [self.source()],
+            resolver=lambda _url, _tag: "b" * 40,
+        )
+        self.assertEqual(1, len(errors))
+        self.assertIn("resolves to", errors[0])
+        self.assertIn("not declared commit", errors[0])
+
+    def test_tag_without_full_commit_fails_without_network_lookup(self) -> None:
+        resolver = mock.Mock()
+        errors = git_pins.validate([self.source(commit="main")], resolver=resolver)
+        self.assertEqual(1, len(errors))
+        self.assertIn("lacks a full immutable commit", errors[0])
+        resolver.assert_not_called()
+
+    def test_annotated_tag_uses_peeled_commit(self) -> None:
+        completed = mock.Mock(
+            returncode=0,
+            stdout=(
+                f"{'c' * 40}\trefs/tags/v1.2.3\n"
+                f"{'a' * 40}\trefs/tags/v1.2.3^{{}}\n"
+            ),
+            stderr="",
+        )
+        with mock.patch.object(
+            git_pins.subprocess, "run", return_value=completed
+        ) as run:
+            resolved = git_pins.resolve_remote_tag(
+                "https://example.invalid/upstream.git", "v1.2.3"
+            )
+        self.assertEqual("a" * 40, resolved)
+        command = run.call_args.args[0]
+        self.assertEqual("git", command[0])
+        self.assertIn("refs/tags/v1.2.3", command)
+        self.assertIn("refs/tags/v1.2.3^{}", command)
+        self.assertNotIn("shell", run.call_args.kwargs)
+        self.assertEqual("https", run.call_args.kwargs["env"]["GIT_ALLOW_PROTOCOL"])
+
+    def test_non_https_source_is_not_fetched(self) -> None:
+        with self.assertRaisesRegex(ValueError, "only HTTPS"):
+            git_pins.resolve_remote_tag("ext::malicious helper", "v1.2.3")
+
+    def test_remote_error_does_not_echo_a_credential_bearing_url(self) -> None:
+        completed = mock.Mock(
+            returncode=128,
+            stdout="",
+            stderr="fatal: https://token@example.invalid/upstream.git failed",
+        )
+        with (
+            mock.patch.object(git_pins.subprocess, "run", return_value=completed),
+            self.assertRaises(ValueError) as raised,
+        ):
+            git_pins.resolve_remote_tag(
+                "https://token@example.invalid/upstream.git", "v1.2.3"
+            )
+        self.assertNotIn("token@", str(raised.exception))
 
 
 class BootstrapIntegrityTests(unittest.TestCase):

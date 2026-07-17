@@ -144,6 +144,11 @@ jobs:
           "$RUNNER_TEMP/home-server.yaml"
           scripts/ci/high-risk-baseline.txt
 
+      - name: Verify Flux Git tag pins
+        run: >-
+          python3 scripts/ci/validate-git-source-pins.py
+          "$RUNNER_TEMP/home-server.yaml"
+
       - name: Render immutable Helm releases
         run: >-
           scripts/ci/render-helm-releases.sh
