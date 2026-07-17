@@ -5,7 +5,8 @@ cluster. Flux reconciles `main`; GitHub Actions validates the manifests but does
 not deploy them. The former Docker Compose deployment and SWAG edge are retired.
 
 For operating details, see the [cluster architecture](docs/architecture.md),
-the [service lifecycle manual](docs/service-operations.md), the
+the [service integration catalog](docs/service-catalog.md), the
+[service lifecycle manual](docs/service-operations.md), the
 [cluster and node operations manual](docs/cluster-operations.md), and the
 [incident runbook](docs/runbook.md).
 
@@ -44,6 +45,7 @@ Beelink control plane and the Pi NFS server are known single points of failure.
 | Task | Start here |
 | --- | --- |
 | Understand the topology, traffic, storage, and security boundaries | [Cluster architecture](docs/architecture.md) |
+| Register cross-service DNS, auth, Homepage, monitoring, placement, and backup intent | [Service integration catalog](docs/service-catalog.md) |
 | Add, modify, roll back, or retire an application | [Service lifecycle manual](docs/service-operations.md) |
 | Understand placement, add/remove a node, or move a workload | [Cluster and node operations manual](docs/cluster-operations.md) |
 | Diagnose an outage, reconcile Flux, or restore data | [Incident runbook](docs/runbook.md) |
@@ -86,13 +88,15 @@ cluster. Open WebUI remains the supported local LLM interface.
 ## GitOps workflow
 
 1. Change application or infrastructure manifests.
-2. Encrypt any new Secret with SOPS before it enters Git.
-3. Render and validate the cluster locally.
-4. Push a branch and open a pull request. The protected `main` branch requires
+2. Update `catalog/services.yaml` when service integration intent changes, then
+   run `python3 scripts/service_catalog.py render`.
+3. Encrypt any new Secret with SOPS before it enters Git.
+4. Render and validate the cluster locally.
+5. Push a branch and open a pull request. The protected `main` branch requires
    the validation workflow, including shell and Python checks, SOPS structure,
    Kustomize rendering, Kubernetes schemas, and the reviewed high-risk-policy
    baseline.
-5. Merge only after the required check passes. Flux then pulls the protected
+6. Merge only after the required check passes. Flux then pulls the protected
    `main` revision and reconciles it into the cluster.
 
 Useful local checks:
@@ -114,6 +118,7 @@ python3 scripts/ci/validate-secrets.py
   kubectl kustomize apps/syncthing/backups
 } >/tmp/home-server.yaml
 test -s /tmp/home-server.yaml
+python3 scripts/service_catalog.py check --rendered /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \
   /tmp/home-server.yaml scripts/ci/high-risk-baseline.txt
@@ -127,6 +132,7 @@ Kubernetes application and infrastructure manifests.
 
 ```text
 apps/                    application workloads, routes, policies, and secrets
+catalog/                 cross-service integration intent and generated-input data
 clusters/home-server/    Flux reconciliation entry point
 infrastructure/          K3s platform, storage, ingress, and host configuration
 scripts/                 host preparation, bootstrap, and migration helpers
