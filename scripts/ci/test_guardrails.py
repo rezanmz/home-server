@@ -473,7 +473,7 @@ class HighRiskPolicyTests(unittest.TestCase):
         self.assertTrue(any(item.startswith("pod-cidr-ip-allowlist|") for item in findings))
         self.assertTrue(any(item.endswith("/10.42.1.0/24") for item in findings))
 
-    def test_flux_kustomization_images_require_digests_and_exact_boundary(self) -> None:
+    def test_flux_kustomization_images_require_digests_and_structural_boundary(self) -> None:
         resource = {
             "apiVersion": "kustomize.toolkit.fluxcd.io/v1",
             "kind": "Kustomization",
@@ -484,6 +484,7 @@ class HighRiskPolicyTests(unittest.TestCase):
                     {
                         "name": "registry.example.invalid/controller",
                         "digest": "sha256:" + "a" * 64,
+                        "newTag": "v1.2.3",
                     }
                 ],
             },
@@ -494,9 +495,67 @@ class HighRiskPolicyTests(unittest.TestCase):
         )
         self.assertFalse(any(item.startswith("mutable-kustomize-image|") for item in findings))
 
+        resource["spec"]["images"][0]["digest"] = "sha256:" + "b" * 64
+        resource["spec"]["images"][0]["newTag"] = "v9.9.9"
+        self.assertEqual(findings, policy.detect([resource]))
+
+        resource["spec"]["images"][0]["newName"] = "registry.example.invalid/replacement"
+        self.assertNotEqual(findings, policy.detect([resource]))
+        resource["spec"]["images"][0].pop("newName")
+
         resource["spec"]["images"][0].pop("digest")
         findings = policy.detect([resource])
         self.assertTrue(any(item.startswith("mutable-kustomize-image|") for item in findings))
+
+    def test_pinned_git_source_updates_keep_the_security_boundary_stable(self) -> None:
+        resource = {
+            "apiVersion": "source.toolkit.fluxcd.io/v1",
+            "kind": "GitRepository",
+            "metadata": {"name": "upstream", "namespace": "flux-system"},
+            "spec": {
+                "url": "https://example.invalid/repository.git",
+                "ref": {"tag": "v1.2.3", "commit": "a" * 40},
+            },
+        }
+        before = policy.detect([resource])
+        resource["spec"]["ref"] = {"tag": "v9.9.9", "commit": "b" * 40}
+        self.assertEqual(before, policy.detect([resource]))
+
+        resource["spec"]["url"] = "https://other.example.invalid/repository.git"
+        self.assertNotEqual(before, policy.detect([resource]))
+
+    def test_pinned_oci_source_updates_keep_the_security_boundary_stable(self) -> None:
+        resource = {
+            "apiVersion": "source.toolkit.fluxcd.io/v1",
+            "kind": "OCIRepository",
+            "metadata": {"name": "upstream", "namespace": "flux-system"},
+            "spec": {
+                "url": "oci://registry.example.invalid/chart",
+                "ref": {"tag": "1.2.3", "digest": "sha256:" + "a" * 64},
+            },
+        }
+        before = policy.detect([resource])
+        resource["spec"]["ref"] = {
+            "tag": "9.9.9",
+            "digest": "sha256:" + "b" * 64,
+        }
+        self.assertEqual(before, policy.detect([resource]))
+
+        resource["spec"]["url"] = "oci://other.example.invalid/chart"
+        self.assertNotEqual(before, policy.detect([resource]))
+
+    def test_invalid_oci_digest_is_not_treated_as_an_immutable_pin(self) -> None:
+        resource = {
+            "apiVersion": "source.toolkit.fluxcd.io/v1",
+            "kind": "OCIRepository",
+            "metadata": {"name": "upstream", "namespace": "flux-system"},
+            "spec": {
+                "url": "oci://registry.example.invalid/chart",
+                "ref": {"tag": "1.2.3", "digest": "not-a-digest"},
+            },
+        }
+        findings = policy.detect([resource])
+        self.assertTrue(any(item.startswith("unpinned-oci-source|") for item in findings))
 
     def test_volume_snapshot_class_is_an_exact_boundary(self) -> None:
         resource = {
@@ -662,7 +721,7 @@ class HighRiskPolicyTests(unittest.TestCase):
         self.assertIn("network-policy-ingress-boundary", rules)
         self.assertIn("missing-default-deny", rules)
 
-    def test_exact_helm_release_change_alters_boundary(self) -> None:
+    def test_pinned_helm_release_updates_keep_the_security_boundary_stable(self) -> None:
         release = {
             "apiVersion": "helm.toolkit.fluxcd.io/v2",
             "kind": "HelmRelease",
@@ -674,14 +733,46 @@ class HighRiskPolicyTests(unittest.TestCase):
                         "version": "1.2.3",
                         "sourceRef": {"kind": "HelmRepository", "name": "example"},
                     }
-                }
+                },
+                "values": {
+                    "controller": {
+                        "image": {
+                            "repository": "registry.example.invalid/controller",
+                            "tag": "1.2.3",
+                            "digest": "sha256:" + "a" * 64,
+                        }
+                    },
+                    "extraContainers": (
+                        "- name: sidecar\n"
+                        "  image: registry.example.invalid/sidecar:1.2.3@sha256:"
+                        + "b" * 64
+                        + "\n"
+                    ),
+                    "service": {"type": "ClusterIP"},
+                },
             },
         }
         before = policy.detect([release])
         release["spec"]["chart"]["spec"]["version"] = "9.9.9"
+        release["spec"]["values"]["controller"]["image"]["tag"] = "9.9.9"
+        release["spec"]["values"]["controller"]["image"]["digest"] = (
+            "sha256:" + "c" * 64
+        )
+        release["spec"]["values"]["extraContainers"] = (
+            "- name: sidecar\n"
+            "  image: registry.example.invalid/sidecar:9.9.9@sha256:"
+            + "d" * 64
+            + "\n"
+        )
+        self.assertEqual(before, policy.detect([release]))
+
+        release["spec"]["values"]["service"]["type"] = "LoadBalancer"
         after = policy.detect([release])
         self.assertNotEqual(before, after)
         self.assertTrue(any(item.startswith("helm-release-boundary|") for item in after))
+        self.assertTrue(
+            any(item.startswith("helm-externally-exposed-service|") for item in after)
+        )
 
 
 class BootstrapIntegrityTests(unittest.TestCase):
