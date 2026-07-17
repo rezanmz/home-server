@@ -183,17 +183,21 @@ Before implementing authentication for a new user-facing service:
    Automate a fail-closed bootstrap or complete onboarding through a private
    path before the Service receives public traffic.
 
-Authentik's native-OIDC application state is repository-managed. Add each
-application as a separate blueprint document in the shared application
-blueprints module. For a confidential client, add its provider-side secret to
-the shared encrypted OIDC client Secret and an explicit, required
-`secretKeyRef` for that key to the worker's existing OIDC environment list.
-This changes the pod template so the new key is loaded immediately and makes a
-missing key stop the pod instead of silently breaking only its blueprint. A
-reviewed PKCE public client has no Secret or worker environment entry. Do not
-add a new Authentik manifest or Deployment patch per application. Keep each
-application in a separate blueprint document so validation and reconciliation
-remain isolated.
+Authentik's native-OIDC application state is repository-managed through the
+service integration catalog. Declare the fixed `authentik-oidc-v1` profile,
+client type, exact callbacks, scopes, and application identity in the
+service's colocated descriptor. The catalog compiler generates that
+application's separate blueprint document inside the shared ConfigMap.
+
+For a confidential client, add its provider-side secret to the shared encrypted
+OIDC client Secret and the same value to the relying application's encrypted
+Secret. The compiler derives and generates the worker's required
+`secretKeyRef`; a new client therefore changes the pod template, and a missing
+key stops the pod instead of silently breaking only its blueprint. A reviewed
+PKCE public client has no Secret or worker environment entry. Run `render`,
+inspect the generated diffs, and use `explain <service-id>` before `check`.
+Never edit the aggregate Authentik blueprint or generated worker patch directly,
+and do not add a per-application Authentik manifest or Deployment patch.
 
 For a confidential client, the relying application still needs the same client
 secret in its own namespace. Rotate both encrypted copies in one reviewed
