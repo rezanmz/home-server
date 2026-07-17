@@ -164,7 +164,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgres
-          image: postgres:14@sha256:9e279cc7fc6e908da071befe389c576bd6752dbd295a9c078f96a75bab03e54c
+          image: postgres:14@sha256:caf49e3b10d377aa2cfee478591d623808527beb27125d38797b418013f72d81
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_USER
@@ -340,7 +340,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: redis
-          image: redis:8.8.0@sha256:77cb4599f0121142e25139cea1aafaf45fe765c74a0a41b38f4a4ea9fc8cb846
+          image: redis:8.8.0@sha256:234c902a2db49461a129e2d4aeff85b28cf20187ed274a67f6e50995fa713c7b
           imagePullPolicy: IfNotPresent
           args: [redis-server, --appendonly, "yes"]
           ports:

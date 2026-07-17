@@ -53,7 +53,7 @@ spec:
         - name: mcphub
           # The -full variant adds Docker-in-Docker, Rust, and browsers. This
           # deployment needs none of those host-like facilities.
-          image: samanhappy/mcphub:1.0.23@sha256:8506357765ad7322bf1ef2cceaef31f0e4f1e6b7595e25643ebd46fe124c0a63
+          image: samanhappy/mcphub:1.0.24@sha256:2a1d22d636b437194b68ff30dd333b52e17da25492abe1e6ac5976653ae383a1
           imagePullPolicy: IfNotPresent
           env:
             - name: HOME
@@ -123,7 +123,7 @@ spec:
               mountPath: /app/data
               subPath: data
         - name: access-proxy
-          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
+          image: nginx:1.31.3-alpine@sha256:2776cd5b70d8983e27e9f5c90abee3d24c690014ae8ecbb529572d954a459096
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
@@ -183,7 +183,7 @@ spec:
       automountServiceAccountToken: false
       initContainers:
         - name: prepare-postgres-data
-          image: busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
           command: [sh, -ec, "mkdir -p /var/lib/postgresql/data/pgdata && chown 999:999 /var/lib/postgresql/data/pgdata"]
           securityContext:
             runAsNonRoot: true
