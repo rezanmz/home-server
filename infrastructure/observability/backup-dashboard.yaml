@@ -33,7 +33,7 @@ data:
           "targetBlank": true,
           "title": "Longhorn operations",
           "type": "link",
-          "url": "https://longhorn.reza.network/"
+          "url": "https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#storage"
         }
       ],
       "panels": [

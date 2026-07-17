@@ -114,20 +114,20 @@ spec:
           ports:
             - {name: http-metrics, containerPort: 9547, protocol: TCP}
           readinessProbe:
-            exec:
-              command:
-                - /usr/local/bin/python
-                - -c
-                - import urllib.request; urllib.request.urlopen('http://10.42.0.1:9547/metrics', timeout=2).read(1)
+            httpGet:
+              host: 10.42.0.1
+              port: 9547
+              path: /metrics
+              scheme: HTTP
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
           livenessProbe:
-            exec:
-              command:
-                - /usr/local/bin/python
-                - -c
-                - import urllib.request; urllib.request.urlopen('http://10.42.0.1:9547/metrics', timeout=3).read(1)
+            httpGet:
+              host: 10.42.0.1
+              port: 9547
+              path: /metrics
+              scheme: HTTP
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
