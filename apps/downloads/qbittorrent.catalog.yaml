@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: qbittorrent
+spec:
+  name: qBittorrent
+  workload:
+    namespace: media
+    app: media-vpn
+  homepage:
+    order: 10
+    group: Downloads & Automation
+    icon: qbittorrent.png
+    description: VPN-routed downloads
+  web:
+    hostname: qbittorrent.reza.network
+    route: apps/downloads/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: qBittorrent uses its built-in Web UI authentication behind the LAN/WireGuard boundary.
+  placement:
+    mode: beelink
+    manifest: apps/downloads/deployment.yaml
+    reason: Runs in the shared Gluetun network namespace and mounts shared Longhorn RWO claims.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/downloads/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects application configuration; downloaded NFS media is reproducible.
+  observability:
+    mode: kubernetes

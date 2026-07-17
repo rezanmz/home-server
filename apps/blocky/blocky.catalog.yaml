@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: blocky
+spec:
+  name: Blocky DNS
+  workload:
+    namespace: network-services
+    app: blocky
+  homepage:
+    order: 10
+    group: Infrastructure
+    icon: mdi-dns
+    description: Filtering DNS on the Pi
+    link: false
+  placement:
+    mode: raspberrypi
+    manifest: apps/blocky/deployment.yaml
+    reason: Preserves the established LAN resolver address and host-network binding.
+  data:
+    class: longhorn-observability
+    protection: excluded-observability
+    manifests: [apps/blocky/pvc.yaml]
+    note: The denylist cache is reproducible and deliberately excluded from off-site backups.
+  observability:
+    mode: metrics
+    manifests:
+      - apps/blocky/metrics.yaml
+      - infrastructure/observability/network-services-dashboard.yaml

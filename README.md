@@ -6,6 +6,7 @@ not deploy them. The former Docker Compose deployment and SWAG edge are retired.
 
 For operating details, see the [cluster architecture](docs/architecture.md),
 the [service integration catalog](docs/service-catalog.md), the
+[catalog design decision](docs/service-catalog-design.md), the
 [service lifecycle manual](docs/service-operations.md), the
 [cluster and node operations manual](docs/cluster-operations.md), and the
 [incident runbook](docs/runbook.md).
@@ -46,6 +47,7 @@ Beelink control plane and the Pi NFS server are known single points of failure.
 | --- | --- |
 | Understand the topology, traffic, storage, and security boundaries | [Cluster architecture](docs/architecture.md) |
 | Register cross-service DNS, auth, Homepage, monitoring, placement, and backup intent | [Service integration catalog](docs/service-catalog.md) |
+| Understand why the catalog is designed this way or extend its compiler | [Catalog design decision](docs/service-catalog-design.md) |
 | Add, modify, roll back, or retire an application | [Service lifecycle manual](docs/service-operations.md) |
 | Understand placement, add/remove a node, or move a workload | [Cluster and node operations manual](docs/cluster-operations.md) |
 | Diagnose an outage, reconcile Flux, or restore data | [Incident runbook](docs/runbook.md) |
@@ -88,8 +90,9 @@ cluster. Open WebUI remains the supported local LLM interface.
 ## GitOps workflow
 
 1. Change application or infrastructure manifests.
-2. Update `catalog/services.yaml` when service integration intent changes, then
-   run `python3 scripts/service_catalog.py render`.
+2. Add or update the colocated `<service-id>.catalog.yaml` descriptor when
+   integration intent changes, then run
+   `python3 scripts/service_catalog.py render`.
 3. Encrypt any new Secret with SOPS before it enters Git.
 4. Render and validate the cluster locally.
 5. Push a branch and open a pull request. The protected `main` branch requires

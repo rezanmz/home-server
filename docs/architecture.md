@@ -319,26 +319,27 @@ required ingress and egress. Administrative routes use LAN/WireGuard allow
 lists. SOPS/age-encrypted Secret manifests are safe to store in the public
 repository; the private age identity remains root-only outside Git.
 
-Authentik's native OIDC providers and applications are also desired state. One
-shared ConfigMap mounts a separate, independently reconciled blueprint document
-for each relying application, while one aggregate SOPS Secret supplies
-confidential clients' provider-side secrets to the worker. Each confidential
-key is referenced explicitly in the worker's shared OIDC environment list so
-adding a client rolls the pod and a missing key fails visibly. PKCE-capable
-public clients such as Stork deliberately have no shared secret. Adding an OIDC
-client therefore changes those shared resources and the relying application
-only; it does not add a per-service Authentik manifest or Deployment patch.
+Authentik's native OIDC providers and applications are also desired state. The
+service catalog generates one aggregate ConfigMap containing a separate
+blueprint document for each relying application, while one aggregate SOPS
+Secret supplies confidential clients' provider-side secrets to the worker.
+The catalog also generates the worker's exact `secretKeyRef` patch, so adding a
+confidential client rolls the pod and a missing key fails visibly. PKCE-capable
+public clients such as Stork deliberately have no shared secret. The relying
+application's own OIDC configuration and authorization rules remain explicit.
 
-Cross-service integration intent is centralized in `catalog/services.yaml`.
-The catalog records every active service's Homepage card or explicit omission,
-route exposure, DNS participation, authentication mode, desired placement,
-storage protection, and observability level. A build-time tool generates the
-Homepage service list plus the Cloudflare DDNS and Blocky split-DNS regions.
-CI compares those generated files, the Authentik blueprint references, pinned
-placement manifests, supporting monitoring/storage files, and every rendered
-`*.reza.network` HTTPRoute. This is deliberately not a cluster controller:
-service-specific runtime configuration remains in ordinary manifests and Flux
-does not gain another privileged reconciler.
+Cross-service integration intent is decentralized into versioned
+`<service-id>.catalog.yaml` descriptors beside the manifests they describe.
+`catalog/cluster.yaml` contains only genuine cluster-wide facts. Each service
+records its Homepage card or explicit omission, route exposure, DNS
+participation, authentication mode, desired placement, storage protection,
+and observability level. A build-time compiler generates the Homepage service
+list, Cloudflare DDNS and Blocky split-DNS regions, Authentik blueprints, and
+the Authentik worker secret-reference patch. CI compares those generated
+files, pinned placement manifests, supporting monitoring/storage files, and
+every rendered `*.reza.network` HTTPRoute. This is deliberately not a cluster
+controller: service-specific runtime configuration remains in ordinary
+manifests and Flux does not gain another privileged reconciler.
 
 The metrics path is deliberately separate from the event-notification path.
 Prometheus scrapes K3s, kube-state-metrics, both node exporters, Longhorn,

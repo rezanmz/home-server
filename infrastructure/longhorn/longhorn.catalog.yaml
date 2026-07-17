@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: longhorn
+spec:
+  name: Longhorn
+  workload:
+    namespace: longhorn-system
+    app: longhorn
+  homepage:
+    order: 30
+    group: Infrastructure
+    icon: longhorn.png
+    description: Replicated persistent storage
+    link: false
+  placement:
+    mode: every-node
+    reason: Managers, CSI components, engines, and replicas run across eligible storage nodes.
+  data:
+    class: platform
+    protection: platform-managed
+    manifests: [infrastructure/longhorn/release.yaml]
+    note: Longhorn is the block-storage and B2 backup substrate rather than an application data consumer.
+  observability:
+    mode: platform
+    manifests:
+      - infrastructure/observability/release.yaml
+      - infrastructure/observability/dashboard.yaml
+      - infrastructure/observability/backup-dashboard.yaml

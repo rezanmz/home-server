@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -13,6 +15,7 @@ import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,13 +25,22 @@ sys.path.insert(0, str(CI_DIR))
 from yaml_documents import ManifestError, load_documents  # noqa: E402
 
 
-CATALOG_PATH = REPO_ROOT / "catalog" / "services.yaml"
+CATALOG_CONFIG_PATH = REPO_ROOT / "catalog" / "cluster.yaml"
+LEGACY_CATALOG_PATH = REPO_ROOT / "catalog" / "services.yaml"
+CATALOG_API_VERSION = "catalog.reza.network/v1alpha1"
+CATALOG_SEARCH_ROOTS = (
+    REPO_ROOT / "apps",
+    REPO_ROOT / "infrastructure",
+    REPO_ROOT / "clusters",
+)
 HOMEPAGE_PATH = REPO_ROOT / "apps" / "homepage" / "config" / "services.yaml"
 CLOUDFLARE_KUSTOMIZATION = REPO_ROOT / "apps" / "cloudflare-ddns" / "kustomization.yaml"
 BLOCKY_CONFIG = REPO_ROOT / "apps" / "blocky" / "config.yml"
 ROOT_KUSTOMIZATION = REPO_ROOT / "clusters" / "home-server" / "kustomization.yaml"
 AUTHENTIK_BLUEPRINTS = REPO_ROOT / "apps" / "authentik" / "application-blueprints.yaml"
-AUTHENTIK_WORKLOADS = REPO_ROOT / "apps" / "authentik" / "workloads.yaml"
+AUTHENTIK_WORKER_PATCH = (
+    REPO_ROOT / "apps" / "authentik" / "generated-oidc-worker-env.yaml"
+)
 
 DDNS_START = "      # BEGIN SERVICE CATALOG GENERATED DOMAINS"
 DDNS_END = "      # END SERVICE CATALOG GENERATED DOMAINS"
@@ -60,6 +72,10 @@ ALLOWED_PLACEMENT = {
     "platform",
     "raspberrypi",
 }
+DNS_LABEL_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+AUTHENTIK_IDENTIFIER_PATTERN = re.compile(
+    r"^[A-Za-z0-9](?:[A-Za-z0-9_.:-]{0,126}[A-Za-z0-9])?$"
+)
 
 
 class CatalogError(RuntimeError):
@@ -77,6 +93,26 @@ def repo_path(value: str) -> Path:
     return candidate
 
 
+def is_dns_name(value: str) -> bool:
+    """Return whether value is a lowercase DNS name accepted by the generators."""
+
+    if len(value) > 253 or value.endswith("."):
+        return False
+    return all(DNS_LABEL_PATTERN.fullmatch(label) for label in value.split("."))
+
+
+def is_same_host_https_url(value: str, hostname: str) -> bool:
+    """Reject credentials, ports, fragments, and cross-origin generated URLs."""
+
+    parsed = urlparse(value)
+    return (
+        parsed.scheme == "https"
+        and parsed.netloc == hostname
+        and (not parsed.path or parsed.path.startswith("/"))
+        and not parsed.fragment
+    )
+
+
 def load_single_document(path: Path) -> dict[str, Any]:
     documents = [document for document in load_documents(path) if document is not None]
     if len(documents) != 1 or not isinstance(documents[0], dict):
@@ -85,7 +121,107 @@ def load_single_document(path: Path) -> dict[str, Any]:
 
 
 def load_catalog() -> dict[str, Any]:
-    return load_single_document(CATALOG_PATH)
+    config = load_single_document(CATALOG_CONFIG_PATH)
+    config_unknown = set(config) - {"apiVersion", "kind", "metadata", "spec"}
+    if config_unknown:
+        raise CatalogError(
+            "catalog/cluster.yaml contains unknown field(s): "
+            + ", ".join(sorted(config_unknown))
+        )
+    if config.get("apiVersion") != CATALOG_API_VERSION:
+        raise CatalogError(
+            f"catalog/cluster.yaml apiVersion must be {CATALOG_API_VERSION}"
+        )
+    if config.get("kind") != "ClusterCatalog":
+        raise CatalogError("catalog/cluster.yaml kind must be ClusterCatalog")
+    metadata = config.get("metadata")
+    spec = config.get("spec")
+    if not isinstance(metadata, dict) or not isinstance(spec, dict):
+        raise CatalogError("catalog/cluster.yaml requires metadata and spec mappings")
+    metadata_unknown = set(metadata) - {"name"}
+    if metadata_unknown:
+        raise CatalogError(
+            "catalog/cluster.yaml metadata contains unknown field(s): "
+            + ", ".join(sorted(metadata_unknown))
+        )
+    spec_unknown = set(spec) - {"authentik", "dns", "domain", "homepage"}
+    if spec_unknown:
+        raise CatalogError(
+            "catalog/cluster.yaml spec contains unknown field(s): "
+            + ", ".join(sorted(spec_unknown))
+        )
+
+    catalog: dict[str, Any] = {
+        "version": 2,
+        "domain": spec.get("domain"),
+        "dns": spec.get("dns"),
+        "homepage": spec.get("homepage"),
+        "authentik": spec.get("authentik"),
+        "registrationExclusions": [],
+        "services": [],
+    }
+    descriptor_paths = sorted(
+        path
+        for root in CATALOG_SEARCH_ROOTS
+        for path in root.rglob("*.catalog.yaml")
+        if path.is_file()
+    )
+    if not descriptor_paths:
+        raise CatalogError("no colocated *.catalog.yaml descriptors were found")
+
+    for path in descriptor_paths:
+        documents = [document for document in load_documents(path) if document is not None]
+        if len(documents) != 1 or not isinstance(documents[0], dict):
+            raise CatalogError(
+                f"{path.relative_to(REPO_ROOT)} must contain one YAML mapping"
+            )
+        document = documents[0]
+        relative = path.relative_to(REPO_ROOT)
+        unknown = set(document) - {"apiVersion", "kind", "metadata", "spec"}
+        if unknown:
+            raise CatalogError(
+                f"{relative} contains unknown top-level field(s): "
+                + ", ".join(sorted(unknown))
+            )
+        if document.get("apiVersion") != CATALOG_API_VERSION:
+            raise CatalogError(
+                f"{relative} apiVersion must be {CATALOG_API_VERSION}"
+            )
+        metadata = document.get("metadata")
+        spec = document.get("spec")
+        if not isinstance(metadata, dict) or not isinstance(spec, dict):
+            raise CatalogError(f"{relative} requires metadata and spec mappings")
+        metadata_unknown = set(metadata) - {"name"}
+        if metadata_unknown:
+            raise CatalogError(
+                f"{relative} metadata contains unknown field(s): "
+                + ", ".join(sorted(metadata_unknown))
+            )
+        service_id = metadata.get("name")
+        if not isinstance(service_id, str) or not service_id:
+            raise CatalogError(f"{relative} metadata.name must be a non-empty string")
+
+        kind = document.get("kind")
+        if kind == "Service":
+            service = dict(spec)
+            service["id"] = service_id
+            service["path"] = str(path.parent.relative_to(REPO_ROOT))
+            service["_source"] = str(relative)
+            catalog["services"].append(service)
+        elif kind == "CatalogExclusion":
+            catalog["registrationExclusions"].append(
+                {
+                    "path": str(path.parent.relative_to(REPO_ROOT)),
+                    "reason": spec.get("reason"),
+                    "_source": str(relative),
+                }
+            )
+        else:
+            raise CatalogError(
+                f"{relative} kind must be Service or CatalogExclusion"
+            )
+
+    return catalog
 
 
 def yaml_from_json(value: Any) -> str:
@@ -141,7 +277,7 @@ def homepage_document(catalog: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(homepage, dict) or not isinstance(homepage.get("groups"), list):
         raise CatalogError("catalog.homepage.groups must be a list")
 
-    grouped: dict[str, list[dict[str, Any]]] = {
+    grouped: dict[str, list[tuple[int, str, dict[str, Any]]]] = {
         group: [] for group in homepage["groups"] if isinstance(group, str)
     }
     for service in services(catalog):
@@ -170,9 +306,20 @@ def homepage_document(catalog: dict[str, Any]) -> list[dict[str, Any]]:
             elif workload.get("podSelector") is not None:
                 details["podSelector"] = workload["podSelector"]
 
-        grouped[group].append({service.get("name"): details})
+        order = card.get("order", 1000)
+        grouped[group].append((order, str(service.get("name")), {service.get("name"): details}))
 
-    return [{group: cards} for group, cards in grouped.items()]
+    return [
+        {
+            group: [
+                card
+                for _, _, card in sorted(
+                    cards, key=lambda item: (item[0], item[1].casefold())
+                )
+            ]
+        }
+        for group, cards in grouped.items()
+    ]
 
 
 def dns_hostnames(catalog: dict[str, Any], key: str) -> list[str]:
@@ -190,9 +337,236 @@ def dns_hostnames(catalog: dict[str, Any], key: str) -> list[str]:
     return sorted({name for name in names if isinstance(name, str)})
 
 
+def authentik_secret_key(service_id: str) -> str:
+    normalized = re.sub(r"[^A-Z0-9]+", "_", service_id.upper()).strip("_")
+    return f"AUTHENTIK_OIDC_{normalized}_CLIENT_SECRET"
+
+
+def yaml_string(value: str) -> str:
+    """Return a deterministic double-quoted YAML scalar."""
+
+    return json.dumps(value, ensure_ascii=False)
+
+
+MANAGED_SCOPE_MAPPINGS = {
+    "openid": "goauthentik.io/providers/oauth2/scope-openid",
+    "email": "goauthentik.io/providers/oauth2/scope-email",
+    "profile": "goauthentik.io/providers/oauth2/scope-profile",
+    "offline_access": "goauthentik.io/providers/oauth2/scope-offline_access",
+}
+
+
+def authentik_oidc_blueprint(service: dict[str, Any], auth: dict[str, Any]) -> str:
+    service_id = str(service["id"])
+    name = str(service["name"])
+    application = auth["application"]
+    client = auth["client"]
+    slug = str(application["slug"])
+    provider_id = f"{slug}-provider"
+    blueprint_name = str(auth.get("blueprintName", f"{name} OIDC"))
+    provider_name = str(auth.get("providerName", f"Provider for {name}"))
+
+    lines = [
+        "version: 1",
+        "metadata:",
+        f"  name: {yaml_string(blueprint_name)}",
+        "  labels:",
+        '    blueprints.goauthentik.io/instantiate: "true"',
+        "entries:",
+    ]
+    for mapping in auth.get("claimMappings", []):
+        lines.extend(
+            [
+                "  - model: authentik_providers_oauth2.scopemapping",
+                f"    id: {mapping['id']}",
+                "    identifiers:",
+                f"      name: {yaml_string(str(mapping['name']))}",
+                "    attrs:",
+                f"      scope_name: {mapping['scope']}",
+                f"      description: {yaml_string(str(mapping['description']))}",
+                "      expression: |",
+            ]
+        )
+        expression = str(mapping["expression"]).rstrip("\n")
+        lines.extend(f"        {line}" for line in expression.splitlines())
+
+    lines.extend(
+        [
+            "  - model: authentik_providers_oauth2.oauth2provider",
+            f"    id: {provider_id}",
+            "    identifiers:",
+            f"      name: {yaml_string(provider_name)}",
+            "    attrs:",
+            "      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]",
+            "      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]",
+            f"      client_type: {client['type']}",
+            f"      client_id: {yaml_string(str(client['id']))}",
+        ]
+    )
+    if client["type"] == "confidential":
+        lines.append(
+            f"      client_secret: !Env [{authentik_secret_key(service_id)}, null]"
+        )
+    grants = ", ".join(str(item) for item in client["grantTypes"])
+    lines.extend(
+        [
+            f"      grant_types: [{grants}]",
+            "      issuer_mode: per_provider",
+            "      include_claims_in_id_token: true",
+            "      redirect_uris:",
+        ]
+    )
+    for redirect in client["redirectUris"]:
+        lines.extend(
+            [
+                "        - matching_mode: strict",
+                f"          url: {yaml_string(str(redirect['url']))}",
+                f"          redirect_uri_type: {redirect['type']}",
+            ]
+        )
+    lines.append("      property_mappings:")
+    for scope in client["scopes"]:
+        managed = MANAGED_SCOPE_MAPPINGS[scope]
+        lines.append(
+            "        - !Find "
+            f"[authentik_providers_oauth2.scopemapping, [managed, {managed}]]"
+        )
+    for mapping in auth.get("claimMappings", []):
+        lines.append(f"        - !KeyOf {mapping['id']}")
+    lines.extend(
+        [
+            "      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]",
+            "  - model: authentik_core.application",
+            "    identifiers:",
+            f"      slug: {slug}",
+            "    attrs:",
+            f"      name: {yaml_string(name)}",
+            f"      provider: !KeyOf {provider_id}",
+        ]
+    )
+    launch_url = application.get("launchUrl")
+    if isinstance(launch_url, str):
+        lines.append(f"      meta_launch_url: {yaml_string(launch_url)}")
+    return "\n".join(lines) + "\n"
+
+
+def authentik_forward_blueprint(service: dict[str, Any], auth: dict[str, Any]) -> str:
+    name = str(service["name"])
+    hostname = str(service["web"]["hostname"])
+    application = auth["application"]
+    slug = str(application["slug"])
+    provider_id = f"{slug}-provider"
+    blueprint_name = str(
+        auth.get("blueprintName", f"{name} proxy authentication")
+    )
+    provider_name = str(auth.get("providerName", f"Provider for {name}"))
+    launch_url = str(application.get("launchUrl", f"https://{hostname}/"))
+    return "\n".join(
+        [
+            "version: 1",
+            "metadata:",
+            f"  name: {yaml_string(blueprint_name)}",
+            "  labels:",
+            '    blueprints.goauthentik.io/instantiate: "true"',
+            "entries:",
+            "  - model: authentik_providers_proxy.proxyprovider",
+            f"    id: {provider_id}",
+            "    identifiers:",
+            f"      name: {yaml_string(provider_name)}",
+            "    attrs:",
+            "      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]",
+            "      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]",
+            "      mode: forward_single",
+            f"      external_host: {yaml_string(f'https://{hostname}')}",
+            "  - model: authentik_core.application",
+            "    identifiers:",
+            f"      slug: {slug}",
+            "    attrs:",
+            f"      name: {yaml_string(name)}",
+            f"      provider: !KeyOf {provider_id}",
+            f"      meta_launch_url: {yaml_string(launch_url)}",
+            "  - model: authentik_outposts.outpost",
+            "    identifiers:",
+            "      name: authentik Embedded Outpost",
+            "    attrs:",
+            "      providers:",
+            f"        - !KeyOf {provider_id}",
+            "",
+        ]
+    )
+
+
+def authentik_blueprints_document(catalog: dict[str, Any]) -> str:
+    entries: list[tuple[str, str]] = []
+    for service in sorted(services(catalog), key=lambda item: str(item.get("id"))):
+        auth = service.get("web", {}).get("auth", {})
+        mode = auth.get("mode")
+        if mode == "oidc":
+            entries.append(
+                (f"{service['id']}.yaml", authentik_oidc_blueprint(service, auth))
+            )
+        elif mode == "forward-auth":
+            entries.append(
+                (f"{service['id']}.yaml", authentik_forward_blueprint(service, auth))
+            )
+
+    lines = [
+        "# Generated from colocated *.catalog.yaml descriptors by scripts/service_catalog.py.",
+        "# Do not edit this file directly; run: python3 scripts/service_catalog.py render",
+        "apiVersion: v1",
+        "kind: ConfigMap",
+        "metadata:",
+        "  name: authentik-application-blueprints",
+        "  namespace: apps",
+        "data:",
+    ]
+    for key, blueprint in entries:
+        lines.append(f"  {key}: |")
+        lines.extend(f"    {line}" for line in blueprint.rstrip("\n").splitlines())
+    return "\n".join(lines) + "\n"
+
+
+def authentik_worker_patch(catalog: dict[str, Any]) -> str:
+    authentik = catalog.get("authentik", {})
+    secret = authentik.get("providerSecret", {})
+    entries = [
+        service
+        for service in services(catalog)
+        if service.get("web", {}).get("auth", {}).get("mode") == "oidc"
+        and service["web"]["auth"].get("client", {}).get("type") == "confidential"
+    ]
+    lines = [
+        "# Generated from colocated *.catalog.yaml descriptors by scripts/service_catalog.py.",
+        "# Do not edit this file directly; run: python3 scripts/service_catalog.py render",
+        "apiVersion: apps/v1",
+        "kind: Deployment",
+        "metadata:",
+        "  name: authentik",
+        f"  namespace: {authentik.get('namespace', 'apps')}",
+        "spec:",
+        "  template:",
+        "    spec:",
+        "      containers:",
+        "        - name: worker",
+        "          env:",
+    ]
+    for service in sorted(entries, key=lambda item: str(item["id"])):
+        key = authentik_secret_key(str(service["id"]))
+        lines.extend(
+            [
+                f"            - name: {key}",
+                "              valueFrom:",
+                "                secretKeyRef:",
+                f"                  name: {secret.get('name')}",
+                f"                  key: {key}",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
 def generated_outputs(catalog: dict[str, Any]) -> dict[Path, str]:
     header = (
-        "# Generated from catalog/services.yaml by scripts/service_catalog.py.\n"
+        "# Generated from colocated *.catalog.yaml descriptors by scripts/service_catalog.py.\n"
         "# Do not edit this file directly; run: python3 scripts/service_catalog.py render\n"
     )
     homepage = header + yaml_from_json(homepage_document(catalog))
@@ -225,18 +599,45 @@ def generated_outputs(catalog: dict[str, Any]) -> dict[Path, str]:
         HOMEPAGE_PATH: homepage,
         CLOUDFLARE_KUSTOMIZATION: cloudflare,
         BLOCKY_CONFIG: blocky,
+        AUTHENTIK_BLUEPRINTS: authentik_blueprints_document(catalog),
+        AUTHENTIK_WORKER_PATCH: authentik_worker_patch(catalog),
     }
 
 
 def render(catalog: dict[str, Any]) -> None:
-    for path, content in generated_outputs(catalog).items():
-        path.write_text(content)
+    errors: list[str] = []
+    validate_catalog_structure(catalog, errors)
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        raise CatalogError(
+            f"catalog input validation failed with {len(errors)} error(s); "
+            "no generated files were changed"
+        )
+
+    outputs = generated_outputs(catalog)
+    for path, content in outputs.items():
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=path.parent,
+                prefix=f".{path.name}.",
+                delete=False,
+            ) as handle:
+                handle.write(content)
+                temporary = Path(handle.name)
+            os.replace(temporary, path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
         print(f"Rendered {path.relative_to(REPO_ROOT)}")
 
 
 def validate_generated_outputs(catalog: dict[str, Any], errors: list[str]) -> None:
     for path, expected in generated_outputs(catalog).items():
-        if path.read_text() != expected:
+        if not path.is_file() or path.read_text() != expected:
             errors.append(
                 f"{path.relative_to(REPO_ROOT)} is stale; run "
                 "python3 scripts/service_catalog.py render"
@@ -257,6 +658,16 @@ def require_nonempty_string(value: Any, label: str, errors: list[str]) -> str | 
         errors.append(f"{label} must be a non-empty string")
         return None
     return value
+
+
+def reject_unknown(
+    value: dict[str, Any],
+    allowed: set[str],
+    label: str,
+    errors: list[str],
+) -> None:
+    for key in sorted(set(value) - allowed):
+        errors.append(f"{label} contains unknown field: {key}")
 
 
 def referenced_paths(value: Any, label: str, errors: list[str]) -> list[Path]:
@@ -364,19 +775,6 @@ def is_registered(path: Path, roots: set[Path]) -> bool:
     return False
 
 
-def blueprint_data(errors: list[str]) -> dict[str, str]:
-    try:
-        document = load_single_document(AUTHENTIK_BLUEPRINTS)
-    except (CatalogError, ManifestError) as error:
-        errors.append(str(error))
-        return {}
-    data = document.get("data")
-    if not isinstance(data, dict):
-        errors.append("apps/authentik/application-blueprints.yaml data must be a mapping")
-        return {}
-    return {key: value for key, value in data.items() if isinstance(value, str)}
-
-
 def route_hostnames(path: Path, errors: list[str]) -> set[str]:
     try:
         documents = load_documents(path)
@@ -394,12 +792,24 @@ def route_hostnames(path: Path, errors: list[str]) -> set[str]:
 
 
 def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> None:
-    if catalog.get("version") != 1:
-        errors.append("catalog.version must be 1")
+    if catalog.get("version") != 2:
+        errors.append("catalog.version must be 2")
+    if LEGACY_CATALOG_PATH.exists():
+        errors.append(
+            "catalog/services.yaml is the retired monolithic source; service "
+            "intent belongs in colocated *.catalog.yaml descriptors"
+        )
+
+    domain = require_nonempty_string(
+        catalog.get("domain"), "catalog.domain", errors
+    )
+    if domain is not None and not is_dns_name(domain):
+        errors.append("catalog.domain must be a lowercase DNS name")
 
     homepage = require_mapping(catalog.get("homepage"), "catalog.homepage", errors)
     groups: list[str] = []
     if homepage is not None:
+        reject_unknown(homepage, {"groups"}, "catalog.homepage", errors)
         raw_groups = homepage.get("groups")
         if not isinstance(raw_groups, list) or not raw_groups:
             errors.append("catalog.homepage.groups must be a non-empty list")
@@ -410,22 +820,110 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
 
     dns = require_mapping(catalog.get("dns"), "catalog.dns", errors)
     if dns is not None:
-        require_nonempty_string(
+        reject_unknown(
+            dns,
+            {"extraPublicNames", "splitHorizonAddress"},
+            "catalog.dns",
+            errors,
+        )
+        split_horizon_address = require_nonempty_string(
             dns.get("splitHorizonAddress"),
             "catalog.dns.splitHorizonAddress",
             errors,
         )
+        if split_horizon_address is not None:
+            try:
+                ipaddress.ip_address(split_horizon_address)
+            except ValueError:
+                errors.append(
+                    "catalog.dns.splitHorizonAddress must be an IP address"
+                )
         extras = dns.get("extraPublicNames")
         if not isinstance(extras, list) or not all(
             isinstance(item, str) and item for item in extras
         ):
             errors.append("catalog.dns.extraPublicNames must be a list of hostnames")
+        elif domain is not None:
+            for item in extras:
+                if not is_dns_name(item) or not (
+                    item == domain or item.endswith(f".{domain}")
+                ):
+                    errors.append(
+                        "catalog.dns.extraPublicNames entries must be valid names "
+                        f"at or below {domain}: {item}"
+                    )
+
+    authentik = require_mapping(
+        catalog.get("authentik"), "catalog.authentik", errors
+    )
+    provider_secret_manifest: str | None = None
+    provider_secret_name: str | None = None
+    if authentik is not None:
+        reject_unknown(
+            authentik,
+            {"baseUrl", "namespace", "providerSecret"},
+            "catalog.authentik",
+            errors,
+        )
+        base_url = require_nonempty_string(
+            authentik.get("baseUrl"), "catalog.authentik.baseUrl", errors
+        )
+        if base_url is not None:
+            parsed_base_url = urlparse(base_url)
+            if (
+                parsed_base_url.scheme != "https"
+                or not parsed_base_url.hostname
+                or parsed_base_url.netloc != parsed_base_url.hostname
+                or parsed_base_url.path not in {"", "/"}
+                or parsed_base_url.params
+                or parsed_base_url.query
+                or parsed_base_url.fragment
+            ):
+                errors.append(
+                    "catalog.authentik.baseUrl must be an origin-only HTTPS URL"
+                )
+        authentik_namespace = require_nonempty_string(
+            authentik.get("namespace"), "catalog.authentik.namespace", errors
+        )
+        if (
+            authentik_namespace is not None
+            and not DNS_LABEL_PATTERN.fullmatch(authentik_namespace)
+        ):
+            errors.append("catalog.authentik.namespace must be a DNS label")
+        provider_secret = require_mapping(
+            authentik.get("providerSecret"),
+            "catalog.authentik.providerSecret",
+            errors,
+        )
+        if provider_secret is not None:
+            reject_unknown(
+                provider_secret,
+                {"manifest", "name"},
+                "catalog.authentik.providerSecret",
+                errors,
+            )
+            provider_secret_manifest = require_nonempty_string(
+                provider_secret.get("manifest"),
+                "catalog.authentik.providerSecret.manifest",
+                errors,
+            )
+            provider_secret_name = require_nonempty_string(
+                provider_secret.get("name"),
+                "catalog.authentik.providerSecret.name",
+                errors,
+            )
+            if (
+                provider_secret_name is not None
+                and not is_dns_name(provider_secret_name)
+            ):
+                errors.append(
+                    "catalog.authentik.providerSecret.name must be a DNS name"
+                )
 
     roots = registered_roots(errors)
-    blueprints = blueprint_data(errors)
-    authentik_workloads = AUTHENTIK_WORKLOADS.read_text()
     ids: set[str] = set()
     hostnames: set[str] = set()
+    client_ids: set[str] = set()
     catalog_app_paths: set[Path] = set()
 
     for index, service in enumerate(services(catalog)):
@@ -433,14 +931,38 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
         if not isinstance(service, dict):
             errors.append(f"{label} must be a mapping")
             continue
+        reject_unknown(
+            service,
+            {
+                "_source",
+                "data",
+                "homepage",
+                "id",
+                "name",
+                "observability",
+                "path",
+                "placement",
+                "web",
+                "workload",
+            },
+            label,
+            errors,
+        )
 
         service_id = require_nonempty_string(service.get("id"), f"{label}.id", errors)
         require_nonempty_string(service.get("name"), f"{label}.name", errors)
         if service_id is not None:
+            if not DNS_LABEL_PATTERN.fullmatch(service_id):
+                errors.append(f"{label}.id must be a DNS label")
             if service_id in ids:
                 errors.append(f"duplicate service id: {service_id}")
             ids.add(service_id)
-            label = f"service {service_id}"
+            source = service.get("_source")
+            label = (
+                f"service {service_id} ({source})"
+                if isinstance(source, str)
+                else f"service {service_id}"
+            )
 
         path_value = require_nonempty_string(service.get("path"), f"{label}.path", errors)
         service_path: Path | None = None
@@ -459,6 +981,12 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
 
         workload = require_mapping(service.get("workload"), f"{label}.workload", errors)
         if workload is not None:
+            reject_unknown(
+                workload,
+                {"app", "namespace", "podSelector"},
+                f"{label}.workload",
+                errors,
+            )
             require_nonempty_string(
                 workload.get("namespace"), f"{label}.workload.namespace", errors
             )
@@ -474,6 +1002,12 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
 
         card = require_mapping(service.get("homepage"), f"{label}.homepage", errors)
         if card is not None:
+            reject_unknown(
+                card,
+                {"description", "enabled", "group", "icon", "link", "order", "reason"},
+                f"{label}.homepage",
+                errors,
+            )
             enabled = card.get("enabled", True)
             if enabled not in {True, False}:
                 errors.append(f"{label}.homepage.enabled must be a boolean")
@@ -484,6 +1018,9 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
             else:
                 if card.get("group") not in groups:
                     errors.append(f"{label}.homepage.group is not declared")
+                order = card.get("order", 1000)
+                if not isinstance(order, int) or isinstance(order, bool) or order < 0:
+                    errors.append(f"{label}.homepage.order must be a non-negative integer")
                 require_nonempty_string(
                     card.get("icon"), f"{label}.homepage.icon", errors
                 )
@@ -497,6 +1034,19 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
         if web is not None:
             web = require_mapping(web, f"{label}.web", errors)
         if web is not None:
+            reject_unknown(
+                web,
+                {
+                    "accessMiddleware",
+                    "auth",
+                    "dns",
+                    "hostname",
+                    "route",
+                    "visibility",
+                },
+                f"{label}.web",
+                errors,
+            )
             hostname = require_nonempty_string(
                 web.get("hostname"), f"{label}.web.hostname", errors
             )
@@ -504,8 +1054,12 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                 if hostname in hostnames:
                     errors.append(f"duplicate web hostname: {hostname}")
                 hostnames.add(hostname)
-                if not hostname.endswith(".reza.network"):
-                    errors.append(f"{label}.web.hostname must be under reza.network")
+                if not is_dns_name(hostname):
+                    errors.append(
+                        f"{label}.web.hostname must be a lowercase DNS name"
+                    )
+                elif domain is not None and not hostname.endswith(f".{domain}"):
+                    errors.append(f"{label}.web.hostname must be under {domain}")
 
             route_value = require_nonempty_string(
                 web.get("route"), f"{label}.web.route", errors
@@ -540,6 +1094,12 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
 
             web_dns = require_mapping(web.get("dns"), f"{label}.web.dns", errors)
             if web_dns is not None:
+                reject_unknown(
+                    web_dns,
+                    {"cloudflare", "splitHorizon"},
+                    f"{label}.web.dns",
+                    errors,
+                )
                 for key in ("cloudflare", "splitHorizon"):
                     if web_dns.get(key) not in {True, False}:
                         errors.append(f"{label}.web.dns.{key} must be a boolean")
@@ -553,84 +1113,349 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                         f"{sorted(ALLOWED_AUTH_MODES)}"
                     )
                 if mode in {"native", "none"}:
+                    reject_unknown(auth, {"mode", "reason"}, f"{label}.web.auth", errors)
                     require_nonempty_string(
                         auth.get("reason"), f"{label}.web.auth.reason", errors
                     )
                     if visibility == "public" and mode == "none":
                         errors.append(f"{label} cannot expose an unauthenticated public route")
                 if mode in {"oidc", "forward-auth"}:
-                    blueprint = require_nonempty_string(
-                        auth.get("blueprint"), f"{label}.web.auth.blueprint", errors
+                    application = require_mapping(
+                        auth.get("application"),
+                        f"{label}.web.auth.application",
+                        errors,
                     )
-                    application = require_nonempty_string(
-                        auth.get("application"), f"{label}.web.auth.application", errors
-                    )
-                    content = blueprints.get(blueprint or "")
-                    if blueprint is not None and content is None:
-                        errors.append(
-                            f"{label}.web.auth.blueprint is not present in "
-                            "apps/authentik/application-blueprints.yaml"
-                        )
-                    elif content is not None and application is not None:
-                        slug_pattern = re.compile(
-                            rf"(?m)^\s+slug:\s*[\"']?{re.escape(application)}[\"']?\s*$"
-                        )
-                        if slug_pattern.search(content) is None:
-                            errors.append(
-                                f"{label}.web.auth.blueprint does not declare "
-                                f"application slug {application}"
-                            )
-                    if mode == "oidc":
-                        client_type = auth.get("client")
-                        if client_type not in {"confidential", "public"}:
-                            errors.append(
-                                f"{label}.web.auth.client must be confidential or public"
-                            )
-                        elif content is not None and (
-                            f"client_type: {client_type}" not in content
-                        ):
-                            errors.append(
-                                f"{label}.web.auth.blueprint does not declare "
-                                f"client_type: {client_type}"
-                            )
-                        if client_type == "confidential":
-                            secret_env = require_nonempty_string(
-                                auth.get("secretEnv"),
-                                f"{label}.web.auth.secretEnv",
-                                errors,
-                            )
-                            secret_references(
-                                auth.get("secretFiles"),
-                                f"{label}.web.auth.secretFiles",
-                                errors,
-                            )
-                            if secret_env is not None:
-                                if content is not None and secret_env not in content:
-                                    errors.append(
-                                        f"{label}.web.auth.secretEnv is not used by "
-                                        "its Authentik blueprint"
-                                    )
-                                if secret_env not in authentik_workloads:
-                                    errors.append(
-                                        f"{label}.web.auth.secretEnv is not loaded by "
-                                        "the Authentik worker"
-                                    )
-                    if mode == "forward-auth":
-                        require_nonempty_string(
-                            auth.get("middleware"),
-                            f"{label}.web.auth.middleware",
+                    if application is not None:
+                        reject_unknown(
+                            application,
+                            {"launchUrl", "slug"},
+                            f"{label}.web.auth.application",
                             errors,
                         )
-                        if content is not None and "mode: forward_single" not in content:
+                        application_slug = require_nonempty_string(
+                            application.get("slug"),
+                            f"{label}.web.auth.application.slug",
+                            errors,
+                        )
+                        if (
+                            application_slug is not None
+                            and not DNS_LABEL_PATTERN.fullmatch(application_slug)
+                        ):
                             errors.append(
-                                f"{label}.web.auth.blueprint does not declare "
-                                "mode: forward_single"
+                                f"{label}.web.auth.application.slug must be a DNS label"
                             )
+                        launch_url = application.get("launchUrl")
+                        if launch_url is not None and (
+                            not isinstance(launch_url, str)
+                            or hostname is None
+                            or not is_same_host_https_url(launch_url, hostname)
+                        ):
+                            errors.append(
+                                f"{label}.web.auth.application.launchUrl must be "
+                                f"an HTTPS URL on {hostname}"
+                            )
+
+                if mode == "forward-auth":
+                    reject_unknown(
+                        auth,
+                        {
+                            "application",
+                            "blueprintName",
+                            "middleware",
+                            "mode",
+                            "profile",
+                            "providerName",
+                        },
+                        f"{label}.web.auth",
+                        errors,
+                    )
+                    if auth.get("profile") != "authentik-forward-single-v1":
+                        errors.append(
+                            f"{label}.web.auth.profile must be "
+                            "authentik-forward-single-v1"
+                        )
+                    require_nonempty_string(
+                        auth.get("middleware"),
+                        f"{label}.web.auth.middleware",
+                        errors,
+                    )
+
+                if mode == "oidc":
+                    reject_unknown(
+                        auth,
+                        {
+                            "application",
+                            "blueprintName",
+                            "claimMappings",
+                            "client",
+                            "mode",
+                            "profile",
+                            "providerName",
+                        },
+                        f"{label}.web.auth",
+                        errors,
+                    )
+                    if auth.get("profile") != "authentik-oidc-v1":
+                        errors.append(
+                            f"{label}.web.auth.profile must be authentik-oidc-v1"
+                        )
+                    client = require_mapping(
+                        auth.get("client"), f"{label}.web.auth.client", errors
+                    )
+                    if client is not None:
+                        reject_unknown(
+                            client,
+                            {
+                                "grantTypes",
+                                "id",
+                                "pkce",
+                                "redirectUris",
+                                "scopes",
+                                "secret",
+                                "type",
+                            },
+                            f"{label}.web.auth.client",
+                            errors,
+                        )
+                        client_type = client.get("type")
+                        if client_type not in {"confidential", "public"}:
+                            errors.append(
+                                f"{label}.web.auth.client.type must be "
+                                "confidential or public"
+                            )
+                        client_id = require_nonempty_string(
+                            client.get("id"),
+                            f"{label}.web.auth.client.id",
+                            errors,
+                        )
+                        if client_id is not None:
+                            if client_id in client_ids:
+                                errors.append(f"duplicate OIDC client id: {client_id}")
+                            client_ids.add(client_id)
+                        grants = client.get("grantTypes")
+                        if (
+                            not isinstance(grants, list)
+                            or not grants
+                            or len(set(grants)) != len(grants)
+                            or any(
+                                grant not in {"authorization_code", "refresh_token"}
+                                for grant in grants
+                            )
+                        ):
+                            errors.append(
+                                f"{label}.web.auth.client.grantTypes must contain "
+                                "unique supported grants"
+                            )
+                        elif "authorization_code" not in grants:
+                            errors.append(
+                                f"{label}.web.auth.client.grantTypes must include "
+                                "authorization_code"
+                            )
+                        scopes = client.get("scopes")
+                        if (
+                            not isinstance(scopes, list)
+                            or len(set(scopes)) != len(scopes)
+                            or any(scope not in MANAGED_SCOPE_MAPPINGS for scope in scopes)
+                        ):
+                            errors.append(
+                                f"{label}.web.auth.client.scopes must contain "
+                                "unique supported scopes"
+                            )
+                        redirects = client.get("redirectUris")
+                        if not isinstance(redirects, list) or not redirects:
+                            errors.append(
+                                f"{label}.web.auth.client.redirectUris must be "
+                                "a non-empty list"
+                            )
+                        else:
+                            for redirect_index, redirect in enumerate(redirects):
+                                redirect_label = (
+                                    f"{label}.web.auth.client.redirectUris"
+                                    f"[{redirect_index}]"
+                                )
+                                if not isinstance(redirect, dict):
+                                    errors.append(f"{redirect_label} must be a mapping")
+                                    continue
+                                reject_unknown(
+                                    redirect,
+                                    {"type", "url"},
+                                    redirect_label,
+                                    errors,
+                                )
+                                if redirect.get("type") not in {
+                                    "authorization",
+                                    "logout",
+                                }:
+                                    errors.append(
+                                        f"{redirect_label}.type must be "
+                                        "authorization or logout"
+                                    )
+                                redirect_url = require_nonempty_string(
+                                    redirect.get("url"),
+                                    f"{redirect_label}.url",
+                                    errors,
+                                )
+                                if redirect_url is not None:
+                                    if (
+                                        hostname is None
+                                        or not is_same_host_https_url(
+                                            redirect_url, hostname
+                                        )
+                                    ):
+                                        errors.append(
+                                            f"{redirect_label}.url must be an exact "
+                                            f"https URL on {hostname}"
+                                        )
+
+                        if client_type == "confidential":
+                            if client.get("pkce") is not None:
+                                errors.append(
+                                    f"{label}.web.auth.client.pkce is only valid "
+                                    "for a public client"
+                                )
+                            relying_secret = require_mapping(
+                                client.get("secret"),
+                                f"{label}.web.auth.client.secret",
+                                errors,
+                            )
+                            if relying_secret is not None:
+                                reject_unknown(
+                                    relying_secret,
+                                    {"key", "manifest"},
+                                    f"{label}.web.auth.client.secret",
+                                    errors,
+                                )
+                                secret_references(
+                                    [
+                                        {
+                                            "path": relying_secret.get("manifest"),
+                                            "key": relying_secret.get("key"),
+                                        }
+                                    ],
+                                    f"{label}.web.auth.client.secret",
+                                    errors,
+                                )
+                            if (
+                                provider_secret_manifest is not None
+                                and service_id is not None
+                            ):
+                                secret_references(
+                                    [
+                                        {
+                                            "path": provider_secret_manifest,
+                                            "key": authentik_secret_key(service_id),
+                                        }
+                                    ],
+                                    f"{label}.web.auth.providerSecret",
+                                    errors,
+                                )
+                            if provider_secret_name is None:
+                                errors.append(
+                                    f"{label} cannot wire a confidential OIDC client "
+                                    "without catalog.authentik.providerSecret.name"
+                                )
+                        elif client_type == "public":
+                            if client.get("secret") is not None:
+                                errors.append(
+                                    f"{label}.web.auth.client.secret is forbidden "
+                                    "for a public client"
+                                )
+                            pkce = require_mapping(
+                                client.get("pkce"),
+                                f"{label}.web.auth.client.pkce",
+                                errors,
+                            )
+                            if pkce is not None:
+                                reject_unknown(
+                                    pkce,
+                                    {"evidence", "verified"},
+                                    f"{label}.web.auth.client.pkce",
+                                    errors,
+                                )
+                                if pkce.get("verified") is not True:
+                                    errors.append(
+                                        f"{label}.web.auth.client.pkce.verified "
+                                        "must be true"
+                                    )
+                                require_nonempty_string(
+                                    pkce.get("evidence"),
+                                    f"{label}.web.auth.client.pkce.evidence",
+                                    errors,
+                                )
+
+                    claim_mappings = auth.get("claimMappings", [])
+                    if not isinstance(claim_mappings, list):
+                        errors.append(
+                            f"{label}.web.auth.claimMappings must be a list"
+                        )
+                    else:
+                        mapping_ids: set[str] = set()
+                        for mapping_index, mapping in enumerate(claim_mappings):
+                            mapping_label = (
+                                f"{label}.web.auth.claimMappings[{mapping_index}]"
+                            )
+                            if not isinstance(mapping, dict):
+                                errors.append(f"{mapping_label} must be a mapping")
+                                continue
+                            reject_unknown(
+                                mapping,
+                                {
+                                    "description",
+                                    "expression",
+                                    "id",
+                                    "name",
+                                    "reason",
+                                    "scope",
+                                },
+                                mapping_label,
+                                errors,
+                            )
+                            for key in (
+                                "description",
+                                "expression",
+                                "id",
+                                "name",
+                                "reason",
+                                "scope",
+                            ):
+                                require_nonempty_string(
+                                    mapping.get(key),
+                                    f"{mapping_label}.{key}",
+                                    errors,
+                                )
+                            mapping_id = mapping.get("id")
+                            if isinstance(mapping_id, str):
+                                if not DNS_LABEL_PATTERN.fullmatch(mapping_id):
+                                    errors.append(
+                                        f"{mapping_label}.id must be a DNS label"
+                                    )
+                                if mapping_id in mapping_ids:
+                                    errors.append(
+                                        f"{mapping_label}.id is duplicated: "
+                                        f"{mapping_id}"
+                                    )
+                                mapping_ids.add(mapping_id)
+                            mapping_scope = mapping.get("scope")
+                            if (
+                                isinstance(mapping_scope, str)
+                                and not AUTHENTIK_IDENTIFIER_PATTERN.fullmatch(
+                                    mapping_scope
+                                )
+                            ):
+                                errors.append(
+                                    f"{mapping_label}.scope contains unsafe characters"
+                                )
 
         placement = require_mapping(
             service.get("placement"), f"{label}.placement", errors
         )
         if placement is not None:
+            reject_unknown(
+                placement,
+                {"manifest", "mode", "reason"},
+                f"{label}.placement",
+                errors,
+            )
             mode = placement.get("mode")
             if mode not in ALLOWED_PLACEMENT:
                 errors.append(
@@ -673,6 +1498,12 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
 
         data = require_mapping(service.get("data"), f"{label}.data", errors)
         if data is not None:
+            reject_unknown(
+                data,
+                {"class", "manifests", "note", "protection"},
+                f"{label}.data",
+                errors,
+            )
             data_class = data.get("class")
             protection = data.get("protection")
             if data_class not in ALLOWED_DATA_CLASSES:
@@ -707,6 +1538,12 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
             service.get("observability"), f"{label}.observability", errors
         )
         if observability is not None:
+            reject_unknown(
+                observability,
+                {"manifests", "mode", "reason"},
+                f"{label}.observability",
+                errors,
+            )
             mode = observability.get("mode")
             if mode not in ALLOWED_OBSERVABILITY:
                 errors.append(
@@ -768,7 +1605,7 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
 
 
 def rendered_routes(
-    path: Path, errors: list[str]
+    path: Path, domain: str, errors: list[str]
 ) -> tuple[dict[str, dict[str, Any]], set[str]]:
     result: dict[str, dict[str, Any]] = {}
     try:
@@ -801,7 +1638,7 @@ def rendered_routes(
                 if isinstance(extension, dict) and isinstance(extension.get("name"), str):
                     filters.add(extension["name"])
         for hostname in document.get("spec", {}).get("hostnames", []):
-            if not isinstance(hostname, str) or not hostname.endswith(".reza.network"):
+            if not isinstance(hostname, str) or not hostname.endswith(f".{domain}"):
                 continue
             if hostname in result:
                 errors.append(f"rendered cluster has duplicate HTTPRoute hostname {hostname}")
@@ -816,7 +1653,10 @@ def rendered_routes(
 def validate_rendered_cluster(
     catalog: dict[str, Any], rendered_path: Path, errors: list[str]
 ) -> None:
-    actual, ip_allowlists = rendered_routes(rendered_path, errors)
+    domain = catalog.get("domain")
+    if not isinstance(domain, str) or not domain:
+        domain = "reza.network"
+    actual, ip_allowlists = rendered_routes(rendered_path, domain, errors)
     expected: dict[str, dict[str, Any]] = {}
     for service in services(catalog):
         if not isinstance(service, dict) or not isinstance(service.get("web"), dict):
@@ -894,16 +1734,17 @@ def render_cluster() -> Path:
 def check(catalog: dict[str, Any], rendered_path: Path | None) -> None:
     errors: list[str] = []
     validate_catalog_structure(catalog, errors)
-    validate_generated_outputs(catalog, errors)
 
     temporary_render: Path | None = None
-    if rendered_path is None:
-        temporary_render = render_cluster()
-        rendered_path = temporary_render
-    if not rendered_path.is_file():
-        errors.append(f"rendered manifest does not exist: {rendered_path}")
-    else:
-        validate_rendered_cluster(catalog, rendered_path, errors)
+    if not errors:
+        validate_generated_outputs(catalog, errors)
+        if rendered_path is None:
+            temporary_render = render_cluster()
+            rendered_path = temporary_render
+        if not rendered_path.is_file():
+            errors.append(f"rendered manifest does not exist: {rendered_path}")
+        else:
+            validate_rendered_cluster(catalog, rendered_path, errors)
 
     if temporary_render is not None:
         temporary_render.unlink(missing_ok=True)
@@ -924,7 +1765,7 @@ def check(catalog: dict[str, Any], rendered_path: Path | None) -> None:
 
 def summary(catalog: dict[str, Any]) -> None:
     print(
-        "ID\tWEB\tAUTH\tPLACEMENT\tDATA\tOBSERVABILITY",
+        "ID\tSOURCE\tWEB\tAUTH\tPLACEMENT\tDATA\tOBSERVABILITY",
     )
     for service in services(catalog):
         web = service.get("web", {})
@@ -932,6 +1773,7 @@ def summary(catalog: dict[str, Any]) -> None:
             "\t".join(
                 [
                     str(service.get("id", "")),
+                    str(service.get("_source", "")),
                     str(web.get("hostname", "-")),
                     str(web.get("auth", {}).get("mode", "-")),
                     str(service.get("placement", {}).get("mode", "-")),
@@ -940,6 +1782,116 @@ def summary(catalog: dict[str, Any]) -> None:
                 ]
             )
         )
+
+
+def explain(catalog: dict[str, Any], service_id: str) -> None:
+    matches = [
+        service
+        for service in services(catalog)
+        if service.get("id") == service_id
+    ]
+    if not matches:
+        available = ", ".join(
+            sorted(str(service.get("id")) for service in services(catalog))
+        )
+        raise CatalogError(
+            f"unknown service {service_id!r}; available services: {available}"
+        )
+    service = matches[0]
+    web = service.get("web")
+    auth = web.get("auth", {}) if isinstance(web, dict) else {}
+    placement = service.get("placement", {})
+    data = service.get("data", {})
+    observability = service.get("observability", {})
+    card = service.get("homepage", {})
+
+    print(str(service.get("name")))
+    print(f"  Descriptor: {service.get('_source')}")
+    if isinstance(web, dict):
+        visibility = web.get("visibility")
+        reachability = (
+            "LAN and WireGuard only"
+            if visibility == "private"
+            else "the public Internet"
+        )
+        print(f"  Reachable from: {reachability}")
+        print(f"  Address: https://{web.get('hostname')}/")
+        mode = auth.get("mode")
+        if mode == "oidc":
+            client = auth.get("client", {})
+            print(
+                "  Login: Authentik through native OIDC "
+                f"({client.get('type')} client, profile {auth.get('profile')})"
+            )
+        elif mode == "forward-auth":
+            print(
+                "  Login: Authentik forward-auth "
+                f"(profile {auth.get('profile')})"
+            )
+        elif mode == "native":
+            print("  Login: the application's native authentication")
+        else:
+            print("  Login: no application authentication; network boundary only")
+        dns = web.get("dns", {})
+        destinations = []
+        if dns.get("cloudflare"):
+            destinations.append("Cloudflare DDNS")
+        if dns.get("splitHorizon"):
+            destinations.append("Blocky split DNS")
+        print(f"  DNS: {', '.join(destinations) if destinations else 'unmanaged'}")
+    else:
+        print("  Reachable from: no shared HTTP route")
+        print("  Login: not applicable")
+
+    print(f"  Placement: {placement.get('mode')}")
+    print(
+        f"  State: {data.get('class')}; protection: {data.get('protection')}"
+    )
+    print(f"  Monitoring: {observability.get('mode')}")
+    if card.get("enabled", True) is False:
+        print(f"  Homepage: omitted — {card.get('reason')}")
+    else:
+        print(f"  Homepage: {card.get('group')} / {service.get('name')}")
+
+    generated = ["Homepage service inventory"]
+    if isinstance(web, dict):
+        if web.get("dns", {}).get("cloudflare"):
+            generated.append("Cloudflare DDNS domain aggregate")
+        if web.get("dns", {}).get("splitHorizon"):
+            generated.append("Blocky split-DNS mapping")
+        if auth.get("mode") in {"oidc", "forward-auth"}:
+            generated.append("Authentik application/provider blueprint")
+        if (
+            auth.get("mode") == "oidc"
+            and auth.get("client", {}).get("type") == "confidential"
+        ):
+            generated.append(
+                "Authentik worker Secret reference "
+                f"({authentik_secret_key(service_id)})"
+            )
+    print("\nGenerated by the catalog compiler:")
+    for item in generated:
+        print(f"  - {item}")
+
+    print("\nValidated but still explicitly owned by manifests:")
+    if isinstance(web, dict):
+        print(f"  - HTTPRoute and exposure middleware: {web.get('route')}")
+        if auth.get("mode") == "oidc":
+            client = auth.get("client", {})
+            print("  - Relying application's OIDC settings and NetworkPolicy")
+            print("  - Exact browser/mobile login and logout behavior")
+            if client.get("type") == "confidential":
+                secret = client.get("secret", {})
+                print(
+                    "  - Encrypted relying-party secret: "
+                    f"{secret.get('manifest')} / {secret.get('key')}"
+                )
+    for item in data.get("manifests", []):
+        print(f"  - Storage/backup declaration: {item}")
+    for item in observability.get("manifests", []):
+        print(f"  - Monitoring resource: {item}")
+    if placement.get("manifest"):
+        print(f"  - Node placement: {placement.get('manifest')}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -955,6 +1907,11 @@ def parse_args() -> argparse.Namespace:
         help="pre-rendered cluster manifest; otherwise kubectl kustomize is run",
     )
     subparsers.add_parser("summary", help="print a compact integration matrix")
+    explain_parser = subparsers.add_parser(
+        "explain",
+        help="explain one service in operator language, including automation boundaries",
+    )
+    explain_parser.add_argument("service_id", help="stable metadata.name to explain")
     return parser.parse_args()
 
 
@@ -968,6 +1925,8 @@ def main() -> int:
             check(catalog, args.rendered)
         elif args.command == "summary":
             summary(catalog)
+        elif args.command == "explain":
+            explain(catalog, args.service_id)
     except (CatalogError, ManifestError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: sonarr
+spec:
+  name: Sonarr
+  workload:
+    namespace: media
+    app: media-vpn
+  homepage:
+    order: 40
+    group: Downloads & Automation
+    icon: sonarr.png
+    description: Television automation
+  web:
+    hostname: sonarr.reza.network
+    route: apps/sonarr/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Sonarr uses its built-in authentication behind the LAN/WireGuard boundary.
+  placement:
+    mode: beelink
+    manifest: apps/downloads/deployment.yaml
+    reason: Its container shares the downloads pod's Gluetun network namespace.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/sonarr/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects configuration; downloaded NFS media is reproducible.
+  observability:
+    mode: kubernetes

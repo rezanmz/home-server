@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: calibre-web
+spec:
+  name: Calibre-Web
+  workload:
+    namespace: media
+    app: calibre-web
+  homepage:
+    order: 40
+    group: Media
+    icon: calibre-web.png
+    description: Ebook library
+  web:
+    hostname: library.reza.network
+    route: apps/calibre-web/routes.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Calibre-Web uses its built-in account authentication; the route is LAN/WireGuard-only.
+  placement:
+    mode: beelink
+    manifest: apps/calibre-web/workloads.yaml
+    reason: Shares the calibre-web-ingest Longhorn RWO claim with the downloads pod.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/calibre-web/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects configuration and ingest state; the NFS book library is treated as reproducible.
+  observability:
+    mode: kubernetes

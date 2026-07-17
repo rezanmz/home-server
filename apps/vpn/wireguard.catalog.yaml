@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: wireguard
+spec:
+  name: WireGuard
+  workload:
+    namespace: network-services
+    app: wg-easy
+  homepage:
+    order: 50
+    group: Operations
+    icon: wireguard.png
+    description: Remote access VPN
+  web:
+    hostname: vpn.reza.network
+    route: apps/vpn/route.yaml
+    visibility: private
+    accessMiddleware: wg-easy-lan-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: wg-easy uses its native administrative authentication and is LAN/WireGuard-only.
+  placement:
+    mode: raspberrypi
+    manifest: apps/vpn/deployment.yaml
+    reason: The router forwards UDP 1234 to the Pi and the workload uses that host port.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/vpn/pvc.yaml]
+  observability:
+    mode: kubernetes

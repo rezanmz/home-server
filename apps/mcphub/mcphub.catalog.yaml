@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: mcphub
+spec:
+  name: MCPHub
+  workload:
+    namespace: apps
+    app: mcphub
+  homepage:
+    order: 20
+    group: AI & Data
+    icon: mdi-hubspot
+    description: MCP service registry
+  web:
+    hostname: mcphub.reza.network
+    route: apps/mcphub/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: MCPHub has no supported native OIDC integration and is restricted to LAN/WireGuard.
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/mcphub/pvc.yaml]
+  observability:
+    mode: kubernetes

@@ -1,0 +1,381 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reza.network/schemas/service-catalog-v1alpha1.json",
+  "title": "Home-server service integration descriptor",
+  "oneOf": [
+    {"$ref": "#/$defs/service"},
+    {"$ref": "#/$defs/exclusion"}
+  ],
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        }
+      }
+    },
+    "path": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "minLength": 10},
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiVersion", "kind", "metadata", "spec"],
+      "properties": {
+        "apiVersion": {"const": "catalog.reza.network/v1alpha1"},
+        "kind": {"const": "Service"},
+        "metadata": {"$ref": "#/$defs/metadata"},
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "workload",
+            "homepage",
+            "placement",
+            "data",
+            "observability"
+          ],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "workload": {"$ref": "#/$defs/workload"},
+            "homepage": {"$ref": "#/$defs/homepage"},
+            "web": {"$ref": "#/$defs/web"},
+            "placement": {"$ref": "#/$defs/placement"},
+            "data": {"$ref": "#/$defs/data"},
+            "observability": {"$ref": "#/$defs/observability"}
+          }
+        }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiVersion", "kind", "metadata", "spec"],
+      "properties": {
+        "apiVersion": {"const": "catalog.reza.network/v1alpha1"},
+        "kind": {"const": "CatalogExclusion"},
+        "metadata": {"$ref": "#/$defs/metadata"},
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": {"reason": {"$ref": "#/$defs/reason"}}
+        }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace"],
+      "properties": {
+        "namespace": {"type": "string", "minLength": 1},
+        "app": {"type": "string", "minLength": 1},
+        "podSelector": {"type": "string", "minLength": 1}
+      },
+      "oneOf": [
+        {"required": ["app"], "not": {"required": ["podSelector"]}},
+        {"required": ["podSelector"], "not": {"required": ["app"]}}
+      ]
+    },
+    "homepage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "group": {"type": "string", "minLength": 1},
+        "icon": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "link": {"type": "boolean"},
+        "order": {"type": "integer", "minimum": 0}
+      },
+      "oneOf": [
+        {
+          "required": ["enabled", "reason"],
+          "properties": {"enabled": {"const": false}}
+        },
+        {
+          "required": ["group", "icon", "description"],
+          "not": {
+            "properties": {"enabled": {"const": false}},
+            "required": ["enabled"]
+          }
+        }
+      ]
+    },
+    "web": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostname", "route", "visibility", "dns", "auth"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+        },
+        "route": {"$ref": "#/$defs/path"},
+        "visibility": {"enum": ["private", "public"]},
+        "accessMiddleware": {"type": "string", "minLength": 1},
+        "dns": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cloudflare", "splitHorizon"],
+          "properties": {
+            "cloudflare": {"type": "boolean"},
+            "splitHorizon": {"type": "boolean"}
+          }
+        },
+        "auth": {"$ref": "#/$defs/auth"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"visibility": {"const": "private"}}},
+          "then": {"required": ["accessMiddleware"]},
+          "else": {"not": {"required": ["accessMiddleware"]}}
+        }
+      ]
+    },
+    "auth": {
+      "oneOf": [
+        {"$ref": "#/$defs/reasonAuth"},
+        {"$ref": "#/$defs/oidcAuth"},
+        {"$ref": "#/$defs/forwardAuth"}
+      ]
+    },
+    "reasonAuth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "reason"],
+      "properties": {
+        "mode": {"enum": ["native", "none"]},
+        "reason": {"$ref": "#/$defs/reason"}
+      }
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug"],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        },
+        "launchUrl": {"type": "string", "format": "uri", "pattern": "^https://"}
+      }
+    },
+    "forwardAuth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "profile", "application", "middleware"],
+      "properties": {
+        "mode": {"const": "forward-auth"},
+        "profile": {"const": "authentik-forward-single-v1"},
+        "blueprintName": {"type": "string", "minLength": 1},
+        "providerName": {"type": "string", "minLength": 1},
+        "application": {"$ref": "#/$defs/application"},
+        "middleware": {"type": "string", "minLength": 1}
+      }
+    },
+    "oidcAuth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "profile", "application", "client"],
+      "properties": {
+        "mode": {"const": "oidc"},
+        "profile": {"const": "authentik-oidc-v1"},
+        "blueprintName": {"type": "string", "minLength": 1},
+        "providerName": {"type": "string", "minLength": 1},
+        "application": {"$ref": "#/$defs/application"},
+        "client": {"$ref": "#/$defs/oidcClient"},
+        "claimMappings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/claimMapping"}
+        }
+      }
+    },
+    "oidcClient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "grantTypes", "scopes", "redirectUris"],
+      "properties": {
+        "type": {"enum": ["confidential", "public"]},
+        "id": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        },
+        "grantTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["authorization_code", "refresh_token"]}
+        },
+        "scopes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["openid", "email", "profile", "offline_access"]}
+        },
+        "redirectUris": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/redirectUri"}
+        },
+        "secret": {"$ref": "#/$defs/secretRef"},
+        "pkce": {"$ref": "#/$defs/pkce"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "confidential"}}},
+          "then": {
+            "required": ["secret"],
+            "not": {"required": ["pkce"]}
+          },
+          "else": {
+            "required": ["pkce"],
+            "not": {"required": ["secret"]}
+          }
+        }
+      ]
+    },
+    "redirectUri": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "url"],
+      "properties": {
+        "type": {"enum": ["authorization", "logout"]},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"}
+      }
+    },
+    "secretRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "key"],
+      "properties": {
+        "manifest": {"$ref": "#/$defs/path"},
+        "key": {"type": "string", "minLength": 1}
+      }
+    },
+    "pkce": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified", "evidence"],
+      "properties": {
+        "verified": {"const": true},
+        "evidence": {"$ref": "#/$defs/reason"}
+      }
+    },
+    "claimMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "scope",
+        "description",
+        "reason",
+        "expression"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "scope": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9_.:-]*[A-Za-z0-9])?$"
+        },
+        "description": {"type": "string", "minLength": 1},
+        "reason": {"$ref": "#/$defs/reason"},
+        "expression": {"type": "string", "minLength": 1}
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": [
+            "beelink",
+            "every-node",
+            "floating",
+            "platform",
+            "raspberrypi"
+          ]
+        },
+        "manifest": {"$ref": "#/$defs/path"},
+        "reason": {"$ref": "#/$defs/reason"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {"enum": ["beelink", "raspberrypi"]}
+            }
+          },
+          "then": {"required": ["manifest", "reason"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {"enum": ["every-node", "platform"]}
+            }
+          },
+          "then": {"required": ["reason"]}
+        }
+      ]
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "protection"],
+      "properties": {
+        "class": {
+          "enum": [
+            "longhorn",
+            "longhorn-observability",
+            "mixed",
+            "nfs-reproducible",
+            "platform",
+            "stateless"
+          ]
+        },
+        "protection": {
+          "enum": [
+            "excluded-observability",
+            "excluded-reproducible",
+            "longhorn-and-restic-b2",
+            "longhorn-b2",
+            "not-applicable",
+            "platform-managed"
+          ]
+        },
+        "manifests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/path"}
+        },
+        "note": {"type": "string", "minLength": 1}
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["kubernetes", "metrics", "none", "platform"]},
+        "manifests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/path"}
+        },
+        "reason": {"$ref": "#/$defs/reason"}
+      }
+    }
+  }
+}

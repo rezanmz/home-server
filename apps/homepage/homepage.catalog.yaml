@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: homepage
+spec:
+  name: Homepage
+  workload:
+    namespace: apps
+    app: homepage
+  homepage:
+    enabled: false
+    reason: The dashboard does not need a card linking back to itself.
+  web:
+    hostname: homepage.reza.network
+    route: apps/homepage/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v1
+      blueprintName: Homepage proxy authentication
+      application:
+        slug: homepage
+        launchUrl: https://homepage.reza.network/
+      middleware: homepage-authentik
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: kubernetes

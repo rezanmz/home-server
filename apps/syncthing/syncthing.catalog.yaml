@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: syncthing
+spec:
+  name: Syncthing
+  workload:
+    namespace: network-services
+    app: syncthing
+  homepage:
+    order: 40
+    group: Operations
+    icon: syncthing.png
+    description: File synchronization
+  web:
+    hostname: syncthing.reza.network
+    route: apps/syncthing/route.yaml
+    visibility: private
+    accessMiddleware: syncthing-lan-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Syncthing uses native GUI authentication behind a backend-mTLS and LAN/WireGuard boundary.
+  placement:
+    mode: raspberrypi
+    manifest: apps/syncthing/deployment.yaml
+    reason: Requires stable LAN discovery/direct-sync ports and Pi-local NFS data.
+  data:
+    class: mixed
+    protection: longhorn-and-restic-b2
+    manifests:
+      - apps/syncthing/storage.yaml
+      - apps/syncthing/backups/cronjob.yaml
+    note: Longhorn protects configuration while selected NFS folders use the independent Restic B2 policy.
+  observability:
+    mode: kubernetes

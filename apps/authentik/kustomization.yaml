@@ -9,3 +9,5 @@ resources:
   - services.yaml
   - networkpolicy.yaml
   - route.yaml
+patches:
+  - path: generated-oidc-worker-env.yaml

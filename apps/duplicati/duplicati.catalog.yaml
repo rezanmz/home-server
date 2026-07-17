@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: CatalogExclusion
+metadata:
+  name: duplicati
+spec:
+  reason: Retired workload; only its rollback PVC remains in the root reconciliation.

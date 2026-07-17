@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: shelfmark
+spec:
+  name: Shelfmark
+  workload:
+    namespace: media
+    app: media-vpn
+  homepage:
+    order: 50
+    group: Downloads & Automation
+    icon: mdi-bookshelf
+    description: Ebook acquisition
+  web:
+    hostname: shelfmark.reza.network
+    route: apps/calibre-web/routes.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: none
+      reason: Shelfmark has no supported native SSO; both route and in-pod proxy restrict it to LAN/WireGuard clients.
+  placement:
+    mode: beelink
+    manifest: apps/downloads/deployment.yaml
+    reason: Its container shares the downloads pod and calibre-web-ingest Longhorn RWO claim.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/calibre-web/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects configuration and ingest state; the NFS book library is reproducible.
+  observability:
+    mode: kubernetes

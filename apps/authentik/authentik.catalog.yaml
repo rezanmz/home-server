@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: authentik
+spec:
+  name: Authentik
+  workload:
+    namespace: apps
+    app: authentik
+  homepage:
+    order: 20
+    group: Home & Identity
+    icon: authentik.png
+    description: Identity and single sign-on
+  web:
+    hostname: auth.reza.network
+    route: apps/authentik/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Authentik is the cluster identity provider and authenticates its own administrative UI.
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/authentik/pvc.yaml]
+  observability:
+    mode: kubernetes
