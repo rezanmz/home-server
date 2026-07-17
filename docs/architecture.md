@@ -87,6 +87,20 @@ two-replica Longhorn volume included in nightly B2 backups. Kea exposes only a
 group-protected Unix control socket to its exporter; no HTTP control agent is
 enabled. Exporter metrics bind only to `10.42.0.1:9547`.
 
+ISC Stork provides the LAN/WireGuard-only DHCP inventory and health UI at
+`stork.reza.network`. Its agent is a non-root sidecar in Kea's pod so it can
+see the Kea process, read the same immutable configuration, and use the
+group-protected Unix control socket. The agent's certificate state and Stork's
+PostgreSQL database are separate default-class Longhorn volumes included in
+nightly B2 backups. Stork 2.5's native OIDC support uses an Authentik public
+client with authorization code plus PKCE. OIDC group mapping is deliberately
+disabled, which makes every OIDC user a built-in Stork `read-only` user. A
+one-time Job authorizes only the Kea agent, invalidates Stork's default
+`admin/admin` account and bootstrap registration token, and disables later
+machine registration. The configuration remains mounted read-only, so Stork
+cannot persist a Kea configuration even if its application authorization
+regresses.
+
 Neither service has an application web route. Prometheus reaches their
 cluster-only metrics through selectorless Services with static Endpoints for
 the current discovery role and matching EndpointSlices for a future migration.
@@ -287,7 +301,8 @@ Applications are separated into four operational namespaces:
 
 - `apps` for identity, personal, home-automation, and general web applications;
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
-- `network-services` for Blocky, Kea, WireGuard, Samba, Syncthing, and backups;
+- `network-services` for Blocky, Kea, Stork, WireGuard, Samba, Syncthing, and
+  backups;
 - `monitoring` for Prometheus, Alertmanager, Grafana, Headlamp, and Kubernetes
   event export.
 
@@ -298,12 +313,13 @@ repository; the private age identity remains root-only outside Git.
 
 Authentik's native OIDC providers and applications are also desired state. One
 shared ConfigMap mounts a separate, independently reconciled blueprint document
-for each relying application, while one aggregate SOPS Secret supplies the
-provider-side client secrets to the worker. Each key is referenced explicitly in
-the worker's shared OIDC environment list so adding a client rolls the pod and a
-missing key fails visibly. Adding an OIDC client therefore changes those shared
-resources and the relying application only; it does not add a per-service
-Authentik manifest or Deployment patch.
+for each relying application, while one aggregate SOPS Secret supplies
+confidential clients' provider-side secrets to the worker. Each confidential
+key is referenced explicitly in the worker's shared OIDC environment list so
+adding a client rolls the pod and a missing key fails visibly. PKCE-capable
+public clients such as Stork deliberately have no shared secret. Adding an OIDC
+client therefore changes those shared resources and the relying application
+only; it does not add a per-service Authentik manifest or Deployment patch.
 
 The metrics path is deliberately separate from the event-notification path.
 Prometheus scrapes K3s, kube-state-metrics, both node exporters, Longhorn,

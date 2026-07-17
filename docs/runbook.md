@@ -280,6 +280,50 @@ either record a new retention decision or remove the PVC/PV/Longhorn volume
 through the identity-checked storage procedure; do not let an unlabeled orphan
 persist. Deleting the local volume must not delete the retained B2 Backup.
 
+### ISC Stork
+
+Stork is available at `https://stork.reza.network/` only from the LAN or
+WireGuard. Login uses the native Authentik OIDC provider. Group mapping must
+remain disabled: that is what assigns every OIDC account Stork's built-in
+`read-only` role. Do not assign `admin` or `super-admin` to an OIDC account and
+do not restore the built-in local administrator.
+
+The Kea pod has three containers: Kea, the existing Prometheus exporter, and
+the Stork agent. The agent binds only to the Beelink CNI gateway at
+`10.42.0.1:8080`; it is not a LAN or Gateway listener. Stork's PostgreSQL
+database and agent certificates are on `stork-postgresql` and
+`stork-agent-data` Longhorn PVCs, both covered by nightly B2 backups. DHCP does
+not depend on the Stork server, UI, or database and continues if they fail.
+
+Check the complete path with:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n network-services get deploy/stork-server statefulset/stork-postgresql job/stork-lockdown-v1'
+ssh beelink 'sudo k3s kubectl -n network-services get pods,pvc -l app.kubernetes.io/name=stork'
+ssh beelink 'sudo k3s kubectl -n network-services logs deploy/kea-dhcp4 -c stork-agent --tail=100'
+ssh beelink 'sudo k3s kubectl -n network-services logs deploy/stork-server -c server --tail=100'
+ssh beelink 'sudo k3s kubectl -n network-services logs job/stork-lockdown-v1'
+ssh beelink 'sudo ss -lntp | grep "10.42.0.1:8080"'
+```
+
+`stork-lockdown-v1` must finish exactly once. It replaces Stork's generated
+registration token with the encrypted bootstrap token, waits for the Kea agent
+to register, then replaces that token with an unknown random value, randomizes
+the default `admin/admin` login and password, and stores
+`enable_machine_registration=false`. Restart `stork-server` after a clean
+bootstrap so the in-memory endpoint control reloads that final setting:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n network-services rollout restart deployment/stork-server && sudo k3s kubectl -n network-services rollout status deployment/stork-server --timeout=180s'
+```
+
+If both Stork PVCs are restored together, the existing mTLS identity should
+continue to work. If only `stork-agent-data` is lost, do not re-enable
+registration casually: verify the old machine record, rotate the SOPS bootstrap
+token, create a versioned replacement lockdown Job, and review the exact agent
+address before reconciling. A read-only UI does not make a forged monitoring
+agent trustworthy.
+
 ## Other Pi network services
 
 Samba, Syncthing, and wg-easy are Kubernetes workloads in the

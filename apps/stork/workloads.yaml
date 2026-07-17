@@ -1,0 +1,218 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stork-server
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stork
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stork
+        app.kubernetes.io/component: server
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: docker.io/rezanmz/isc-stork-server:2.5.0@sha256:d1be5756a3e2b50320cd71b9ca419612f1c7d0a770361ac0f17ce9840fab1bd0
+          imagePullPolicy: IfNotPresent
+          command: [/usr/bin/stork-server]
+          env:
+            - {name: CLICOLOR, value: "0"}
+            - {name: HOME, value: /tmp}
+            - {name: STORK_DATABASE_HOST, value: stork-postgresql}
+            - {name: STORK_DATABASE_NAME, value: stork}
+            - {name: STORK_DATABASE_USER_NAME, value: stork}
+            - name: STORK_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stork-secrets
+                  key: postgres-password
+            - {name: STORK_OIDC_ISSUER_URL, value: https://auth.reza.network/application/o/stork/}
+            - {name: STORK_OIDC_CLIENT_ID, value: stork}
+            - {name: STORK_OIDC_PROVIDER_NAME, value: Authentik}
+            - {name: STORK_OIDC_REDIRECT_URI, value: https://stork.reza.network/oidc/callback}
+            # Group mapping deliberately stays disabled. Stork 2.5 assigns
+            # every successfully authenticated OIDC user its read-only role.
+            - {name: STORK_OIDC_MAP_GROUPS, value: "false"}
+            - {name: STORK_REST_HOST, value: 0.0.0.0}
+            - {name: STORK_REST_PORT, value: "8080"}
+            - {name: STORK_SERVER_ENABLE_METRICS, value: "true"}
+          ports:
+            - {name: server-http, containerPort: 8080, protocol: TCP}
+          startupProbe:
+            # OIDC discovery is performed once at process startup. Recycle the
+            # process if Authentik's newly reconciled provider was not ready
+            # yet, instead of leaving a local-login-only instance running.
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - wget -qO- http://127.0.0.1:8080/api/authentication-methods | grep -Eq '"id"[[:space:]]*:[[:space:]]*"oidc"'
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/version, port: server-http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /api/version, port: server-http}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: authentication-icons, mountPath: /usr/share/stork/www/assets/authentication-methods}
+            - {name: tmp, mountPath: /tmp}
+        - name: webui
+          image: docker.io/rezanmz/isc-stork-webui:2.5.0@sha256:4e2e61b56a27b09bf23e149d3011feac76378e7ef7f59f7a0edfc7d574b868da
+          imagePullPolicy: IfNotPresent
+          command: [nginx]
+          args: [-g, "daemon off;"]
+          ports:
+            - {name: web-http, containerPort: 8081, protocol: TCP}
+          startupProbe:
+            httpGet: {path: /, port: web-http}
+            periodSeconds: 3
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /, port: web-http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /, port: web-http}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 150m, memory: 128Mi}
+          securityContext:
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: webui-config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: authentication-icons, mountPath: /usr/share/stork/www/assets/authentication-methods, readOnly: true}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+            - {name: nginx-run, mountPath: /var/run}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: webui-config
+          configMap:
+            name: stork-webui-config
+        - {name: authentication-icons, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}
+        - {name: nginx-run, emptyDir: {}}
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: stork-postgresql
+  namespace: network-services
+  labels:
+    app.kubernetes.io/name: stork
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  serviceName: stork-postgresql
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stork
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stork
+        app.kubernetes.io/component: database
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          image: docker.io/library/postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+          imagePullPolicy: IfNotPresent
+          command: [sh, -ec]
+          args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
+          env:
+            - {name: POSTGRES_DB, value: stork}
+            - {name: POSTGRES_USER, value: stork}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stork-secrets
+                  key: postgres-password
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports:
+            - {name: postgresql, containerPort: 5432, protocol: TCP}
+          startupProbe:
+            exec:
+              command: [sh, -ec, 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: [sh, -ec, 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: [sh, -ec, 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: stork-postgresql

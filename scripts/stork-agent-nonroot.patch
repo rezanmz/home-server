@@ -1,0 +1,22 @@
+diff --git a/docker/images/stork.Dockerfile b/docker/images/stork.Dockerfile
+index a187185..d761994 100644
+--- a/docker/images/stork.Dockerfile
++++ b/docker/images/stork.Dockerfile
+@@ -179,6 +179,17 @@ COPY --from=agent-builder /app/dist/agent /
+ ENTRYPOINT [ "/usr/bin/stork-agent" ]
+ # Incoming port
+ EXPOSE 8080
++
++# Home-server runtime target: upstream's container runs as root, while the
++# registration command accepts a named stork-agent account. Add only that
++# unprivileged identity; all application bits still come from the exact
++# upstream agent target above.
++FROM agent AS agent-nonroot
++RUN printf 'stork-agent:x:1000:1000:Stork Agent:/var/lib/stork-agent:/usr/sbin/nologin\n' >> /etc/passwd \
++        && printf 'stork-agent:x:1000:\n' >> /etc/group \
++        && mkdir -p /var/lib/stork-agent \
++        && chown 1000:1000 /var/lib/stork-agent
++USER 1000:1000
+ # Prometheus Kea port
+ EXPOSE 9547
+ # Prometheus Bing9 port
