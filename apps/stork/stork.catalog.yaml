@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: stork
+spec:
+  name: ISC Stork
+  workload:
+    namespace: network-services
+    podSelector: app.kubernetes.io/name=stork, app.kubernetes.io/component in (server,database)
+  homepage:
+    order: 30
+    group: Operations
+    icon: mdi-bird
+    description: Read-only DHCP inventory
+  web:
+    hostname: stork.reza.network
+    route: apps/stork/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: ISC Stork OIDC
+      application:
+        slug: stork
+        launchUrl: https://stork.reza.network/
+      client:
+        type: public
+        id: stork
+        grantTypes: [authorization_code]
+        scopes: [openid, email, profile]
+        redirectUris:
+          - type: authorization
+            url: https://stork.reza.network/oidc/callback
+        pkce:
+          verified: true
+          evidence: Stork 2.5 implements authorization code flow with PKCE and does not require a client secret.
+  placement:
+    mode: beelink
+    manifest: apps/stork/workloads.yaml
+    reason: Audited Stork images are amd64 and the agent monitors Beelink-hosted Kea.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/stork/pvc.yaml]
+  observability:
+    mode: metrics
+    manifests:
+      - apps/stork/monitoring.yaml
+      - infrastructure/observability/network-services-dashboard.yaml

@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: jellyseerr
+spec:
+  name: Jellyseerr
+  workload:
+    namespace: apps
+    app: jellyseerr
+  homepage:
+    order: 20
+    group: Media
+    icon: jellyseerr.png
+    description: Media requests
+  web:
+    hostname: jellyseerr.reza.network
+    route: apps/jellyseerr/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Jellyseerr uses its supported Jellyfin/local login; native OIDC is not available.
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/jellyseerr/pvc.yaml]
+  observability:
+    mode: kubernetes

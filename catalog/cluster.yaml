@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=cluster.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: ClusterCatalog
+metadata:
+  name: home-server
+spec:
+  domain: reza.network
+  dns:
+    splitHorizonAddress: 192.168.1.240
+    extraPublicNames:
+      - reza.network
+  homepage:
+    groups:
+      - Home & Identity
+      - Media
+      - Downloads & Automation
+      - AI & Data
+      - Operations
+      - Infrastructure
+  authentik:
+    baseUrl: https://auth.reza.network
+    namespace: apps
+    providerSecret:
+      manifest: apps/authentik/oidc-client-secrets.sops.yaml
+      name: authentik-oidc-client-secrets

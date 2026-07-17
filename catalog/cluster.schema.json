@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reza.network/schemas/cluster-catalog-v1alpha1.json",
+  "title": "Home-server cluster catalog settings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "catalog.reza.network/v1alpha1"},
+    "kind": {"const": "ClusterCatalog"},
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {"name": {"type": "string", "minLength": 1}}
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "dns", "homepage", "authentik"],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+        },
+        "dns": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["splitHorizonAddress", "extraPublicNames"],
+          "properties": {
+            "splitHorizonAddress": {
+              "type": "string",
+              "anyOf": [
+                {"format": "ipv4"},
+                {"format": "ipv6"}
+              ]
+            },
+            "extraPublicNames": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "homepage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["groups"],
+          "properties": {
+            "groups": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "authentik": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["baseUrl", "namespace", "providerSecret"],
+          "properties": {
+            "baseUrl": {"type": "string", "format": "uri", "pattern": "^https://"},
+            "namespace": {"type": "string", "minLength": 1},
+            "providerSecret": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["manifest", "name"],
+              "properties": {
+                "manifest": {"$ref": "#/$defs/path"},
+                "name": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "path": {"type": "string", "minLength": 1}
+  }
+}

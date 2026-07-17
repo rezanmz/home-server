@@ -225,10 +225,11 @@ upstream authentication support changes.
 ## Add a service
 
 Start with the [service integration catalog](service-catalog.md). The
-application manifests define runtime behavior; `catalog/services.yaml` records
-the cross-service decisions that must accompany them. CI requires an explicit
-Homepage card or omission, route/auth/DNS policy, placement, data protection,
-and observability level for every active application path.
+application manifests define runtime behavior; a colocated
+`<service-id>.catalog.yaml` records the cross-service decisions that must
+accompany them. CI requires an explicit Homepage card or omission,
+route/auth/DNS policy, placement, data protection, and observability level for
+every active application path.
 
 ### 1. Start from the closest security model
 
@@ -522,7 +523,7 @@ Administrative allow-lists deliberately exclude node addresses
 
 For a new hostname, declare `web.hostname`, visibility, exact private-route
 middleware, authentication, and both DNS decisions in
-`catalog/services.yaml`, then run:
+`apps/<service>/<service-id>.catalog.yaml`, then run:
 
 ```bash
 python3 scripts/service_catalog.py render
@@ -859,11 +860,11 @@ That host change is outside Flux.
 
 ### 5. Remove DNS and external state
 
-- Remove the service item from `catalog/services.yaml` only after its active
-  route and workload integration intent is gone, then run
+- Remove the colocated service descriptor only after its active route and
+  workload integration intent is gone, then run
   `python3 scripts/service_catalog.py render`. This removes its generated
   Homepage, Blocky, and Cloudflare DDNS entries together. A retained
-  recovery-only app path needs a narrow `registrationExclusions` reason.
+  recovery-only app path needs a narrow colocated `CatalogExclusion` reason.
 - Allow Blocky's configured five-minute custom-record TTL to expire on clients,
   or flush only the affected client cache when absence must be immediate.
 - Explicitly delete the exact Cloudflare record: `DELETE_ON_STOP=false`, so

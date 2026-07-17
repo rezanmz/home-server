@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: home-assistant
+spec:
+  name: Home Assistant
+  workload:
+    namespace: apps
+    app: home-assistant
+  homepage:
+    order: 10
+    group: Home & Identity
+    icon: home-assistant.png
+    description: Home automation
+  web:
+    hostname: homeassistant.reza.network
+    route: apps/home-assistant/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Upstream Home Assistant has no built-in OIDC provider; use its native authentication.
+  placement:
+    mode: beelink
+    manifest: apps/home-assistant/deployment.yaml
+    reason: Keeps third-party integrations and selected LAN egress off the Pi's trusted NFS host.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/home-assistant/pvc.yaml]
+  observability:
+    mode: kubernetes

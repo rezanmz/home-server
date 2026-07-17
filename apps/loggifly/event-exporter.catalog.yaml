@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: event-exporter
+spec:
+  name: Event Exporter
+  workload:
+    namespace: monitoring
+    app: loggifly
+  homepage:
+    order: 100
+    group: Infrastructure
+    icon: mdi-message-alert
+    description: Warning events to Telegram
+    link: false
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: kubernetes

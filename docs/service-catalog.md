@@ -1,114 +1,151 @@
 # Service integration catalog
 
-This manual describes the repository's cross-service contract. Read it before
-adding a service or changing a hostname, exposure boundary, authentication
-method, placement rule, storage class, backup policy, monitoring integration,
-or Homepage card.
+This manual is for a maintainer adding or changing a cluster service. After
+reading it, you should be able to make one colocated integration declaration,
+generate all shared configuration, and distinguish what the compiler proved
+from what still needs an application-specific decision or live test.
 
-The catalog is `catalog/services.yaml`. It answers the questions that otherwise
-get scattered across application manifests:
+The short version is:
 
-- Is this service reachable through the shared Gateway?
-- Is the route public or LAN/WireGuard-only?
-- Does it use native OIDC, forward-auth, native application authentication, or
-  an explicitly documented exception?
-- Does its hostname belong in Cloudflare DDNS and Blocky split DNS?
-- What appears in Homepage, and which pods supply its health/resource data?
-- Is the workload floating, pinned, or present on every node?
-- Where does its state live, and what protects that state off-site?
-- Does it have application metrics, platform metrics, or only Kubernetes
-  health/resource visibility?
+1. Put `<service-id>.catalog.yaml` beside the service's Kubernetes manifests.
+2. State the exposure, login, placement, data-protection, monitoring, and
+   Homepage decisions there.
+3. Run `python3 scripts/service_catalog.py render`.
+4. Read `python3 scripts/service_catalog.py explain <service-id>`.
+5. Run `python3 scripts/service_catalog.py check`.
 
-Kubernetes manifests remain the runtime source of truth. The catalog does not
-replace Deployments, Services, HTTPRoutes, NetworkPolicies, Authentik
-blueprints, ServiceMonitors, dashboards, PVCs, or backup jobs.
+Do not add the hostname to Cloudflare DDNS or Blocky by hand. Do not add a
+standard OIDC or forward-auth application directly to Authentik's aggregate
+blueprint. Those are compiler outputs.
 
-## Why this design
+## Mental model
 
-The catalog is a repository build-time contract, not a Kubernetes CRD or
-controller. That is deliberate:
+The catalog is a build-time contract. It is not a Kubernetes controller and it
+does not run in the cluster.
 
-- adding a service does not add a privileged in-cluster reconciler;
-- Flux still consumes ordinary, reviewable Kubernetes YAML;
-- generated changes appear in the pull-request diff;
-- Authentik and monitoring keep their service-specific configuration rather
-  than being forced through a lowest-common-denominator template; and
-- CI can reject an omitted integration before the change reaches the cluster.
+```mermaid
+flowchart LR
+    A["Colocated service descriptor"] --> B["Catalog compiler"]
+    B --> C["Homepage cards"]
+    B --> D["Cloudflare DDNS names"]
+    B --> E["Blocky split DNS"]
+    B --> F["Authentik blueprints"]
+    B --> G["Authentik worker secret refs"]
+    A --> H["Catalog validator"]
+    I["Explicit Kubernetes and SOPS manifests"] --> H
+    H --> J["CI accepts or rejects the change"]
+```
 
-Application annotations alone are not enough. They can describe a web card,
-but not why a public route lacks OIDC, which physical node a workload depends
-on, whether NFS data is backed up, or which Grafana/Prometheus resources own its
-observability. A runtime controller would also be unable to safely invent
-service-specific OIDC callbacks, backup semantics, or NetworkPolicy.
+Kubernetes manifests remain the runtime source of truth. The descriptor records
+cross-service intent and lets the compiler remove repetitive integration
+plumbing. This separation matters: the catalog must not invent a public route,
+backup promise, node pin, callback, claim, role mapping, secret, or network
+permission.
+
+Cluster-wide facts live in `catalog/cluster.yaml`: the base domain, the
+split-DNS address, Homepage group order, and the Authentik provider-secret
+location. Service decisions never go into that file.
+
+Every descriptor uses the versioned envelope
+`catalog.reza.network/v1alpha1`. The JSON Schema comment on its first line gives
+editors completion and catches misspelled or mode-incompatible fields. The
+compiler repeats the security-sensitive checks in CI, so correctness does not
+depend on one editor.
 
 ## What is generated
 
-Run:
+The compiler owns these committed, reviewable outputs:
 
-```bash
-python3 scripts/service_catalog.py render
-```
+| Output | Descriptor input |
+| --- | --- |
+| Homepage service inventory | Every enabled `homepage` block |
+| Cloudflare DDNS domain list | Web entries with `dns.cloudflare: true` |
+| Blocky split-DNS mappings | Web entries with `dns.splitHorizon: true` |
+| Authentik application blueprint ConfigMap | OIDC and forward-auth declarations |
+| Authentik worker environment patch | Confidential OIDC clients |
 
-The command deterministically updates three aggregate YAML areas:
+Generated files carry a warning header. Never edit them directly. `check`
+compares them byte-for-byte with a fresh render and fails on drift.
 
-| Output | Catalog source | Why it is generated |
-| --- | --- | --- |
-| `apps/homepage/config/services.yaml` | Every enabled `homepage` declaration | Keeps the service directory and Kubernetes status selectors in one contract |
-| `apps/cloudflare-ddns/kustomization.yaml` generated region | `web.hostname` entries with `dns.cloudflare: true`, plus `dns.extraPublicNames` | Makes a hostname addition roll the DDNS pod through a hash-named ConfigMap |
-| `apps/blocky/config.yml` generated region | `web.hostname` entries with `dns.splitHorizon: true` | Keeps LAN clients on the MetalLB Gateway address |
+`render` validates every descriptor before changing any output. It prepares all
+content first and atomically replaces each file, so an invalid descriptor
+cannot leave half of the shared configuration updated.
 
-Do not edit those generated areas directly. The generator leaves the rest of
-the Cloudflare and Blocky configuration untouched.
+## What is not generated
 
-Authentik blueprints, ServiceMonitors, PrometheusRules, Grafana dashboards,
-NetworkPolicies, and backup resources are not generated. Their behavior is too
-service-specific to synthesize safely. The catalog references them, and CI
-proves that the declared files, blueprint application, client type, confidential
-client environment variable, route hostname, and private-route middleware are
-present.
+These remain explicit because their behavior is service-specific:
 
-## Catalog model
+- Deployments, StatefulSets, DaemonSets, Jobs, and Services;
+- HTTPRoutes, Traefik middleware, access proxies, and NetworkPolicies;
+- PVCs, NFS volumes, backup jobs, and restore procedures;
+- the relying application's OIDC environment and authorization/role rules;
+- SOPS-encrypted secret values;
+- ServiceMonitors, PrometheusRules, alerts, and Grafana dashboards; and
+- application bootstrap, mobile-client, webhook, API, and logout behavior.
 
-Each `services` item represents one operator-facing component. Several items
-may share a deployment path or pod selector; Prowlarr, Radarr, Sonarr,
-qBittorrent, and Shelfmark intentionally point at the consolidated
-`media-vpn` pod.
+The descriptor references these resources. CI proves that the referenced files,
+hostnames, secret keys, pins, and monitoring/storage declarations exist and
+agree with the rendered cluster where that can be checked mechanically.
 
-### Identity and ownership
+For example, CI can prove that a private route references an IP allow-list. It
+cannot prove that an application's mobile client completes OIDC login or that
+two independently SOPS-encrypted copies of a client secret hold the same
+plaintext. Those remain live acceptance tests.
+
+## Read an ordinary descriptor
+
+This shortened example shows the normal shape:
 
 ```yaml
-- id: example
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: example
+spec:
   name: Example
-  path: apps/example
   workload:
     namespace: apps
     app: example
+  homepage:
+    order: 50
+    group: Home & Identity
+    icon: example.png
+    description: Short operator-facing purpose
+  web:
+    hostname: example.reza.network
+    route: apps/example/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Example uses its supported local account authentication.
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/example/pvc.yaml]
+  observability:
+    mode: kubernetes
 ```
 
-- `id` is stable, unique, lowercase operator vocabulary.
-- `path` is the repository directory that owns the service. It must be reachable
-  from `clusters/home-server/kustomization.yaml`.
-- `workload` gives Homepage the namespace and exactly one selector:
-  `app` for `app.kubernetes.io/name`, or a full `podSelector` for a compound
-  workload.
+The descriptor's directory is its owning application path. There is no repeated
+`path` field and no central service list to update.
 
-Every active root `apps/*` path must have at least one catalog item. A retired
-or intentionally non-service path needs a reason in `registrationExclusions`;
-an unexplained omission fails CI.
+`metadata.name` is the stable machine identity. Do not rename it casually:
+confidential Authentik secret keys are derived from it. `spec.name` is the
+human-facing label and may change.
 
-### Homepage
+`workload` selects the pods Homepage should summarize. Use `app` for the normal
+`app.kubernetes.io/name` label. Use `podSelector` only when a component spans
+several labels or shares a pod.
 
-```yaml
-homepage:
-  group: Home & Identity
-  icon: example.png
-  description: Short operator-facing purpose
-```
-
-The group must be declared in `homepage.groups`. A service with a `web` block
-gets an HTTPS link by default. Set `link: false` for a status-only card.
-
-An intentional omission must still be explicit:
+`homepage.order` is local to its group. Leave gaps so a new card can be inserted
+without renumbering everything. A deliberate omission is explicit:
 
 ```yaml
 homepage:
@@ -116,88 +153,138 @@ homepage:
   reason: The dashboard does not need a card linking back to itself.
 ```
 
-Homepage itself is the current example. This prevents “forgot the dashboard”
-and “deliberately omitted” from looking identical in review.
+## Exposure and DNS
 
-### Web, DNS, exposure, and authentication
+`visibility` has no default:
 
-```yaml
-web:
-  hostname: example.reza.network
-  route: apps/example/route.yaml
-  visibility: private
-  accessMiddleware: lan-vpn-only
-  dns: {cloudflare: true, splitHorizon: true}
-  auth:
-    mode: oidc
-    blueprint: example.yaml
-    application: example
-    client: confidential
-    secretEnv: AUTHENTIK_OIDC_EXAMPLE_CLIENT_SECRET
-    secretFiles:
-      - path: apps/authentik/oidc-client-secrets.sops.yaml
-        key: AUTHENTIK_OIDC_EXAMPLE_CLIENT_SECRET
-      - path: apps/example/secrets.sops.yaml
-        key: oidc-client-secret
-```
+- `private` requires the named IP allow-list middleware and means LAN or
+  WireGuard only.
+- `public` means Internet-reachable and forbids an IP allow-list on the rendered
+  route.
 
-`visibility` is either:
-
-- `private`: the rendered HTTPRoute must reference the exact
-  `accessMiddleware`; or
-- `public`: there is no IP allow-list middleware and Internet exposure is an
-  explicit review decision.
-
-The DNS booleans are explicit even though almost every current route uses both.
-This allows a future internal-only or externally managed name without hiding
-the exception.
+Every web entry explicitly says whether Cloudflare and Blocky own its DNS. This
+is a policy decision, not an implementation list. The compiler turns those two
+booleans into the central provider-specific configuration.
 
 Authentication modes are:
 
-| Mode | Required declaration |
-| --- | --- |
-| `oidc` | Authentik blueprint key, application slug, public/confidential client type; confidential clients also declare the Authentik worker environment variable and both encrypted Secret files |
-| `forward-auth` | Authentik blueprint key, application slug, and route middleware; use only after checking APIs, WebSockets, callbacks, and native clients |
-| `native` | A reason naming the supported application authentication or the missing upstream SSO capability |
-| `none` | A reason and a private route; CI rejects unauthenticated public routes |
+- `oidc`: generate an Authentik provider and application using the immutable
+  `authentik-oidc-v1` profile;
+- `forward-auth`: generate an Authentik single-application proxy provider using
+  `authentik-forward-single-v1`;
+- `native`: use the application's supported authentication and document why
+  native OIDC is unavailable or unsuitable; or
+- `none`: only permitted on a private route and requires a reason.
 
-Native OIDC remains the default whenever upstream supports it. The catalog
-records the decision; it does not weaken the requirements in the service
-lifecycle manual. Exact callback URIs, scopes, group/role mapping, and bootstrap
-logic remain in the Authentik blueprint and application manifests.
+An unauthenticated public route is rejected.
 
-### Placement
+## Native OIDC
 
-```yaml
-placement:
-  mode: beelink
-  manifest: apps/example/deployment.yaml
-  reason: Requires an amd64-only image.
-```
-
-Allowed modes are `floating`, `beelink`, `raspberrypi`, `every-node`, and
-`platform`. A pinned declaration must reference a manifest that actually
-contains the matching `kubernetes.io/hostname` selector. Every non-floating
-mode requires a reason.
-
-The catalog records desired placement, not the node on which a floating pod
-happens to run today. See the cluster operations manual before changing a pin.
-
-### Data and protection
+Use native OIDC whenever the application supports it. A confidential-client
+example is:
 
 ```yaml
-data:
-  class: mixed
-  protection: longhorn-b2
-  manifests:
-    - apps/example/pvc.yaml
-    - infrastructure/nfs-media/apps.yaml
-  note: Longhorn protects configuration; large NFS media is reproducible.
+auth:
+  mode: oidc
+  profile: authentik-oidc-v1
+  application:
+    slug: example
+    launchUrl: https://example.reza.network/
+  client:
+    type: confidential
+    id: example
+    grantTypes: [authorization_code, refresh_token]
+    scopes: [openid, email, profile]
+    redirectUris:
+      - type: authorization
+        url: https://example.reza.network/oauth/callback
+    secret:
+      manifest: apps/example/secrets.sops.yaml
+      key: oidc-client-secret
 ```
+
+The profile fixes only Authentik mechanics: standard authorization/invalidation
+flows, strict redirects, a per-provider issuer, ID-token claims, and the signing
+key. It does not choose client type, grants, scopes, callbacks, claims, or
+visibility.
+
+For a confidential client, the compiler derives
+`AUTHENTIK_OIDC_<SERVICE_ID>_CLIENT_SECRET`, checks that the key exists in the
+shared encrypted Authentik Secret, checks the relying-party Secret reference,
+and generates the worker's required `secretKeyRef`. It never creates or prints
+the secret value.
+
+A public client must supply reviewed PKCE evidence and cannot declare a secret:
+
+```yaml
+client:
+  type: public
+  id: example-mobile
+  grantTypes: [authorization_code]
+  scopes: [openid, email, profile]
+  redirectUris:
+    - type: authorization
+      url: https://example.reza.network/oidc/callback
+  pkce:
+    verified: true
+    evidence: Upstream version 2.5 implements authorization code with PKCE.
+```
+
+Redirects must be exact HTTPS URLs on the service hostname. Wildcards, regexes,
+cross-host redirects, implicit flow, and client credentials are not supported
+by the standard profile. A genuine future exception requires a reviewed,
+versioned compiler extension rather than a raw-YAML escape hatch.
+
+### Custom claims
+
+Most services need only managed `openid`, `email`, and `profile` scopes.
+Applications with a documented claim requirement may add a typed mapping:
+
+```yaml
+claimMappings:
+  - id: example-profile
+    name: Example preferred username
+    scope: profile
+    description: Example keys users by preferred_username.
+    reason: Email is the application's stable user identity.
+    expression: |
+      return {"preferred_username": request.user.email}
+```
+
+The reason is mandatory because the expression is executable Authentik policy.
+Actual Budget and Headlamp are the current examples. Audiobookshelf demonstrates
+multiple authorization and logout callbacks. Grafana role mapping remains in
+Grafana's own configuration because it is relying-party authorization, not
+identity-provider plumbing.
+
+## Forward-auth
+
+Forward-auth is for a browser application that lacks native authentication and
+whose APIs, WebSockets, callbacks, and clients are known to tolerate the proxy:
+
+```yaml
+auth:
+  mode: forward-auth
+  profile: authentik-forward-single-v1
+  application:
+    slug: example
+    launchUrl: https://example.reza.network/
+  middleware: example-authentik
+```
+
+The compiler generates the Authentik proxy provider, application, and embedded
+outpost membership. The HTTPRoute and Traefik `forwardAuth` middleware remain
+explicit and are validated. Homepage is the current example.
+
+## Placement, data, and monitoring
+
+Placement modes are `floating`, `beelink`, `raspberrypi`, `every-node`, and
+`platform`. A physical-node pin references the manifest containing its hostname
+selector. Every non-floating mode has a reason because it is an availability
+decision.
 
 Data classes are `stateless`, `longhorn`, `longhorn-observability`,
-`nfs-reproducible`, `mixed`, and `platform`. Protection values are intentionally
-specific:
+`nfs-reproducible`, `mixed`, and `platform`. Protection is stated separately:
 
 - `longhorn-b2`;
 - `longhorn-and-restic-b2`;
@@ -206,55 +293,53 @@ specific:
 - `not-applicable`; or
 - `platform-managed`.
 
-Stateful classes must reference the manifests that define their storage.
-`mixed` and excluded/platform protection require a note explaining the
-boundary. A declaration is not proof that a backup completed; live backup and
-restore verification remains an operational acceptance step.
+Stateful classes reference their storage manifests. Mixed/excluded/platform
+declarations also explain the boundary. A declaration records policy; backup
+health and restore tests remain operational evidence.
 
-### Observability
+Observability modes are:
 
-```yaml
-observability:
-  mode: metrics
-  manifests:
-    - apps/example/monitoring.yaml
-    - infrastructure/observability/dashboard.yaml
-```
+- `kubernetes`: pod health and CPU/memory only;
+- `metrics`: application metrics with referenced monitoring resources;
+- `platform`: shared platform monitoring resources; or
+- `none`: an explicit reason.
 
-Modes are:
-
-- `kubernetes`: Homepage and the existing cluster stack provide pod health and
-  CPU/memory visibility, but there is no application-specific metrics endpoint;
-- `metrics`: the service owns explicit ServiceMonitor/PodMonitor/rule/dashboard
-  resources listed in `manifests`;
-- `platform`: metrics are supplied by the shared observability release or
-  platform dashboard resources; or
-- `none`: an explicit `reason` is required.
-
-Do not claim `metrics` merely because a pod is visible in kube-state-metrics.
-Conversely, do not add a bespoke Grafana dashboard to every tiny service when
-Kubernetes health and resource data are the useful signal.
+Do not claim `metrics` merely because kube-state-metrics can see a pod.
 
 ## Add a service
 
-Use this sequence:
-
-1. Create the application manifests following the service lifecycle manual.
-2. Add the directory to `clusters/home-server/kustomization.yaml`.
-3. Add one catalog item with explicit Homepage, web/auth/DNS, placement, data,
-   protection, and observability decisions. A background service still needs
-   explicit `homepage`, `data`, and `observability` declarations.
-4. Add service-specific Authentik, metrics, dashboard, alert, storage, and
-   backup resources referenced by the catalog.
-5. Generate aggregate YAML:
+1. Build the application manifests using the service lifecycle manual. Add the
+   application directory to the root Kustomization.
+2. Add `<service-id>.catalog.yaml` beside those manifests. Copy the closest
+   security and storage shape, then replace every value. Do not copy a
+   privileged exception into an ordinary app.
+3. Decide, rather than infer:
+   - public, private, or no route;
+   - native OIDC, forward-auth, native login, or no login;
+   - exact callbacks/scopes/client type;
+   - floating or physical placement;
+   - each state store and its off-site protection; and
+   - Kubernetes-only, application metrics, platform, or no monitoring.
+4. For confidential OIDC, create the same high-entropy client secret in the
+   shared Authentik SOPS Secret and the relying application's SOPS Secret. Do
+   not print either plaintext in a command transcript.
+5. Render:
 
    ```bash
    python3 scripts/service_catalog.py render
    ```
 
-6. Review every generated diff. A new public DNS record or a disappeared
-   Homepage card is a behavior change, not formatting noise.
-7. Render and validate:
+6. Ask the compiler to explain the result:
+
+   ```bash
+   python3 scripts/service_catalog.py explain <service-id>
+   ```
+
+   Read both sections: “Generated by the catalog compiler” and “Validated but
+   still explicitly owned by manifests.” If a required responsibility is in
+   the second section, complete it before deployment.
+
+7. Validate the final rendered cluster:
 
    ```bash
    kubectl kustomize clusters/home-server >/tmp/home-server.yaml
@@ -262,52 +347,91 @@ Use this sequence:
    python3 scripts/service_catalog.py summary
    ```
 
-8. Run the remaining repository checks and complete the pull-request/live
-   acceptance flow in the service lifecycle manual.
+8. Follow the pull-request and live acceptance flow in the service lifecycle
+   manual. For OIDC, test discovery, login, callback, logout, roles, and any
+   official mobile client. For state, confirm backup inclusion and the relevant
+   restore/read test.
 
-`check` also works without `--rendered`; it runs the root Kustomize render
-itself:
+You do not edit the generated Homepage, DDNS, Blocky, Authentik blueprint, or
+worker-patch files during this workflow.
+
+## Modify a service
+
+Change the descriptor and its owning manifests in the same pull request. Run
+`render`, inspect every generated diff, then run `explain` and `check`.
+
+A hostname change affects routing, two DNS systems, Homepage, Authentik
+callbacks, and often application-side settings. The compiler updates only the
+areas it owns and rejects mismatched explicit resources.
+
+Treat these as stable identities:
+
+- `metadata.name`;
+- Authentik application slug;
+- OIDC client ID;
+- provider/application identifiers derived from the slug; and
+- confidential provider secret key derived from `metadata.name`.
+
+Changing an identity is a migration, not a rename.
+
+## Retire a service
+
+Retirement remains deliberately explicit because the root Flux Kustomization
+does not prune and Authentik does not delete objects merely because a mounted
+blueprint file disappears.
+
+1. Remove or disable the route and stop writers.
+2. Take and verify the final backup if state is retained.
+3. Explicitly delete the live Kubernetes objects according to the retirement
+   runbook.
+4. Apply an Authentik cleanup blueprint with `state: absent` for the provider
+   and application, verify it succeeded, then remove that cleanup declaration.
+5. Remove the service descriptor and run `render`.
+6. If the directory remains registered only for recovery artifacts, replace
+   the service descriptor with a colocated `CatalogExclusion` and a narrow
+   reason.
+
+Never use an exclusion to hide an active workload.
+
+## Understand failures
+
+Common errors are phrased as the missing operational decision:
+
+- `active app path has no catalog service or documented exclusion`: add a
+  descriptor beside the app; do not add it to a central list.
+- `generated file is stale`: run `render` and review the diff.
+- `private route does not reference access middleware`: fix the HTTPRoute or
+  correct the visibility decision.
+- `cataloged public but route uses IP allow-list`: decide whether the service is
+  actually public or private; do not silence the check.
+- `providerSecret key is not present`: add the derived key to the encrypted
+  Authentik Secret.
+- `redirect URL must be exact`: register the upstream-documented callback on
+  the service hostname.
+- `must be a DNS label` or `contains unsafe characters`: use a plain stable
+  identifier; generated Authentik and DNS syntax never accepts free-form YAML.
+- `placement manifest does not pin`: fix the manifest or declare the workload
+  floating.
+- `unknown field`: use the schema spelling; unknown keys never act as comments.
+
+For a plain-language view at any time:
 
 ```bash
-python3 scripts/service_catalog.py check
+python3 scripts/service_catalog.py explain <service-id>
 ```
 
-## Modify or retire a service
+## Schema and profile evolution
 
-Change the catalog in the same pull request as the owning manifests. Run
-`render` after any hostname, Homepage, or DNS change. CI rejects:
+Descriptor API versions and integration profiles are separate:
 
-- a rendered `*.reza.network` HTTPRoute absent from the catalog;
-- a catalog hostname with no rendered HTTPRoute;
-- a private route missing its declared access middleware;
-- a stale Homepage, Cloudflare, or Blocky generated area;
-- an OIDC/forward-auth blueprint or application slug that is absent;
-- a confidential OIDC client not loaded by the Authentik worker;
-- a pinned workload whose referenced manifest does not contain that pin;
-- a missing storage, observability, secret, route, or placement manifest; and
-- a newly registered `apps/*` directory without a catalog decision.
+- `catalog.reza.network/v1alpha1` defines the descriptor shape.
+- `authentik-oidc-v1` and `authentik-forward-single-v1` define generated
+  provider behavior.
 
-For retirement, remove or disable the route first, stop writers, take the final
-backup, and follow the root-pruning cleanup procedure. Remove the catalog item
-only when its active integration intent is gone, then run `render`. If a
-retained recovery-only directory remains in the root tree, add a narrow
-`registrationExclusions` entry with its retention reason. Never use an
-exclusion to hide an active service.
+An existing profile version is immutable. New behavior gets a new profile
+version and an explicit descriptor migration. The compiler never silently
+reinterprets an old descriptor.
 
-## Review commands
-
-```bash
-# Human-readable matrix.
-python3 scripts/service_catalog.py summary
-
-# Show only aggregate changes after a catalog edit.
-python3 scripts/service_catalog.py render
-git diff -- \
-  apps/homepage/config/services.yaml \
-  apps/cloudflare-ddns/kustomization.yaml \
-  apps/blocky/config.yml
-
-# Prove the catalog matches the final rendered cluster.
-kubectl kustomize clusters/home-server >/tmp/home-server.yaml
-python3 scripts/service_catalog.py check --rendered /tmp/home-server.yaml
-```
+The catalog stays a build-time tool. Adding a CRD/controller, generating full
+application workloads, or introducing generic inheritance would require a new
+architecture decision; none is a routine extension.

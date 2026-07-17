@@ -152,34 +152,6 @@ spec:
                   optional: true
             - name: AUTHENTIK_ERROR_REPORTING__ENABLED
               value: "false"
-            # Keep client-secret wiring explicit. Adding a new OIDC client then
-            # changes the pod template (triggering a rollout), and a missing
-            # required key prevents a silently broken Authentik blueprint.
-            - name: AUTHENTIK_OIDC_ACTUAL_BUDGET_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-oidc-client-secrets
-                  key: AUTHENTIK_OIDC_ACTUAL_BUDGET_CLIENT_SECRET
-            - name: AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-oidc-client-secrets
-                  key: AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET
-            - name: AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-oidc-client-secrets
-                  key: AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET
-            - name: AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-oidc-client-secrets
-                  key: AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET
-            - name: AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-oidc-client-secrets
-                  key: AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET
             # Server and worker share a pod network namespace; give the
             # worker's internal HTTP/metrics listeners distinct ports.
             - name: AUTHENTIK_LISTEN__HTTP

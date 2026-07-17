@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: samba
+spec:
+  name: Samba
+  workload:
+    namespace: network-services
+    app: samba
+  homepage:
+    order: 90
+    group: Infrastructure
+    icon: mdi-folder-network
+    description: LAN file shares
+    link: false
+  placement:
+    mode: raspberrypi
+    manifest: apps/samba/deployment.yaml
+    reason: SMB and NetBIOS LAN behavior use the Pi host network and Pi NFS exports.
+  data:
+    class: nfs-reproducible
+    protection: excluded-reproducible
+    manifests: [infrastructure/nfs-media/network-services.yaml]
+    note: The shared media tree is deliberately treated as reproducible and has no off-site backup.
+  observability:
+    mode: kubernetes

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: kea
+spec:
+  name: Kea DHCP
+  workload:
+    namespace: network-services
+    app: kea-dhcp4
+  homepage:
+    order: 20
+    group: Infrastructure
+    icon: mdi-router-network
+    description: Authoritative LAN DHCP
+    link: false
+  placement:
+    mode: beelink
+    manifest: apps/kea/deployment.yaml
+    reason: Official image is amd64-only and DHCP requires the Beelink LAN interface.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/kea/pvc.yaml]
+  observability:
+    mode: metrics
+    manifests:
+      - apps/kea/metrics.yaml
+      - infrastructure/observability/network-services-dashboard.yaml

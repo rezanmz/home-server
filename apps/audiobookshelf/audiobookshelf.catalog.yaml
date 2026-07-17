@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: audiobookshelf
+spec:
+  name: Audiobookshelf
+  workload:
+    namespace: media
+    app: audiobookshelf
+  homepage:
+    order: 30
+    group: Media
+    icon: audiobookshelf.png
+    description: Audiobooks and podcasts
+  web:
+    hostname: audiobooks.reza.network
+    route: apps/audiobookshelf/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: Audiobookshelf OIDC
+      application:
+        slug: audiobookshelf
+        launchUrl: https://audiobooks.reza.network/
+      client:
+        type: confidential
+        id: audiobookshelf
+        grantTypes: [authorization_code, refresh_token]
+        scopes: [openid, email, profile]
+        redirectUris:
+          - type: authorization
+            url: https://audiobooks.reza.network/auth/openid/callback
+          - type: authorization
+            url: https://audiobooks.reza.network/auth/openid/mobile-redirect
+          - type: logout
+            url: https://audiobooks.reza.network/audiobookshelf/login
+          - type: logout
+            url: https://audiobooks.reza.network/login
+        secret:
+          manifest: apps/audiobookshelf/secrets.sops.yaml
+          key: oidc-client-secret
+  placement:
+    mode: beelink
+    manifest: apps/audiobookshelf/deployment.yaml
+    reason: Prevents a public workload from inheriting the Pi pod CIDR's private-route trust.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/audiobookshelf/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Configuration and metadata are backed up; NFS audiobooks and downloaded podcast media are outside Longhorn.
+  observability:
+    mode: kubernetes

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: cloudflare-ddns
+spec:
+  name: Cloudflare DDNS
+  workload:
+    namespace: apps
+    app: cloudflare-ddns
+  homepage:
+    order: 80
+    group: Infrastructure
+    icon: cloudflare.png
+    description: Public DNS synchronization
+    link: false
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: kubernetes

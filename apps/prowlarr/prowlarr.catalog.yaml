@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: prowlarr
+spec:
+  name: Prowlarr
+  workload:
+    namespace: media
+    app: media-vpn
+  homepage:
+    order: 20
+    group: Downloads & Automation
+    icon: prowlarr.png
+    description: Indexer management
+  web:
+    hostname: prowlarr.reza.network
+    route: apps/prowlarr/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Prowlarr uses its built-in authentication behind the LAN/WireGuard boundary.
+  placement:
+    mode: beelink
+    manifest: apps/downloads/deployment.yaml
+    reason: Its container shares the downloads pod's Gluetun network namespace.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/prowlarr/pvc.yaml]
+  observability:
+    mode: kubernetes

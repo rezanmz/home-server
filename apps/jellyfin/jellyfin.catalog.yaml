@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: jellyfin
+spec:
+  name: Jellyfin
+  workload:
+    namespace: media
+    app: jellyfin
+  homepage:
+    order: 10
+    group: Media
+    icon: jellyfin.png
+    description: Movies and television
+  web:
+    hostname: jellyfin.reza.network
+    route: apps/jellyfin/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Jellyfin uses its supported local user authentication and official clients.
+  placement:
+    mode: beelink
+    manifest: apps/jellyfin/deployment.yaml
+    reason: Requires the Beelink AMD GPU for hardware transcoding and LAN discovery.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/jellyfin/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects configuration; the NFS media library is deliberately reproducible.
+  observability:
+    mode: kubernetes

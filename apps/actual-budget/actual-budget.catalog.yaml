@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: actual-budget
+spec:
+  name: Actual Budget
+  workload:
+    namespace: apps
+    app: actual-budget
+  homepage:
+    order: 30
+    group: Home & Identity
+    icon: actual-budget.png
+    description: Personal finance
+  web:
+    hostname: budget.reza.network
+    route: apps/actual-budget/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: Actual Budget OIDC
+      application:
+        slug: actual-budget
+        launchUrl: https://budget.reza.network
+      client:
+        type: confidential
+        id: actual-budget-60d8e2eef4cf4c928ee18cd2
+        grantTypes: [authorization_code, refresh_token]
+        scopes: [openid, email]
+        redirectUris:
+          - type: authorization
+            url: https://budget.reza.network/openid/callback
+        secret:
+          manifest: apps/actual-budget/secrets.sops.yaml
+          key: openid-client-secret
+      claimMappings:
+        - id: actual-budget-profile
+          name: actual-budget-profile-email-username
+          scope: profile
+          description: Actual Budget uses preferred_username as its user key, so send email for this app.
+          reason: Actual Budget keys users by preferred_username and requires email to remain the stable identifier.
+          expression: |
+            return {
+                "preferred_username": request.user.email,
+                "name": request.user.name or request.user.email,
+            }
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/actual-budget/pvc.yaml]
+  observability:
+    mode: kubernetes

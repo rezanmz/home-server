@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: traefik
+spec:
+  name: Traefik
+  workload:
+    namespace: traefik
+    app: traefik
+  homepage:
+    order: 70
+    group: Infrastructure
+    icon: traefik-proxy.png
+    description: Gateway and reverse proxy
+    link: false
+  placement:
+    mode: every-node
+    reason: A host-port DaemonSet serves ports 80 and 443 on every eligible node.
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: platform
+    manifests:
+      - infrastructure/observability/release.yaml
+      - infrastructure/observability/dashboard.yaml

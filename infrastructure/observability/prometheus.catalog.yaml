@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  name: Prometheus
+  workload:
+    namespace: monitoring
+    app: prometheus
+  homepage:
+    order: 40
+    group: Infrastructure
+    icon: prometheus.png
+    description: Cluster metrics collection
+    link: false
+  placement:
+    mode: floating
+  data:
+    class: longhorn-observability
+    protection: excluded-observability
+    manifests:
+      - infrastructure/observability/storage-class.yaml
+      - infrastructure/observability/release.yaml
+    note: Recent metrics are reproducible operational data and are excluded from B2.
+  observability:
+    mode: platform
+    manifests:
+      - infrastructure/observability/release.yaml
+      - infrastructure/observability/dashboard.yaml

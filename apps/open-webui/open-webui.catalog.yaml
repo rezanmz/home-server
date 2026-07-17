@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: open-webui
+spec:
+  name: Open WebUI
+  workload:
+    namespace: apps
+    app: open-webui
+  homepage:
+    order: 10
+    group: AI & Data
+    icon: open-webui.png
+    description: Local AI chat
+  web:
+    hostname: chat.reza.network
+    route: apps/open-webui/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: Open WebUI OIDC
+      application:
+        slug: open-webui
+        launchUrl: https://chat.reza.network/
+      client:
+        type: confidential
+        id: open-webui-82ebaa452b0b4916f1f9406e
+        grantTypes: [authorization_code, refresh_token]
+        scopes: [openid, email, profile]
+        redirectUris:
+          - type: authorization
+            url: https://chat.reza.network/oauth/oidc/callback
+        secret:
+          manifest: apps/open-webui/secrets.sops.yaml
+          key: oauth-client-secret
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/open-webui/pvc.yaml]
+  observability:
+    mode: kubernetes

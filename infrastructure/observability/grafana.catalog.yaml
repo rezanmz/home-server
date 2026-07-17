@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  name: Grafana
+  workload:
+    namespace: monitoring
+    app: grafana
+  homepage:
+    order: 10
+    group: Operations
+    icon: grafana.png
+    description: Metrics, alerts, and backup health
+  web:
+    hostname: grafana.reza.network
+    route: infrastructure/observability/route.yaml
+    visibility: private
+    accessMiddleware: grafana-lan-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: Grafana OIDC
+      application:
+        slug: grafana
+        launchUrl: https://grafana.reza.network/
+      client:
+        type: confidential
+        id: grafana
+        grantTypes: [authorization_code, refresh_token]
+        scopes: [openid, email, profile]
+        redirectUris:
+          - type: authorization
+            url: https://grafana.reza.network/login/generic_oauth
+        secret:
+          manifest: infrastructure/observability/grafana-secrets.sops.yaml
+          key: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+  placement:
+    mode: floating
+  data:
+    class: longhorn-observability
+    protection: excluded-observability
+    manifests:
+      - infrastructure/observability/storage-class.yaml
+      - infrastructure/observability/release.yaml
+    note: UI preferences are expendable; repository-managed dashboards remain in Git.
+  observability:
+    mode: platform
+    manifests:
+      - infrastructure/observability/release.yaml
+      - infrastructure/observability/dashboard.yaml
+      - infrastructure/observability/backup-dashboard.yaml

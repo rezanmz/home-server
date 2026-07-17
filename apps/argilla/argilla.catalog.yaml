@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: argilla
+spec:
+  name: Argilla
+  workload:
+    namespace: apps
+    app: argilla
+  homepage:
+    order: 30
+    group: AI & Data
+    icon: mdi-database-edit
+    description: Dataset curation and annotation
+  web:
+    hostname: argilla.reza.network
+    route: apps/argilla/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Argilla uses its supported application users and API authentication; native OIDC is unavailable.
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/argilla/pvc.yaml]
+  observability:
+    mode: kubernetes

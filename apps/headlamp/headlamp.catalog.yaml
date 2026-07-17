@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: headlamp
+spec:
+  name: Headlamp
+  workload:
+    namespace: monitoring
+    app: headlamp
+  homepage:
+    order: 20
+    group: Operations
+    icon: headlamp.png
+    description: Read-only Kubernetes dashboard
+  web:
+    hostname: headlamp.reza.network
+    route: apps/headlamp/route.yaml
+    visibility: private
+    accessMiddleware: headlamp-lan-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: Headlamp OIDC
+      providerName: Headlamp OIDC
+      application:
+        slug: headlamp
+      client:
+        type: confidential
+        id: headlamp
+        grantTypes: [authorization_code]
+        scopes: []
+        redirectUris:
+          - type: authorization
+            url: https://headlamp.reza.network/oidc-callback
+        secret:
+          manifest: apps/headlamp/secrets.sops.yaml
+          key: client-secret
+      claimMappings:
+        - id: headlamp-username
+          name: Headlamp username profile
+          scope: profile
+          description: Headlamp uses the Authentik username as preferred_username.
+          reason: Headlamp must receive Authentik's username as preferred_username.
+          expression: |
+            return {"preferred_username": request.user.username}
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: kubernetes

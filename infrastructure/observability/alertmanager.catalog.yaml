@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: alertmanager
+spec:
+  name: Alertmanager
+  workload:
+    namespace: monitoring
+    app: alertmanager
+  homepage:
+    order: 50
+    group: Infrastructure
+    icon: alertmanager.png
+    description: Telegram alert routing
+    link: false
+  placement:
+    mode: floating
+  data:
+    class: longhorn-observability
+    protection: excluded-observability
+    manifests:
+      - infrastructure/observability/storage-class.yaml
+      - infrastructure/observability/release.yaml
+    note: Alert state is reproducible operational data and is excluded from B2.
+  observability:
+    mode: platform
+    manifests: [infrastructure/observability/release.yaml]

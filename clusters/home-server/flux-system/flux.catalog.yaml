@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: flux
+spec:
+  name: Flux
+  workload:
+    namespace: flux-system
+    podSelector: app.kubernetes.io/part-of=flux
+  homepage:
+    order: 60
+    group: Infrastructure
+    icon: flux-cd.png
+    description: GitOps reconciliation
+    link: false
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: platform
+    manifests:
+      - infrastructure/observability/release.yaml
+      - infrastructure/observability/dashboard.yaml
