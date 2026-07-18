@@ -73,6 +73,16 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - {port: 8443, protocol: TCP}
+    # The native Jellyfin integration tracks client playback sessions so
+    # Home Assistant automations can react to play, pause, and stop events.
+    # Jellyfin uses host networking for hardware acceleration and is pinned to
+    # the Beelink, so policy sees the post-DNAT node address rather than a pod
+    # selector. Limit the exception to that one host and Jellyfin API port.
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.3/32
+      ports:
+        - {port: 8096, protocol: TCP}
     # TP-Link Kasa/Tapo discovery and local polling. The Archer's "IoT
     # Network" is an SSID on the main LAN rather than a separately routed
     # VLAN, so scope this exception by integration protocol instead of by
