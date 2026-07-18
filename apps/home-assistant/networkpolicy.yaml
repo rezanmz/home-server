@@ -73,3 +73,15 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - {port: 8443, protocol: TCP}
+    # TP-Link Kasa/Tapo discovery and local polling. The Archer's "IoT
+    # Network" is an SSID on the main LAN rather than a separately routed
+    # VLAN, so scope this exception by integration protocol instead of by
+    # mutable device address. Other LAN services remain unreachable.
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.0/24
+      ports:
+        - {port: 9999, protocol: UDP}
+        - {port: 20002, protocol: UDP}
+        - {port: 80, protocol: TCP}
+        - {port: 9999, protocol: TCP}

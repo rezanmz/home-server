@@ -1,0 +1,52 @@
+[
+  {
+    "hw-address": "b0:19:21:6f:00:a3",
+    "ip-address": "192.168.1.23",
+    "hostname": "bedroom-lamp-1"
+  },
+  {
+    "hw-address": "b0:19:21:6f:12:27",
+    "ip-address": "192.168.1.24",
+    "hostname": "bedroom-lamp-2"
+  },
+  {
+    "hw-address": "3c:64:cf:1c:03:c9",
+    "ip-address": "192.168.1.26",
+    "hostname": "hs103-03c9"
+  },
+  {
+    "hw-address": "3c:64:cf:1b:f5:cc",
+    "ip-address": "192.168.1.27",
+    "hostname": "hs103-f5cc"
+  },
+  {
+    "hw-address": "3c:64:cf:1b:ef:15",
+    "ip-address": "192.168.1.28",
+    "hostname": "hs103-ef15"
+  },
+  {
+    "hw-address": "dc:62:79:14:e4:f9",
+    "ip-address": "192.168.1.29",
+    "hostname": "kitchen-lamp-1"
+  },
+  {
+    "hw-address": "dc:62:79:f1:62:4c",
+    "ip-address": "192.168.1.30",
+    "hostname": "living-room-lamp-1"
+  },
+  {
+    "hw-address": "dc:62:79:14:e4:6a",
+    "ip-address": "192.168.1.31",
+    "hostname": "kitchen-lamp-2"
+  },
+  {
+    "hw-address": "dc:62:79:14:e5:c4",
+    "ip-address": "192.168.1.32",
+    "hostname": "kitchen-lamp-3"
+  },
+  {
+    "hw-address": "b0:19:21:6f:1a:ee",
+    "ip-address": "192.168.1.33",
+    "hostname": "living-room-lamp-2"
+  }
+]

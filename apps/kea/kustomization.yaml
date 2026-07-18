@@ -10,3 +10,4 @@ configMapGenerator:
     namespace: network-services
     files:
       - kea-dhcp4.conf
+      - iot-reservations.json
