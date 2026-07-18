@@ -133,6 +133,29 @@ and restarting the Deployment. Never create the marker merely to clear an HTTP
 503; a genuinely empty instance would otherwise expose first-owner creation to
 the public internet.
 
+The TP-Link integration reaches Kasa/Tapo devices on the Archer BE700 IoT SSID
+through protocol-scoped LAN egress: UDP 9999/20002 for targeted discovery and
+TCP 80/9999 for local control. The IoT SSID shares `192.168.1.0/24`; it is not a
+security VLAN. Do not broaden this rule to unrestricted LAN egress or add
+`hostNetwork` merely to make discovery automatic. Home Assistant sees only its
+`10.42.0.0/24` pod broadcast domain, so add a new TP-Link device by its address
+in **Settings > Devices & services > Add integration > TP-Link Smart Home**.
+
+Stable addresses live in the single
+`apps/kea/iot-reservations.json` inventory. To add a device, first provision it
+on the IoT SSID, find its current address and MAC in Stork or
+`/var/lib/kea/kea-leases4.csv`, add one unique reservation in ascending address
+order, and validate before merging. A new TP-Link device does not require a
+Home Assistant NetworkPolicy change. A non-TP-Link integration still requires
+review of its exact destinations and ports.
+
+Verify the reservation and the path without exposing credentials:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n network-services exec deploy/kea-dhcp4 -c kea-dhcp4 -- cat /var/lib/kea/kea-leases4.csv'
+ssh beelink 'sudo k3s kubectl -n apps get networkpolicy home-assistant -o yaml'
+```
+
 ### Audiobookshelf recovery and OIDC bootstrap
 
 Audiobookshelf is internet-accessible at `audiobooks.reza.network` and uses its
