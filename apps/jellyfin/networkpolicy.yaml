@@ -12,11 +12,16 @@ spec:
       ports:
         - {port: 18096, protocol: TCP}
     - from:
-        # Jellyseerr is the only workload that needs Jellyfin's raw API.
+        # These integrations use Jellyfin's raw cluster-internal API. Other
+        # workloads must continue through the restricted ingress proxy.
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: apps}
           podSelector:
             matchLabels: {app.kubernetes.io/name: jellyseerr}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: apps}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: home-assistant}
       ports:
         - {port: 8096, protocol: TCP}
   egress:
