@@ -141,6 +141,23 @@ security VLAN. Do not broaden this rule to unrestricted LAN egress or add
 `10.42.0.0/24` pod broadcast domain, so add a new TP-Link device by its address
 in **Settings > Devices & services > Add integration > TP-Link Smart Home**.
 
+Home Assistant also includes the C.A.F.E. visual automation editor. Open
+**C.A.F.E.** in the Home Assistant sidebar to import an existing native
+automation into a node-and-wire flowchart, inspect its branches, or create a
+new automation by dragging trigger, condition, delay, and action nodes onto the
+canvas. C.A.F.E. is an editor only: saved logic remains a native Home Assistant
+automation, continues to execute without C.A.F.E., and remains visible under
+**Settings > Automations & scenes**.
+
+C.A.F.E. is beta software with write access to automations. Its reviewed release
+is checksum-pinned in `apps/home-assistant/deployment.yaml`; do not update it
+through HACS independently of the manifest. Before saving changes to an
+important automation, duplicate it, keep the copy disabled, and verify an
+import/save/reload round trip on that copy. Home Assistant's native trace view
+remains the authoritative execution record. A one-time VolumeSnapshot named
+`home-assistant-pre-cafe-20260719` protects the pre-install PVC state; ordinary
+ongoing protection still comes from the configured Longhorn B2 backups.
+
 Stable addresses live in the single
 `apps/kea/iot-reservations.json` inventory. To add a device, first provision it
 on the IoT SSID, find its current address and MAC in Stork or
