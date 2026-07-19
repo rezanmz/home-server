@@ -1,0 +1,221 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-media-storage
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: Home Server
+data:
+  media-storage.json: |
+    {
+      "annotations": {"list": []},
+      "description": "Physical Pi SSD capacity, media-tree growth, logical category footprints, hardlink savings, scan health, disk activity, and the largest unique media files.",
+      "editable": false,
+      "graphTooltip": 1,
+      "links": [
+        {
+          "icon": "doc",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Storage runbook",
+          "type": "link",
+          "url": "https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#storage"
+        },
+        {
+          "icon": "external link",
+          "includeVars": false,
+          "keepTime": true,
+          "tags": [],
+          "targetBlank": false,
+          "title": "Backup health",
+          "type": "link",
+          "url": "/d/home-server-backups"
+        }
+      ],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Space currently available to normal users on the Pi SSD. The media tree shares this filesystem with K3s, Longhorn, logs, and the operating system.",
+          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "orange", "value": 107374182400}, {"color": "yellow", "value": 214748364800}, {"color": "green", "value": 322122547200}]}, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_media_filesystem_available_bytes", "instant": true, "refId": "A"}],
+          "title": "Pi SSD free",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Used fraction of the complete Pi SSD. Warning begins at 80%; critical begins at 85%.",
+          "fieldConfig": {"defaults": {"decimals": 1, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.8}, {"color": "red", "value": 0.85}]}, "unit": "percentunit"}},
+          "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
+          "id": 2,
+          "options": {"minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showThresholdLabels": false, "showThresholdMarkers": true, "sizing": "auto"},
+          "targets": [{"expr": "home_server_media_filesystem_used_ratio", "instant": true, "refId": "A"}],
+          "title": "Pi SSD used",
+          "type": "gauge"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Allocated bytes under /home/reza/media, with hardlinked inodes counted once.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_media_tree_physical_bytes", "instant": true, "refId": "A"}],
+          "title": "Unique media data",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Logical size of /media/downloads. Files hardlinked into Movies or Series are also represented in those category totals.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_media_category_bytes{category=\"downloads\"}", "instant": true, "refId": "A"}],
+          "title": "Downloads footprint",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Estimated physical storage avoided by hardlinking imported downloads into the Movies and Series libraries.",
+          "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixedColor"}, "decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
+          "id": 5,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "home_server_media_hardlink_savings_bytes", "instant": true, "refId": "A"}],
+          "title": "Hardlink savings",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Time since the exporter last completed a full media-tree scan. It normally refreshes every 15 minutes.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1800}, {"color": "red", "value": 3600}]}, "unit": "s"}},
+          "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
+          "id": 6,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "time() - home_server_media_exporter_last_success_timestamp_seconds", "instant": true, "refId": "A"}],
+          "title": "Inventory scan age",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Filesystem usage includes K3s, Longhorn, logs, and OS data. Unique media counts allocated data under the media tree once, even when hardlinked.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 5},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "home_server_media_filesystem_used_bytes", "legendFormat": "Pi SSD used", "refId": "A"},
+            {"expr": "home_server_media_filesystem_available_bytes", "legendFormat": "Pi SSD available", "refId": "B"},
+            {"expr": "home_server_media_tree_physical_bytes", "legendFormat": "unique media data", "refId": "C"}
+          ],
+          "title": "Capacity history",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Logical directory footprints over time. Downloads can overlap Movies or Series through hardlinks, so category values should not be summed to infer physical disk use.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 5},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "home_server_media_category_bytes", "legendFormat": "{{category}}", "refId": "A"}],
+          "title": "Category footprint history",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Current logical size of every managed media directory. Downloads overlap imported library files when hardlinks are present.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+          "id": 9,
+          "options": {"displayMode": "gradient", "maxVizHeight": 300, "minVizHeight": 16, "minVizWidth": 8, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
+          "targets": [{"expr": "home_server_media_category_bytes", "instant": true, "legendFormat": "{{category}}", "refId": "A"}],
+          "title": "Current category sizes",
+          "type": "bargauge"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Read and write traffic on the Raspberry Pi's physical NVMe device. This includes media, Longhorn, K3s, logs, and operating-system activity.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "Bps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+          "id": 10,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum(rate(node_disk_read_bytes_total{device=\"nvme0n1\"}[5m]) * on(instance) group_left(machine) node_uname_info{machine=\"aarch64\"})", "legendFormat": "read", "refId": "A"},
+            {"expr": "sum(rate(node_disk_written_bytes_total{device=\"nvme0n1\"}[5m]) * on(instance) group_left(machine) node_uname_info{machine=\"aarch64\"})", "legendFormat": "write", "refId": "B"}
+          ],
+          "title": "Pi NVMe activity",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "The 20 largest unique files in the media tree. Hardlinked downloads are deduplicated by filesystem inode, and a library path is preferred over its downloads path.",
+          "fieldConfig": {
+            "defaults": {"decimals": 1},
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "Size"}, "properties": [{"id": "unit", "value": "bytes"}, {"id": "decimals", "value": 1}]},
+              {"matcher": {"id": "byName", "options": "Rank"}, "properties": [{"id": "custom.width", "value": 70}]},
+              {"matcher": {"id": "byName", "options": "Category"}, "properties": [{"id": "custom.width", "value": 100}]}
+            ]
+          },
+          "gridPos": {"h": 15, "w": 24, "x": 0, "y": 22},
+          "id": 11,
+          "options": {"cellHeight": "sm", "footer": {"countRows": false, "enablePagination": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
+          "targets": [{"expr": "topk(20, home_server_media_largest_file_bytes)", "format": "table", "instant": true, "refId": "A"}],
+          "title": "Largest unique media files",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {"Time": true, "__name__": true, "endpoint": true, "instance": true, "job": true, "namespace": true, "pod": true, "service": true},
+                "indexByName": {"rank": 0, "category": 1, "path": 2, "Value": 3},
+                "renameByName": {"Value": "Size", "category": "Category", "path": "Path", "rank": "Rank"}
+              }
+            },
+            {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Size"}]}}
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "File counts are logical directory-entry counts. A hardlinked file in Downloads and a library category is counted in both.",
+          "fieldConfig": {"defaults": {"decimals": 0, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 37},
+          "id": 12,
+          "options": {"displayMode": "basic", "maxVizHeight": 300, "minVizHeight": 16, "minVizWidth": 8, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
+          "targets": [{"expr": "home_server_media_category_files", "instant": true, "legendFormat": "{{category}}", "refId": "A"}],
+          "title": "Files by category",
+          "type": "bargauge"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Scrape availability and latest scan result are separate: the HTTP exporter can be reachable while an NFS traversal fails.",
+          "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "FAILED"}, "1": {"color": "green", "text": "HEALTHY"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 37},
+          "id": 13,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [
+            {"expr": "max(up{namespace=\"media\",service=\"media-storage-exporter\"})", "instant": true, "legendFormat": "Prometheus scrape", "refId": "A"},
+            {"expr": "home_server_media_exporter_scan_success", "instant": true, "legendFormat": "Latest inventory scan", "refId": "B"}
+          ],
+          "title": "Media metrics health",
+          "type": "stat"
+        }
+      ],
+      "refresh": "1m",
+      "schemaVersion": 42,
+      "tags": ["media", "storage", "nfs", "raspberrypi", "hardlinks"],
+      "templating": {"list": []},
+      "time": {"from": "now-14d", "to": "now"},
+      "timezone": "browser",
+      "title": "Media Storage",
+      "uid": "home-server-media-storage",
+      "version": 1
+    }
