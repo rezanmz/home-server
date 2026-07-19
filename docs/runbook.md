@@ -368,12 +368,22 @@ remain disabled: that is what assigns every OIDC account Stork's built-in
 `read-only` role. Do not assign `admin` or `super-admin` to an OIDC account and
 do not restore the built-in local administrator.
 
+Stork 2.5 normally withholds its lease-list GET endpoint from the `read-only`
+role even though the general authorization middleware permits other GET
+endpoints. The pinned home-server server image carries the narrow
+`scripts/stork-read-only-lease-list.patch`: it permits that one read operation
+and does not grant any create, update, or delete permission. Do not replace the
+patch by promoting an OIDC user to `admin`.
+
 The Kea pod has three containers: Kea, the existing Prometheus exporter, and
 the Stork agent. The agent binds only to the Beelink CNI gateway at
 `10.42.0.1:8080`; it is not a LAN or Gateway listener. Stork's PostgreSQL
 database and agent certificates are on `stork-postgresql` and
 `stork-agent-data` Longhorn PVCs, both covered by nightly B2 backups. DHCP does
 not depend on the Stork server, UI, or database and continues if they fail.
+The agent mounts the Kea lease PVC at `/var/lib/kea` read-only and tracks its
+memfile for the lease-list page. Failure to read that file makes the agent
+unready but never grants it write access to the DHCP lease database.
 
 Check the complete path with:
 

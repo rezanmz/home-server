@@ -167,6 +167,7 @@ spec:
             - {name: STORK_AGENT_PORT, value: "8080"}
             - {name: STORK_AGENT_LISTEN_STORK_ONLY, value: "true"}
             - {name: STORK_AGENT_SERVER_URL, value: http://stork-server.network-services.svc.cluster.local:8080}
+            - {name: STORK_AGENT_ENABLE_LEASE_TRACKING, value: "1"}
             - name: STORK_AGENT_SERVER_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -176,13 +177,13 @@ spec:
             - {name: stork-agent, containerPort: 8080, protocol: TCP}
           startupProbe:
             exec:
-              command: [sh, -ec, "test -s /var/lib/stork-agent/certs/cert.pem && pgrep -x stork-agent >/dev/null"]
+              command: [sh, -ec, "test -s /var/lib/stork-agent/certs/cert.pem && test -r /var/lib/kea/kea-leases4.csv && pgrep -x stork-agent >/dev/null"]
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 120
           readinessProbe:
             exec:
-              command: [sh, -ec, "test -s /var/lib/stork-agent/certs/cert.pem && pgrep -x stork-agent >/dev/null"]
+              command: [sh, -ec, "test -s /var/lib/stork-agent/certs/cert.pem && test -r /var/lib/kea/kea-leases4.csv && pgrep -x stork-agent >/dev/null"]
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
@@ -204,6 +205,7 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: config, mountPath: /etc/kea, readOnly: true}
+            - {name: leases, mountPath: /var/lib/kea, readOnly: true}
             - {name: runtime, mountPath: /var/run/kea}
             - {name: stork-agent-data, mountPath: /var/lib/stork-agent}
             - {name: tmp, mountPath: /tmp}
