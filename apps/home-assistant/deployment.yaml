@@ -180,7 +180,7 @@ spec:
             # reviewed frontend fix below and pin its resulting bundle hash.
             - {name: CAFE_BUNDLE_PATH, value: www/assets/main-BIzscans.js}
             - name: CAFE_PATCHED_BUNDLE_SHA256
-              value: 730d6cab4f3890218c7af7dd61074d0e1bd57db11c00278377a2e60200237158
+              value: febda7c0b51169398213d40b55960fc73fe4713d6afb2d6513828a8df9bdd07f
           command:
             - sh
             - -ec
@@ -246,21 +246,39 @@ spec:
               staged_bundle="${staged}/${CAFE_BUNDLE_PATH}"
               old_lookup='if(!i.startsWith("automation.")&&!Number.isNaN(Number(i)))try{'
               new_lookup='if(!i.startsWith("automation."))try{'
+              old_create='mode:i.mode||"single",variables:i.variables||{}}'
+              new_create='mode:i.mode||"single",max:i.max,max_exceeded:i.max_exceeded,variables:i.variables||{}}'
+              old_update='mode:a.mode||"single",variables:a.variables||{}}'
+              new_update='mode:a.mode||"single",max:a.max,max_exceeded:a.max_exceeded,variables:a.variables||{}}'
               if [ ! -f "${staged_bundle}" ] || [ -L "${staged_bundle}" ]; then
                 echo "ERROR: expected regular C.A.F.E. bundle is missing" >&2
                 exit 1
               fi
               old_count="$(grep -Fo "${old_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
               new_count="$(grep -Fo "${new_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
-              if [ "${old_count}" -ne 1 ] || [ "${new_count}" -ne 0 ]; then
-                echo "ERROR: C.A.F.E. string-ID patch precondition failed" >&2
+              old_create_count="$(grep -Fo "${old_create}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              new_create_count="$(grep -Fo "${new_create}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              old_update_count="$(grep -Fo "${old_update}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              new_update_count="$(grep -Fo "${new_update}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              if [ "${old_count}" -ne 1 ] || [ "${new_count}" -ne 0 ] ||
+                 [ "${old_create_count}" -ne 1 ] || [ "${new_create_count}" -ne 0 ] ||
+                 [ "${old_update_count}" -ne 1 ] || [ "${new_update_count}" -ne 0 ]; then
+                echo "ERROR: C.A.F.E. compatibility patch precondition failed" >&2
                 exit 1
               fi
-              sed -i "s|${old_lookup}|${new_lookup}|" "${staged_bundle}"
+              sed -i "s~${old_lookup}~${new_lookup}~" "${staged_bundle}"
+              sed -i "s~${old_create}~${new_create}~" "${staged_bundle}"
+              sed -i "s~${old_update}~${new_update}~" "${staged_bundle}"
               old_count="$(grep -Fo "${old_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
               new_count="$(grep -Fo "${new_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
-              if [ "${old_count}" -ne 0 ] || [ "${new_count}" -ne 1 ]; then
-                echo "ERROR: C.A.F.E. string-ID patch did not apply exactly once" >&2
+              old_create_count="$(grep -Fo "${old_create}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              new_create_count="$(grep -Fo "${new_create}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              old_update_count="$(grep -Fo "${old_update}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              new_update_count="$(grep -Fo "${new_update}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              if [ "${old_count}" -ne 0 ] || [ "${new_count}" -ne 1 ] ||
+                 [ "${old_create_count}" -ne 0 ] || [ "${new_create_count}" -ne 1 ] ||
+                 [ "${old_update_count}" -ne 0 ] || [ "${new_update_count}" -ne 1 ]; then
+                echo "ERROR: C.A.F.E. compatibility patch did not apply exactly once" >&2
                 exit 1
               fi
               printf '%s  %s\n' "${CAFE_PATCHED_BUNDLE_SHA256}" "${staged_bundle}" |
