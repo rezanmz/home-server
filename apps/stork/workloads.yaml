@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: server
-          image: docker.io/rezanmz/isc-stork-server:2.5.0@sha256:d1be5756a3e2b50320cd71b9ca419612f1c7d0a770361ac0f17ce9840fab1bd0
+          image: docker.io/rezanmz/isc-stork-server:2.5.0-readonly-leases.1@sha256:a9c9dceb46d7ed55ca7d7d0dd5884b66da23d6a6779a6a330daf629fadf86d8d
           imagePullPolicy: IfNotPresent
           command: [/usr/bin/stork-server]
           env:

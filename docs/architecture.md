@@ -107,7 +107,10 @@ one-time Job authorizes only the Kea agent, invalidates Stork's default
 `admin/admin` account and bootstrap registration token, and disables later
 machine registration. The configuration remains mounted read-only, so Stork
 cannot persist a Kea configuration even if its application authorization
-regresses.
+regresses. A repository-owned patch permits the otherwise admin-only lease-list
+GET for the read-only role; the agent reads the Kea memfile through a read-only
+PVC mount with lease tracking explicitly enabled. No write method or Stork
+administrator role is granted.
 
 Neither service has an application web route. Prometheus reaches their
 cluster-only metrics through selectorless Services with static Endpoints for

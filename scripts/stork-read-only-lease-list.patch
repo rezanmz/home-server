@@ -1,0 +1,21 @@
+diff --git a/backend/server/restservice/leaselist.go b/backend/server/restservice/leaselist.go
+index 41dc88992..7266ba179 100644
+--- a/backend/server/restservice/leaselist.go
++++ b/backend/server/restservice/leaselist.go
+@@ -129 +129,2 @@ func (r *RestAPI) GetLeaseList(ctx context.Context, params dhcp.GetLeaseListPara
+-		!user.InGroup(&dbmodel.SystemGroup{ID: dbmodel.AdminGroupID}) {
++		!user.InGroup(&dbmodel.SystemGroup{ID: dbmodel.AdminGroupID}) &&
++		!user.InGroup(&dbmodel.SystemGroup{ID: dbmodel.ReadOnlyGroupID}) {
+diff --git a/backend/server/restservice/leaselist_test.go b/backend/server/restservice/leaselist_test.go
+index ea4ec34db..c275b10f2 100644
+--- a/backend/server/restservice/leaselist_test.go
++++ b/backend/server/restservice/leaselist_test.go
+@@ -223 +223 @@ func exampleSuperAdmin() *dbmodel.SystemUser {
+-// - Read only users cannot see leases.
++// - Read only users can see leases.
+@@ -260 +260 @@ func TestGetLeaseListUserAuth(t *testing.T) {
+-	t.Run("deny read-only user", func(t *testing.T) {
++	t.Run("allow read-only user", func(t *testing.T) {
+@@ -280 +280 @@ func TestGetLeaseListUserAuth(t *testing.T) {
+-		require.IsType(t, &dhcp.GetLeaseListDefault{}, rsp)
++		require.IsType(t, &dhcp.GetLeaseListOK{}, rsp)
