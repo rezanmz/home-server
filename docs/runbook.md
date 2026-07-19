@@ -178,6 +178,41 @@ ssh beelink 'sudo k3s kubectl -n network-services exec deploy/kea-dhcp4 -c kea-d
 ssh beelink 'sudo k3s kubectl -n apps get networkpolicy home-assistant -o yaml'
 ```
 
+#### House modes
+
+`input_select.house_mode` is the authoritative, long-lived occupancy intent for
+Home Assistant. Change it from the **Modes** dashboard view, the selector on
+**Overview**, or `script.set_house_mode`. The selector is a native editable
+helper and restores its last state after a restart. Its four options deliberately
+exclude temporary activity and lighting contexts:
+
+| Mode | Behavior |
+| --- | --- |
+| `Home` | Normal presence, sunset, Jellyfin, and morning routines. Selecting it restores the time-appropriate lighting profile. |
+| `Sleep` | Gradually shuts down all managed bulbs, both bedside plugs, the Living Room floor-lamp plug, and the espresso machine. It also discards any Jellyfin lighting snapshot so pausing playback cannot turn lights back on. |
+| `Away` | Uses the same safe shutdown with a shorter fade, sets the legacy away flag, and blocks the scheduled espresso routine. Both tracked people being away for two minutes selects it automatically. The first arrival selects `Home`. |
+| `Guest` | Keeps common-room routines active and suppresses automatic `Away` selection when both household phones leave. It remains active until explicitly changed. |
+
+`Sleep` is intentionally manual. Phone presence and clock time do not prove
+that everybody is asleep; add a reliable bedroom/bed-presence signal before
+automating that transition. Lighting phase and Jellyfin playback remain
+separate contexts that are allowed to operate only in compatible modes.
+
+`script.apply_house_mode` owns mode side effects and can reapply the current
+mode. `script.house_shutdown` owns the shared Sleep/Away shutdown sequence.
+The `House mode - apply transitions` automation calls the former when the
+selector changes. `House mode - legacy state synchronization` derives
+`input_boolean.household_away` from the selector for older logic; do not treat
+that boolean as a second source of truth.
+
+Edit the helper under **Settings > Devices & services > Helpers**, scripts under
+**Settings > Automations & scenes > Scripts**, and the two mode automations in
+the native editor or C.A.F.E. Home Assistant stores these editable objects and
+the dashboard on `home-assistant-config`, so Longhorn/B2—not a duplicate
+repository copy—is their durable source of recovery. The ready VolumeSnapshot
+`home-assistant-pre-house-modes-20260719` captures the immediately preceding
+state.
+
 ### Audiobookshelf recovery and OIDC bootstrap
 
 Audiobookshelf is internet-accessible at `audiobooks.reza.network` and uses its
