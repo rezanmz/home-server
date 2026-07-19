@@ -161,6 +161,96 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: config, mountPath: /config}
+        - name: install-cafe
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          imagePullPolicy: IfNotPresent
+          env:
+            # C.A.F.E. is a beta visual editor with write access to native Home
+            # Assistant automations. Keep the reviewed release reproducible;
+            # an intentional version change must update the version, URL, and
+            # checksum together.
+            - {name: CAFE_VERSION, value: "0.6.0"}
+            - name: CAFE_URL
+              value: https://github.com/FezVrasta/cafe-hass/releases/download/v0.6.0/cafe.zip
+            - name: CAFE_SHA256
+              value: d7c5a3ecae09e4fd6b4d6814a94943ade58dabc894526294d003af4220180ab1
+          command:
+            - sh
+            - -ec
+            - |
+              umask 007
+              components=/config/custom_components
+              target="${components}/cafe"
+
+              # The release executes in Home Assistant's process, so refuse
+              # ambiguous PVC objects and install only the checksum-pinned
+              # archive reviewed with this manifest.
+              if [ -L "${components}" ] || { [ -e "${components}" ] && [ ! -d "${components}" ]; }; then
+                echo "ERROR: ${components} is not a normal directory" >&2
+                exit 1
+              fi
+              mkdir -p "${components}"
+
+              if [ -L "${target}" ] || { [ -e "${target}" ] && [ ! -d "${target}" ]; }; then
+                echo "ERROR: refusing unsafe C.A.F.E. target at ${target}" >&2
+                exit 1
+              fi
+              if [ -d "${target}" ] &&
+                 [ -f "${target}/manifest.json" ] &&
+                 [ ! -L "${target}/manifest.json" ] &&
+                 [ -f "${target}/www/assets/panel-wrapper.js" ] &&
+                 grep -Fq "\"version\": \"${CAFE_VERSION}\"" "${target}/manifest.json"; then
+                echo "C.A.F.E. ${CAFE_VERSION} is already installed"
+                exit 0
+              fi
+
+              workdir="$(mktemp -d "${components}/.cafe-install.XXXXXX")"
+              cleanup() { rm -rf "${workdir}"; }
+              trap cleanup EXIT HUP INT TERM
+
+              archive="${workdir}/cafe.zip"
+              staged="${workdir}/cafe"
+              wget -q -O "${archive}" "${CAFE_URL}"
+              printf '%s  %s\n' "${CAFE_SHA256}" "${archive}" | sha256sum -c -
+              mkdir "${staged}"
+              unzip -q "${archive}" -d "${staged}"
+
+              manifest="${staged}/manifest.json"
+              if [ ! -f "${manifest}" ] || [ -L "${manifest}" ] ||
+                 [ ! -f "${staged}/www/assets/panel-wrapper.js" ]; then
+                echo "ERROR: C.A.F.E. archive is incomplete or unsafe" >&2
+                exit 1
+              fi
+              if ! grep -Fq "\"version\": \"${CAFE_VERSION}\"" "${manifest}"; then
+                echo "ERROR: C.A.F.E. archive version does not match ${CAFE_VERSION}" >&2
+                exit 1
+              fi
+              chmod -R u=rwX,g=rwX,o= "${staged}"
+
+              # Replace an older installation only after the new tree is fully
+              # verified. Both paths live on the PVC, so these moves are atomic.
+              if [ -d "${target}" ]; then
+                mv "${target}" "${workdir}/previous"
+              fi
+              if ! mv "${staged}" "${target}"; then
+                if [ -d "${workdir}/previous" ]; then
+                  mv "${workdir}/previous" "${target}"
+                fi
+                exit 1
+              fi
+              echo "Installed checksum-pinned C.A.F.E. ${CAFE_VERSION}"
+          resources:
+            requests: {cpu: 5m, memory: 8Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /config}
       containers:
         - name: home-assistant
           image: ghcr.io/home-assistant/home-assistant:2026.7.2@sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b
