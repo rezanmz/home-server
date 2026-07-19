@@ -551,6 +551,36 @@ The Pi is the authoritative source for these trees. There is no independent NAS
 or third storage node, so a Pi outage is expected to interrupt every NFS-backed
 workload. Do not treat Longhorn replicas as copies of the NFS data.
 
+### Media storage inventory
+
+The **Media Storage** Grafana dashboard compares the Pi SSD's overall capacity
+with the managed media tree. Its filesystem figures include everything on the
+Pi root filesystem, while category figures cover the `movies`, `tv`,
+`downloads`, `books`, `audiobooks`, and `podcasts` directories under
+`/home/reza/media`. Category sizes are logical: a hardlinked download and
+library file appears in both categories. The unique-media and hardlink-savings
+figures count the underlying inode only once.
+
+The `media/media-storage-exporter` reads the NFS media PVC without write access
+and refreshes its bounded inventory every 15 minutes. It publishes only the 20
+largest unique files so that filenames do not create unbounded Prometheus
+cardinality. The dashboard's scan-age and scrape-health panels distinguish a
+stale inventory from actual storage growth.
+
+Check the collector and current metrics from the Beelink:
+
+```bash
+sudo k3s kubectl -n media get deploy,pod,service media-storage-exporter
+sudo k3s kubectl -n media logs deploy/media-storage-exporter --tail=50
+sudo k3s kubectl -n monitoring get servicemonitor media-storage-exporter
+sudo k3s kubectl -n monitoring exec statefulset/prometheus-observability-prometheus -- \
+  wget -qO- 'http://localhost:9090/api/v1/query?query=home_server_media_exporter_scan_success'
+```
+
+The Homepage header deliberately shows only the SSD's total, used, and free
+space. Use Grafana for category history, file counts, disk I/O, hardlink
+savings, and the largest-file list.
+
 The local pre-migration recovery set is on the Beelink:
 
 ```text

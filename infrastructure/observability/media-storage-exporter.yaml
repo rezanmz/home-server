@@ -1,0 +1,356 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: media-storage-exporter
+  namespace: media
+  labels:
+    app.kubernetes.io/name: media-storage-exporter
+data:
+  collect.sh: |
+    #!/bin/sh
+    set -u
+
+    readonly WEB_ROOT="${WEB_ROOT:-/var/www}"
+    readonly LISTEN_PORT="${LISTEN_PORT:-9100}"
+    readonly MEDIA_ROOT="${MEDIA_ROOT:-/media}"
+    readonly METRICS_FILE="${WEB_ROOT}/metrics.txt"
+    readonly INTERVAL_SECONDS="${INTERVAL_SECONDS:-900}"
+    readonly TOP_FILES_LIMIT="${TOP_FILES_LIMIT:-20}"
+    readonly CATEGORIES="movies tv downloads books audiobooks podcasts"
+    readonly FILE_SCAN_ORDER="movies tv books audiobooks podcasts downloads"
+
+    mkdir -p "${WEB_ROOT}"
+    printf 'ok\n' >"${WEB_ROOT}/healthz.txt"
+    cat >"${METRICS_FILE}" <<'EOF'
+    # HELP home_server_media_exporter_scan_success Whether the latest media-tree scan completed successfully.
+    # TYPE home_server_media_exporter_scan_success gauge
+    home_server_media_exporter_scan_success 0
+    # HELP home_server_media_exporter_last_success_timestamp_seconds Unix timestamp of the latest successful media-tree scan.
+    # TYPE home_server_media_exporter_last_success_timestamp_seconds gauge
+    home_server_media_exporter_last_success_timestamp_seconds 0
+    EOF
+
+    escape_label() {
+      printf '%s' "$1" | tr '\n' ' ' | sed 's/\\/\\\\/g; s/"/\\"/g'
+    }
+
+    collect_metrics() {
+      output="$1"
+      started_at="$(date +%s)"
+      inode_list="/tmp/media-storage-inodes.$$"
+      unique_files="/tmp/media-storage-unique.$$"
+      top_files="/tmp/media-storage-top.$$"
+      trap 'rm -f "${inode_list}" "${unique_files}" "${top_files}"' EXIT
+
+      set -- $(df -Pk "${MEDIA_ROOT}" | awk 'NR == 2 {printf "%.0f %.0f %.0f", $2 * 1024, $3 * 1024, $4 * 1024}')
+      [ "$#" -eq 3 ]
+      filesystem_size_bytes="$1"
+      filesystem_used_bytes="$2"
+      filesystem_available_bytes="$3"
+      [ "${filesystem_size_bytes}" -gt 0 ]
+
+      media_tree_kib="$(du -sk "${MEDIA_ROOT}" | awk 'NR == 1 {print $1}')"
+      media_tree_bytes=$((media_tree_kib * 1024))
+      logical_total_bytes=0
+
+      {
+        cat <<'EOF'
+    # HELP home_server_media_filesystem_size_bytes Total size of the filesystem that contains the Pi media tree.
+    # TYPE home_server_media_filesystem_size_bytes gauge
+    EOF
+        printf 'home_server_media_filesystem_size_bytes %s\n' "${filesystem_size_bytes}"
+        cat <<'EOF'
+    # HELP home_server_media_filesystem_used_bytes Used bytes on the filesystem that contains the Pi media tree, including non-media data.
+    # TYPE home_server_media_filesystem_used_bytes gauge
+    EOF
+        printf 'home_server_media_filesystem_used_bytes %s\n' "${filesystem_used_bytes}"
+        cat <<'EOF'
+    # HELP home_server_media_filesystem_available_bytes Bytes available to non-root users on the filesystem that contains the Pi media tree.
+    # TYPE home_server_media_filesystem_available_bytes gauge
+    EOF
+        printf 'home_server_media_filesystem_available_bytes %s\n' "${filesystem_available_bytes}"
+        cat <<'EOF'
+    # HELP home_server_media_filesystem_used_ratio Used fraction of the filesystem that contains the Pi media tree.
+    # TYPE home_server_media_filesystem_used_ratio gauge
+    EOF
+        awk -v used="${filesystem_used_bytes}" -v size="${filesystem_size_bytes}" \
+          'BEGIN {printf "home_server_media_filesystem_used_ratio %.12f\n", used / size}'
+        cat <<'EOF'
+    # HELP home_server_media_tree_physical_bytes Allocated bytes in the complete media tree, counting hardlinked inodes once.
+    # TYPE home_server_media_tree_physical_bytes gauge
+    EOF
+        printf 'home_server_media_tree_physical_bytes %s\n' "${media_tree_bytes}"
+        cat <<'EOF'
+    # HELP home_server_media_category_bytes Logical allocated bytes in one managed media directory.
+    # TYPE home_server_media_category_bytes gauge
+    # HELP home_server_media_category_files Logical file count in one managed media directory.
+    # TYPE home_server_media_category_files gauge
+    # HELP home_server_media_category_present Whether an expected managed media directory exists.
+    # TYPE home_server_media_category_present gauge
+    EOF
+
+        for category in ${CATEGORIES}; do
+          category_path="${MEDIA_ROOT}/${category}"
+          if [ -d "${category_path}" ]; then
+            category_kib="$(du -sk "${category_path}" | awk 'NR == 1 {print $1}')"
+            category_bytes=$((category_kib * 1024))
+            category_files="$(find "${category_path}" -xdev -type f | wc -l | tr -d ' ')"
+            category_present=1
+          else
+            category_bytes=0
+            category_files=0
+            category_present=0
+          fi
+          logical_total_bytes=$((logical_total_bytes + category_bytes))
+          printf 'home_server_media_category_bytes{category="%s"} %s\n' "${category}" "${category_bytes}"
+          printf 'home_server_media_category_files{category="%s"} %s\n' "${category}" "${category_files}"
+          printf 'home_server_media_category_present{category="%s"} %s\n' "${category}" "${category_present}"
+        done
+
+        hardlink_savings_bytes=$((logical_total_bytes - media_tree_bytes))
+        if [ "${hardlink_savings_bytes}" -lt 0 ]; then
+          hardlink_savings_bytes=0
+        fi
+        cat <<'EOF'
+    # HELP home_server_media_logical_category_bytes Sum of category directory sizes; hardlinks crossing categories are counted in each category.
+    # TYPE home_server_media_logical_category_bytes gauge
+    EOF
+        printf 'home_server_media_logical_category_bytes %s\n' "${logical_total_bytes}"
+        cat <<'EOF'
+    # HELP home_server_media_hardlink_savings_bytes Difference between logical category bytes and physical media-tree bytes.
+    # TYPE home_server_media_hardlink_savings_bytes gauge
+    EOF
+        printf 'home_server_media_hardlink_savings_bytes %s\n' "${hardlink_savings_bytes}"
+      } >"${output}"
+
+      : >"${inode_list}"
+      for category in ${FILE_SCAN_ORDER}; do
+        category_path="${MEDIA_ROOT}/${category}"
+        if [ -d "${category_path}" ]; then
+          find "${category_path}" -xdev -type f \
+            -exec stat -c '%d:%i|%b|%n' {} \; >>"${inode_list}"
+        fi
+      done
+
+      awk -F '|' '
+        !seen[$1]++ {
+          size = $2 * 512
+          sub(/^[^|]*\|[^|]*\|/, "", $0)
+          print size "|" $0
+        }
+      ' "${inode_list}" >"${unique_files}"
+      LC_ALL=C sort -t '|' -k1,1nr "${unique_files}" | head -n "${TOP_FILES_LIMIT}" >"${top_files}"
+
+      rank=0
+      while IFS='|' read -r file_bytes file_path; do
+        [ -n "${file_bytes}" ] || continue
+        rank=$((rank + 1))
+        relative_path="${file_path#${MEDIA_ROOT}/}"
+        category="${relative_path%%/*}"
+        safe_path="$(escape_label "${relative_path}")"
+        if [ "${rank}" -eq 1 ]; then
+          cat >>"${output}" <<'EOF'
+    # HELP home_server_media_largest_file_bytes Allocated size of one of the largest unique media files, deduplicated by inode.
+    # TYPE home_server_media_largest_file_bytes gauge
+    EOF
+        fi
+        printf 'home_server_media_largest_file_bytes{rank="%s",category="%s",path="%s"} %s\n' \
+          "${rank}" "${category}" "${safe_path}" "${file_bytes}" >>"${output}"
+      done <"${top_files}"
+
+      completed_at="$(date +%s)"
+      duration_seconds=$((completed_at - started_at))
+      cat >>"${output}" <<EOF
+    # HELP home_server_media_exporter_scan_duration_seconds Duration of the latest successful media-tree scan.
+    # TYPE home_server_media_exporter_scan_duration_seconds gauge
+    home_server_media_exporter_scan_duration_seconds ${duration_seconds}
+    # HELP home_server_media_exporter_scan_success Whether the latest media-tree scan completed successfully.
+    # TYPE home_server_media_exporter_scan_success gauge
+    home_server_media_exporter_scan_success 1
+    # HELP home_server_media_exporter_last_success_timestamp_seconds Unix timestamp of the latest successful media-tree scan.
+    # TYPE home_server_media_exporter_last_success_timestamp_seconds gauge
+    home_server_media_exporter_last_success_timestamp_seconds ${completed_at}
+    EOF
+    }
+
+    mark_scan_failed() {
+      failed_at="$(date +%s)"
+      replacement="${WEB_ROOT}/metrics.failed.$$"
+      awk '
+        !/^home_server_media_exporter_scan_success / &&
+        !/^home_server_media_exporter_last_failure_timestamp_seconds / &&
+        !/^# HELP home_server_media_exporter_last_failure_timestamp_seconds / &&
+        !/^# TYPE home_server_media_exporter_last_failure_timestamp_seconds / {
+          print
+        }
+      ' "${METRICS_FILE}" >"${replacement}"
+      cat >>"${replacement}" <<EOF
+    # HELP home_server_media_exporter_last_failure_timestamp_seconds Unix timestamp of the latest failed media-tree scan.
+    # TYPE home_server_media_exporter_last_failure_timestamp_seconds gauge
+    home_server_media_exporter_last_failure_timestamp_seconds ${failed_at}
+    home_server_media_exporter_scan_success 0
+    EOF
+      mv "${replacement}" "${METRICS_FILE}"
+      printf '{"ts":"%s","event":"media-storage-scan-failed"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
+    }
+
+    httpd -f -p "${LISTEN_PORT}" -h "${WEB_ROOT}" &
+    httpd_pid=$!
+    trap 'kill "${httpd_pid}" 2>/dev/null || true; wait "${httpd_pid}" 2>/dev/null || true' INT TERM EXIT
+
+    while kill -0 "${httpd_pid}" 2>/dev/null; do
+      candidate="${WEB_ROOT}/metrics.candidate.$$"
+      if (set -eu; collect_metrics "${candidate}"); then
+        mv "${candidate}" "${METRICS_FILE}"
+      else
+        rm -f "${candidate}"
+        mark_scan_failed
+      fi
+
+      remaining="${INTERVAL_SECONDS}"
+      while [ "${remaining}" -gt 0 ]; do
+        kill -0 "${httpd_pid}" 2>/dev/null || exit 1
+        if [ "${remaining}" -gt 30 ]; then
+          sleep_for=30
+        else
+          sleep_for="${remaining}"
+        fi
+        sleep "${sleep_for}"
+        remaining=$((remaining - sleep_for))
+      done
+    done
+    exit 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-storage-exporter
+  namespace: media
+  labels:
+    app.kubernetes.io/name: media-storage-exporter
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: media-storage-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: media-storage-exporter
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: exporter
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          imagePullPolicy: IfNotPresent
+          command: [/bin/sh, /scripts/collect.sh]
+          env:
+            - {name: INTERVAL_SECONDS, value: "900"}
+            - {name: TOP_FILES_LIMIT, value: "20"}
+          ports:
+            - {name: metrics, containerPort: 9100, protocol: TCP}
+          startupProbe:
+            httpGet: {path: /metrics.txt, port: metrics}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /metrics.txt, port: metrics}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /healthz.txt, port: metrics}
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 10m, memory: 16Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 500m, memory: 128Mi, ephemeral-storage: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: script, mountPath: /scripts, readOnly: true}
+            - {name: media, mountPath: /media, readOnly: true}
+            - {name: web, mountPath: /var/www}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: script
+          configMap:
+            name: media-storage-exporter
+            defaultMode: 0555
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-library
+            readOnly: true
+        - {name: web, emptyDir: {sizeLimit: 4Mi}}
+        - {name: tmp, emptyDir: {sizeLimit: 128Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-storage-exporter
+  namespace: media
+  labels:
+    app.kubernetes.io/name: media-storage-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: media-storage-exporter
+  ports:
+    - {name: metrics, port: 9100, targetPort: metrics, protocol: TCP}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: media-storage-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: media-storage-exporter
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [media]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: media-storage-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics.txt
+      interval: 1m
+      scrapeTimeout: 10s
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: media-storage-exporter
+  namespace: media
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: media-storage-exporter
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - {port: 9100, protocol: TCP}
+  egress: []

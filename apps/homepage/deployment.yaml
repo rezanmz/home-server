@@ -83,6 +83,9 @@ spec:
               drop:
                 - ALL
           volumeMounts:
+            - name: media
+              mountPath: /mnt/media
+              readOnly: true
             - name: config
               mountPath: /app/config/settings.yaml
               subPath: settings.yaml
@@ -126,6 +129,10 @@ spec:
             - name: tmp
               mountPath: /tmp
       volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-library
+            readOnly: true
         - name: config
           configMap:
             name: homepage-config

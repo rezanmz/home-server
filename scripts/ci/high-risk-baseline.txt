@@ -121,6 +121,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobo
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|spec/sha256/67ba0f809134cd806cf0229cca8d7d6b99fecfde40972c4121bfce36d6c979ef
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/5d2a81a0dfbf63e5944a87f5dd4560040d36e53e5c691096a79632488248fb9c
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-storage-exporter|spec/sha256/3f8b7ab4c2f08673fef8ab841b8c28bb2ffcaef6986c6f7dc279539e64a063ab
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/41039f71a4f21d2fb9d42d13218f797a829ca493b51aac5db67eceba624708f7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5

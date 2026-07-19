@@ -1,3 +1,10 @@
+- resources:
+    label: Media SSD
+    disk: /mnt/media
+    expanded: true
+    diskUnits: bytes
+    refresh: 60000
+
 - kubernetes:
     cluster:
       show: true
