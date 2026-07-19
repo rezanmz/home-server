@@ -154,11 +154,12 @@ is checksum-pinned in `apps/home-assistant/deployment.yaml`; do not update it
 through HACS independently of the manifest. Release 0.6.0 also receives a
 checksum-verified compatibility patch during installation so automations with
 descriptive string IDs can be loaded through Home Assistant's REST config
-endpoint. The init container fails closed if the reviewed release bytes or
-patched bundle differ. Before saving changes to an important automation,
-duplicate it, keep the copy disabled, and verify an import/save/reload round
-trip on that copy. Home Assistant's native trace view remains the authoritative
-execution record. A one-time VolumeSnapshot named
+endpoint and `max`/`max_exceeded` settings survive C.A.F.E. save requests. The
+init container fails closed if the reviewed release bytes or patched bundle
+differ. Before saving changes to an important automation, duplicate it, keep
+the copy disabled, and verify an import/save/reload round trip on that copy.
+Home Assistant's native trace view remains the authoritative execution record.
+A one-time VolumeSnapshot named
 `home-assistant-pre-cafe-20260719` protects the pre-install PVC state; ordinary
 ongoing protection still comes from the configured Longhorn B2 backups.
 
