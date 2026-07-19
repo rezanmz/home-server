@@ -174,6 +174,13 @@ spec:
               value: https://github.com/FezVrasta/cafe-hass/releases/download/v0.6.0/cafe.zip
             - name: CAFE_SHA256
               value: d7c5a3ecae09e4fd6b4d6814a94943ade58dabc894526294d003af4220180ab1
+            # C.A.F.E. 0.6.0 tries the REST config endpoint only for numeric
+            # automation IDs. Our descriptive string IDs then fall back to
+            # catalog-only records with no triggers/actions. Apply the narrow
+            # reviewed frontend fix below and pin its resulting bundle hash.
+            - {name: CAFE_BUNDLE_PATH, value: www/assets/main-BIzscans.js}
+            - name: CAFE_PATCHED_BUNDLE_SHA256
+              value: 730d6cab4f3890218c7af7dd61074d0e1bd57db11c00278377a2e60200237158
           command:
             - sh
             - -ec
@@ -190,6 +197,7 @@ spec:
                 exit 1
               fi
               mkdir -p "${components}"
+              installed_bundle="${target}/${CAFE_BUNDLE_PATH}"
 
               if [ -L "${target}" ] || { [ -e "${target}" ] && [ ! -d "${target}" ]; }; then
                 echo "ERROR: refusing unsafe C.A.F.E. target at ${target}" >&2
@@ -199,8 +207,12 @@ spec:
                  [ -f "${target}/manifest.json" ] &&
                  [ ! -L "${target}/manifest.json" ] &&
                  [ -f "${target}/www/assets/panel-wrapper.js" ] &&
-                 grep -Fq "\"version\": \"${CAFE_VERSION}\"" "${target}/manifest.json"; then
-                echo "C.A.F.E. ${CAFE_VERSION} is already installed"
+                 [ -f "${installed_bundle}" ] &&
+                 [ ! -L "${installed_bundle}" ] &&
+                 grep -Fq "\"version\": \"${CAFE_VERSION}\"" "${target}/manifest.json" &&
+                 printf '%s  %s\n' "${CAFE_PATCHED_BUNDLE_SHA256}" "${installed_bundle}" |
+                   sha256sum -c - >/dev/null 2>&1; then
+                echo "C.A.F.E. ${CAFE_VERSION} with the string-ID import fix is already installed"
                 exit 0
               fi
 
@@ -225,6 +237,34 @@ spec:
                 echo "ERROR: C.A.F.E. archive version does not match ${CAFE_VERSION}" >&2
                 exit 1
               fi
+
+              # Upstream 0.6.0 restricts the direct config lookup to numeric
+              # IDs. Home Assistant supports descriptive string IDs at the
+              # same endpoint, and our automations intentionally use them.
+              # Patch exactly one reviewed occurrence in the checksum-pinned
+              # minified bundle; fail closed if upstream bytes ever differ.
+              staged_bundle="${staged}/${CAFE_BUNDLE_PATH}"
+              old_lookup='if(!i.startsWith("automation.")&&!Number.isNaN(Number(i)))try{'
+              new_lookup='if(!i.startsWith("automation."))try{'
+              if [ ! -f "${staged_bundle}" ] || [ -L "${staged_bundle}" ]; then
+                echo "ERROR: expected regular C.A.F.E. bundle is missing" >&2
+                exit 1
+              fi
+              old_count="$(grep -Fo "${old_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              new_count="$(grep -Fo "${new_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              if [ "${old_count}" -ne 1 ] || [ "${new_count}" -ne 0 ]; then
+                echo "ERROR: C.A.F.E. string-ID patch precondition failed" >&2
+                exit 1
+              fi
+              sed -i "s|${old_lookup}|${new_lookup}|" "${staged_bundle}"
+              old_count="$(grep -Fo "${old_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              new_count="$(grep -Fo "${new_lookup}" "${staged_bundle}" | wc -l | tr -d ' ')"
+              if [ "${old_count}" -ne 0 ] || [ "${new_count}" -ne 1 ]; then
+                echo "ERROR: C.A.F.E. string-ID patch did not apply exactly once" >&2
+                exit 1
+              fi
+              printf '%s  %s\n' "${CAFE_PATCHED_BUNDLE_SHA256}" "${staged_bundle}" |
+                sha256sum -c -
               chmod -R u=rwX,g=rwX,o= "${staged}"
 
               # Replace an older installation only after the new tree is fully
@@ -238,7 +278,7 @@ spec:
                 fi
                 exit 1
               fi
-              echo "Installed checksum-pinned C.A.F.E. ${CAFE_VERSION}"
+              echo "Installed checksum-pinned C.A.F.E. ${CAFE_VERSION} with string-ID import fix"
           resources:
             requests: {cpu: 5m, memory: 8Mi, ephemeral-storage: 16Mi}
             limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 64Mi}
