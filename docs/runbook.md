@@ -1138,7 +1138,7 @@ The policy deliberately:
   preserved whenever it is the selected model); and
 - retains the newest three pre-change SQLite backups under
   `remediation-backups/`, including
-  `webui-pre-security-policy-v5.db` for this policy.
+  `webui-pre-security-policy-v6.db` for this policy.
 
 Standard provider models start with Web Search selected. Their reviewed
 built-in tools also include time, memory, chat history, notes, knowledge, task
@@ -1255,12 +1255,25 @@ printing credentials:
 
 ```bash
 sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import json,sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); s=json.loads(c.execute("select settings from user where role=\"admin\" order by created_at limit 1").fetchone()[0]); print("pins",s.get("ui",{}).get("pinnedModels")); print("managed",c.execute("select id,base_model_id,is_active from model where id in (?,?,?,?) order by id",("companion","deep-research","model-steward","rigorous")).fetchall())'
+  'import json,sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); s=json.loads(c.execute("select settings from user where role=\"admin\" order by created_at limit 1").fetchone()[0]); print("pins",s.get("ui",{}).get("pinnedModels")); print("managed",c.execute("select id,base_model_id,is_active from model where id in (?,?,?,?) order by id",("companion","deep-research","model-steward","rigorous")).fetchall()); print("catalog_overrides",c.execute("select count(*) from model where json_extract(meta,\"$.homeServer.managedCatalogOverride\")=1").fetchone()[0])'
 ```
 
-`BYPASS_ADMIN_ACCESS_CONTROL=True` is deliberate and restores full catalog
-browsing for the sole admin. `BYPASS_MODEL_ACCESS_CONTROL=False` must remain in
-the deployment so ordinary users keep explicit model access boundaries.
+`BYPASS_ADMIN_ACCESS_CONTROL=False` and
+`BYPASS_MODEL_ACCESS_CONTROL=False` must both remain in the deployment. The
+former preserves ownership boundaries for every user's notes, files,
+knowledge, prompts, tools, and other workspace resources; the latter keeps
+ordinary users from inheriting the paid provider catalog.
+
+Open WebUI v0.10.2 turns global default model metadata into ownerless synthetic
+model records, which strict access control hides. The reconciler therefore
+fetches OpenRouter's public text-model catalog at startup and mirrors it into
+private administrator-owned base-model overrides with the reviewed tool
+defaults. It never overwrites a pre-existing unmarked override. A successful
+catalog is retained in SQLite; after that, a temporary OpenRouter catalog
+failure keeps the last healthy rows and reports `catalog_sync_error` in the
+init-container log. If no usable cache exists, startup fails closed. Restart
+Open WebUI when an urgently needed provider model was released after the
+current pod started.
 
 The first Gemini embedding rollout can take several minutes because the init
 container rebuilds all non-empty files, knowledge collections, and per-user

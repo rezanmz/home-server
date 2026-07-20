@@ -21,13 +21,19 @@ import shutil
 import sqlite3
 import stat
 import time
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-POLICY_VERSION = 5
+POLICY_VERSION = 6
 REMEDIATION_BACKUP_RETAIN = 3
+OPENROUTER_CATALOG_URL = "https://openrouter.ai/api/v1/models"
+OPENROUTER_MODEL_ID_PATTERN = re.compile(
+    r"^[A-Za-z0-9._~-]+/[A-Za-z0-9._~:+-]+$"
+)
 UNSAFE_FUNCTION_IDS = {
     "auto_memory",
     "deep_research_at_home",
@@ -951,6 +957,17 @@ MANAGED_PINNED_MODEL_IDS = (
     "model-steward",
 )
 
+# Open WebUI v0.10.2 turns global default metadata into synthetic model-info
+# records. Its strict access-control path then treats every otherwise-raw
+# provider model as a private record without an owner. Mirror the live catalog
+# into real, administrator-owned override rows instead. This retains strict
+# workspace ownership checks while making the full provider catalog usable.
+CATALOG_OVERRIDE_MARKER = {"managedCatalogOverride": True}
+CATALOG_OVERRIDE_METADATA = {
+    **SAFE_DEFAULT_MODEL_METADATA,
+    "homeServer": CATALOG_OVERRIDE_MARKER,
+}
+
 RIGOROUS_METADATA = {
     "profile_image_url": "/static/favicon.png",
     "description": "Evidence-backed answers with source verification and explicit uncertainty.",
@@ -1252,7 +1269,9 @@ DESIRED_CONFIG: dict[str, Any] = {
     # Managed profiles sort first. Every other live provider model falls back
     # to the normal name ordering, including models added after this policy.
     "ui.model_order_list": list(MANAGED_PINNED_MODEL_IDS),
-    "models.default_metadata": SAFE_DEFAULT_MODEL_METADATA,
+    # Applying metadata globally creates ownerless synthetic model records in
+    # v0.10.2. Catalog override rows carry the same defaults with a real owner.
+    "models.default_metadata": {},
     "user.permissions": USER_PERMISSIONS,
 }
 
@@ -1278,6 +1297,184 @@ def _decode(value: Any) -> Any:
 
 def _encode(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def _fetch_openrouter_text_catalog() -> list[dict[str, str]]:
+    separator = "&" if "?" in OPENROUTER_CATALOG_URL else "?"
+    url = (
+        f"{OPENROUTER_CATALOG_URL}{separator}"
+        f"{urllib.parse.urlencode({'output_modalities': 'text'})}"
+    )
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "home-server-open-webui-catalog-reconciler/1.0",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.load(response)
+
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise RuntimeError("OpenRouter catalog has no data array")
+
+    catalog: dict[str, dict[str, str]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        model_id = row.get("id")
+        architecture = row.get("architecture") or {}
+        output_modalities = architecture.get("output_modalities") or []
+        if (
+            not isinstance(model_id, str)
+            or len(model_id) > 200
+            or OPENROUTER_MODEL_ID_PATTERN.fullmatch(model_id) is None
+            or "text" not in output_modalities
+        ):
+            continue
+        name = row.get("name")
+        catalog[model_id] = {
+            "id": model_id,
+            "name": (
+                name.strip()[:300]
+                if isinstance(name, str) and name.strip()
+                else model_id
+            ),
+        }
+
+    # A tiny response is more likely to be an upstream or parsing failure than
+    # a real provider catalog. Never prune a healthy cached catalog from it.
+    if len(catalog) < 25:
+        raise RuntimeError(
+            f"OpenRouter text catalog is unexpectedly small: {len(catalog)} models"
+        )
+    return [catalog[model_id] for model_id in sorted(catalog)]
+
+
+def _is_catalog_override(raw_meta: Any) -> bool:
+    meta = _decode(raw_meta)
+    return (
+        isinstance(meta, dict)
+        and meta.get("homeServer") == CATALOG_OVERRIDE_MARKER
+    )
+
+
+def _catalog_override_count(conn: sqlite3.Connection) -> int:
+    if not _table_exists(conn, "model"):
+        return 0
+    return sum(
+        1
+        for (raw_meta,) in conn.execute("SELECT meta FROM model").fetchall()
+        if _is_catalog_override(raw_meta)
+    )
+
+
+def _reconcile_catalog_model_overrides(
+    conn: sqlite3.Connection,
+    catalog: list[dict[str, str]],
+    now: int,
+) -> int:
+    if not _table_exists(conn, "model") or not _table_exists(conn, "user"):
+        return 0
+    owner = conn.execute(
+        "SELECT id FROM user WHERE role = 'admin' ORDER BY created_at LIMIT 1"
+    ).fetchone()
+    if owner is None:
+        return 0
+    owner_id = owner[0]
+
+    existing = {
+        row[0]: row[1:]
+        for row in conn.execute(
+            "SELECT id, user_id, base_model_id, name, params, meta, is_active "
+            "FROM model"
+        ).fetchall()
+    }
+    catalog_ids = {row["id"] for row in catalog}
+    changes = 0
+
+    for item in catalog:
+        model_id = item["id"]
+        current = existing.get(model_id)
+        # A pre-existing unmarked row belongs to the administrator, not this
+        # sync. Preserve its name, parameters, and metadata exactly.
+        if current is not None and not _is_catalog_override(current[4]):
+            continue
+        desired = (
+            owner_id,
+            None,
+            item["name"],
+            _encode({}),
+            _encode(CATALOG_OVERRIDE_METADATA),
+            1,
+        )
+        current_normalized = None
+        if current is not None:
+            current_normalized = (
+                current[0],
+                current[1],
+                current[2],
+                _encode(_decode(current[3])),
+                _encode(_decode(current[4])),
+                current[5],
+            )
+        if current_normalized == desired:
+            continue
+        conn.execute(
+            """
+            INSERT INTO model(
+                id, user_id, base_model_id, name, params, meta,
+                is_active, updated_at, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                user_id = excluded.user_id,
+                base_model_id = excluded.base_model_id,
+                name = excluded.name,
+                params = excluded.params,
+                meta = excluded.meta,
+                is_active = excluded.is_active,
+                updated_at = excluded.updated_at
+            """,
+            (
+                model_id,
+                owner_id,
+                None,
+                item["name"],
+                _encode({}),
+                _encode(CATALOG_OVERRIDE_METADATA),
+                1,
+                now,
+                now,
+            ),
+        )
+        changes += 1
+
+    stale_ids = [
+        model_id
+        for model_id, current in existing.items()
+        if _is_catalog_override(current[4]) and model_id not in catalog_ids
+    ]
+    for model_id in stale_ids:
+        if _table_exists(conn, "access_grant"):
+            conn.execute(
+                "DELETE FROM access_grant "
+                "WHERE resource_type = 'model' AND resource_id = ?",
+                (model_id,),
+            )
+        conn.execute("DELETE FROM model WHERE id = ?", (model_id,))
+        changes += 1
+
+    if _table_exists(conn, "access_grant") and catalog_ids:
+        for model_id in catalog_ids:
+            current = existing.get(model_id)
+            if current is None or _is_catalog_override(current[4]):
+                conn.execute(
+                    "DELETE FROM access_grant "
+                    "WHERE resource_type = 'model' AND resource_id = ?",
+                    (model_id,),
+                )
+    return changes
 
 
 def _ensure_private_directory(path: Path, data_dir: Path) -> Path:
@@ -2003,6 +2200,20 @@ def reconcile(db_path: Path, data_dir: Path) -> dict[str, Any]:
         if not _table_exists(conn, "config"):
             raise RuntimeError("Open WebUI config table is not available")
 
+        catalog_sync_error = None
+        try:
+            openrouter_catalog = _fetch_openrouter_text_catalog()
+        except Exception as error:
+            # Once a healthy catalog has been persisted, a transient public
+            # catalog outage must not prevent Open WebUI from restarting. The
+            # old rows remain usable and the next rollout retries the refresh.
+            if _catalog_override_count(conn) < 25:
+                raise RuntimeError(
+                    "OpenRouter catalog sync failed without a usable cached catalog"
+                ) from error
+            openrouter_catalog = None
+            catalog_sync_error = f"{type(error).__name__}: {error}"
+
         backup_path = (
             data_dir
             / "remediation-backups"
@@ -2023,6 +2234,12 @@ def reconcile(db_path: Path, data_dir: Path) -> dict[str, Any]:
                 data_dir,
             )
             changes += _reconcile_user_settings(conn, now)
+            if openrouter_catalog is not None:
+                changes += _reconcile_catalog_model_overrides(
+                    conn,
+                    openrouter_catalog,
+                    now,
+                )
             changes += _reconcile_models(conn, now)
             changes += _reconcile_model_steward_automation(conn, now)
             changes += _reconcile_tool_connections(conn, now)
@@ -2048,6 +2265,12 @@ def reconcile(db_path: Path, data_dir: Path) -> dict[str, Any]:
             "removed_cache_paths": [str(path) for path in removed],
             "backup": str(backup_path),
             "pruned_backups": [str(path) for path in pruned_backups],
+            "catalog_models": (
+                len(openrouter_catalog)
+                if openrouter_catalog is not None
+                else _catalog_override_count(conn)
+            ),
+            "catalog_sync_error": catalog_sync_error,
         }
     finally:
         conn.close()
