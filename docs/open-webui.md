@@ -113,20 +113,26 @@ main application starts:
 3. start Open WebUI on pod loopback only;
 4. reprocess every non-empty persisted file and knowledge collection through
    Open WebUI's own API;
-5. verify that every indexed file has a 3,072-dimensional vector and target
-   model metadata;
-6. record completion and allow the main container to start.
+5. generate replacement vectors for every SQLite memory row with Open WebUI's
+   own embedding helper, then replace the per-user memory collections while the
+   main application is stopped;
+6. verify file model metadata and verify the exact memory IDs, documents,
+   metadata, collection ownership, and 3,072-dimensional vectors;
+7. record independent file and memory completion markers and allow the main
+   container to start.
 
 The temporary server disables Automations through a startup-only database
 override and restores the exact prior value afterward, so a due personal
 automation cannot be claimed during maintenance.
 
-If any rebuild or verification step fails, the init container restores the
-entire old Chroma directory and the previous retrieval configuration, records
-the rollback, and allows Open WebUI to start on the known-working index. The
-next restart retries after the underlying error is corrected. Local remediation
-backups retain only the three newest policy database snapshots. They are
-rollback aids on the same Longhorn volume, not off-site backups.
+If the initial migration fails, the init container restores the entire old
+Chroma directory and previous retrieval configuration. If file migration
+already completed but the separate memory marker is absent, it takes
+`vector-db-pre-gemini-memory-v4`, rebuilds only memory, and preserves the
+working file index and target configuration on rollback. The next restart
+retries after the underlying error is corrected. Local remediation backups
+retain only the three newest policy database snapshots. They are rollback aids
+on the same Longhorn volume, not off-site backups.
 
 ## Personal memory
 

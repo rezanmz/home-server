@@ -3,19 +3,22 @@
 
 The security-policy reconciler selects the new embedding provider in SQLite.
 This second init container starts Open WebUI on loopback, rebuilds every
-persisted file and knowledge collection through the application's own API,
-verifies the stored vector dimensions and metadata, and only then records the
-migration as complete.
+persisted file and knowledge collection through the application's own API. It
+also rebuilds the per-user memory collections with Open WebUI's own embedding
+function. The stored vector dimensions, source IDs, documents, and metadata are
+verified before either migration is recorded as complete.
 
-The pre-migration Chroma directory and SQLite policy backup remain on the
-Longhorn volume. If any file fails, both the vector index and the previous RAG
-configuration are restored before the main Open WebUI container is allowed to
-start.
+The original full-index backup and a separate memory-only backup remain on the
+Longhorn volume. A failure during the initial full migration restores both the
+vector index and previous RAG configuration. A failure during a later
+memory-only repair restores only the vector index, preserving the already
+verified file migration and target RAG configuration.
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import shutil
@@ -38,6 +41,8 @@ TARGET_MODEL = "google/gemini-embedding-2"
 TARGET_DIMENSIONS = 3_072
 MARKER_KEY = "home-server.embedding_index_model"
 STATE_KEY = "home-server.embedding_migration_state"
+MEMORY_MARKER_KEY = "home-server.memory_embedding_index_model"
+MEMORY_STATE_KEY = "home-server.memory_embedding_migration_state"
 RAG_KEYS = (
     "rag.embedding_engine",
     "rag.embedding_model",
@@ -211,6 +216,41 @@ def _restore_rag_config(db_path: Path, backup_db: Path, error_type: str) -> None
         target.close()
 
 
+def _record_memory_state(
+    db_path: Path,
+    state: str,
+    *,
+    error_type: str | None = None,
+    memories: int | None = None,
+    user_collections: int | None = None,
+) -> None:
+    value: dict[str, Any] = {
+        "state": state,
+        "policy_version": POLICY_VERSION,
+    }
+    if error_type is not None:
+        value["error_type"] = error_type
+    if memories is not None:
+        value["memories"] = memories
+    if user_collections is not None:
+        value["user_collections"] = user_collections
+    if state == "complete":
+        value["dimensions"] = TARGET_DIMENSIONS
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        if state == "complete":
+            _config_set(conn, MEMORY_MARKER_KEY, TARGET_MODEL)
+        _config_set(conn, MEMORY_STATE_KEY, value)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def _request(
     base_url: str,
     token: str | None,
@@ -303,13 +343,197 @@ def _admin_files_and_knowledge(
         conn.close()
 
 
+def _memories_by_user(db_path: Path) -> dict[str, list[dict[str, Any]]]:
+    """Return the authoritative memory rows without exposing their content."""
+
+    conn = sqlite3.connect(db_path)
+    try:
+        has_memory_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'memory'"
+        ).fetchone()
+        if not has_memory_table:
+            return {}
+
+        memories: dict[str, list[dict[str, Any]]] = {}
+        for (
+            memory_id,
+            user_id,
+            memory_type,
+            path,
+            content,
+            updated_at,
+            created_at,
+        ) in conn.execute(
+            """
+            SELECT id, user_id, type, path, content, updated_at, created_at
+            FROM memory
+            ORDER BY user_id, id
+            """
+        ):
+            if not isinstance(memory_id, str) or not memory_id:
+                raise RuntimeError("memory row has no valid ID")
+            if not isinstance(user_id, str) or not user_id:
+                raise RuntimeError(f"memory {memory_id} has no valid user ID")
+            if not isinstance(content, str) or not content.strip():
+                raise RuntimeError(f"memory {memory_id} has no usable content")
+            memories.setdefault(user_id, []).append(
+                {
+                    "id": memory_id,
+                    "type": (
+                        memory_type
+                        if memory_type in {"user", "context"}
+                        else "context"
+                    ),
+                    "path": path if isinstance(path, str) and path else None,
+                    "content": content,
+                    "updated_at": int(updated_at),
+                    "created_at": int(created_at),
+                }
+            )
+        return memories
+    finally:
+        conn.close()
+
+
+def _memory_vector_text(memory: dict[str, Any]) -> str:
+    path = memory.get("path")
+    return f"{path}\n{memory['content']}" if path else memory["content"]
+
+
+def _memory_metadata(memory: dict[str, Any]) -> dict[str, Any]:
+    metadata = {
+        "created_at": memory["created_at"],
+        "updated_at": memory["updated_at"],
+        "type": memory["type"],
+    }
+    if memory.get("path") is not None:
+        metadata["path"] = memory["path"]
+    return metadata
+
+
+def _persistent_vector_client(vector_dir: Path):
+    """Return Open WebUI's configured Chroma client for the expected path."""
+
+    from open_webui.retrieval.vector.factory import VECTOR_DB_CLIENT
+
+    client = getattr(VECTOR_DB_CLIENT, "client", None)
+    if client is None or not hasattr(client, "get_settings"):
+        raise RuntimeError("embedding migration requires Open WebUI's Chroma client")
+    configured_path = Path(client.get_settings().persist_directory).resolve()
+    if configured_path != vector_dir.resolve():
+        raise RuntimeError(
+            f"configured Chroma path is {configured_path}, expected {vector_dir}"
+        )
+    return client
+
+
+def _generate_memory_embeddings(
+    db_path: Path,
+    memories: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[list[float]]]:
+    """Use the exact embedding helper and configuration used by Open WebUI."""
+
+    if not memories:
+        return {}
+
+    conn = sqlite3.connect(db_path)
+    try:
+        engine = _config_get(conn, "rag.embedding_engine")
+        model = _config_get(conn, "rag.embedding_model")
+        url = _config_get(conn, "rag.openai.api_base_url")
+        key = _config_get(conn, "rag.openai.api_key")
+        batch_size = _config_get(conn, "rag.embedding_batch_size")
+        enable_async = _config_get(conn, "rag.enable_async_embedding")
+        concurrent_requests = _config_get(
+            conn, "rag.embedding_concurrent_requests"
+        )
+    finally:
+        conn.close()
+
+    if engine != "openai" or model != TARGET_MODEL:
+        raise RuntimeError("target OpenRouter embedding configuration is unavailable")
+    if not isinstance(url, str) or not url:
+        raise RuntimeError("embedding API URL is unavailable")
+    if not isinstance(key, str) or not key:
+        raise RuntimeError("embedding API key is unavailable")
+
+    from open_webui.retrieval.utils import get_embedding_function
+
+    embedding_function = get_embedding_function(
+        engine,
+        model,
+        embedding_function=None,
+        url=url,
+        key=key,
+        embedding_batch_size=int(batch_size or 1),
+        enable_async=bool(enable_async),
+        concurrent_requests=int(concurrent_requests or 0),
+    )
+    prefix = os.getenv("RAG_EMBEDDING_CONTENT_PREFIX")
+    generated: dict[str, list[list[float]]] = {}
+    for user_id, rows in memories.items():
+        vectors = asyncio.run(
+            embedding_function(
+                [_memory_vector_text(row) for row in rows],
+                prefix=prefix,
+                user=None,
+            )
+        )
+        if not isinstance(vectors, list) or len(vectors) != len(rows):
+            raise RuntimeError(
+                f"embedding response count is incomplete for memory owner {user_id}"
+            )
+        for vector in vectors:
+            if not isinstance(vector, list) or len(vector) != TARGET_DIMENSIONS:
+                dimensions = len(vector) if isinstance(vector, list) else "invalid"
+                raise RuntimeError(
+                    f"memory embedding response has {dimensions} dimensions"
+                )
+        generated[user_id] = vectors
+    return generated
+
+
+def _rebuild_memory_collections(
+    vector_dir: Path,
+    memories: dict[str, list[dict[str, Any]]],
+    vectors: dict[str, list[list[float]]],
+) -> None:
+    """Replace derived memory indexes only after every new vector exists."""
+
+    from open_webui.retrieval.vector.utils import process_metadata
+
+    client = _persistent_vector_client(vector_dir)
+    existing = [
+        collection.name if hasattr(collection, "name") else str(collection)
+        for collection in client.list_collections()
+    ]
+    for collection_name in existing:
+        if collection_name.startswith("user-memory-"):
+            client.delete_collection(collection_name)
+
+    for user_id, rows in memories.items():
+        user_vectors = vectors.get(user_id)
+        if user_vectors is None or len(user_vectors) != len(rows):
+            raise RuntimeError(
+                f"generated vectors are incomplete for memory owner {user_id}"
+            )
+        collection = client.get_or_create_collection(
+            name=f"user-memory-{user_id}",
+            metadata={"hnsw:space": "cosine"},
+        )
+        collection.upsert(
+            ids=[row["id"] for row in rows],
+            documents=[_memory_vector_text(row) for row in rows],
+            embeddings=user_vectors,
+            metadatas=[process_metadata(_memory_metadata(row)) for row in rows],
+        )
+
+
 def _validate_vectors(
     vector_dir: Path,
     expected_collections: dict[str, set[str]],
 ) -> None:
-    import chromadb
-
-    client = chromadb.PersistentClient(path=str(vector_dir))
+    client = _persistent_vector_client(vector_dir)
     for collection_name, expected_file_ids in expected_collections.items():
         collection = client.get_collection(collection_name)
         result = collection.get(include=["embeddings", "metadatas"])
@@ -340,21 +564,97 @@ def _validate_vectors(
             )
 
 
+def _validate_memory_vectors(
+    vector_dir: Path,
+    memories: dict[str, list[dict[str, Any]]],
+) -> None:
+    client = _persistent_vector_client(vector_dir)
+    observed_collections = {
+        collection.name if hasattr(collection, "name") else str(collection)
+        for collection in client.list_collections()
+        if (
+            collection.name if hasattr(collection, "name") else str(collection)
+        ).startswith("user-memory-")
+    }
+    expected_collections = {
+        f"user-memory-{user_id}" for user_id, rows in memories.items() if rows
+    }
+    if observed_collections != expected_collections:
+        missing = sorted(expected_collections - observed_collections)
+        stale = sorted(observed_collections - expected_collections)
+        raise RuntimeError(
+            f"memory collections do not match SQLite; missing={missing}, stale={stale}"
+        )
+
+    for user_id, rows in memories.items():
+        if not rows:
+            continue
+        collection_name = f"user-memory-{user_id}"
+        result = client.get_collection(collection_name).get(
+            include=["documents", "embeddings", "metadatas"]
+        )
+        ids = result.get("ids") or []
+        documents = result.get("documents") or []
+        embeddings = result.get("embeddings")
+        metadatas = result.get("metadatas") or []
+        if embeddings is None:
+            raise RuntimeError(f"{collection_name} has no embeddings")
+        if not (
+            len(ids)
+            == len(documents)
+            == len(embeddings)
+            == len(metadatas)
+            == len(rows)
+        ):
+            raise RuntimeError(f"{collection_name} has incomplete records")
+
+        expected = {row["id"]: row for row in rows}
+        if set(ids) != set(expected):
+            raise RuntimeError(f"{collection_name} has unexpected memory IDs")
+        for memory_id, document, embedding, metadata in zip(
+            ids,
+            documents,
+            embeddings,
+            metadatas,
+            strict=True,
+        ):
+            row = expected[memory_id]
+            if document != _memory_vector_text(row):
+                raise RuntimeError(
+                    f"{collection_name} has stale memory document {memory_id}"
+                )
+            if len(embedding) != TARGET_DIMENSIONS:
+                raise RuntimeError(
+                    f"{collection_name} has {len(embedding)} dimensions"
+                )
+            if metadata != _memory_metadata(row):
+                raise RuntimeError(
+                    f"{collection_name} has stale memory metadata {memory_id}"
+                )
+
+
 def migrate(db_path: Path, data_dir: Path, port: int) -> dict[str, Any]:
     data_dir = data_dir.resolve(strict=True)
     db_path = db_path.resolve(strict=True)
     vector_dir = data_dir / "vector_db"
     backup_root = data_dir / "remediation-backups"
     vector_backup = backup_root / f"vector-db-pre-gemini-v{POLICY_VERSION}"
+    memory_vector_backup = (
+        backup_root / f"vector-db-pre-gemini-memory-v{POLICY_VERSION}"
+    )
     database_backup = backup_root / f"webui-pre-security-policy-v{POLICY_VERSION}.db"
 
     conn = sqlite3.connect(db_path)
     try:
         selected_model = _config_get(conn, "rag.embedding_model")
         completed_model = _config_get(conn, MARKER_KEY)
+        completed_memory_model = _config_get(conn, MEMORY_MARKER_KEY)
     finally:
         conn.close()
-    if completed_model == TARGET_MODEL:
+    if (
+        completed_model == TARGET_MODEL
+        and completed_memory_model == TARGET_MODEL
+    ):
         return {"status": "already-complete", "model": TARGET_MODEL}
     if selected_model != TARGET_MODEL:
         return {
@@ -364,116 +664,175 @@ def migrate(db_path: Path, data_dir: Path, port: int) -> dict[str, Any]:
         }
     backup_root.mkdir(mode=0o700, exist_ok=True)
     backup_root.chmod(0o700)
-    if not database_backup.is_file() or database_backup.stat().st_size == 0:
-        raise RuntimeError(f"policy database backup is unavailable: {database_backup}")
+    full_migration = completed_model != TARGET_MODEL
+    active_vector_backup = vector_backup if full_migration else memory_vector_backup
+    if full_migration:
+        if not database_backup.is_file() or database_backup.stat().st_size == 0:
+            raise RuntimeError(
+                f"policy database backup is unavailable: {database_backup}"
+            )
 
-    _copy_vector_backup(vector_dir, vector_backup, data_dir)
+    _copy_vector_backup(vector_dir, active_vector_backup, data_dir)
     admin_id, files, knowledge = _admin_files_and_knowledge(db_path)
+    memories = _memories_by_user(db_path)
+    migrated: list[str] = []
 
-    from open_webui.utils.auth import create_token
+    if full_migration:
+        from open_webui.utils.auth import create_token
 
-    token = create_token({"id": admin_id}, expires_delta=timedelta(hours=2))
-    base_url = f"http://127.0.0.1:{port}"
-    # The temporary server must not claim any due personal automation while it
-    # is running only to rebuild vectors. Restore the exact prior ConfigVar row
-    # before the normal server is allowed to start.
-    with _temporary_config_override(db_path, "automations.enable", False):
-        process = subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "uvicorn",
-                "open_webui.main:app",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                str(port),
-                "--workers",
-                "1",
-                "--no-access-log",
-            ],
-            stdin=subprocess.DEVNULL,
-        )
-        try:
-            _wait_for_health(base_url, process, timeout=180)
-            migrated: list[str] = []
-            for file_id, content in files:
-                response = _request(
+        token = create_token({"id": admin_id}, expires_delta=timedelta(hours=2))
+        base_url = f"http://127.0.0.1:{port}"
+        # The temporary server must not claim any due personal automation while
+        # it is running only to rebuild vectors. Restore the exact prior
+        # ConfigVar row before the normal server is allowed to start.
+        with _temporary_config_override(db_path, "automations.enable", False):
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
+                    "open_webui.main:app",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
+                    "--workers",
+                    "1",
+                    "--no-access-log",
+                ],
+                stdin=subprocess.DEVNULL,
+            )
+            try:
+                _wait_for_health(base_url, process, timeout=180)
+                for file_id, content in files:
+                    response = _request(
+                        base_url,
+                        token,
+                        "POST",
+                        "/api/v1/retrieval/process/file",
+                        {"file_id": file_id, "content": content},
+                        timeout=300,
+                    )
+                    if (
+                        not isinstance(response, dict)
+                        or response.get("status") is not True
+                    ):
+                        raise RuntimeError(f"file migration failed: {file_id}")
+                    migrated.append(file_id)
+
+                knowledge_result = _request(
                     base_url,
                     token,
                     "POST",
-                    "/api/v1/retrieval/process/file",
-                    {"file_id": file_id, "content": content},
-                    timeout=300,
+                    "/api/v1/knowledge/reindex",
+                    {},
+                    timeout=900,
                 )
-                if (
-                    not isinstance(response, dict)
-                    or response.get("status") is not True
-                ):
-                    raise RuntimeError(f"file migration failed: {file_id}")
-                migrated.append(file_id)
-
-            knowledge_result = _request(
-                base_url,
-                token,
-                "POST",
-                "/api/v1/knowledge/reindex",
-                {},
-                timeout=900,
-            )
-            if knowledge_result is not True:
-                raise RuntimeError("knowledge collection migration failed")
-        except Exception as error:
-            _stop(process)
-            _restore_vectors(vector_dir, vector_backup, data_dir)
-            _restore_rag_config(db_path, database_backup, type(error).__name__)
-            return {
-                "status": "rolled-back",
-                "model": TARGET_MODEL,
-                "error_type": type(error).__name__,
-            }
-        finally:
-            _stop(process)
+                if knowledge_result is not True:
+                    raise RuntimeError("knowledge collection migration failed")
+            except Exception as error:
+                _stop(process)
+                _restore_vectors(vector_dir, active_vector_backup, data_dir)
+                _restore_rag_config(
+                    db_path, database_backup, type(error).__name__
+                )
+                return {
+                    "status": "rolled-back",
+                    "model": TARGET_MODEL,
+                    "error_type": type(error).__name__,
+                }
+            finally:
+                _stop(process)
+    else:
+        migrated = [file_id for file_id, _ in files]
 
     try:
+        memory_vectors = _generate_memory_embeddings(db_path, memories)
+        _rebuild_memory_collections(vector_dir, memories, memory_vectors)
         expected_collections = {
             f"file-{file_id}": {file_id}
             for file_id in migrated
         }
         expected_collections.update(knowledge)
         _validate_vectors(vector_dir, expected_collections)
+        _validate_memory_vectors(vector_dir, memories)
     except Exception as error:
-        _restore_vectors(vector_dir, vector_backup, data_dir)
-        _restore_rag_config(db_path, database_backup, type(error).__name__)
+        _restore_vectors(vector_dir, active_vector_backup, data_dir)
+        if full_migration:
+            _restore_rag_config(db_path, database_backup, type(error).__name__)
+            status = "rolled-back"
+        else:
+            _record_memory_state(
+                db_path,
+                "rolled_back",
+                error_type=type(error).__name__,
+            )
+            status = "memory-rolled-back"
         return {
-            "status": "rolled-back",
+            "status": status,
             "model": TARGET_MODEL,
             "error_type": type(error).__name__,
         }
 
-    conn = sqlite3.connect(db_path)
     try:
-        conn.execute("BEGIN IMMEDIATE")
-        _config_set(conn, MARKER_KEY, TARGET_MODEL)
-        _config_set(
-            conn,
-            STATE_KEY,
-            {
-                "state": "complete",
-                "policy_version": POLICY_VERSION,
-                "files": len(migrated),
-                "knowledge_collections": len(knowledge),
-                "dimensions": TARGET_DIMENSIONS,
-            },
-        )
-        conn.commit()
-    finally:
-        conn.close()
+        conn = sqlite3.connect(db_path)
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            if full_migration:
+                _config_set(conn, MARKER_KEY, TARGET_MODEL)
+                _config_set(
+                    conn,
+                    STATE_KEY,
+                    {
+                        "state": "complete",
+                        "policy_version": POLICY_VERSION,
+                        "files": len(migrated),
+                        "knowledge_collections": len(knowledge),
+                        "dimensions": TARGET_DIMENSIONS,
+                    },
+                )
+            _config_set(conn, MEMORY_MARKER_KEY, TARGET_MODEL)
+            _config_set(
+                conn,
+                MEMORY_STATE_KEY,
+                {
+                    "state": "complete",
+                    "policy_version": POLICY_VERSION,
+                    "memories": sum(len(rows) for rows in memories.values()),
+                    "user_collections": len(memories),
+                    "dimensions": TARGET_DIMENSIONS,
+                },
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    except Exception as error:
+        _restore_vectors(vector_dir, active_vector_backup, data_dir)
+        if full_migration:
+            _restore_rag_config(db_path, database_backup, type(error).__name__)
+            status = "rolled-back"
+        else:
+            _record_memory_state(
+                db_path,
+                "rolled_back",
+                error_type=type(error).__name__,
+            )
+            status = "memory-rolled-back"
+        return {
+            "status": status,
+            "model": TARGET_MODEL,
+            "error_type": type(error).__name__,
+        }
     return {
-        "status": "complete",
+        "status": "complete" if full_migration else "memory-complete",
         "model": TARGET_MODEL,
         "files": len(migrated),
         "knowledge_collections": len(knowledge),
+        "memories": sum(len(rows) for rows in memories.values()),
+        "user_collections": len(memories),
         "dimensions": TARGET_DIMENSIONS,
     }
 
