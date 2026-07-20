@@ -1,6 +1,14 @@
 # SearXNG is an internal JSON search backend for Open WebUI. It has no route
 # or user-facing UI in this cluster.
-use_default_settings: true
+use_default_settings:
+  engines:
+    # Keep a small reviewed set. The broad defaults included broken dark-web
+    # engines, a Wikidata endpoint returning 403, and other noisy providers.
+    keep_only:
+      - brave
+      - duckduckgo
+      - google cse
+      - startpage
 
 general:
   debug: false

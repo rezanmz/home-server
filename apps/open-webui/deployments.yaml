@@ -42,6 +42,11 @@ spec:
               value: /tmp
             - name: PYTHONDONTWRITEBYTECODE
               value: "1"
+            - name: GPT_RESEARCHER_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gpt-researcher-secrets
+                  key: api-token
           resources:
             requests:
               cpu: 10m
@@ -49,6 +54,74 @@ spec:
             limits:
               cpu: 100m
               memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+            - name: security-policy
+              mountPath: /policy
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+        - name: migrate-gemini-embeddings
+          image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - /policy/migrate_embeddings.py
+          env:
+            - name: TZ
+              value: America/Toronto
+            - name: HOME
+              value: /tmp
+            - name: XDG_CACHE_HOME
+              value: /app/backend/data/cache
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: STATIC_DIR
+              value: /app/backend/data/static
+            - name: SAFE_MODE
+              value: "True"
+            - name: ENABLE_OLLAMA_API
+              value: "False"
+            - name: ENABLE_SIGNUP
+              value: "False"
+            - name: ENABLE_LOGIN_FORM
+              value: "False"
+            - name: ENABLE_OAUTH_SIGNUP
+              value: "False"
+            - name: CONTENT_EXTRACTION_ENGINE
+              value: tika
+            - name: TIKA_SERVER_URL
+              value: http://tika:9998
+            - name: RAG_EMBEDDING_TIMEOUT
+              value: "300"
+            # v0.10.2 reads these prefixes directly from the environment rather
+            # than from its database-backed ConfigVars.
+            - name: RAG_EMBEDDING_CONTENT_PREFIX
+              value: "title: none | text: "
+            - name: RAG_EMBEDDING_QUERY_PREFIX
+              value: "task: question answering | query: "
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: webui-secret-key
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "1"
+              memory: 1536Mi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -114,6 +187,10 @@ spec:
               value: "10"
             - name: AIOHTTP_CLIENT_TIMEOUT
               value: "120"
+            # GPT Researcher is intentionally a long-running, explicit tool.
+            # Keep ordinary provider requests bounded by the shorter timeout.
+            - name: AIOHTTP_CLIENT_TIMEOUT_TOOL_SERVER
+              value: "900"
             - name: USER_AGENT
               value: OpenWebUI home-server (+https://chat.reza.network)
             - name: ENABLE_ADMIN_CHAT_ACCESS
@@ -160,6 +237,12 @@ spec:
               value: tika
             - name: TIKA_SERVER_URL
               value: http://tika:9998
+            # Gemini Embedding 2 recommends distinct retrieval-document and
+            # question-answering query task prefixes.
+            - name: RAG_EMBEDDING_CONTENT_PREFIX
+              value: "title: none | text: "
+            - name: RAG_EMBEDDING_QUERY_PREFIX
+              value: "task: question answering | query: "
             - name: BYPASS_MODEL_ACCESS_CONTROL
               value: "False"
             - name: WEBUI_URL

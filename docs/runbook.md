@@ -1126,8 +1126,9 @@ The policy deliberately:
 - replaces the memory and context filters with Open WebUI's native,
   user-controlled memory tools and context compaction; automatic background
   review stays off because v0.10.2 can review temporary chats;
-- creates the private `Deep Research` model profile on top of native web
-  search rather than executing an in-process research pipeline;
+- creates private `Rigorous`, `Deep Research`, and `Model Steward` profiles,
+  registers the authenticated internal GPT Researcher OpenAPI tool, and seeds
+  the read-only weekly model-market advisory;
 - disables same-origin/forms privileges for rendered HTML, applies an iframe
   CSP, and prevents non-admin users from using shared paid or executable
   features by default;
@@ -1135,18 +1136,24 @@ The policy deliberately:
   outbound HTTP concurrency/timeouts, and removes the retired memory
   vocabulary cache and an unused local embedding model cache (the latter is
   preserved whenever it is the selected model); and
-- creates one pre-change SQLite backup at
-  `remediation-backups/webui-pre-security-policy-v3.db`.
+- retains the newest three pre-change SQLite backups under
+  `remediation-backups/`, including
+  `webui-pre-security-policy-v4.db` for this policy.
 
-Standard chat models start with Web Search, Image Generation, and Code
-Interpreter selected. Their reviewed built-in tools also include time,
-memory, chat history, notes, knowledge, task management, and calendar. This
-makes the tools available to the model; it does not authorize unsolicited
-external actions. The personal companion prompt still requires an explicit
-user request before creating, modifying, deleting, sending, or scheduling
-anything. Channels and Automations remain unavailable because those
-subsystems are globally disabled. The purpose-built `Deep Research` profile
-remains read-only and defaults only to Web Search.
+Standard provider models start with Web Search selected. Their reviewed
+built-in tools also include time, memory, chat history, notes, knowledge, task
+management, and calendar. The curated companion additionally enables Code
+Interpreter. Making a tool available does not authorize unsolicited external
+actions: the personal companion prompt requires an explicit user request
+before creating, modifying, deleting, sending, or scheduling anything.
+Channels remain disabled. Automations are enabled so the one managed weekly
+advisory can run, but they are not selected as an ordinary model tool. The
+`Rigorous`, `Deep Research`, and `Model Steward` profiles are read-only and
+have deliberately narrower tool sets.
+
+Managed prompts do not contain the cluster owner's name. Preserve that
+property when changing prompt policy; the reconciler unit test rejects a
+regression.
 
 Open WebUI v0.10.2 has no wildcard meaning "select every present and future
 external tool." Local Tools and server-side MCP/OpenAPI connections therefore
@@ -1163,11 +1170,12 @@ Function and Tool Valve secrets are encrypted with `WEBUI_SECRET_KEY`; rotating
 that key makes existing encrypted valves unreadable.
 
 The reconciler manages security boundaries plus the selected internal search
-backend. It does not overwrite model-provider credentials or future MCP
-connections. It removes one known-stale `git-mcp-server` connection whose
-MCPHub server and bearer key no longer exist. Add future MCPHub connections
-with server-scoped keys, an explicit tool allow-list, and private access
-grants.
+and research backends. It reuses the existing OpenRouter provider credential
+for retrieval without writing it to Git. It preserves unrelated future MCP or
+OpenAPI connections and removes one known-stale `git-mcp-server` connection
+whose MCPHub server and bearer key no longer exist. Add future MCPHub
+connections with server-scoped keys, an explicit tool allow-list, and private
+access grants.
 
 #### Internal SearXNG search
 
@@ -1205,6 +1213,10 @@ sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
   'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG Open WebUI"); u=f"http://searxng:8080/search?q={q}&format=json"; d=json.load(urllib.request.urlopen(u,timeout=20)); print("results:",len(d.get("results",[])),"engines:",sorted({e for r in d.get("results",[]) for e in r.get("engines",[])}))'
 ```
 
+The configured engine set is intentionally limited to Brave, DuckDuckGo,
+Google CSE, and Startpage. Add an engine only after checking result quality,
+duplicate rate, terms, and whether it requires a secret.
+
 The old Perplexity key may remain in historical Longhorn backups even after it
 is erased from the live database. Revoke it in the Perplexity account after
 the SearXNG acceptance test succeeds.
@@ -1213,7 +1225,9 @@ After an Open WebUI version upgrade, run the local reconciler unit test and
 review the upstream configuration/schema changes before rollout:
 
 ```bash
-python3 -m unittest scripts.ci.test_open_webui_reconcile
+python3 -m unittest \
+  scripts.ci.test_open_webui_reconcile \
+  scripts.ci.test_open_webui_embedding_migration
 kubectl kustomize apps/open-webui >/tmp/open-webui-rendered.yaml
 ```
 
@@ -1224,6 +1238,74 @@ sudo k3s kubectl -n apps logs deploy/open-webui -c reconcile-security-policy
 sudo k3s kubectl -n apps exec deploy/open-webui -- \
   python -c 'import sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); print(c.execute("select id,is_active from function").fetchall())'
 ```
+
+Inspect the managed profiles, automation, and embedding migration state without
+printing provider or tool credentials:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); print("models",c.execute("select id,name,base_model_id,is_active from model where id in (?,?,?) order by id",("deep-research","model-steward","rigorous")).fetchall()); print("automation",c.execute("select id,name,is_active,next_run_at from automation where id=?",("home-server-model-steward-weekly",)).fetchall()); print("embedding",[(k,json.loads(v)) for k,v in c.execute("select key,value from config where key in (?,?)",("rag.embedding_model","home-server.embedding_migration_state"))])'
+sudo k3s kubectl -n apps logs deploy/open-webui -c migrate-gemini-embeddings
+```
+
+The first Gemini embedding rollout can take several minutes because the init
+container rebuilds all non-empty files and knowledge collections before the
+main container starts. It temporarily disables Automations and restores the
+exact previous value before exit, so maintenance cannot claim a due scheduled
+task. On failure it restores both the old Chroma directory and old retrieval
+configuration. Do not delete
+`remediation-backups/vector-db-pre-gemini-v4` until retrieval has been tested
+after multiple ordinary restarts.
+
+### GPT Researcher
+
+GPT Researcher is an internal-only, authenticated service. It has no
+HTTPRoute, DNS catalog entry, Homepage link, or persistent report volume. Only
+Open WebUI can call port 8000; Prometheus can scrape the unauthenticated
+`/metrics` endpoint through a separate NetworkPolicy ingress rule. The service
+cannot reach Kubernetes or private networks.
+
+Check rollout and service health:
+
+```bash
+sudo k3s kubectl -n apps get deploy,pod,service,servicemonitor,prometheusrule \
+  -l app.kubernetes.io/name=gpt-researcher -o wide
+sudo k3s kubectl -n apps logs deploy/gpt-researcher --tail=100
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import json,urllib.request; print(json.load(urllib.request.urlopen("http://gpt-researcher:8000/health",timeout=5)))'
+```
+
+A `401` from `/openapi.json` without a bearer token is correct. Do not print
+the token merely to test it. Confirm the managed connection structurally from
+the offline database and redact its key:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); row=c.execute("select value from config where key=?",("tool_server.connections",)).fetchone(); connections=json.loads(row[0]); managed=[x for x in connections if x.get("info",{}).get("id")=="gpt-researcher"]; [x.__setitem__("key","<redacted>") for x in managed]; print(json.dumps(managed,indent=2))'
+```
+
+`GPTResearcherUnavailable` means Prometheus could not scrape a healthy
+service for five minutes. Inspect the Deployment, endpoint, and NetworkPolicy.
+`GPTResearcherRepeatedFailures` means at least three jobs failed or timed out
+in one hour. Inspect logs by request ID, SearXNG health, public egress, and the
+OpenRouter account before retrying. Do not repeatedly run a paid report as a
+health probe.
+
+The service accepts only one job at a time and rejects overlaps with HTTP 429.
+Each accepted job has a 15-minute hard timeout. Model roles and research depth
+are configured centrally in
+`apps/gpt-researcher/config/researcher.json`. Review cost implications before
+raising breadth, depth, iterations, source count, token limits, or model tier.
+The Grafana **AI Services** dashboard shows outcomes, average duration, busy
+responses, resource use, and best-effort reported cost.
+
+The custom adapter image is built by
+`scripts/build-gpt-researcher-image.sh`. Update the exact GPT Researcher
+version, reviewed upstream commit, base-image digest, and published
+multi-architecture digest together. Run its API tests inside the final image
+and render the Kubernetes app before rollout. The image contains a documented
+minimal import-order patch for upstream version `0.16.0`; remove it only after
+confirming that the selected upstream artifact imports cleanly without it.
 
 ### Retired Duplicati recovery artifacts
 

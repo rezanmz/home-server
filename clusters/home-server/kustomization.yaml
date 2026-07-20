@@ -18,6 +18,7 @@ resources:
   - ../../apps/jellyseerr
   - ../../apps/mcphub
   - ../../apps/open-webui
+  - ../../apps/gpt-researcher
   - ../../apps/speedtest-tracker
   - ../../apps/argilla
   - ../../apps/audiobookshelf

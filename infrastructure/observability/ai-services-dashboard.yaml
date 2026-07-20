@@ -1,0 +1,165 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ai-services
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: Home Server
+data:
+  ai-services.json: |
+    {
+      "annotations": {"list": []},
+      "description": "Availability, use, failures, latency, and estimated OpenRouter cost for the cluster's internal AI services. GPT Researcher runs only when the Deep Research profile explicitly invokes it.",
+      "editable": false,
+      "graphTooltip": 1,
+      "links": [
+        {
+          "icon": "doc",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Open WebUI operations",
+          "type": "link",
+          "url": "https://github.com/rezanmz/home-server/blob/main/docs/open-webui.md"
+        },
+        {
+          "icon": "doc",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "GPT Researcher runbook",
+          "type": "link",
+          "url": "https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#gpt-researcher"
+        }
+      ],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Prometheus can scrape the internal GPT Researcher service.",
+          "fieldConfig": {"defaults": {"decimals": 0, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(up{namespace=\"apps\",service=\"gpt-researcher\"}) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "GPT Researcher available",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "One research job is allowed at a time. A value of one means the worker is currently busy.",
+          "fieldConfig": {"defaults": {"decimals": 0, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "blue", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(gpt_researcher_active) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "Research active",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Explicit deep-research jobs accepted during the last 24 hours.",
+          "fieldConfig": {"defaults": {"decimals": 0, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(gpt_researcher_requests_total[24h])) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "Research jobs (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Successful requests divided by accepted requests over the last 30 days. No requests produces 100%, rather than a false failure.",
+          "fieldConfig": {"defaults": {"decimals": 1, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.8}, {"color": "green", "value": 0.95}]}, "unit": "percentunit"}},
+          "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "(sum(increase(gpt_researcher_success_total[30d])) or vector(0)) / clamp_min((sum(increase(gpt_researcher_requests_total[30d])) or vector(0)), 1) + ((sum(increase(gpt_researcher_requests_total[30d])) or vector(0)) == bool 0)", "instant": true, "refId": "A"}],
+          "title": "Research success ratio (30d)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Best-effort sum reported by GPT Researcher for successful OpenRouter-backed jobs in the last 30 days. This is an estimate, not an invoice.",
+          "fieldConfig": {"defaults": {"decimals": 3, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 25}]}, "unit": "currencyUSD"}},
+          "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
+          "id": 5,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(gpt_researcher_estimated_cost_usd_total[30d])) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "Estimated research cost (30d)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Requests rejected because a research job was already using the only worker slot.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 3}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
+          "id": 6,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(gpt_researcher_busy_total[24h])) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "Busy rejections (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Successful, failed, and timed-out jobs. Timeout is split from other failures even though it is also part of the service's aggregate failure counter.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "stepAfter", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 0, "min": 0, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 5},
+          "id": 7,
+          "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum(increase(gpt_researcher_success_total[$__rate_interval]))", "legendFormat": "success", "refId": "A"},
+            {"expr": "clamp_min(sum(increase(gpt_researcher_failure_total[$__rate_interval])) - sum(increase(gpt_researcher_timeout_total[$__rate_interval])), 0)", "legendFormat": "other failure", "refId": "B"},
+            {"expr": "sum(increase(gpt_researcher_timeout_total[$__rate_interval]))", "legendFormat": "timeout", "refId": "C"}
+          ],
+          "title": "Research outcomes",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Average successful-job wall-clock duration over the selected range.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "min": 0, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 5},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
+          "targets": [{"expr": "sum(rate(gpt_researcher_duration_seconds_total[$__rate_interval])) / clamp_min(sum(rate(gpt_researcher_success_total[$__rate_interval])), 0.000001)", "legendFormat": "average duration", "refId": "A"}],
+          "title": "Research duration",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "CPU usage by the Open WebUI, SearXNG, Tika, and GPT Researcher application containers.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 3, "min": 0, "unit": "cores"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 14},
+          "id": 9,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (pod, container) (rate(container_cpu_usage_seconds_total{namespace=\"apps\",pod=~\"(open-webui|searxng|tika|gpt-researcher)-.*\",container!=\"\",image!=\"\"}[$__rate_interval]))", "legendFormat": "{{pod}} / {{container}}", "refId": "A"}],
+          "title": "AI service CPU",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Working-set memory by the Open WebUI, SearXNG, Tika, and GPT Researcher application containers.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "min": 0, "unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 14},
+          "id": 10,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (pod, container) (container_memory_working_set_bytes{namespace=\"apps\",pod=~\"(open-webui|searxng|tika|gpt-researcher)-.*\",container!=\"\",image!=\"\"})", "legendFormat": "{{pod}} / {{container}}", "refId": "A"}],
+          "title": "AI service memory",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 41,
+      "tags": ["home-server", "open-webui", "gpt-researcher", "ai"],
+      "templating": {"list": []},
+      "time": {"from": "now-30d", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "AI Services",
+      "uid": "home-server-ai-services",
+      "version": 1
+    }

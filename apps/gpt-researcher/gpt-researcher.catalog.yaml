@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: gpt-researcher
+spec:
+  name: GPT Researcher
+  workload:
+    namespace: apps
+    app: gpt-researcher
+  homepage:
+    order: 20
+    group: AI & Data
+    icon: mdi-file-search
+    description: Internal source-backed deep research for Open WebUI
+    link: false
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+    note: Reports are persisted in their originating Open WebUI chats; the worker retains no report archive.
+  observability:
+    mode: metrics
+    manifests:
+      - apps/gpt-researcher/monitoring.yaml
+      - infrastructure/observability/ai-services-dashboard.yaml
