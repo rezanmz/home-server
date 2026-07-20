@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/component: application
     spec:
       automountServiceAccountToken: false
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -29,6 +30,42 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: reconcile-security-policy
+          image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - /policy/reconcile.py
+          env:
+            - name: HOME
+              value: /tmp
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+            - name: security-policy
+              mountPath: /policy
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: open-webui
           image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
@@ -47,6 +84,8 @@ spec:
               value: /tmp
             - name: XDG_CACHE_HOME
               value: /app/backend/data/cache
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
             # The image's bundled static directory is root-owned. Keep generated
             # customizations on the writable data volume when running non-root.
             - name: STATIC_DIR
@@ -59,6 +98,52 @@ spec:
             # callback errors can otherwise disclose the authorization code/state.
             - name: LOGURU_DIAGNOSE
               value: "false"
+            # Custom Functions are arbitrary backend code. Reviewed native
+            # features replace the retired database-only Functions.
+            - name: SAFE_MODE
+              value: "True"
+            - name: ENABLE_VALVE_ENCRYPTION
+              value: "True"
+            - name: THREAD_POOL_SIZE
+              value: "8"
+            - name: ENABLE_ADMIN_CHAT_ACCESS
+              value: "False"
+            - name: ENABLE_ADMIN_EXPORT
+              value: "False"
+            - name: ENABLE_ADMIN_WORKSPACE_CONTENT_ACCESS
+              value: "False"
+            - name: BYPASS_ADMIN_ACCESS_CONTROL
+              value: "False"
+            - name: ENABLE_ADMIN_ANALYTICS
+              value: "False"
+            - name: SHOW_ADMIN_DETAILS
+              value: "False"
+            - name: ENABLE_API_KEYS
+              value: "False"
+            - name: JWT_EXPIRES_IN
+              value: 7d
+            # Secure rendered model/user HTML while retaining ordinary
+            # self-contained artifacts. Network access from srcdoc is blocked.
+            - name: IFRAME_CSP
+              value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+            - name: HSTS
+              value: max-age=31536000;includeSubDomains
+            - name: XFRAME_OPTIONS
+              value: DENY
+            - name: XCONTENT_TYPE
+              value: nosniff
+            - name: XDOWNLOAD_OPTIONS
+              value: noopen
+            - name: XPERMITTED_CROSS_DOMAIN_POLICIES
+              value: none
+            - name: REFERRER_POLICY
+              value: strict-origin-when-cross-origin
+            - name: PERMISSIONS_POLICY
+              value: "camera=(),microphone=(self),geolocation=(self),clipboard-read=(self),clipboard-write=(self),fullscreen=(self)"
+            - name: CROSS_ORIGIN_OPENER_POLICY
+              value: same-origin
+            - name: CROSS_ORIGIN_RESOURCE_POLICY
+              value: same-origin
             - name: ENABLE_OLLAMA_API
               value: "False"
             - name: CONTENT_EXTRACTION_ENGINE
@@ -118,7 +203,7 @@ spec:
             - name: OAUTH_PROVIDER_NAME
               value: Authentik
             - name: OAUTH_SCOPES
-              value: openid email profile
+              value: openid email profile offline_access
             - name: OPENID_REDIRECT_URI
               value: https://chat.reza.network/oauth/oidc/callback
             - name: ENABLE_OAUTH_ROLE_MANAGEMENT
@@ -172,16 +257,26 @@ spec:
             runAsUser: 1000
             runAsGroup: 1000
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
           volumeMounts:
             - name: data
               mountPath: /app/backend/data
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: open-webui-data
+        - name: security-policy
+          configMap:
+            name: open-webui-security-policy
+            defaultMode: 0444
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -204,6 +299,7 @@ spec:
         app.kubernetes.io/component: tika
     spec:
       automountServiceAccountToken: false
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -246,6 +342,14 @@ spec:
             failureThreshold: 3
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi

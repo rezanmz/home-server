@@ -31,7 +31,7 @@ spec:
         type: confidential
         id: open-webui-82ebaa452b0b4916f1f9406e
         grantTypes: [authorization_code, refresh_token]
-        scopes: [openid, email, profile]
+        scopes: [openid, email, profile, offline_access]
         redirectUris:
           - type: authorization
             url: https://chat.reza.network/oauth/oidc/callback
