@@ -1177,7 +1177,7 @@ credentials:
 
 ```bash
 sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); keys=("web.search.enable","web.search.engine","web.search.searxng_query_url","web.search.result_count","web.search.concurrent_requests"); [print(k, json.loads(v)) for k,v in c.execute("select key,value from config where key in (?,?,?,?,?) order by key", keys)]'
+  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); keys=("web.search.enable","web.search.engine","web.search.searxng_query_url","web.search.result_count","web.search.concurrent_requests"); [print(k, json.loads(v) if isinstance(v,str) else v) for k,v in c.execute("select key,value from config where key in (?,?,?,?,?) order by key", keys)]'
 sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
   'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); v=c.execute("select value from config where key=?",("web.search.perplexity_api_key",)).fetchone(); print("perplexity key:", "empty" if v and not json.loads(v[0]) else "unexpectedly set")'
 ```
