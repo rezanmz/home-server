@@ -106,6 +106,26 @@ class OpenWebUIEmbeddingMigrationTests(unittest.TestCase):
         }
         self.assertEqual(environment["PYTHONPATH"], "/app/backend")
 
+        application_container = next(
+            container
+            for container in deployments[0]["spec"]["template"]["spec"][
+                "containers"
+            ]
+            if container["name"] == "open-webui"
+        )
+        application_environment = {
+            entry["name"]: entry.get("value")
+            for entry in application_container["env"]
+        }
+        self.assertEqual(
+            application_environment["BYPASS_ADMIN_ACCESS_CONTROL"],
+            "True",
+        )
+        self.assertEqual(
+            application_environment["BYPASS_MODEL_ACCESS_CONTROL"],
+            "False",
+        )
+
     def test_not_selected_is_a_noop(self) -> None:
         database = self.data_dir / "webui.db"
         create_config_database(

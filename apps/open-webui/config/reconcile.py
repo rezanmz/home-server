@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-POLICY_VERSION = 4
+POLICY_VERSION = 5
 REMEDIATION_BACKUP_RETAIN = 3
 UNSAFE_FUNCTION_IDS = {
     "auto_memory",
@@ -920,7 +920,7 @@ SAFE_DEFAULT_MODEL_METADATA = {
     "builtinTools": STANDARD_BUILTIN_TOOLS,
 }
 
-SAFE_CLAUDE_METADATA = {
+COMPANION_METADATA = {
     "profile_image_url": "/static/favicon.png",
     "description": "Conversational profile with the standard reviewed chat tools enabled by default.",
     "capabilities": {
@@ -943,6 +943,13 @@ SAFE_CLAUDE_METADATA = {
         "code_interpreter": True,
     },
 }
+
+MANAGED_PINNED_MODEL_IDS = (
+    "companion",
+    "rigorous",
+    "deep-research",
+    "model-steward",
+)
 
 RIGOROUS_METADATA = {
     "profile_image_url": "/static/favicon.png",
@@ -1105,12 +1112,14 @@ Review the current public model market for the personal Open WebUI roles in
 your system instructions. Produce a recommendation only if the evidence shows
 a material improvement. Do not perform or commission any paid evaluation.
 
-The initial reviewed baselines were Claude Sonnet Latest for ordinary chat,
-the administrator-selected base for Rigorous and Deep Research, Gemini 3.1
-Flash Lite for GPT Researcher fast work, Gemini 3.1 Pro Preview for its smart
-and strategic work, and Gemini Embedding 2 at 3072 dimensions. These baselines
-may have been changed since this automation was created, so label them as
-initial baselines and never claim they are the live selection without evidence.
+Open WebUI profile base models are administrator-controlled runtime choices;
+do not assume a particular provider model is still selected. GPT Researcher's
+fast, smart, and strategic mappings are Git-controlled and its weekly catalog
+validator detects retired or incompatible models. A manual GitHub Actions
+workflow validates proposed replacements and opens a reviewable pull request.
+Gemini Embedding 2 at 3072 dimensions is separately migration-controlled and
+must not be changed through the LLM-role updater.
+
 End with exact manual approval steps; do not change anything."""
 
 USER_PERMISSIONS = {
@@ -1236,6 +1245,13 @@ DESIRED_CONFIG: dict[str, Any] = {
     "web.loader.concurrent_requests": 3,
     "web.loader.timeout": "20",
     "web.loader.ssl_verification": True,
+    # Keep the curated profiles convenient without turning a few raw provider
+    # models into a hidden allow-list. Open WebUI expects this ConfigVar as a
+    # comma-separated string; existing administrators are reconciled below.
+    "ui.default_pinned_models": ",".join(MANAGED_PINNED_MODEL_IDS),
+    # Managed profiles sort first. Every other live provider model falls back
+    # to the normal name ordering, including models added after this policy.
+    "ui.model_order_list": list(MANAGED_PINNED_MODEL_IDS),
     "models.default_metadata": SAFE_DEFAULT_MODEL_METADATA,
     "user.permissions": USER_PERMISSIONS,
 }
@@ -1491,6 +1507,7 @@ def _reconcile_user_settings(conn: sqlite3.Connection, now: int) -> int:
         ui["iframeSandboxAllowForms"] = False
         if role == "admin":
             ui["system"] = PERSONAL_COMPANION_PROMPT
+            ui["pinnedModels"] = list(MANAGED_PINNED_MODEL_IDS)
 
         if _encode(settings) != before:
             conn.execute(
@@ -1512,14 +1529,21 @@ def _reconcile_models(conn: sqlite3.Connection, now: int) -> int:
     owner_id = owner[0]
     changes = 0
 
-    claude = conn.execute(
+    # v4 temporarily treated the Sonnet alias as the companion profile. Retire
+    # only that exact managed metadata while preserving its user-owned name,
+    # parameters, and base-provider record. It remains an ordinary unpinned
+    # model in the complete provider catalog.
+    legacy_claude = conn.execute(
         "SELECT meta FROM model WHERE id = ?",
         ("~anthropic/claude-sonnet-latest",),
     ).fetchone()
-    if claude is not None and _decode(claude[0]) != SAFE_CLAUDE_METADATA:
+    if (
+        legacy_claude is not None
+        and _decode(legacy_claude[0]) == COMPANION_METADATA
+    ):
         conn.execute(
             "UPDATE model SET meta = ?, updated_at = ? WHERE id = ?",
-            (_encode(SAFE_CLAUDE_METADATA), now, "~anthropic/claude-sonnet-latest"),
+            (_encode({}), now, "~anthropic/claude-sonnet-latest"),
         )
         changes += 1
 
@@ -1533,8 +1557,65 @@ def _reconcile_models(conn: sqlite3.Connection, now: int) -> int:
     bootstrap_base_model = (
         existing_research[0]
         if existing_research is not None and existing_research[0]
-        else "anthropic/claude-sonnet-latest"
+        else "openrouter/auto"
     )
+    companion_params = {
+        "system": PERSONAL_COMPANION_PROMPT,
+        "temperature": 0.7,
+    }
+    companion = conn.execute(
+        "SELECT user_id, base_model_id, name, params, meta, is_active "
+        "FROM model WHERE id = ?",
+        ("companion",),
+    ).fetchone()
+    companion_is_current = (
+        companion is not None
+        and companion[0] == owner_id
+        and companion[2] == "Companion"
+        and _decode(companion[3]) == companion_params
+        and _decode(companion[4]) == COMPANION_METADATA
+        and companion[5] == 1
+    )
+    if not companion_is_current:
+        selected_companion_base = (
+            companion[1]
+            if companion is not None and companion[1]
+            else bootstrap_base_model
+        )
+        conn.execute(
+            """
+            INSERT INTO model(
+                id, user_id, base_model_id, name, params, meta,
+                is_active, updated_at, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                user_id = excluded.user_id,
+                base_model_id = excluded.base_model_id,
+                name = excluded.name,
+                params = excluded.params,
+                meta = excluded.meta,
+                is_active = excluded.is_active,
+                updated_at = excluded.updated_at
+            """,
+            (
+                "companion",
+                owner_id,
+                selected_companion_base,
+                "Companion",
+                _encode(companion_params),
+                _encode(COMPANION_METADATA),
+                1,
+                now,
+                now,
+            ),
+        )
+        changes += 1
+    if _table_exists(conn, "access_grant"):
+        conn.execute(
+            "DELETE FROM access_grant WHERE resource_type = 'model' AND resource_id = ?",
+            ("companion",),
+        )
+
     params = {"system": RIGOROUS_PROMPT, "temperature": 0.2}
     current = conn.execute(
         "SELECT user_id, base_model_id, name, params, meta, is_active FROM model WHERE id = ?",
