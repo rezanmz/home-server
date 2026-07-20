@@ -44,6 +44,13 @@ spec:
               app.kubernetes.io/component: searxng
       ports:
         - {port: 8080, protocol: TCP}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gpt-researcher
+              app.kubernetes.io/component: application
+      ports:
+        - {port: 8000, protocol: TCP}
     # Authentik's public issuer is reached through the split-horizon Traefik
     # VIP. Include both the pre- and post-DNAT destinations used by K3s.
     - to:

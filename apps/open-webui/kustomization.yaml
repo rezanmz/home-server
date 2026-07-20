@@ -5,6 +5,7 @@ configMapGenerator:
   - name: open-webui-security-policy
     files:
       - reconcile.py=config/reconcile.py
+      - migrate_embeddings.py=config/migrate_embeddings.py
   - name: open-webui-searxng-config
     files:
       - settings.yml=config/searxng-settings.yml

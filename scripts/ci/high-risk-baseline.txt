@@ -75,8 +75,9 @@ host-port|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/wireguar
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|gpt-researcher|egress/2/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/5/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/6/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -109,6 +110,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authenti
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-database|spec/sha256/ccdce8f21dda90152efd85ed6aa8d0e8a40ab16286651073bed741f830bf49a0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|gpt-researcher|spec/sha256/f01152378e31df59e7a531ce509cc752d4fff1975666ecc54faf59e7e9d5cce6
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/cd46cf55de956f1868c69d54efe01b367139c46b3fa59397d8c0fe20403c7d5b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/459d59fd95b0046b67c12d71706d6147dab3457b90a838da9d4fd7608866e671

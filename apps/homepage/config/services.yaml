@@ -88,6 +88,11 @@
         description: Local AI chat
         namespace: apps
         app: open-webui
+    - GPT Researcher:
+        icon: mdi-file-search
+        description: Internal source-backed deep research for Open WebUI
+        namespace: apps
+        app: gpt-researcher
     - MCPHub:
         icon: mdi-hubspot
         href: https://mcphub.reza.network/

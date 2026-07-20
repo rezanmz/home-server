@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpt-researcher
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: gpt-researcher
+    app.kubernetes.io/component: application
+spec:
+  selector:
+    app.kubernetes.io/name: gpt-researcher
+    app.kubernetes.io/component: application
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP

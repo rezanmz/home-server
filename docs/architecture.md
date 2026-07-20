@@ -69,6 +69,31 @@ Homepage has a dedicated service account whose cluster role can only list
 namespaces, nodes, pods, and their Metrics API usage. It cannot read Secrets,
 pod logs, or application APIs and cannot change cluster state.
 
+Open WebUI is the personal AI entry point at `chat.reza.network`. Authentik
+provides its native OIDC login; there is no local password login or public
+signup. Tika, SearXNG, and GPT Researcher are cluster-only supporting services
+with no external routes. SearXNG supplies ordinary native web search. The
+separate GPT Researcher adapter is called only by the private `Deep Research`
+profile through an authenticated OpenAPI connection and can run only one
+bounded job at a time. It uses SearXNG for discovery and public HTTPS for
+source retrieval and OpenRouter, while NetworkPolicy blocks all private and
+reserved destination ranges.
+
+Open WebUI's ordinary provider choice stays editable at runtime because the
+model market changes quickly. Git owns stable policy—profile behavior, tool
+boundaries, search, retrieval, research roles, and cost controls—while the
+administrator owns each managed profile's current base model. A weekly
+read-only `Model Steward` automation recommends changes but cannot apply them.
+GPT Researcher's internal role mapping remains Git-reviewed because it is a
+separate service.
+
+Open WebUI retrieval uses Gemini Embedding 2 through the existing OpenRouter
+connection. A rollout init container backs up the previous Chroma index,
+rebuilds every persisted file through the application's own API, verifies the
+new vector dimensions and model metadata, and restores both the old index and
+configuration on any failure. The local copies are rollback aids on the same
+Longhorn volume, not a separate backup.
+
 wg-easy masquerades client traffic before it leaves its pod, so Traefik and the
 application access proxies see the Pi node's fixed pod CIDR (`10.42.1.0/24`)
 rather than the original `10.8.0.0/24` client address. Administrative allow
