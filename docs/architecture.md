@@ -89,10 +89,13 @@ separate service.
 
 Open WebUI retrieval uses Gemini Embedding 2 through the existing OpenRouter
 connection. A rollout init container backs up the previous Chroma index,
-rebuilds every persisted file through the application's own API, verifies the
-new vector dimensions and model metadata, and restores both the old index and
-configuration on any failure. The local copies are rollback aids on the same
-Longhorn volume, not a separate backup.
+rebuilds persisted files and knowledge through the application's own API, and
+rebuilds per-user memory from the authoritative SQLite rows with the same
+embedding helper. Independent completion markers and backups let a memory-only
+repair roll back without undoing an already verified file migration. Validation
+covers vector dimensions, model metadata, memory IDs, documents, metadata, and
+collection ownership. The local copies are rollback aids on the same Longhorn
+volume, not a separate backup.
 
 wg-easy masquerades client traffic before it leaves its pod, so Traefik and the
 application access proxies see the Pi node's fixed pod CIDR (`10.42.1.0/24`)

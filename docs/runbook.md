@@ -1244,18 +1244,25 @@ printing provider or tool credentials:
 
 ```bash
 sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); print("models",c.execute("select id,name,base_model_id,is_active from model where id in (?,?,?) order by id",("deep-research","model-steward","rigorous")).fetchall()); print("automation",c.execute("select id,name,is_active,next_run_at from automation where id=?",("home-server-model-steward-weekly",)).fetchall()); print("embedding",[(k,json.loads(v)) for k,v in c.execute("select key,value from config where key in (?,?)",("rag.embedding_model","home-server.embedding_migration_state"))])'
+  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); print("models",c.execute("select id,name,base_model_id,is_active from model where id in (?,?,?) order by id",("deep-research","model-steward","rigorous")).fetchall()); print("automation",c.execute("select id,name,is_active,next_run_at from automation where id=?",("home-server-model-steward-weekly",)).fetchall()); keys=("rag.embedding_model","home-server.embedding_migration_state","home-server.memory_embedding_migration_state"); print("embedding",[(k,json.loads(v)) for k,v in c.execute("select key,value from config where key in (?,?,?)",keys)])'
 sudo k3s kubectl -n apps logs deploy/open-webui -c migrate-gemini-embeddings
 ```
 
 The first Gemini embedding rollout can take several minutes because the init
-container rebuilds all non-empty files and knowledge collections before the
-main container starts. It temporarily disables Automations and restores the
-exact previous value before exit, so maintenance cannot claim a due scheduled
-task. On failure it restores both the old Chroma directory and old retrieval
-configuration. Do not delete
-`remediation-backups/vector-db-pre-gemini-v4` until retrieval has been tested
-after multiple ordinary restarts.
+container rebuilds all non-empty files, knowledge collections, and per-user
+memory collections before the main container starts. It temporarily disables
+Automations and restores the exact previous value before exit, so maintenance
+cannot claim a due scheduled task. On an initial failure it restores both the
+old Chroma directory and old retrieval configuration.
+
+File/knowledge and memory completion are tracked independently. If the file
+migration is already complete but the memory marker is missing, the init
+container creates `remediation-backups/vector-db-pre-gemini-memory-v4` and
+rebuilds only memory. A failure in that repair restores that memory-only
+snapshot without reverting the working file index or target retrieval
+configuration. Do not delete either `vector-db-pre-gemini-v4` or
+`vector-db-pre-gemini-memory-v4` until ordinary retrieval and memory recall
+have both been tested after multiple restarts.
 
 ### GPT Researcher
 
