@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import sqlite3
 import stat
@@ -14,6 +15,7 @@ SPEC = importlib.util.spec_from_file_location("open_webui_reconcile", MODULE_PAT
 reconcile_module = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(reconcile_module)
+ORIGINAL_CATALOG_FETCH = reconcile_module._fetch_openrouter_text_catalog
 
 
 class OpenWebUIReconcileTests(unittest.TestCase):
@@ -23,6 +25,25 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             {"GPT_RESEARCHER_API_TOKEN": "research-token-" + ("x" * 48)},
         )
         self.environment.start()
+        self.catalog = [
+            {
+                "id": f"test-provider/model-{index:02d}",
+                "name": f"Test Model {index:02d}",
+            }
+            for index in range(25)
+        ] + [
+            {"id": "z-ai/glm-5.1", "name": "GLM 5.1"},
+            {
+                "id": "anthropic/claude-sonnet-latest",
+                "name": "Claude Sonnet Latest",
+            },
+        ]
+        self.catalog_fetch = patch.object(
+            reconcile_module,
+            "_fetch_openrouter_text_catalog",
+            return_value=self.catalog,
+        )
+        self.catalog_fetch_mock = self.catalog_fetch.start()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.temp_dir.name)
         self.db_path = self.data_dir / "webui.db"
@@ -181,6 +202,20 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 1,
             ),
         )
+        conn.execute(
+            "INSERT INTO model VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "z-ai/glm-5.1",
+                "admin",
+                None,
+                "GLM 5.1 Custom",
+                '{"temperature":0.4}',
+                '{"custom":true}',
+                1,
+                1,
+                1,
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -197,6 +232,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp_dir.cleanup()
+        self.catalog_fetch.stop()
         self.environment.stop()
 
     def test_managed_prompts_do_not_contain_the_users_name(self):
@@ -208,6 +244,67 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             reconcile_module.MODEL_STEWARD_AUTOMATION_PROMPT,
         ):
             self.assertNotIn("reza", prompt.lower())
+
+    def test_catalog_fetch_requires_a_plausible_text_model_catalog(self):
+        rows = [
+            {
+                "id": f"provider/model-{index:02d}",
+                "name": f"Model {index:02d}",
+                "architecture": {"output_modalities": ["text"]},
+            }
+            for index in range(25)
+        ]
+        rows.extend(
+            [
+                {
+                    "id": "provider/image-only",
+                    "name": "Image only",
+                    "architecture": {"output_modalities": ["image"]},
+                },
+                {
+                    "id": "invalid model id",
+                    "name": "Invalid",
+                    "architecture": {"output_modalities": ["text"]},
+                },
+            ]
+        )
+        response = io.BytesIO(json.dumps({"data": rows}).encode())
+        with patch.object(
+            reconcile_module.urllib.request,
+            "urlopen",
+            return_value=response,
+        ):
+            catalog = ORIGINAL_CATALOG_FETCH()
+
+        self.assertEqual(len(catalog), 25)
+        self.assertEqual(catalog[0]["id"], "provider/model-00")
+
+        tiny = io.BytesIO(json.dumps({"data": rows[:5]}).encode())
+        with patch.object(
+            reconcile_module.urllib.request,
+            "urlopen",
+            return_value=tiny,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "unexpectedly small"):
+                ORIGINAL_CATALOG_FETCH()
+
+    def test_cached_catalog_survives_a_transient_refresh_failure(self):
+        first = reconcile_module.reconcile(self.db_path, self.data_dir)
+        self.assertEqual(first["catalog_models"], len(self.catalog))
+        self.assertIsNone(first["catalog_sync_error"])
+
+        self.catalog_fetch_mock.side_effect = OSError("temporary catalog outage")
+        second = reconcile_module.reconcile(self.db_path, self.data_dir)
+
+        self.assertGreaterEqual(second["catalog_models"], 25)
+        self.assertIn("temporary catalog outage", second["catalog_sync_error"])
+        self.assertEqual(second["database_changes"], 0)
+
+    def test_catalog_failure_without_cache_aborts_closed(self):
+        self.catalog_fetch_mock.side_effect = OSError("catalog unavailable")
+
+        with self.assertRaisesRegex(RuntimeError, "without a usable cached catalog"):
+            reconcile_module.reconcile(self.db_path, self.data_dir)
 
     def test_reconcile_retires_unsafe_state_and_preserves_user_data(self):
         first = reconcile_module.reconcile(self.db_path, self.data_dir)
@@ -301,8 +398,18 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 "SELECT value FROM config WHERE key = 'models.default_metadata'"
             ).fetchone()[0]
         )
+        self.assertEqual(default_metadata, {})
+
+        catalog_override = conn.execute(
+            "SELECT user_id, base_model_id, params, meta FROM model "
+            "WHERE id = 'test-provider/model-00'"
+        ).fetchone()
+        self.assertEqual(catalog_override[0], "admin")
+        self.assertIsNone(catalog_override[1])
+        self.assertEqual(json.loads(catalog_override[2]), {})
+        catalog_metadata = json.loads(catalog_override[3])
         self.assertEqual(
-            default_metadata["defaultFeatureIds"],
+            catalog_metadata["defaultFeatureIds"],
             ["web_search"],
         )
         for tool in (
@@ -315,11 +422,22 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             "tasks",
             "calendar",
         ):
-            self.assertTrue(default_metadata["builtinTools"][tool])
-        self.assertFalse(default_metadata["builtinTools"]["image_generation"])
-        self.assertFalse(default_metadata["builtinTools"]["code_interpreter"])
-        self.assertFalse(default_metadata["builtinTools"]["channels"])
-        self.assertFalse(default_metadata["builtinTools"]["automations"])
+            self.assertTrue(catalog_metadata["builtinTools"][tool])
+        self.assertFalse(catalog_metadata["builtinTools"]["image_generation"])
+        self.assertFalse(catalog_metadata["builtinTools"]["code_interpreter"])
+        self.assertFalse(catalog_metadata["builtinTools"]["channels"])
+        self.assertFalse(catalog_metadata["builtinTools"]["automations"])
+        self.assertEqual(
+            catalog_metadata["homeServer"],
+            reconcile_module.CATALOG_OVERRIDE_MARKER,
+        )
+
+        glm = conn.execute(
+            "SELECT name, params, meta FROM model WHERE id = 'z-ai/glm-5.1'"
+        ).fetchone()
+        self.assertEqual(glm[0], "GLM 5.1 Custom")
+        self.assertEqual(json.loads(glm[1]), {"temperature": 0.4})
+        self.assertEqual(json.loads(glm[2]), {"custom": True})
 
         admin_settings = json.loads(
             conn.execute(
@@ -480,7 +598,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             (
                 self.data_dir
                 / "remediation-backups"
-                / "webui-pre-security-policy-v5.db"
+                / "webui-pre-security-policy-v6.db"
             ).is_file()
         )
         self.assertEqual(
@@ -488,7 +606,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 (
                     self.data_dir
                     / "remediation-backups"
-                    / "webui-pre-security-policy-v5.db"
+                    / "webui-pre-security-policy-v6.db"
                 ).stat().st_mode
             ),
             0o600,
@@ -581,7 +699,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
     def test_reconcile_bounds_policy_backup_retention(self):
         backup_dir = self.data_dir / "remediation-backups"
         backup_dir.mkdir()
-        for version in (2, 3, 4):
+        for version in (3, 4, 5):
             (backup_dir / f"webui-pre-security-policy-v{version}.db").write_bytes(
                 f"backup-{version}".encode()
             )
@@ -589,15 +707,15 @@ class OpenWebUIReconcileTests(unittest.TestCase):
         result = reconcile_module.reconcile(self.db_path, self.data_dir)
 
         self.assertFalse(
-            (backup_dir / "webui-pre-security-policy-v2.db").exists()
+            (backup_dir / "webui-pre-security-policy-v3.db").exists()
         )
-        for version in (3, 4, 5):
+        for version in (4, 5, 6):
             self.assertTrue(
                 (backup_dir / f"webui-pre-security-policy-v{version}.db").is_file()
             )
         self.assertEqual(
             result["pruned_backups"],
-            [str((backup_dir / "webui-pre-security-policy-v2.db").resolve())],
+            [str((backup_dir / "webui-pre-security-policy-v3.db").resolve())],
         )
 
     def test_reconcile_rejects_symlinked_private_directory(self):

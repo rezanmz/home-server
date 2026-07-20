@@ -119,7 +119,7 @@ class OpenWebUIEmbeddingMigrationTests(unittest.TestCase):
         }
         self.assertEqual(
             application_environment["BYPASS_ADMIN_ACCESS_CONTROL"],
-            "True",
+            "False",
         )
         self.assertEqual(
             application_environment["BYPASS_MODEL_ACCESS_CONTROL"],

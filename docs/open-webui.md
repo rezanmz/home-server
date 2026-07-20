@@ -45,9 +45,15 @@ request.
 The administrator's chat model selector contains the complete live provider
 catalog. `Companion`, `Rigorous`, `Deep Research`, and `Model Steward` are
 pinned and sorted first; raw models such as GLM or provider aliases remain
-ordinary unpinned choices. The admin-only access-control bypass is enabled for
-catalog browsing, while global model-access bypass remains disabled, so normal
-users do not inherit unrestricted model access.
+ordinary unpinned choices. At pod startup, the reconciler reads OpenRouter's
+public text-model catalog and creates private administrator-owned override rows
+that carry the reviewed default tool metadata. Both the broad administrator
+bypass and the global model-access bypass remain disabled, so this does not
+grant access to other users' workspace content or give normal users the paid
+provider catalog. A transient catalog outage reuses the last healthy persisted
+catalog; the first sync fails closed rather than enabling a broader bypass.
+Pre-existing unmarked model overrides remain administrator-controlled and are
+never taken over by the catalog sync.
 
 The weekly `Model Steward` automation runs Monday at 09:00
 `America/Toronto`. It creates a visible advisory chat. Open WebUI does not

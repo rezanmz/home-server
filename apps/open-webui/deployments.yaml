@@ -205,9 +205,11 @@ spec:
             - name: ENABLE_ADMIN_WORKSPACE_CONTENT_ACCESS
               value: "False"
             - name: BYPASS_ADMIN_ACCESS_CONTROL
-              # Admins may browse the complete dynamic provider catalog. Model
-              # access control remains enabled for ordinary users below.
-              value: "True"
+              # Keep ownership checks for notes, files, tools, knowledge, and
+              # other users' workspace content. The catalog reconciler creates
+              # administrator-owned model records instead of using this broad
+              # bypass to expose provider models.
+              value: "False"
             - name: ENABLE_ADMIN_ANALYTICS
               value: "False"
             - name: SHOW_ADMIN_DETAILS

@@ -84,7 +84,11 @@ model market changes quickly. Git owns stable policy—profile behavior, tool
 boundaries, search, retrieval, research roles, and cost controls—while the
 administrator owns each managed profile's current base model. The full live
 provider catalog remains visible to the administrator; only the four managed
-profiles are pinned. A weekly read-only `Model Steward` automation recommends
+profiles are pinned. The startup reconciler represents provider models as
+private administrator-owned catalog overrides, rather than enabling Open
+WebUI's broad administrator access-control bypass. Ownership checks therefore
+remain active for other users' notes, files, knowledge, prompts, tools, and
+workspace content. A weekly read-only `Model Steward` automation recommends
 changes but cannot apply them. GPT Researcher's internal role mapping remains
 Git-reviewed because it is a separate service. Its weekly workflow validates
 the current mappings against the public OpenRouter catalog, while a manual
