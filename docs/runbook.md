@@ -1108,6 +1108,65 @@ Never stage Open WebUI user-import CSV files under
 authentication. Keep recovery imports outside the static tree with mode 0600
 and verify the former URL returns 404 after cleanup.
 
+### Open WebUI security policy and extensions
+
+Open WebUI stores administrator configuration and custom Functions in
+`/app/backend/data/webui.db`, so Kubernetes environment variables alone are
+not a complete source of truth. The `reconcile-security-policy` init container
+applies the reviewed policy in `apps/open-webui/config/reconcile.py` while the
+database is offline. It preserves chats, files, memories, users, provider
+connections, and ordinary preferences.
+
+The policy deliberately:
+
+- removes the retired Auto Memory, Smart Context Manager, Smart Mind Map, and
+  Deep Research at Home Functions after saving mode-0600 source-only copies
+  outside the web-served static directory at
+  `quarantine/open-webui-functions/`;
+- replaces the memory and context filters with Open WebUI's native,
+  user-controlled memory tools and context compaction; automatic background
+  review stays off because v0.10.2 can review temporary chats;
+- creates the private `Deep Research` model profile on top of native web
+  search rather than executing an in-process research pipeline;
+- disables same-origin/forms privileges for rendered HTML, applies an iframe
+  CSP, and prevents non-admin users from using shared paid or executable
+  features by default;
+- bounds file ingestion plus search, loader, and embedding concurrency, and
+  removes the retired memory vocabulary cache and an unused local embedding
+  model cache (the latter is preserved whenever it is the selected model); and
+- creates one pre-change SQLite backup at
+  `remediation-backups/webui-pre-security-policy-v1.db`.
+
+`SAFE_MODE=True` deactivates every custom Function at each start. Do not remove
+safe mode or import a Function directly from the community. If a custom
+Function becomes necessary, keep its source and tests in this repository,
+review all input-to-network/database/browser paths, use immutable per-request
+state, and deploy it only after deliberately replacing the safe-mode policy.
+Function and Tool Valve secrets are encrypted with `WEBUI_SECRET_KEY`; rotating
+that key makes existing encrypted valves unreadable.
+
+The reconciler manages only security boundaries. It does not overwrite model
+provider credentials or future MCP connections. It removes one known-stale
+`git-mcp-server` connection whose MCPHub server and bearer key no longer
+exist. Add future MCPHub connections with server-scoped keys, an explicit tool
+allow-list, and private access grants.
+
+After an Open WebUI version upgrade, run the local reconciler unit test and
+review the upstream configuration/schema changes before rollout:
+
+```bash
+python3 -m unittest scripts.ci.test_open_webui_reconcile
+kubectl kustomize apps/open-webui >/tmp/open-webui-rendered.yaml
+```
+
+To inspect the applied state without printing credentials:
+
+```bash
+sudo k3s kubectl -n apps logs deploy/open-webui -c reconcile-security-policy
+sudo k3s kubectl -n apps exec deploy/open-webui -- \
+  python -c 'import sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); print(c.execute("select id,is_active from function").fetchall())'
+```
+
 ### Retired Duplicati recovery artifacts
 
 `apps/duplicati/kustomization.yaml` reconciles only `storage.yaml`. The retired
