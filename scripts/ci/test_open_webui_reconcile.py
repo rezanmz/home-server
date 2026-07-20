@@ -255,6 +255,31 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             )
         )
 
+        default_metadata = json.loads(
+            conn.execute(
+                "SELECT value FROM config WHERE key = 'models.default_metadata'"
+            ).fetchone()[0]
+        )
+        self.assertEqual(
+            default_metadata["defaultFeatureIds"],
+            ["web_search", "image_generation", "code_interpreter"],
+        )
+        for tool in (
+            "time",
+            "memory",
+            "chats",
+            "notes",
+            "knowledge",
+            "web_search",
+            "image_generation",
+            "code_interpreter",
+            "tasks",
+            "calendar",
+        ):
+            self.assertTrue(default_metadata["builtinTools"][tool])
+        self.assertFalse(default_metadata["builtinTools"]["channels"])
+        self.assertFalse(default_metadata["builtinTools"]["automations"])
+
         admin_settings = json.loads(
             conn.execute(
                 "SELECT settings FROM user WHERE id = 'admin'"
@@ -267,6 +292,18 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             reconcile_module.PERSONAL_COMPANION_PROMPT,
         )
 
+        claude_metadata = json.loads(
+            conn.execute(
+                "SELECT meta FROM model WHERE id = '~anthropic/claude-sonnet-latest'"
+            ).fetchone()[0]
+        )
+        self.assertEqual(
+            claude_metadata["defaultFeatureIds"],
+            ["web_search", "image_generation", "code_interpreter"],
+        )
+        self.assertTrue(claude_metadata["builtinTools"]["calendar"])
+        self.assertTrue(claude_metadata["capabilities"]["code_interpreter"])
+
         deep_research = conn.execute(
             "SELECT base_model_id, params, meta FROM model WHERE id = 'deep-research'"
         ).fetchone()
@@ -277,6 +314,10 @@ class OpenWebUIReconcileTests(unittest.TestCase):
         self.assertFalse(
             json.loads(deep_research[2])["capabilities"]["code_interpreter"]
         )
+        self.assertEqual(
+            json.loads(deep_research[2])["defaultFeatureIds"],
+            ["web_search"],
+        )
         self.assertEqual(conn.execute("SELECT count(*) FROM config_old").fetchone()[0], 0)
         conn.close()
 
@@ -284,7 +325,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             (
                 self.data_dir
                 / "remediation-backups"
-                / "webui-pre-security-policy-v2.db"
+                / "webui-pre-security-policy-v3.db"
             ).is_file()
         )
         self.assertEqual(
@@ -292,7 +333,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 (
                     self.data_dir
                     / "remediation-backups"
-                    / "webui-pre-security-policy-v2.db"
+                    / "webui-pre-security-policy-v3.db"
                 ).stat().st_mode
             ),
             0o600,
