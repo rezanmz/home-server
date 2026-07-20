@@ -1136,7 +1136,7 @@ The policy deliberately:
   vocabulary cache and an unused local embedding model cache (the latter is
   preserved whenever it is the selected model); and
 - creates one pre-change SQLite backup at
-  `remediation-backups/webui-pre-security-policy-v1.db`.
+  `remediation-backups/webui-pre-security-policy-v2.db`.
 
 `SAFE_MODE=True` deactivates every custom Function at each start. Do not remove
 safe mode or import a Function directly from the community. If a custom
@@ -1146,11 +1146,52 @@ state, and deploy it only after deliberately replacing the safe-mode policy.
 Function and Tool Valve secrets are encrypted with `WEBUI_SECRET_KEY`; rotating
 that key makes existing encrypted valves unreadable.
 
-The reconciler manages only security boundaries. It does not overwrite model
-provider credentials or future MCP connections. It removes one known-stale
-`git-mcp-server` connection whose MCPHub server and bearer key no longer
-exist. Add future MCPHub connections with server-scoped keys, an explicit tool
-allow-list, and private access grants.
+The reconciler manages security boundaries plus the selected internal search
+backend. It does not overwrite model-provider credentials or future MCP
+connections. It removes one known-stale `git-mcp-server` connection whose
+MCPHub server and bearer key no longer exist. Add future MCPHub connections
+with server-scoped keys, an explicit tool allow-list, and private access
+grants.
+
+#### Internal SearXNG search
+
+SearXNG is a stateless component of Open WebUI, not a separately exposed
+homelab application. It has no HTTPRoute, public or split-horizon DNS name,
+Homepage card, or Authentik application. NetworkPolicy permits only the Open
+WebUI application pod to reach its ClusterIP service on port 8080. SearXNG may
+resolve cluster DNS and contact globally routed HTTPS search providers; it
+cannot reach Kubernetes, LAN, loopback, link-local, or reserved networks.
+
+The reviewed SearXNG configuration is
+`apps/open-webui/config/searxng-settings.yml`. It enables only the JSON search
+format required by Open WebUI, disables public-instance mode, the image proxy,
+and the Valkey-backed public limiter, and uses a SOPS-managed cryptographic
+secret. No API-backed search engine or search-provider credential is required.
+The cache is ephemeral and has no backup requirement.
+
+Open WebUI's database-backed ConfigVars take precedence over environment
+variables. The offline reconciler therefore owns the search engine selection,
+the internal query URL, result/concurrency bounds, and removal of the retired
+Perplexity key. After a rollout, inspect these values without printing
+credentials:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); keys=("web.search.enable","web.search.engine","web.search.searxng_query_url","web.search.result_count","web.search.concurrent_requests"); [print(k, json.loads(v)) for k,v in c.execute("select key,value from config where key in (?,?,?,?,?) order by key", keys)]'
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); v=c.execute("select value from config where key=?",("web.search.perplexity_api_key",)).fetchone(); print("perplexity key:", "empty" if v and not json.loads(v[0]) else "unexpectedly set")'
+```
+
+Exercise the internal backend from the Open WebUI pod:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG Open WebUI"); u=f"http://searxng:8080/search?q={q}&format=json"; d=json.load(urllib.request.urlopen(u,timeout=20)); print("results:",len(d.get("results",[])),"engines:",sorted({e for r in d.get("results",[]) for e in r.get("engines",[])}))'
+```
+
+The old Perplexity key may remain in historical Longhorn backups even after it
+is erased from the live database. Revoke it in the Perplexity account after
+the SearXNG acceptance test succeeds.
 
 After an Open WebUI version upgrade, run the local reconciler unit test and
 review the upstream configuration/schema changes before rollout:

@@ -6,8 +6,9 @@ database. Environment variables alone therefore do not reliably correct an
 existing installation. This script runs from an init container while Open
 WebUI is stopped, applies a small reviewed policy, and preserves user content.
 
-It intentionally does not manage provider credentials or general UI
-preferences. Those remain administrator-controlled.
+It intentionally manages only the selected internal web-search provider and
+retired search credentials. Other provider credentials and general UI
+preferences remain administrator-controlled.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 
-POLICY_VERSION = 1
+POLICY_VERSION = 2
 UNSAFE_FUNCTION_IDS = {
     "auto_memory",
     "deep_research_at_home",
@@ -321,6 +322,13 @@ DESIRED_CONFIG: dict[str, Any] = {
     "rag.file.max_count": 10,
     "rag.embedding_concurrent_requests": 3,
     "web.fetch.max_content_length": 1_000_000,
+    "web.search.enable": True,
+    "web.search.engine": "searxng",
+    "web.search.searxng_query_url": (
+        "http://searxng.apps.svc.cluster.local:8080/search?q=<query>"
+    ),
+    "web.search.searxng_language": "all",
+    "web.search.result_count": 5,
     "web.search.concurrent_requests": 3,
     "web.loader.concurrent_requests": 3,
     "web.loader.timeout": "20",
@@ -654,6 +662,9 @@ def _clear_unused_credentials(conn: sqlite3.Connection, now: int) -> int:
         ),
         "images.edit.openai.api_key": selected["images.edit.engine"] != "openai",
         "web.search.exa_api_key": selected["web.search.engine"] != "exa",
+        "web.search.perplexity_api_key": (
+            selected["web.search.engine"] != "perplexity"
+        ),
     }
     for key, should_clear in conditional_keys.items():
         if should_clear:

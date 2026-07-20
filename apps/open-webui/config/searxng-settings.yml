@@ -1,0 +1,31 @@
+# SearXNG is an internal JSON search backend for Open WebUI. It has no route
+# or user-facing UI in this cluster.
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: Open WebUI Search
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - json
+
+server:
+  # Overridden at runtime by SEARXNG_SECRET from the SOPS-managed Secret.
+  secret_key: ultrasecretkey
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  method: GET
+
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 10.0
+  pool_connections: 20
+  pool_maxsize: 10
+  enable_http2: true

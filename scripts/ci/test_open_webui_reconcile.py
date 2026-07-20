@@ -94,6 +94,9 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             ("image_generation.engine", "gemini"),
             ("images.edit.engine", "gemini"),
             ("web.search.engine", "perplexity"),
+            ("web.search.enable", True),
+            ("web.search.perplexity_api_key", "retired-perplexity-key"),
+            ("web.search.searxng_query_url", ""),
             ("rag.datalab_marker_api_key", "unused"),
             ("image_generation.openai.api_key", "unused"),
             ("images.edit.openai.api_key", "unused"),
@@ -216,6 +219,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             "image_generation.openai.api_key",
             "images.edit.openai.api_key",
             "web.search.exa_api_key",
+            "web.search.perplexity_api_key",
         ):
             self.assertEqual(
                 json.loads(
@@ -225,6 +229,31 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 ),
                 "",
             )
+
+        self.assertEqual(
+            json.loads(
+                conn.execute(
+                    "SELECT value FROM config WHERE key = 'web.search.engine'"
+                ).fetchone()[0]
+            ),
+            "searxng",
+        )
+        self.assertEqual(
+            json.loads(
+                conn.execute(
+                    "SELECT value FROM config "
+                    "WHERE key = 'web.search.searxng_query_url'"
+                ).fetchone()[0]
+            ),
+            "http://searxng.apps.svc.cluster.local:8080/search?q=<query>",
+        )
+        self.assertTrue(
+            json.loads(
+                conn.execute(
+                    "SELECT value FROM config WHERE key = 'web.search.enable'"
+                ).fetchone()[0]
+            )
+        )
 
         admin_settings = json.loads(
             conn.execute(
@@ -255,7 +284,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             (
                 self.data_dir
                 / "remediation-backups"
-                / "webui-pre-security-policy-v1.db"
+                / "webui-pre-security-policy-v2.db"
             ).is_file()
         )
         self.assertEqual(
@@ -263,7 +292,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 (
                     self.data_dir
                     / "remediation-backups"
-                    / "webui-pre-security-policy-v1.db"
+                    / "webui-pre-security-policy-v2.db"
                 ).stat().st_mode
             ),
             0o600,

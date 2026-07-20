@@ -36,6 +36,12 @@
       "versioning": "loose"
     },
     {
+      "description": "SearXNG publishes date-plus-commit tags (e.g. 2026.7.19-6da6eee26) rather than SemVer.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/searxng/searxng"],
+      "versioning": "loose"
+    },
+    {
       "description": "pgvector uses channel tags like 'pg16' — not version numbers. Disable updates entirely to prevent bogus PRs.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["pgvector/pgvector"],

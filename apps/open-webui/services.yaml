@@ -35,3 +35,22 @@ spec:
       port: 9998
       targetPort: http
       protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: searxng
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: searxng
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

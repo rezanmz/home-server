@@ -76,7 +76,8 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/4/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/5/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|egress/1/peer/0/cidr/0.0.0.0/0/except/none
@@ -114,6 +115,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellysee
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/249429c943462499c3521ee99660f7ba9f352e1e718ada63f78bbcceb968d751
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/e830038968ff3690c043c68002224ae4be88105f4ed87f45a0f34d8bdbda7e75
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|spec/sha256/9e8889aa30075eb5715602faa8bc6ef3b41957d1d88c3e674f58780d916919e1
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|tika|spec/sha256/75787649c5cc65abdb9d4b53762cfbb17b685080007a1cf68a2fa7c4ef003d03
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|kube-system|observability-node-exporter|spec/sha256/37f053596d712e401b7faf79f7d085250ee55ff0a7a846017d84ea06e0e31885

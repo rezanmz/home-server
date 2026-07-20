@@ -5,8 +5,12 @@ configMapGenerator:
   - name: open-webui-security-policy
     files:
       - reconcile.py=config/reconcile.py
+  - name: open-webui-searxng-config
+    files:
+      - settings.yml=config/searxng-settings.yml
 resources:
   - secrets.sops.yaml
+  - searxng-secrets.sops.yaml
   - pvc.yaml
   - deployments.yaml
   - services.yaml
