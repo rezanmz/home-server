@@ -6,9 +6,9 @@ database. Environment variables alone therefore do not reliably correct an
 existing installation. This script runs from an init container while Open
 WebUI is stopped, applies a small reviewed policy, and preserves user content.
 
-It intentionally manages only the selected internal web-search provider and
-retired search credentials. Other provider credentials and general UI
-preferences remain administrator-controlled.
+It intentionally manages the selected internal web-search provider, reviewed
+default chat tools, and retired search credentials. Other provider credentials
+and general UI preferences remain administrator-controlled.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 
-POLICY_VERSION = 2
+POLICY_VERSION = 3
 UNSAFE_FUNCTION_IDS = {
     "auto_memory",
     "deep_research_at_home",
@@ -131,6 +131,28 @@ say so explicitly. Stop when additional searches have low expected value and
 do not perform more than eight distinct searches for one answer unless the
 user explicitly asks for a broader investigation."""
 
+STANDARD_DEFAULT_FEATURE_IDS = [
+    "web_search",
+    "image_generation",
+    "code_interpreter",
+]
+
+STANDARD_BUILTIN_TOOLS = {
+    "time": True,
+    "memory": True,
+    "chats": True,
+    "notes": True,
+    "knowledge": True,
+    # These subsystems remain globally disabled.
+    "channels": False,
+    "automations": False,
+    "web_search": True,
+    "image_generation": True,
+    "code_interpreter": True,
+    "tasks": True,
+    "calendar": True,
+}
+
 SAFE_DEFAULT_MODEL_METADATA = {
     "capabilities": {
         "file_context": True,
@@ -144,30 +166,20 @@ SAFE_DEFAULT_MODEL_METADATA = {
         "status_updates": True,
         "builtin_tools": True,
     },
-    "defaultFeatureIds": [],
-    "builtinTools": {
-        "time": True,
-        "memory": True,
-        "chats": False,
-        "notes": False,
-        "knowledge": False,
-        "channels": False,
-        "web_search": True,
-        "image_generation": False,
-        "code_interpreter": False,
-    },
+    "defaultFeatureIds": STANDARD_DEFAULT_FEATURE_IDS,
+    "builtinTools": STANDARD_BUILTIN_TOOLS,
 }
 
 SAFE_CLAUDE_METADATA = {
     "profile_image_url": "/static/favicon.png",
-    "description": "Conversational profile with web search and personal memory; privileged tools are opt-in.",
+    "description": "Conversational profile with the standard reviewed chat tools enabled by default.",
     "capabilities": {
         "file_context": True,
         "vision": True,
         "file_upload": True,
         "web_search": True,
-        "image_generation": False,
-        "code_interpreter": False,
+        "image_generation": True,
+        "code_interpreter": True,
         "terminal": False,
         "citations": True,
         "status_updates": True,
@@ -175,18 +187,8 @@ SAFE_CLAUDE_METADATA = {
     },
     "suggestion_prompts": None,
     "tags": [],
-    "defaultFeatureIds": ["web_search"],
-    "builtinTools": {
-        "time": True,
-        "memory": True,
-        "chats": False,
-        "notes": False,
-        "knowledge": False,
-        "channels": False,
-        "web_search": True,
-        "image_generation": False,
-        "code_interpreter": False,
-    },
+    "defaultFeatureIds": STANDARD_DEFAULT_FEATURE_IDS,
+    "builtinTools": STANDARD_BUILTIN_TOOLS,
 }
 
 DEEP_RESEARCH_METADATA = {

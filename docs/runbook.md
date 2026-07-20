@@ -1136,7 +1136,23 @@ The policy deliberately:
   vocabulary cache and an unused local embedding model cache (the latter is
   preserved whenever it is the selected model); and
 - creates one pre-change SQLite backup at
-  `remediation-backups/webui-pre-security-policy-v2.db`.
+  `remediation-backups/webui-pre-security-policy-v3.db`.
+
+Standard chat models start with Web Search, Image Generation, and Code
+Interpreter selected. Their reviewed built-in tools also include time,
+memory, chat history, notes, knowledge, task management, and calendar. This
+makes the tools available to the model; it does not authorize unsolicited
+external actions. The personal companion prompt still requires an explicit
+user request before creating, modifying, deleting, sending, or scheduling
+anything. Channels and Automations remain unavailable because those
+subsystems are globally disabled. The purpose-built `Deep Research` profile
+remains read-only and defaults only to Web Search.
+
+Open WebUI v0.10.2 has no wildcard meaning "select every present and future
+external tool." Local Tools and server-side MCP/OpenAPI connections therefore
+still require explicit reviewed IDs in a model profile. Browser-local direct
+tool servers are intentionally per-browser and per-chat. Do not treat those
+as durable cluster configuration.
 
 `SAFE_MODE=True` deactivates every custom Function at each start. Do not remove
 safe mode or import a Function directly from the community. If a custom
