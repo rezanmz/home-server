@@ -8,11 +8,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import yaml
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = (
     REPO_ROOT / "apps" / "open-webui" / "config" / "migrate_embeddings.py"
 )
+DEPLOYMENT_PATH = REPO_ROOT / "apps" / "open-webui" / "deployments.yaml"
 SPEC = importlib.util.spec_from_file_location(
     "open_webui_embedding_migration", MODULE_PATH
 )
@@ -48,6 +51,29 @@ class OpenWebUIEmbeddingMigrationTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
+
+    def test_init_container_can_import_the_open_webui_backend(self) -> None:
+        with DEPLOYMENT_PATH.open(encoding="utf-8") as handle:
+            deployments = [
+                document
+                for document in yaml.safe_load_all(handle)
+                if document
+                and document.get("kind") == "Deployment"
+                and document.get("metadata", {}).get("name") == "open-webui"
+            ]
+        self.assertEqual(len(deployments), 1)
+        init_containers = {
+            container["name"]: container
+            for container in deployments[0]["spec"]["template"]["spec"][
+                "initContainers"
+            ]
+        }
+        migration_container = init_containers["migrate-gemini-embeddings"]
+        environment = {
+            entry["name"]: entry.get("value")
+            for entry in migration_container["env"]
+        }
+        self.assertEqual(environment["PYTHONPATH"], "/app/backend")
 
     def test_not_selected_is_a_noop(self) -> None:
         database = self.data_dir / "webui.db"

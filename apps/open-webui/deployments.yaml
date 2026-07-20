@@ -86,6 +86,11 @@ spec:
               value: /app/backend/data/cache
             - name: PYTHONDONTWRITEBYTECODE
               value: "1"
+            # Running an absolute script sets sys.path[0] to /policy. Make the
+            # application's backend package importable for JWT generation and
+            # the temporary loopback server.
+            - name: PYTHONPATH
+              value: /app/backend
             - name: STATIC_DIR
               value: /app/backend/data/static
             - name: SAFE_MODE
