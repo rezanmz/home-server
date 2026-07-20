@@ -106,6 +106,16 @@ spec:
               value: "True"
             - name: THREAD_POOL_SIZE
               value: "8"
+            # v0.10.2 treats unset aiohttp pool values and the total timeout as
+            # unlimited despite documenting bounded defaults.
+            - name: AIOHTTP_POOL_CONNECTIONS
+              value: "20"
+            - name: AIOHTTP_POOL_CONNECTIONS_PER_HOST
+              value: "10"
+            - name: AIOHTTP_CLIENT_TIMEOUT
+              value: "120"
+            - name: USER_AGENT
+              value: OpenWebUI home-server (+https://chat.reza.network)
             - name: ENABLE_ADMIN_CHAT_ACCESS
               value: "False"
             - name: ENABLE_ADMIN_EXPORT

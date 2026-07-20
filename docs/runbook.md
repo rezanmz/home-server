@@ -1131,9 +1131,10 @@ The policy deliberately:
 - disables same-origin/forms privileges for rendered HTML, applies an iframe
   CSP, and prevents non-admin users from using shared paid or executable
   features by default;
-- bounds file ingestion plus search, loader, and embedding concurrency, and
-  removes the retired memory vocabulary cache and an unused local embedding
-  model cache (the latter is preserved whenever it is the selected model); and
+- bounds file ingestion plus search, loader, embedding, thread-pool, and
+  outbound HTTP concurrency/timeouts, and removes the retired memory
+  vocabulary cache and an unused local embedding model cache (the latter is
+  preserved whenever it is the selected model); and
 - creates one pre-change SQLite backup at
   `remediation-backups/webui-pre-security-policy-v1.db`.
 
