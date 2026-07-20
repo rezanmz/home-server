@@ -1138,7 +1138,7 @@ The policy deliberately:
   preserved whenever it is the selected model); and
 - retains the newest three pre-change SQLite backups under
   `remediation-backups/`, including
-  `webui-pre-security-policy-v4.db` for this policy.
+  `webui-pre-security-policy-v5.db` for this policy.
 
 Standard provider models start with Web Search selected. Their reviewed
 built-in tools also include time, memory, chat history, notes, knowledge, task
@@ -1248,6 +1248,20 @@ sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
 sudo k3s kubectl -n apps logs deploy/open-webui -c migrate-gemini-embeddings
 ```
 
+The admin model selector should expose the complete live provider catalog, not
+just locally configured model rows. `Companion`, `Rigorous`, `Deep Research`,
+and `Model Steward` are the only policy-managed pins. Check this without
+printing credentials:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
+  'import json,sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); s=json.loads(c.execute("select settings from user where role=\"admin\" order by created_at limit 1").fetchone()[0]); print("pins",s.get("ui",{}).get("pinnedModels")); print("managed",c.execute("select id,base_model_id,is_active from model where id in (?,?,?,?) order by id",("companion","deep-research","model-steward","rigorous")).fetchall())'
+```
+
+`BYPASS_ADMIN_ACCESS_CONTROL=True` is deliberate and restores full catalog
+browsing for the sole admin. `BYPASS_MODEL_ACCESS_CONTROL=False` must remain in
+the deployment so ordinary users keep explicit model access boundaries.
+
 The first Gemini embedding rollout can take several minutes because the init
 container rebuilds all non-empty files, knowledge collections, and per-user
 memory collections before the main container starts. It temporarily disables
@@ -1305,6 +1319,22 @@ are configured centrally in
 raising breadth, depth, iterations, source count, token limits, or model tier.
 The Grafana **AI Services** dashboard shows outcomes, average duration, busy
 responses, resource use, and best-effort reported cost.
+
+Validate the configured LLM roles against the current public OpenRouter catalog
+without making an inference request:
+
+```bash
+python3 scripts/update_gpt_researcher_models.py
+```
+
+For a role change, run **GPT Researcher model maintenance** from GitHub Actions
+and supply exact IDs for only the roles being changed. The workflow rejects
+missing, expired, non-text, undersized, or parameter-incompatible models,
+reports catalog pricing, runs the repository tests, dispatches the full cluster
+validation against its candidate branch, and then opens an approval PR. Blank
+inputs preserve current mappings. No PR means either nothing changed or a
+validation stage failed. Never add `EMBEDDING` to this workflow; use the
+embedding migration procedure above.
 
 The custom adapter image is built by
 `scripts/build-gpt-researcher-image.sh`. Update the exact GPT Researcher

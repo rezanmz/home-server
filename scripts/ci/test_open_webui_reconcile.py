@@ -174,8 +174,8 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 "admin",
                 None,
                 "Claude",
-                "{}",
-                '{"capabilities":{"terminal":true}}',
+                '{"reasoning_effort":"high"}',
+                json.dumps(reconcile_module.COMPANION_METADATA),
                 1,
                 1,
                 1,
@@ -332,25 +332,65 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             admin_settings["ui"]["system"],
             reconcile_module.PERSONAL_COMPANION_PROMPT,
         )
+        self.assertEqual(
+            admin_settings["ui"]["pinnedModels"],
+            list(reconcile_module.MANAGED_PINNED_MODEL_IDS),
+        )
 
-        claude_metadata = json.loads(
+        claude = conn.execute(
+            "SELECT params, meta FROM model WHERE id = '~anthropic/claude-sonnet-latest'"
+        ).fetchone()
+        self.assertEqual(
+            json.loads(claude[0]),
+            {"reasoning_effort": "high"},
+        )
+        self.assertEqual(json.loads(claude[1]), {})
+
+        companion = conn.execute(
+            "SELECT base_model_id, params, meta FROM model WHERE id = 'companion'"
+        ).fetchone()
+        self.assertEqual(companion[0], "openrouter/auto")
+        self.assertEqual(
+            json.loads(companion[1])["system"],
+            reconcile_module.PERSONAL_COMPANION_PROMPT,
+        )
+        companion_metadata = json.loads(companion[2])
+        self.assertEqual(
+            companion_metadata["defaultFeatureIds"],
+            ["web_search", "code_interpreter"],
+        )
+        self.assertTrue(companion_metadata["builtinTools"]["calendar"])
+        self.assertTrue(
+            companion_metadata["capabilities"]["code_interpreter"]
+        )
+        self.assertFalse(
+            companion_metadata["capabilities"]["image_generation"]
+        )
+
+        default_pins = json.loads(
             conn.execute(
-                "SELECT meta FROM model WHERE id = '~anthropic/claude-sonnet-latest'"
+                "SELECT value FROM config WHERE key = 'ui.default_pinned_models'"
             ).fetchone()[0]
         )
         self.assertEqual(
-            claude_metadata["defaultFeatureIds"],
-            ["web_search", "code_interpreter"],
+            default_pins,
+            ",".join(reconcile_module.MANAGED_PINNED_MODEL_IDS),
         )
-        self.assertTrue(claude_metadata["builtinTools"]["calendar"])
-        self.assertTrue(claude_metadata["capabilities"]["code_interpreter"])
-        self.assertFalse(claude_metadata["capabilities"]["image_generation"])
+        model_order = json.loads(
+            conn.execute(
+                "SELECT value FROM config WHERE key = 'ui.model_order_list'"
+            ).fetchone()[0]
+        )
+        self.assertEqual(
+            model_order,
+            list(reconcile_module.MANAGED_PINNED_MODEL_IDS),
+        )
 
         rigorous = conn.execute(
             "SELECT base_model_id, params, meta FROM model WHERE id = 'rigorous'"
         ).fetchone()
         self.assertEqual(
-            rigorous[0], "anthropic/claude-sonnet-latest"
+            rigorous[0], "openrouter/auto"
         )
         self.assertEqual(
             json.loads(rigorous[1])["system"],
@@ -440,7 +480,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             (
                 self.data_dir
                 / "remediation-backups"
-                / "webui-pre-security-policy-v4.db"
+                / "webui-pre-security-policy-v5.db"
             ).is_file()
         )
         self.assertEqual(
@@ -448,7 +488,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 (
                     self.data_dir
                     / "remediation-backups"
-                    / "webui-pre-security-policy-v4.db"
+                    / "webui-pre-security-policy-v5.db"
                 ).stat().st_mode
             ),
             0o600,
@@ -472,6 +512,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
     def test_reconcile_preserves_runtime_model_selections_and_automation_pause(self):
         conn = sqlite3.connect(self.db_path)
         for model_id, base_model in (
+            ("companion", "google/new-approved-companion"),
             ("rigorous", "google/new-approved-rigorous"),
             ("deep-research", "google/new-approved-research"),
             ("model-steward", "google/new-approved-steward"),
@@ -515,7 +556,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             row[0]: row[1:]
             for row in conn.execute(
                 "SELECT id, base_model_id, name, params FROM model "
-                "WHERE id IN ('rigorous', 'deep-research', 'model-steward')"
+                "WHERE id IN ('companion', 'rigorous', 'deep-research', 'model-steward')"
             )
         }
         automation = conn.execute(
@@ -524,6 +565,10 @@ class OpenWebUIReconcileTests(unittest.TestCase):
         ).fetchone()
         conn.close()
         self.assertEqual(models["rigorous"][0], "google/new-approved-rigorous")
+        self.assertEqual(
+            models["companion"][0],
+            "google/new-approved-companion",
+        )
         self.assertEqual(models["deep-research"][0], "google/new-approved-research")
         self.assertEqual(models["model-steward"][0], "google/new-approved-steward")
         self.assertEqual(models["rigorous"][1], "Rigorous")
@@ -536,7 +581,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
     def test_reconcile_bounds_policy_backup_retention(self):
         backup_dir = self.data_dir / "remediation-backups"
         backup_dir.mkdir()
-        for version in (1, 2, 3):
+        for version in (2, 3, 4):
             (backup_dir / f"webui-pre-security-policy-v{version}.db").write_bytes(
                 f"backup-{version}".encode()
             )
@@ -544,15 +589,15 @@ class OpenWebUIReconcileTests(unittest.TestCase):
         result = reconcile_module.reconcile(self.db_path, self.data_dir)
 
         self.assertFalse(
-            (backup_dir / "webui-pre-security-policy-v1.db").exists()
+            (backup_dir / "webui-pre-security-policy-v2.db").exists()
         )
-        for version in (2, 3, 4):
+        for version in (3, 4, 5):
             self.assertTrue(
                 (backup_dir / f"webui-pre-security-policy-v{version}.db").is_file()
             )
         self.assertEqual(
             result["pruned_backups"],
-            [str((backup_dir / "webui-pre-security-policy-v1.db").resolve())],
+            [str((backup_dir / "webui-pre-security-policy-v2.db").resolve())],
         )
 
     def test_reconcile_rejects_symlinked_private_directory(self):

@@ -17,6 +17,7 @@ making fast-moving model choices require a Git change.
 | Profile | Use it for | Evidence and tools | Cost behavior |
 | --- | --- | --- | --- |
 | Ordinary provider model | Conversation, writing, lightweight questions, and personal assistance | Native web, notes, knowledge, memory, and personal tools are available according to the model's reviewed defaults | One normal provider request plus any explicitly used tool |
+| `Companion` | A stable conversational preset whose provider model can be changed without changing its behavior or tools | Personal companion prompt plus the reviewed ordinary-chat tools | One normal provider request plus any explicitly used tool |
 | `Rigorous` | Important factual answers where unsupported claims would be harmful | Requires claim-level evidence, distinguishes source statements from inference, reports uncertainty, and refuses to invent citations. It is read-only: no memory or external-action tools | Normal model and search cost; it does not call GPT Researcher |
 | `Deep Research` | An explicitly requested comprehensive research report | Calls the internal GPT Researcher tool once, returns the report with sources and reported estimated cost, and does not duplicate the work with native web search | Multiple model, embedding, search, and page-processing calls; materially more expensive |
 | `Model Steward` | Reviewing whether the current role-to-model assignments should change | Native web only. Produces recommendations with exact model IDs, current pricing, availability status, evidence, and trade-offs | Advisory only; no paid benchmark or automatic configuration change |
@@ -41,6 +42,13 @@ review `FAST_LLM`, `SMART_LLM`, and `STRATEGIC_LLM` in
 `apps/gpt-researcher/config/researcher.json`, then change them through a pull
 request.
 
+The administrator's chat model selector contains the complete live provider
+catalog. `Companion`, `Rigorous`, `Deep Research`, and `Model Steward` are
+pinned and sorted first; raw models such as GLM or provider aliases remain
+ordinary unpinned choices. The admin-only access-control bypass is enabled for
+catalog browsing, while global model-access bypass remains disabled, so normal
+users do not inherit unrestricted model access.
+
 The weekly `Model Steward` automation runs Monday at 09:00
 `America/Toronto`. It creates a visible advisory chat. Open WebUI does not
 guarantee that an automation result will be pinned, so pin a useful report
@@ -54,6 +62,34 @@ executable **Approve** button. Approval means either:
 Replying “approve” in the report chat does not mutate configuration. The
 steward may recommend no change and may not spend money on comparative
 benchmarks.
+
+### GPT Researcher model-update pipeline
+
+The scheduled **GPT Researcher model maintenance** workflow checks the current
+`FAST_LLM`, `SMART_LLM`, and `STRATEGIC_LLM` mappings against OpenRouter's
+public catalog each Monday. It verifies availability, text output, context and
+completion limits, required parameters, expiration metadata, and published
+pricing. It performs no inference, benchmark, recommendation, issue creation,
+or PR creation during a healthy scheduled check.
+
+To apply a Model Steward recommendation:
+
+1. Open **GitHub Actions > GPT Researcher model maintenance > Run workflow**.
+2. Enter one or more exact OpenRouter IDs. Leave a role blank to keep it.
+3. The workflow validates the requested mapping, runs the repository tests,
+   pushes a candidate branch, dispatches the complete cluster validation, and
+   opens a pull request only if the configuration changed and validation
+   passed.
+4. Review the steward's evidence, pricing, and the exact JSON diff. Merging the
+   PR is the approval and Flux performs the rollout.
+
+The updater cannot change `EMBEDDING`. Embedding-model changes require a full
+vector migration and rollback plan. Locally, the same catalog-only validation
+is available with:
+
+```bash
+python3 scripts/update_gpt_researcher_models.py
+```
 
 ## Deep Research architecture
 
@@ -168,11 +204,13 @@ The OpenRouter key remains in Open WebUI's encrypted persistent configuration.
 its independent service token. Never decrypt either into a tracked file or
 print the values in logs.
 
-For behavioral or permission changes, edit the reconciler and its tests. For
-GPT Researcher model or depth tuning, edit `researcher.json`. For search-engine
-changes, edit `apps/open-webui/config/searxng-settings.yml`. Render, validate,
-review cost and tool-boundary changes, and deploy through the normal pull
-request and Flux workflow.
+For behavioral or permission changes, edit the reconciler and its tests. Use
+the model-maintenance workflow for GPT Researcher LLM role changes; edit
+`researcher.json` directly only when changing reviewed research depth or cost
+limits. For search-engine changes, edit
+`apps/open-webui/config/searxng-settings.yml`. Render, validate, review cost and
+tool-boundary changes, and deploy through the normal pull request and Flux
+workflow.
 
 Operational commands and recovery procedures are in the
 [incident runbook](runbook.md#open-webui-security-policy-and-extensions) and
