@@ -37,6 +37,13 @@ spec:
               app.kubernetes.io/component: tika
       ports:
         - {port: 9998, protocol: TCP}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: open-webui
+              app.kubernetes.io/component: searxng
+      ports:
+        - {port: 8080, protocol: TCP}
     # Authentik's public issuer is reached through the split-horizon Traefik
     # VIP. Include both the pre- and post-DNAT destinations used by K3s.
     - to:
@@ -101,3 +108,59 @@ spec:
         - port: 9998
           protocol: TCP
   egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: searxng
+  namespace: apps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: open-webui
+      app.kubernetes.io/component: searxng
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: open-webui
+              app.kubernetes.io/component: application
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    # SearXNG queries only globally routed HTTPS search providers. Keep
+    # Kubernetes, LAN, loopback, link-local, and reserved networks unreachable.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.0.0.0/24
+              - 192.0.2.0/24
+              - 192.168.0.0/16
+              - 198.18.0.0/15
+              - 198.51.100.0/24
+              - 203.0.113.0/24
+              - 224.0.0.0/4
+              - 240.0.0.0/4
+      ports:
+        - {port: 443, protocol: TCP}
