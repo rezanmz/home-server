@@ -26,4 +26,4 @@ export VISION_QUOTA_DB="/app/data/google-vision/quota.sqlite3"
 export VISION_VAULT_ROOT="/vault"
 export PATH="/opt/vision-guard/bin:/opt/google-cloud-sdk/bin:$PATH"
 
-exec /usr/local/bin/gcloud-mcp --config /opt/vision-guard/gcloud-mcp-allowlist.json
+exec /usr/bin/gcloud-mcp --config /opt/vision-guard/gcloud-mcp-allowlist.json
