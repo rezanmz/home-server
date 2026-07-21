@@ -97,6 +97,18 @@ There is deliberately no startup reconciler and no repository workflow that
 rewrites the current research model. A model recommendation has no effect until
 the administrator changes the corresponding Open WebUI or MCPHub setting.
 
+Hermes Agent is the persistent proactive companion runtime at
+`hermes.reza.network`; Open WebUI remains the interactive workbench. Hermes'
+dashboard uses native Authentik OIDC with a public PKCE client. Its single
+Longhorn volume contains models, credentials, personality, memory, sessions,
+skills, MCP registrations, schedules, and audit output, and is covered by the
+normal B2 policy. Git owns only the workload, route, identity trust, storage,
+network boundary, and observability declaration. Hermes has no service account,
+Docker socket, host mount, or private-network egress. It reaches personal tools
+through one bearer-authenticated, least-privilege MCPHub group. The OpenAI API
+server is disabled so the dashboard and approved messaging gateway are the
+only agent entry points.
+
 Vikunja is the task system at `tasks.reza.network`, with native Authentik OIDC
 and a Longhorn volume covered by the normal B2 backup policy. Reviewed published
 MCP packages provide Gmail and Google Calendar access: Gmail is limited by OAuth

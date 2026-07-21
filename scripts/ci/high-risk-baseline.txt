@@ -17,6 +17,10 @@ access-proxy-boundary|v1/ConfigMap|media|sonarr-access-proxy|data/sha256/4ef9319
 access-proxy-boundary|v1/ConfigMap|monitoring|grafana-access-proxy|data/sha256/7061b3a22c601b07d6049c839d71475eb4f322e5b83918fa5fbbc18def731a29
 access-proxy-boundary|v1/ConfigMap|monitoring|headlamp-access-proxy|data/sha256/6624020b5e14dec81f49a62c7fea34313e6ab670a33df38a59b520335ffb0e5b
 access-proxy-boundary|v1/ConfigMap|network-services|syncthing-access-proxy-kchm4kb2hk|data/sha256/8512bd9fee0a65638c8a90cb4635bebe18cac10e69c07d3b4e93c1254ca88b8d
+added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/CHOWN
+added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/DAC_OVERRIDE
+added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETGID
+added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETUID
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/CHOWN
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/DAC_OVERRIDE
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/NET_ADMIN
@@ -30,8 +34,10 @@ added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhc
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories/CHOWN
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_ADMIN
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_RAW
+explicit-root-group|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-group|apps/v1/Deployment|apps|home-assistant|container/home-assistant
 explicit-root-group|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
+explicit-root-user|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-user|apps/v1/Deployment|apps|home-assistant|container/home-assistant
 explicit-root-user|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec/sha256/39862bedcf4ef916bdcd6ff920a8397bfdbcfbc2d0e6b3bd59a6f21ad5c9433e
@@ -75,6 +81,7 @@ host-port|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/wireguar
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/6/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
@@ -109,10 +116,11 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authenti
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-database|spec/sha256/ccdce8f21dda90152efd85ed6aa8d0e8a40ab16286651073bed741f830bf49a0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|spec/sha256/cf7bf4ce905bf1fe21e27abd62689d3fbbe459bc633d36bef88277c28acca83a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/cd46cf55de956f1868c69d54efe01b367139c46b3fa59397d8c0fe20403c7d5b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/459d59fd95b0046b67c12d71706d6147dab3457b90a838da9d4fd7608866e671
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/966c83a4715c9eb6a91477bda4f7df131abeb897c5170786aafa7b5e86803a93
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/37abc13945951611dc511d657e61ec658c4c29371de0f1182349f0e1b1179ac3
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
@@ -161,6 +169,7 @@ privileged-namespace|v1/Namespace|default|traefik|pod-security-enforce
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-budget|spec/sha256/684ed87d74c289c7e268d472759cfc44852498dc9f3bff89a993b1d034778a3c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|argilla|spec/sha256/df649e03aea7a44ef10f397b125d269c1b543791f162e2817a7fd5f2bcdb83ca
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256/a68303017aa042969ba9eb139f6227fb3e3e67b477e1dd6c376c964d2808a6bb
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|hermes-agent|spec/sha256/bf4b001f2e7c56ac3e3f56c19edf191df1fdbfc9f71a1e8195fd6af80cf7c345
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|home-assistant|spec/sha256/b966a90e721983a97270c782f22ffc95dd88d943d934df1e58a51ad0829172b1
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|homepage|spec/sha256/a87d2f602eb818e71492cea2b879bbd48a0e50f090da6d358a0a5cd78fc030a9
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|jellyseerr|spec/sha256/25e156ee08b67968746420ed5860b8d8053767266c01c92f39a67731edeb107a

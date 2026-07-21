@@ -17,7 +17,7 @@ application.
 | Git and Flux own | The application owns |
 | --- | --- |
 | Image and package versions | Models and model-role assignments |
-| Replicas, resources, placement, and probes | Prompts, profiles, personas, and automations |
+| Replicas, resources, placement, and probes | Prompts, profiles, personas, companion memory, and automations |
 | Services, routes, DNS intent, and network policy | MCP server registrations and tool allow-lists |
 | Persistent-volume shape and backup policy | API credentials entered through an application UI |
 | Workload identity, native OIDC wiring, and required runtime secrets | Dashboards, libraries, folders, and user preferences |
@@ -27,6 +27,13 @@ The important test is not whether a value *can* be expressed in YAML. Ask what
 an operator expects to happen after changing it in the application. If the
 answer is “this choice should survive the next unrelated deployment,” it is
 application state.
+
+For Hermes Agent, Git owns the image, pod security context, route, native OIDC
+trust, PVC, backup classification, and NetworkPolicy. Its `/opt/data` volume
+owns provider credentials, models, `SOUL.md`, memory, sessions, skills, MCP
+registration, Telegram configuration, allowlists, cron jobs, Kanban state, and
+tool selection. Do not add a ConfigMap or init container that seeds or resets
+those operational choices.
 
 ## What this forbids
 
