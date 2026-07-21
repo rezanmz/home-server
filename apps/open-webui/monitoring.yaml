@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: searxng-provider
+  namespace: apps
+  labels: {release: observability}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: open-webui
+      app.kubernetes.io/component: searxng
+  endpoints:
+    - port: provider-metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: searxng-provider
+  namespace: apps
+  labels: {release: observability}
+spec:
+  groups:
+    - name: home-server.searxng-provider
+      rules:
+        - alert: SearXNGSearchesFailing
+          expr: >-
+            sum(increase(searxng_search_requests_total{outcome="failed"}[1h])) >= 2
+          for: 5m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: Searches are exhausting every configured provider
+            description: At least two searches failed after trying every available provider during the last hour. Inspect the AI Services dashboard and the search-provider-proxy logs.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#internal-searxng-search
+        - alert: SearXNGBraveQuotaApproaching
+          expr: >-
+            sum(increase(searxng_provider_requests_total{provider="brave"}[30d])) >= 800
+          for: 15m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: Cluster-observed Brave usage is approaching its monthly allowance
+            description: Prometheus observed at least 800 Brave API attempts in the last 30 days. Confirm the provider's calendar-month usage before the 1000-query allowance is exhausted.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#internal-searxng-search
+        - alert: SearXNGSerpAPIQuotaApproaching
+          expr: >-
+            sum(increase(searxng_provider_requests_total{provider="serpapi"}[30d])) >= 200
+          for: 15m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: Cluster-observed SerpAPI usage is approaching its monthly allowance
+            description: Prometheus observed at least 200 SerpAPI fallback attempts in the last 30 days. Confirm the provider's calendar-month usage before the 250-query allowance is exhausted.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#internal-searxng-search

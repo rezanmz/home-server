@@ -392,6 +392,15 @@ class OpenWebUIReconcileTests(unittest.TestCase):
                 ).fetchone()[0]
             )
         )
+        self.assertEqual(
+            reconcile_module._decode(
+                conn.execute(
+                    "SELECT value FROM config "
+                    "WHERE key = 'web.search.concurrent_requests'"
+                ).fetchone()[0]
+            ),
+            1,
+        )
 
         default_metadata = json.loads(
             conn.execute(
@@ -472,6 +481,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             json.loads(companion[1])["system"],
             reconcile_module.PERSONAL_COMPANION_PROMPT,
         )
+        self.assertEqual(json.loads(companion[1])["function_calling"], "native")
         companion_metadata = json.loads(companion[2])
         self.assertEqual(
             companion_metadata["defaultFeatureIds"],
@@ -514,6 +524,7 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             json.loads(rigorous[1])["system"],
             reconcile_module.RIGOROUS_PROMPT,
         )
+        self.assertEqual(json.loads(rigorous[1])["function_calling"], "native")
         self.assertTrue(
             json.loads(rigorous[2])["capabilities"]["code_interpreter"]
         )
@@ -527,6 +538,9 @@ class OpenWebUIReconcileTests(unittest.TestCase):
         self.assertEqual(
             json.loads(deep_research[1])["system"],
             reconcile_module.DEEP_RESEARCH_PROFILE_PROMPT,
+        )
+        self.assertEqual(
+            json.loads(deep_research[1])["function_calling"], "native"
         )
         self.assertEqual(
             json.loads(deep_research[2])["toolIds"],
@@ -543,6 +557,12 @@ class OpenWebUIReconcileTests(unittest.TestCase):
             json.loads(model_steward[1])["system"],
             reconcile_module.MODEL_STEWARD_PROMPT,
         )
+        self.assertEqual(
+            json.loads(model_steward[1])["function_calling"], "native"
+        )
+        self.assertIn("at most six distinct", reconcile_module.MODEL_STEWARD_PROMPT)
+        self.assertIn("at most eight", reconcile_module.MODEL_STEWARD_PROMPT)
+        self.assertIn("two consecutive searches", reconcile_module.MODEL_STEWARD_PROMPT)
         automation = conn.execute(
             "SELECT data, is_active, next_run_at FROM automation WHERE id = ?",
             (reconcile_module.MODEL_STEWARD_AUTOMATION_ID,),

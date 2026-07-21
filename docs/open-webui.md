@@ -17,10 +17,10 @@ making fast-moving model choices require a Git change.
 | Profile | Use it for | Evidence and tools | Cost behavior |
 | --- | --- | --- | --- |
 | Ordinary provider model | Conversation, writing, lightweight questions, and personal assistance | Native web, notes, knowledge, memory, and personal tools are available according to the model's reviewed defaults | One normal provider request plus any explicitly used tool |
-| `Companion` | A stable conversational preset whose provider model can be changed without changing its behavior or tools | Personal companion prompt plus the reviewed ordinary-chat tools | One normal provider request plus any explicitly used tool |
-| `Rigorous` | Important factual answers where unsupported claims would be harmful | Requires claim-level evidence, distinguishes source statements from inference, reports uncertainty, and refuses to invent citations. It is read-only: no memory or external-action tools | Normal model and search cost; it does not call GPT Researcher |
+| `Companion` | A stable conversational preset whose provider model can be changed without changing its behavior or tools | Personal companion prompt plus reviewed tools; web retrieval uses agentic `search_web`/`fetch_url`, not legacy pre-search | One normal provider request plus any explicitly used tool |
+| `Rigorous` | Important factual answers where unsupported claims would be harmful | Agentic `search_web`/`fetch_url`; requires claim-level evidence, distinguishes source statements from inference, and reports uncertainty. It is read-only: no memory or external-action tools | Normal model and search cost; it does not call GPT Researcher or legacy pre-search |
 | `Deep Research` | An explicitly requested comprehensive research report | Calls the internal GPT Researcher tool once, returns the report with sources and reported estimated cost, and does not duplicate the work with native web search | Multiple model, embedding, search, and page-processing calls; materially more expensive |
-| `Model Steward` | Reviewing whether the current role-to-model assignments should change | Native web only. Produces recommendations with exact model IDs, current pricing, availability status, evidence, and trade-offs | Advisory only; no paid benchmark or automatic configuration change |
+| `Model Steward` | Reviewing whether the current role-to-model assignments should change | Agentic `search_web`/`fetch_url`, capped at six unique searches and eight page fetches; stops after two consecutive empty searches | Advisory only; no legacy pre-search, paid benchmark, or automatic configuration change |
 
 The personal companion prompt deliberately does not turn ordinary conversation
 into a task, note, memory, or calendar item. Such actions require an explicit
@@ -198,10 +198,22 @@ knowledge base, notes, or tools.
 ## SearXNG
 
 SearXNG is internal-only and exists solely as Open WebUI and GPT Researcher's
-search backend. It has no external route. Its reviewed engine set is kept
-small—Brave, DuckDuckGo, Google CSE, and Startpage—to reduce duplicate and
-low-quality results. Open WebUI continues to apply its own result limits and
-document-fetch protections.
+search backend. It has no external route. A same-pod provider adapter tries one
+provider at a time in this order: DuckDuckGo, Mojeek, Startpage, Brave API, and
+SerpAPI. It stops on the first usable result set. Failed public engines enter a
+15-minute cooldown, avoiding both parallel fan-out and repeated delays from an
+engine that is rate-limited. The public engines run in a separate, unexposed
+loopback worker, so user or model-generated bangs cannot bypass the ordering.
+Brave and SerpAPI improve reliability without consuming both paid allowances
+for one successful search. Provider credentials are SOPS-encrypted and never
+appear in SearXNG URLs or logs.
+
+Open WebUI limits a response to 12 tool-call iterations. The curated profiles
+use native agentic search rather than legacy pre-search; `Deep Research` uses
+only GPT Researcher. Model Steward additionally has hard prompt-level ceilings
+of six unique searches and eight page fetches and stops after two consecutive
+empty searches. Ordinary legacy provider models can still use traditional
+pre-search, but generated searches are serialized.
 
 ## Secrets and change workflow
 
@@ -214,9 +226,13 @@ For behavioral or permission changes, edit the reconciler and its tests. Use
 the model-maintenance workflow for GPT Researcher LLM role changes; edit
 `researcher.json` directly only when changing reviewed research depth or cost
 limits. For search-engine changes, edit
-`apps/open-webui/config/searxng-settings.yml`. Render, validate, review cost and
-tool-boundary changes, and deploy through the normal pull request and Flux
-workflow.
+`apps/open-webui/config/search_provider_proxy.py` and
+`apps/open-webui/config/searxng-fallback-settings.yml`. The worker's engines
+are disabled for ordinary requests and selected individually by the adapter.
+Provider keys live only in
+`apps/open-webui/searxng-provider-secrets.sops.yaml`. Render, validate, review
+cost and tool-boundary changes, and deploy through the normal pull request and
+Flux workflow.
 
 Operational commands and recovery procedures are in the
 [incident runbook](runbook.md#open-webui-security-policy-and-extensions) and

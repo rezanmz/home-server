@@ -8,12 +8,15 @@ configMapGenerator:
       - migrate_embeddings.py=config/migrate_embeddings.py
   - name: open-webui-searxng-config
     files:
-      - settings.yml=config/searxng-settings.yml
+      - fallback-settings.yml=config/searxng-fallback-settings.yml
+      - search-provider-proxy.py=config/search_provider_proxy.py
 resources:
   - secrets.sops.yaml
   - searxng-secrets.sops.yaml
+  - searxng-provider-secrets.sops.yaml
   - pvc.yaml
   - deployments.yaml
   - services.yaml
   - networkpolicy.yaml
+  - monitoring.yaml
   - route.yaml

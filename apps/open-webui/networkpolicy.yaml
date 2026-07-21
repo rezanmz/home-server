@@ -135,8 +135,19 @@ spec:
             matchLabels:
               app.kubernetes.io/name: open-webui
               app.kubernetes.io/component: application
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gpt-researcher
+              app.kubernetes.io/component: application
       ports:
         - port: 8080
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 8081
           protocol: TCP
   egress:
     - to:
