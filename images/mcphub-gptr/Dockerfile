@@ -8,12 +8,14 @@ ARG GPT_RESEARCHER_VERSION=0.16.0
 ARG FASTMCP_VERSION=2.14.7
 ARG FILESYSTEM_MCP_VERSION=2026.7.10
 ARG VIKUNJA_MCP_VERSION=1.2.0
+ARG GMAIL_MCP_VERSION=1.3.1
+ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
 
 LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
-      org.opencontainers.image.description="MCPHub plus pinned GPT Researcher, filesystem, and Vikunja MCP packages" \
+      org.opencontainers.image.description="MCPHub plus pinned GPT Researcher, filesystem, Vikunja, Gmail, and Google Calendar MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT" \
-      org.opencontainers.image.version="1.0.24-gptr-mcp" \
+      org.opencontainers.image.version="1.0.24-gptr-mcp-assistant1" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -21,18 +23,21 @@ USER 0:0
 # The upstream GPT Researcher project publishes source and a Dockerfile, but no
 # official OCI image. Install the official assafelovic/gptr-mcp source into a
 # private virtual environment so MCPHub can launch it as a stdio child process.
-# The two Node packages are the reference MCP filesystem server and a small,
-# independently maintained Vikunja adapter. Runtime paths, permissions, models,
-# retrievers, API keys, and research parameters are deliberately absent here;
-# MCPHub owns those values in its database. GPT Researcher 0.16.0 imports three
-# typing annotations after using them, so the released dependency receives a
-# one-line import-order repair; the official MCP server source is unchanged.
+# The Node packages are the reference MCP filesystem server and reviewed,
+# published integrations for Vikunja, read-only Gmail, and Google Calendar.
+# Runtime paths, OAuth material, permissions, models, retrievers, API keys, and
+# research parameters are deliberately absent here; MCPHub owns those values
+# in its backed-up application state. GPT Researcher 0.16.0 imports three typing
+# annotations after using them, so the released dependency receives a one-line
+# import-order repair; the official MCP server source is unchanged.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates libmagic1 \
     && rm -rf /var/lib/apt/lists/* \
     && npm install --global --ignore-scripts \
          "@modelcontextprotocol/server-filesystem@${FILESYSTEM_MCP_VERSION}" \
          "@eargollo/vikunja-mcp@${VIKUNJA_MCP_VERSION}" \
+         "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
+         "@cocal/google-calendar-mcp@${GOOGLE_CALENDAR_MCP_VERSION}" \
     && git clone --filter=blob:none https://github.com/assafelovic/gptr-mcp.git /opt/gptr-mcp \
     && git -C /opt/gptr-mcp checkout --detach "${GPTR_MCP_REVISION}" \
     && test "$(git -C /opt/gptr-mcp rev-parse HEAD)" = "${GPTR_MCP_REVISION}" \
@@ -50,6 +55,8 @@ RUN apt-get update \
     && .venv/bin/python -c 'from server import mcp' \
     && command -v mcp-server-filesystem \
     && command -v vikunja-mcp \
+    && command -v gmail-mcp \
+    && command -v google-calendar-mcp \
     && chown -R 1000:1000 /opt/gptr-mcp
 
 USER 1000:1000

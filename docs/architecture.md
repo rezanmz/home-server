@@ -96,12 +96,14 @@ rewrites the current research model. A model recommendation has no effect until
 the administrator changes the corresponding Open WebUI or MCPHub setting.
 
 Vikunja is the task system at `tasks.reza.network`, with native Authentik OIDC
-and a Longhorn volume covered by the normal B2 backup policy. Google Gmail and
-Calendar use Google's remote MCP services when authorized: Gmail is limited to
-read-only access, while Calendar may create or update events. Those OAuth grants
-belong to MCPHub application state. The repository deploys the durable
-infrastructure and package runtime, but never stores Vikunja API tokens, Google
-refresh tokens, MCP groups, or enabled-tool selections.
+and a Longhorn volume covered by the normal B2 backup policy. Reviewed published
+MCP packages provide Gmail and Google Calendar access: Gmail is limited by OAuth
+to read-only access, while Calendar may create or update events but cannot
+delete them through the curated tool group. OAuth client material and refresh
+tokens belong to MCPHub's persistent application state. The repository deploys
+the durable infrastructure and pinned package runtime, but never stores
+Vikunja API tokens, Google OAuth material, MCP groups, or enabled-tool
+selections.
 
 Open WebUI retrieval currently uses Gemini Embedding 2 through OpenRouter. Its
 persisted files, knowledge, memories, and vector index were migrated and

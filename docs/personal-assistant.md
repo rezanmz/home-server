@@ -35,10 +35,20 @@ operations are available by default. Its optional write tier and delete tier
 remain off until deliberately enabled. The Vikunja API token should be scoped
 to the areas the assistant actually uses.
 
-Gmail and Calendar use Google's remote MCP endpoints when available for the
-personal Google Cloud project. Gmail is granted read-only access. Calendar is
-granted event read/write access. Do not grant mail send, mail mutation,
-calendar-sharing administration, or unrelated Drive scopes.
+Gmail uses the published `@klodr/gmail-mcp` package with only the
+`gmail.readonly` OAuth scope. The package filters its advertised tools from the
+granted scopes, so mail mutation and sending tools are absent rather than
+merely discouraged.
+
+Calendar uses the published `@cocal/google-calendar-mcp` package. Its enabled
+tool list is limited to calendar discovery, event reads/search, availability,
+event creation, and event updates. Event deletion, invitation responses,
+calendar-sharing administration, and unrelated Drive scopes remain disabled.
+
+The shared Google Desktop OAuth client file and the two packages' independent
+refresh-token files live under MCPHub's persistent `/app/data/oauth` tree with
+owner-only permissions. They are application data covered by Longhorn and B2,
+not Kubernetes Secrets or repository content.
 
 ## Managing servers
 
@@ -81,10 +91,11 @@ mutation.
 
 ## Google authorization
 
-Enable the official Gmail and Calendar MCP APIs in a personal Google Cloud
-project. Complete OAuth from MCPHub while signed into the personal Google
-account. Review the consent screen carefully and reject any scope broader than
-read-only Gmail plus event-level Calendar access.
+Enable the Gmail and Google Calendar APIs in a personal Google Cloud project.
+Complete each package's OAuth flow while signed into the personal Google
+account. Gmail authorization must explicitly request only `gmail.readonly`.
+Calendar authorization is limited to calendar and event access, while its MCP
+tool filter excludes delete and invitation-response operations.
 
 Work accounts and work data are out of scope. Never authorize a work account,
 copy work mail into chat, or store work content in Open WebUI memory, the
