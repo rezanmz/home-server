@@ -88,6 +88,11 @@ spec:
                 secretKeyRef:
                   name: mcphub-secrets
                   key: jwt-secret
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mcphub-secrets
+                  key: better-auth-secret
             - {name: BETTER_AUTH_ENABLED, value: "true"}
             - {name: BETTER_AUTH_URL, value: "https://mcphub.reza.network"}
             - {name: BETTER_AUTH_TRUSTED_ORIGINS, value: "https://mcphub.reza.network"}
