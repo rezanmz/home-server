@@ -202,13 +202,17 @@ default, one on each existing node. The workload frontend attaches to the node
 running the consuming pod. A floating RWO workload can relocate after
 detach/reattach; it cannot mount the same volume concurrently from both nodes.
 
-The Pi has three actual NFS export roots:
+The Pi has two actual NFS export roots:
 
 | Export | Access | Typical consumers |
 | --- | --- | --- |
 | `/home/reza/media` | Read/write from both nodes | Jellyfin, downloads, Samba, and library consumers; the books and downloads PVs are subpaths of this one broad export |
-| `/home/reza/persistent` | Read-only | Retained legacy recovery access |
 | `/home/reza/persistent/syncthing/data` | Read/write | Syncthing and its read-only backup mount |
+
+The retained `/home/reza/persistent` legacy tree is intentionally not exported.
+Do not add a parent export around the Syncthing path: overlapping parent and
+child NFS exports with different access modes can cause NFSv4 clients to apply
+the parent's read-only policy to the child.
 
 `/home/reza/media/books` and `/home/reza/media/downloads` are Kubernetes PV
 paths, not separately authorized export roots. Granting a node access to
@@ -218,8 +222,7 @@ not an NFS security boundary.
 Separate namespace-local PV/PVC pairs may point to the same export. The
 following bound NFS claims are currently unused by workloads and should not be
 mistaken for active consumers: `apps/media-library`,
-`network-services/media-books`, `network-services/media-downloads`, and
-`network-services/legacy-persistent`.
+`network-services/media-books`, and `network-services/media-downloads`.
 
 Removing one of the two current storage nodes makes every two-replica Longhorn
 volume degraded. For permanent node removal, add and prepare a replacement
