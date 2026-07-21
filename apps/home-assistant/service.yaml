@@ -14,3 +14,22 @@ spec:
       port: 8123
       targetPort: access-http
       protocol: TCP
+---
+# Native MCP traffic stays on the pod network and bypasses the public access
+# proxy. NetworkPolicy permits this raw Home Assistant port only from MCPHub.
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant-api
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: home-assistant
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: home-assistant
+  ports:
+    - name: http-api
+      port: 8123
+      targetPort: 8123
+      protocol: TCP
