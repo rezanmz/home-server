@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+
+for name in \
+  GOOGLE_VISION_SERVICE_ACCOUNT_JSON \
+  GOOGLE_VISION_PROJECT \
+  VISION_MONTHLY_PAGE_LIMIT \
+  VISION_STAGING_BUCKET; do
+  eval "value=\${$name:-}"
+  if [ -z "$value" ]; then
+    echo "Vision OCR launcher: $name is required" >&2
+    exit 78
+  fi
+done
+
+runtime_dir="$(mktemp -d /tmp/google-vision.XXXXXX)"
+chmod 0700 "$runtime_dir"
+printf '%s' "$GOOGLE_VISION_SERVICE_ACCOUNT_JSON" >"$runtime_dir/credentials.json"
+chmod 0600 "$runtime_dir/credentials.json"
+unset GOOGLE_VISION_SERVICE_ACCOUNT_JSON
+
+export GOOGLE_APPLICATION_CREDENTIALS="$runtime_dir/credentials.json"
+export CLOUDSDK_CONFIG="$runtime_dir/gcloud"
+export CLOUDSDK_CORE_PROJECT="$GOOGLE_VISION_PROJECT"
+export VISION_QUOTA_DB="/app/data/google-vision/quota.sqlite3"
+export VISION_VAULT_ROOT="/vault"
+export PATH="/opt/vision-guard/bin:/opt/google-cloud-sdk/bin:$PATH"
+
+exec /usr/local/bin/gcloud-mcp --config /opt/vision-guard/gcloud-mcp-allowlist.json

@@ -1,0 +1,8 @@
+{
+  "allow": [
+    "ml vision detect-text-pdf",
+    "storage cat",
+    "storage cp",
+    "storage rm"
+  ]
+}

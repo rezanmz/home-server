@@ -1154,8 +1154,8 @@ application-owned settings.
 ### MCPHub and official GPT Researcher
 
 MCPHub is the only MCP registry. The official GPT Researcher server, Vikunja,
-Obsidian filesystem access, Actual Budget, and Google remote servers are
-configured there.
+Obsidian filesystem access, Actual Budget, Google personal-service adapters,
+and both PDF-reading providers are configured there.
 Open WebUI connects to one curated MCPHub group rather than to each server.
 
 Check MCPHub, its database, and the installed packages:
@@ -1165,7 +1165,9 @@ sudo k3s kubectl -n apps get deploy,pod,svc,pvc \
   -l app.kubernetes.io/name=mcphub
 sudo k3s kubectl -n apps logs deploy/mcphub -c mcphub --tail=200
 sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- \
-  sh -lc 'command -v mcp-server-filesystem && command -v vikunja-mcp && test -f /opt/gptr-mcp/server.py && test -x /opt/actual-mcp/build/index.js'
+  sh -lc 'command -v mcp-server-filesystem && command -v vikunja-mcp && command -v gcloud-mcp && test -x /usr/local/bin/start-gcloud-mcp && test -f /opt/gptr-mcp/server.py && test -x /opt/actual-mcp/build/index.js'
+sudo k3s kubectl -n apps get deploy,pod,svc -l app.kubernetes.io/name=llamacloud-mcp
+sudo k3s kubectl -n apps get networkpolicy llamacloud-mcp
 ```
 
 Open MCPHub from the LAN or WireGuard and use **Servers** for connection state,
@@ -1184,6 +1186,28 @@ For a smoke test, use a small, explicit research request from the Deep Research
 profile. Confirm the response includes sources, then inspect the matching
 MCPHub activity. Avoid repeated tests because the server can make several paid
 model and search calls.
+
+For PDF tools, confirm `llamaparse` exposes only `execute` and `search_docs`,
+and `google-vision-ocr` exposes only `run_gcloud_command`. LlamaParse's source
+path is `/app/node_modules/@llamaindex/vault/<vault-relative-path>`; Google uses
+`/vault/<vault-relative-path>`. Use one unique object prefix per Google job:
+
+```text
+gcloud storage cp /vault/path/file.pdf gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf
+gcloud ml vision detect-text-pdf gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf gs://rezanmz-homelab-ocr-staging/output/<uuid>
+gcloud storage cat gs://rezanmz-homelab-ocr-staging/output/<uuid>/output-1-to-*.json
+gcloud storage rm --recursive gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf gs://rezanmz-homelab-ocr-staging/output/<uuid>
+```
+
+The exact `storage cat` object name comes from the OCR command output. Do not
+broaden the gcloud allowlist, service-account roles, bucket, or source path.
+The persistent counter is `/app/data/google-vision/quota.sqlite3`; back up the
+MCPHub volume before any manual repair and never decrement a current-month
+reservation merely because a request failed. Verify the native project quotas
+with `gcloud beta quotas preferences describe` for
+`vision-default-rpm-5`, `vision-document-rpm-5`, and
+`vision-async-pages-100`. Google has no native monthly Vision quota, so these
+rate limits do not replace the local 1,000-page gate.
 
 MCPHub must have a persistent JWT secret. A startup warning that it generated a
 temporary JWT secret means existing dashboard sessions will break after a

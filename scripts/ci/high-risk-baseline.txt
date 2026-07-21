@@ -83,6 +83,7 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/6/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -120,6 +121,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|hermes-a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/cd46cf55de956f1868c69d54efe01b367139c46b3fa59397d8c0fe20403c7d5b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/459d59fd95b0046b67c12d71706d6147dab3457b90a838da9d4fd7608866e671
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|spec/sha256/5b591bf03cfc218f687e0db623c80288d4592e801fe9c052860fd3fcf3c5634e
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/37abc13945951611dc511d657e61ec658c4c29371de0f1182349f0e1b1179ac3
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff

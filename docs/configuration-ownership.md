@@ -102,6 +102,13 @@ Pin the selected source revision or package version in the runtime image.
 Produce a multi-architecture image, provenance, and an SBOM. Package selection
 is infrastructure; server settings are application state in MCPHub.
 
+Provider credentials, preferred OCR/research models, parsing tiers, and usage
+ceilings are also MCPHub state. A small infrastructure guard may enforce a
+non-bypassable safety boundary when an upstream API lacks one (for example,
+the Google Vision monthly page counter), but that guard must wrap a reputable
+upstream MCP package rather than replace it. Its maximum may be fixed to the
+external free tier while the active lower limit remains editable in MCPHub.
+
 ## Backup and restore
 
 This boundary depends on application data being protected. Longhorn snapshots

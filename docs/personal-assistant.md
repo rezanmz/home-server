@@ -13,7 +13,9 @@ Hermes Agent ----> MCPHub
                 |-- reference filesystem MCP -> Syncthing Obsidian vault
                 |-- Google Gmail MCP -> personal Gmail, read only
                 |-- Google Calendar MCP -> personal calendar, read/write
-                `-- Actual Budget MCP -> primary budget, read only
+                |-- Actual Budget MCP -> primary budget, read only
+                |-- LlamaCloud MCP -> LlamaParse Agentic document parsing
+                `-- Google gcloud MCP -> quota-guarded Vision PDF OCR
 ```
 
 Server definitions, credentials, OAuth sessions, groups, and tool filters live
@@ -109,6 +111,36 @@ password method from the browser and accepts it only when a client explicitly
 selects it. Keep that credential in MCPHub's application state and never in a
 Kubernetes Secret or repository file.
 
+PDF reading has two providers behind the same MCPHub groups. LlamaParse uses
+LlamaIndex's published `@llamaindex/llama-cloud-mcp` package and is the primary
+provider for layout-heavy documents; request the `agentic` tier and `latest`
+parser version when that quality is useful. Google OCR uses Google's published
+`@google-cloud/gcloud-mcp` package and `DOCUMENT_TEXT_DETECTION` as a simple OCR
+fallback. Both can read only PDFs already inside the Syncthing-backed Obsidian
+vault. LlamaCloud receives that vault read-only in its isolated internal pod;
+Google's command guard rejects any source outside `/vault`.
+
+The Google integration has three independent cost controls. It runs in the
+dedicated `rezanmz-homelab-ocr` project under a service account that can use
+Vision and change objects only in the private
+`rezanmz-homelab-ocr-staging` bucket. Native Google quotas are five general
+Vision requests per minute, five document-OCR requests per minute, and 100
+asynchronous pages in processing. Because Vision exposes no monthly quota
+dimension, a persistent fail-closed MCPHub-side counter reserves pages before
+submission and refuses page 1,001 in a Google billing month. Failed submissions
+remain counted. The bucket deletes staging objects after one day and has soft
+delete disabled. The 1,000-page guard covers this integration; separate Vision
+usage in another project can still consume the billing account's shared free
+tier.
+
+Provider choice, the LlamaParse tier/version, credentials, and the Google
+monthly page limit are operational settings in MCPHub. Do not add them to a
+manifest. A sensible policy is LlamaParse Agentic for a document the user asks
+to understand deeply, Google Vision for plain/scanned OCR or when LlamaParse is
+unavailable, and no automatic double-processing. Delete the temporary
+LlamaCloud upload and Google staging objects after extracting the requested
+text.
+
 The shared Google Desktop OAuth client file and the two packages' independent
 refresh-token files live under MCPHub's persistent `/app/data/oauth` tree with
 owner-only permissions. They are application data covered by Longhorn and B2,
@@ -143,7 +175,8 @@ user explicitly asks or confirms that action.
 Use separate MCPHub groups for different risk levels:
 
 - **Assistant read** contains Gmail read-only, calendar reads, Vikunja reads,
-  vault reads, Actual Budget reads, and web research.
+  vault reads, Actual Budget reads, web research, and both document-reading
+  providers.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, and note creation in Inbox or Daily.
 - Calendar deletion and destructive filesystem tools stay out of both groups.
