@@ -1154,7 +1154,8 @@ application-owned settings.
 ### MCPHub and official GPT Researcher
 
 MCPHub is the only MCP registry. The official GPT Researcher server, Vikunja,
-Obsidian filesystem access, and Google remote servers are configured there.
+Obsidian filesystem access, Actual Budget, and Google remote servers are
+configured there.
 Open WebUI connects to one curated MCPHub group rather than to each server.
 
 Check MCPHub, its database, and the installed packages:
@@ -1164,7 +1165,7 @@ sudo k3s kubectl -n apps get deploy,pod,svc,pvc \
   -l app.kubernetes.io/name=mcphub
 sudo k3s kubectl -n apps logs deploy/mcphub -c mcphub --tail=200
 sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- \
-  sh -lc 'command -v mcp-server-filesystem && command -v vikunja-mcp && test -f /opt/gptr-mcp/server.py'
+  sh -lc 'command -v mcp-server-filesystem && command -v vikunja-mcp && test -f /opt/gptr-mcp/server.py && test -x /opt/actual-mcp/build/index.js'
 ```
 
 Open MCPHub from the LAN or WireGuard and use **Servers** for connection state,
@@ -1215,6 +1216,13 @@ For Google, verify the authorized account is personal, Gmail scopes are
 read-only, and Calendar scopes are limited to event read/write. Test mail with a
 search/read, and Calendar with a disposable event. Never authorize a work
 account or copy work content into this cluster.
+
+For Actual Budget, confirm the server command is `node` with
+`/opt/actual-mcp/build/index.js` as its only argument. Do not add
+`--enable-write`. Keep `ACTUAL_SERVER_URL`, `ACTUAL_PASSWORD`,
+`ACTUAL_BUDGET_SYNC_ID`, and `ACTUAL_DATA_DIR=/tmp/actual-mcp` in MCPHub. The
+server must advertise exactly eight tools. Test `get-accounts`, then a narrow
+monthly summary; do not paste raw transaction output into logs or tickets.
 
 After a MCPHub restore or credential rotation, verify every server connection,
 review the group's exact tool list, and perform one harmless call through Open

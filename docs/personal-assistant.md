@@ -10,7 +10,8 @@ Open WebUI -> MCPHub
                 |-- Vikunja MCP -> self-hosted Vikunja
                 |-- reference filesystem MCP -> Syncthing Obsidian vault
                 |-- Google Gmail MCP -> personal Gmail, read only
-                `-- Google Calendar MCP -> personal calendar, read/write
+                |-- Google Calendar MCP -> personal calendar, read/write
+                `-- Actual Budget MCP -> primary budget, read only
 ```
 
 Server definitions, credentials, OAuth sessions, groups, and tool filters live
@@ -44,6 +45,24 @@ Calendar uses the published `@cocal/google-calendar-mcp` package. Its enabled
 tool list is limited to calendar discovery, event reads/search, availability,
 event creation, and event updates. Event deletion, invitation responses,
 calendar-sharing administration, and unrelated Drive scopes remain disabled.
+
+Actual Budget uses a pinned, reviewed revision of the maintained
+`s-stefanov/actual-mcp` package and Actual's official `@actual-app/api`. The
+runtime build aligns that API with the deployed Actual version and fails when
+its production dependency audit reports an advisory. It is launched without
+`--enable-write`, so only eight read tools are registered: accounts,
+transactions, grouped categories, payees, rules, balance history, monthly
+summary, and spending by category. The integration targets the active primary
+budget. Its local API cache belongs in `/tmp/actual-mcp`, not on MCPHub's
+persistent volume, to avoid making an unnecessary second backup copy of the
+plaintext financial database.
+
+Actual's official headless API cannot complete the browser-based OpenID flow.
+The normal Actual UI remains enforced on Authentik OpenID, while the API uses a
+separate random password known only to Actual and MCPHub. The server hides the
+password method from the browser and accepts it only when a client explicitly
+selects it. Keep that credential in MCPHub's application state and never in a
+Kubernetes Secret or repository file.
 
 The shared Google Desktop OAuth client file and the two packages' independent
 refresh-token files live under MCPHub's persistent `/app/data/oauth` tree with
@@ -79,7 +98,7 @@ user explicitly asks or confirms that action.
 Use separate MCPHub groups for different risk levels:
 
 - **Assistant read** contains Gmail read-only, calendar reads, Vikunja reads,
-  vault reads, and web research.
+  vault reads, Actual Budget reads, and web research.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, and note creation in Inbox or Daily.
 - Destructive task, calendar, and filesystem tools stay out of both groups.

@@ -36,7 +36,11 @@ spec:
             - name: ACTUAL_LOGIN_METHOD
               value: openid
             - name: ACTUAL_ALLOWED_LOGIN_METHODS
-              value: openid
+              # The browser remains OpenID-only because enforcement is enabled.
+              # Actual's official headless API cannot complete an interactive
+              # OpenID flow, so MCPHub may explicitly select the inactive
+              # password method with a separate, randomly generated credential.
+              value: openid,password
             - name: ACTUAL_OPENID_DISCOVERY_URL
               # Use the public issuer URL through the exact Traefik VIP path.
               # Authentik derives issuer/browser endpoints from the request
