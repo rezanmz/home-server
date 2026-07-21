@@ -1219,10 +1219,13 @@ account or copy work content into this cluster.
 
 For Actual Budget, confirm the server command is `node` with
 `/opt/actual-mcp/build/index.js` as its only argument. Do not add
-`--enable-write`. Keep `ACTUAL_SERVER_URL`, `ACTUAL_PASSWORD`,
-`ACTUAL_BUDGET_SYNC_ID`, and `ACTUAL_DATA_DIR=/tmp/actual-mcp` in MCPHub. The
-server must advertise exactly eight tools. Test `get-accounts`, then a narrow
-monthly summary; do not paste raw transaction output into logs or tickets.
+`--enable-write`. Keep
+`ACTUAL_SERVER_URL=http://actual-budget-api.apps.svc.cluster.local:5006`,
+`ACTUAL_PASSWORD`, `ACTUAL_BUDGET_SYNC_ID`, and
+`ACTUAL_DATA_DIR=/tmp/actual-mcp` in MCPHub. The sync ID is the budget's
+`groupId`/Advanced-settings sync ID, not its server-side file ID. The server
+must advertise exactly eight tools. Test `get-accounts`, then a narrow monthly
+summary; do not paste raw transaction output into logs or tickets.
 
 After a MCPHub restore or credential rotation, verify every server connection,
 review the group's exact tool list, and perform one harmless call through Open
