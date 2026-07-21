@@ -84,6 +84,7 @@ spec:
         - {port: 3000, protocol: TCP}
         - {port: 4000, protocol: TCP}
         - {port: 4466, protocol: TCP}
+        - {port: 8000, protocol: TCP}
         - {port: 8080, protocol: TCP}
         - {port: 8081, protocol: TCP}
         - {port: 9090, protocol: TCP}
