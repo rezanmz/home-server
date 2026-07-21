@@ -36,28 +36,10 @@ spec:
           env:
             - {name: TZ, value: America/Toronto}
             - {name: PORT, value: "13378"}
-            - {name: AUDIOBOOKSHELF_ROOT_USERNAME, value: rezanmz}
-            - {name: AUDIOBOOKSHELF_OIDC_CLIENT_ID, value: audiobookshelf}
-            - name: AUDIOBOOKSHELF_OIDC_DISCOVERY_URL
-              value: https://auth.reza.network/application/o/audiobookshelf/.well-known/openid-configuration
-            - name: AUDIOBOOKSHELF_BOOTSTRAP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: audiobookshelf-secrets
-                  key: bootstrap-password
-            - name: AUDIOBOOKSHELF_OIDC_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: audiobookshelf-secrets
-                  key: oidc-client-secret
           ports:
             - name: http
               containerPort: 13378
               protocol: TCP
-          lifecycle:
-            postStart:
-              exec:
-                command: [node, /opt/audiobookshelf-bootstrap/bootstrap.js]
           startupProbe:
             httpGet:
               path: /healthcheck
@@ -66,24 +48,9 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 60
           readinessProbe:
-            exec:
-              command:
-                - node
-                - -e
-                - |
-                  const crypto = require('node:crypto')
-                  const fs = require('node:fs')
-                  const hash = crypto.createHash('sha256')
-                    .update(process.env.AUDIOBOOKSHELF_OIDC_CLIENT_SECRET)
-                    .digest('hex')
-                  const expected = `version=1\noidc-client-secret-sha256=${hash}\n`
-                  if (fs.readFileSync('/config/.gitops-bootstrap-complete', 'utf8') !== expected) process.exit(1)
-                  fetch('http://127.0.0.1:13378/status', {signal: AbortSignal.timeout(3000)})
-                    .then((response) => response.ok ? response.json() : Promise.reject())
-                    .then((status) => {
-                      if (!status.isInit || !status.authMethods?.includes('openid')) process.exit(1)
-                    })
-                    .catch(() => process.exit(1))
+            httpGet:
+              path: /healthcheck
+              port: http
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -112,7 +79,6 @@ spec:
             - {name: audiobooks, mountPath: /audiobooks}
             - {name: podcasts, mountPath: /podcasts}
             - {name: ebooks, mountPath: /ebooks, readOnly: true}
-            - {name: bootstrap, mountPath: /opt/audiobookshelf-bootstrap, readOnly: true}
             - {name: tmp, mountPath: /tmp}
       volumes:
         - name: config
@@ -130,9 +96,6 @@ spec:
         - name: ebooks
           persistentVolumeClaim:
             claimName: media-books
-        - name: bootstrap
-          configMap:
-            name: audiobookshelf-bootstrap
         - name: tmp
           emptyDir:
             sizeLimit: 2Gi

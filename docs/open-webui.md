@@ -1,239 +1,126 @@
 # Open WebUI operating model
 
-Open WebUI at `chat.reza.network` is the personal chat client for this cluster.
-It is not an autonomous administrator. Conversations may search and analyze,
-but changes to the cluster, accounts, calendar, tasks, notes, or other external
-systems still require an explicit request and the normal confirmation rules of
-the relevant tool.
+Open WebUI at `chat.reza.network` is the cluster's personal chat client. Its
+database owns models, prompts, profiles, automations, memories, retrieval
+settings, and tool connections. A Kubernetes restart or an unrelated Flux
+deployment must not rewrite those choices.
 
-The reconciler in `apps/open-webui/config/reconcile.py` applies the reviewed
-baseline on every pod start. It creates missing managed objects, repairs
-security-sensitive settings, and preserves the administrator's later choice of
-base model for managed profiles. This split keeps policy declarative without
-making fast-moving model choices require a Git change.
+The deployment manifests own only the runtime boundary: image version,
+resources, persistent storage, network access, login wiring, secure defaults,
+and the addresses of cluster services such as Tika and SearXNG.
 
-## Choosing a profile
+## Profiles and model choice
 
-| Profile | Use it for | Evidence and tools | Cost behavior |
-| --- | --- | --- | --- |
-| Ordinary provider model | Conversation, writing, lightweight questions, and personal assistance | Native web, notes, knowledge, memory, and personal tools are available according to the model's reviewed defaults | One normal provider request plus any explicitly used tool |
-| `Companion` | A stable conversational preset whose provider model can be changed without changing its behavior or tools | Personal companion prompt plus reviewed tools; web retrieval uses agentic `search_web`/`fetch_url`, not legacy pre-search | One normal provider request plus any explicitly used tool |
-| `Rigorous` | Important factual answers where unsupported claims would be harmful | Agentic `search_web`/`fetch_url`; requires claim-level evidence, distinguishes source statements from inference, and reports uncertainty. It is read-only: no memory or external-action tools | Normal model and search cost; it does not call GPT Researcher or legacy pre-search |
-| `Deep Research` | An explicitly requested comprehensive research report | Calls the internal GPT Researcher tool once, returns the report with sources and reported estimated cost, and does not duplicate the work with native web search | Multiple model, embedding, search, and page-processing calls; materially more expensive |
-| `Model Steward` | Reviewing whether the current role-to-model assignments should change | Agentic `search_web`/`fetch_url`, capped at six unique searches and eight page fetches; stops after two consecutive empty searches | Advisory only; no legacy pre-search, paid benchmark, or automatic configuration change |
+The current profiles are ordinary application records and remain editable in
+**Workspace > Models**:
 
-The personal companion prompt deliberately does not turn ordinary conversation
-into a task, note, memory, or calendar item. Such actions require an explicit
-request. Managed prompts never use the cluster owner's name or tell a model to
-impersonate a named person.
+| Profile | Intended use |
+| --- | --- |
+| `Companion` | Conversation and explicitly requested personal actions |
+| `Rigorous` | Evidence-backed answers with citations and clear uncertainty |
+| `Deep Research` | Explicitly requested comprehensive research through GPT Researcher |
+| `Model Steward` | Advisory research about current model choices and prices |
 
-## Model selection and approval
+The raw provider model catalog remains visible. Profiles may be pinned for
+convenience, but provider models are not hidden and no particular raw model is
+treated as special.
 
-Rapid model turnover is handled through two layers:
+Change a profile's base model in Open WebUI. Change GPT Researcher's internal
+fast, smart, and strategic models in MCPHub. Model Steward may recommend a
+change, but it does not apply one. Approval is the administrator making the
+change in the relevant UI after reviewing quality, context limits, features,
+and price.
 
-1. The managed profile is stable and defines behavior, permissions, and tool
-   boundaries.
-2. Its base provider model remains editable in **Workspace > Models**.
+Prompts must not include the cluster owner's name or tell a model to impersonate
+a named person. Ordinary conversation does not automatically become a task,
+calendar event, memory, or note.
 
-The reconciler seeds a safe default only when a profile is first created. A
-later administrator selection is retained across restarts. GPT Researcher's
-three internal roles are the exception because they run outside Open WebUI;
-review `FAST_LLM`, `SMART_LLM`, and `STRATEGIC_LLM` in
-`apps/gpt-researcher/config/researcher.json`, then change them through a pull
-request.
+## Tools and MCPHub
 
-The administrator's chat model selector contains the complete live provider
-catalog. `Companion`, `Rigorous`, `Deep Research`, and `Model Steward` are
-pinned and sorted first; raw models such as GLM or provider aliases remain
-ordinary unpinned choices. At pod startup, the reconciler reads OpenRouter's
-public text-model catalog and creates private administrator-owned override rows
-that carry the reviewed default tool metadata. Both the broad administrator
-bypass and the global model-access bypass remain disabled, so this does not
-grant access to other users' workspace content or give normal users the paid
-provider catalog. A transient catalog outage reuses the last healthy persisted
-catalog; the first sync fails closed rather than enabling a broader bypass.
-Pre-existing unmarked model overrides remain administrator-controlled and are
-never taken over by the catalog sync.
+Open WebUI connects to one curated MCPHub group over the internal service
+network. MCPHub owns individual servers, credentials, OAuth sessions, tool
+filters, and activity records. Do not add separate Open WebUI connections for
+each personal integration.
 
-The weekly `Model Steward` automation runs Monday at 09:00
-`America/Toronto`. It creates a visible advisory chat. Open WebUI does not
-guarantee that an automation result will be pinned, so pin a useful report
-manually. The report is a recommendation, not an approval request with an
-executable **Approve** button. Approval means either:
+If a tool should be available by default, add it to the curated MCPHub group
+and select that one group for the profile in Open WebUI. Keep mutation tools
+out of factual and research-only profiles. Tool availability still requires an
+explicit request before an external change.
 
-- select a new base model in **Workspace > Models** for an Open WebUI profile;
-  or
-- review and merge a Git change to GPT Researcher's role mapping.
+See the personal-assistant guide for the package choices and permission model.
 
-Replying “approve” in the report chat does not mutate configuration. The
-steward may recommend no change and may not spend money on comparative
-benchmarks.
+## Deep Research
 
-### GPT Researcher model-update pipeline
-
-The scheduled **GPT Researcher model maintenance** workflow checks the current
-`FAST_LLM`, `SMART_LLM`, and `STRATEGIC_LLM` mappings against OpenRouter's
-public catalog each Monday. It verifies availability, text output, context and
-completion limits, required parameters, expiration metadata, and published
-pricing. It performs no inference, benchmark, recommendation, issue creation,
-or PR creation during a healthy scheduled check.
-
-To apply a Model Steward recommendation:
-
-1. Open **GitHub Actions > GPT Researcher model maintenance > Run workflow**.
-2. Enter one or more exact OpenRouter IDs. Leave a role blank to keep it.
-3. The workflow validates the requested mapping, runs the repository tests,
-   pushes a candidate branch, dispatches the complete cluster validation, and
-   opens a pull request only if the configuration changed and validation
-   passed.
-4. Review the steward's evidence, pricing, and the exact JSON diff. Merging the
-   PR is the approval and Flux performs the rollout.
-
-The updater cannot change `EMBEDDING`. Embedding-model changes require a full
-vector migration and rollback plan. Locally, the same catalog-only validation
-is available with:
-
-```bash
-python3 scripts/update_gpt_researcher_models.py
-```
-
-## Deep Research architecture
+Deep Research calls the official GPT Researcher MCP server managed by MCPHub.
+The server is the upstream `assafelovic/gptr-mcp` implementation, not a local
+replacement.
 
 ```text
-Deep Research profile
-        |
-        | authenticated internal OpenAPI call
-        v
-GPT Researcher service ----> SearXNG ----> public search engines
-        |
-        +-------------------> OpenRouter models and embeddings
+Deep Research profile -> MCPHub -> official GPT Researcher MCP
+                                      |-- internal SearXNG
+                                      `-- configured model and embedding APIs
 ```
 
-GPT Researcher has no HTTPRoute and is not reachable from the LAN or Internet.
-A bearer token shared only by its encrypted Secret and the Open WebUI
-reconciler authenticates the OpenAPI endpoint. NetworkPolicy accepts requests
-only from Open WebUI and Prometheus, blocks private and reserved destinations,
-and permits only SearXNG plus public HTTP/HTTPS egress. The pod has no
-Kubernetes API token, runs non-root with a read-only root filesystem, and keeps
-temporary reports in a size-limited `emptyDir`.
+Models, retriever choice, depth, breadth, token limits, report style, and API
+keys are MCPHub server settings. Experiment there, reload the server, and test
+with a small explicit query. Package revision and resource/network boundaries
+remain reviewed infrastructure changes.
 
-Only one job may run at a time. Jobs have a 15-minute hard timeout. The service
-accepts a self-contained question and one of three report depths; it does not
-accept arbitrary URLs, files, provider configuration, MCP servers, deletion
-requests, or shell commands. Reports persist in the originating Open WebUI
-chat, not in GPT Researcher.
+Deep Research should not duplicate work with Open WebUI's ordinary pre-search.
+The research profile uses GPT Researcher; ordinary agentic profiles use
+Open WebUI search tools. Model Steward is budgeted to six unique searches and
+eight page fetches and stops after two consecutive empty searches. Open WebUI
+limits a response to a small number of tool-call iterations rather than an
+effectively unbounded loop.
 
-GPT Researcher is for an explicit request such as “do deep research on this.”
-Ordinary chat and ordinary factual lookups must not call it. Its returned
-`estimated_cost_usd` is best-effort telemetry rather than a provider invoice.
-Use the **AI Services** Grafana dashboard to inspect use, success, latency,
-busy responses, resource use, and the 30-day estimated cost.
+## Search backend
 
-## Retrieval and embeddings
+SearXNG is internal-only. It is reachable by Open WebUI and MCPHub so GPT
+Researcher can use the same backend. The provider adapter tries one source at a
+time and stops at the first usable result set. Free engines are attempted
+before the Brave and SerpAPI paid fallbacks, so one successful search does not
+consume both paid quotas.
 
-Open WebUI uses the OpenAI-compatible OpenRouter endpoint with
-`google/gemini-embedding-2` at its native 3,072 dimensions. The reconciler
-reuses the existing encrypted OpenRouter provider credential; no duplicate API
-key is stored in Git.
+SearXNG is a config-file-only helper, so its engine order and provider wiring
+are an intentional declarative exception. Provider secrets remain encrypted
+cluster secrets and are never included in request URLs or logs.
 
-The retrieval baseline uses:
+## Retrieval, embeddings, and memory
 
-- asynchronous embeddings with three concurrent single-item requests;
-- a document prefix of `title: none | text: `;
-- a query prefix of `task: question answering | query: `;
-- hybrid search with BM25 weight `0.4`;
-- six initial results and four reranked results;
-- Tika for document extraction.
+Embedding provider, model, prefixes, chunking, result count, and reranking are
+application settings. Change them through Open WebUI, not a startup
+reconciler. Embeddings from different models are not interchangeable; changing
+the model or dimensions requires a complete, verified re-index of files,
+knowledge collections, and memory.
 
-An embedding-model change requires a complete rebuild because vectors produced
-by different models are not interchangeable. The
-`migrate-gemini-embeddings` init container performs that migration before the
-main application starts:
-
-1. retain the policy database backup;
-2. make a lossless local copy of the previous Chroma directory;
-3. start Open WebUI on pod loopback only;
-4. reprocess every non-empty persisted file and knowledge collection through
-   Open WebUI's own API;
-5. generate replacement vectors for every SQLite memory row with Open WebUI's
-   own embedding helper, then replace the per-user memory collections while the
-   main application is stopped;
-6. verify file model metadata and verify the exact memory IDs, documents,
-   metadata, collection ownership, and 3,072-dimensional vectors;
-7. record independent file and memory completion markers and allow the main
-   container to start.
-
-The temporary server disables Automations through a startup-only database
-override and restores the exact prior value afterward, so a due personal
-automation cannot be claimed during maintenance.
-
-If the initial migration fails, the init container restores the entire old
-Chroma directory and previous retrieval configuration. If file migration
-already completed but the separate memory marker is absent, it takes
-`vector-db-pre-gemini-memory-v4`, rebuilds only memory, and preserves the
-working file index and target configuration on rollback. The next restart
-retries after the underlying error is corrected. Local remediation backups
-retain only the three newest policy database snapshots. They are rollback aids
-on the same Longhorn volume, not off-site backups.
-
-## Personal memory
+The previous Gemini embedding migration completed and was removed from the pod
+startup path. One-time migrations must not remain installed after verification.
 
 Memory is selective, personal, and subordinate to the current conversation.
-The preferred durable structure is:
+Store durable facts or preferences only when useful. Never store secrets,
+credentials, speculation, or work information. An explicit current statement
+overrides conflicting memory.
 
-```text
-/profile             stable personal facts
-/preferences         durable interaction and lifestyle preferences
-/people              relationships useful to personal context
-/home                household and homelab context
-/projects/personal   active personal projects
-```
+## Backup and recovery
 
-Do not save every message. Do not save secrets, credentials, speculative
-inferences, or information merely because it appeared once. The current
-explicit statement overrides conflicting memory. Work data must remain on
-work-controlled systems and must never enter this personal Open WebUI memory,
-knowledge base, notes, or tools.
+The Open WebUI Longhorn volume contains the settings described above as well as
+conversation and retrieval state. B2 backups protect that volume. Git alone
+cannot recreate profiles, prompts, model choices, tool assignments, memories,
+or user settings.
 
-## SearXNG
+After a restore, verify OIDC login, model visibility, each profile's base model,
+the single MCPHub connection, one SearXNG search, retrieval over a disposable
+document, and a harmless personal-tool read. Do not introduce a reconciler to
+make a restore appear complete; repair the backed-up application state through
+the supported UI.
 
-SearXNG is internal-only and exists solely as Open WebUI and GPT Researcher's
-search backend. It has no external route. A same-pod provider adapter tries one
-provider at a time in this order: DuckDuckGo, Mojeek, Startpage, Brave API, and
-SerpAPI. It stops on the first usable result set. Failed public engines enter a
-15-minute cooldown, avoiding both parallel fan-out and repeated delays from an
-engine that is rate-limited. The public engines run in a separate, unexposed
-loopback worker, so user or model-generated bangs cannot bypass the ordering.
-Brave and SerpAPI improve reliability without consuming both paid allowances
-for one successful search. Provider credentials are SOPS-encrypted and never
-appear in SearXNG URLs or logs.
+## Change workflow
 
-Open WebUI limits a response to 12 tool-call iterations. The curated profiles
-use native agentic search rather than legacy pre-search; `Deep Research` uses
-only GPT Researcher. Model Steward additionally has hard prompt-level ceilings
-of six unique searches and eight page fetches and stops after two consecutive
-empty searches. Ordinary legacy provider models can still use traditional
-pre-search, but generated searches are serialized.
+Use Open WebUI for behavior, models, prompts, profiles, automations, memory,
+retrieval, and tool assignment. Use MCPHub for MCP servers, tool policy,
+credentials, OAuth, and GPT Researcher tuning. Use Git only for images,
+resources, storage, network boundaries, shared service addresses, identity
+wiring, and other cluster concerns.
 
-## Secrets and change workflow
-
-The OpenRouter key remains in Open WebUI's encrypted persistent configuration.
-`apps/gpt-researcher/secrets.sops.yaml` contains the GPT Researcher copy and
-its independent service token. Never decrypt either into a tracked file or
-print the values in logs.
-
-For behavioral or permission changes, edit the reconciler and its tests. Use
-the model-maintenance workflow for GPT Researcher LLM role changes; edit
-`researcher.json` directly only when changing reviewed research depth or cost
-limits. For search-engine changes, edit
-`apps/open-webui/config/search_provider_proxy.py` and
-`apps/open-webui/config/searxng-fallback-settings.yml`. The worker's engines
-are disabled for ordinary requests and selected individually by the adapter.
-Provider keys live only in
-`apps/open-webui/searxng-provider-secrets.sops.yaml`. Render, validate, review
-cost and tool-boundary changes, and deploy through the normal pull request and
-Flux workflow.
-
-Operational commands and recovery procedures are in the
-[incident runbook](runbook.md#open-webui-security-policy-and-extensions) and
-[GPT Researcher runbook](runbook.md#gpt-researcher).
+The configuration-ownership guide contains the full decision rule and review
+checklist.

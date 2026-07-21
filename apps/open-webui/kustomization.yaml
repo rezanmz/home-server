@@ -2,10 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: apps
 configMapGenerator:
-  - name: open-webui-security-policy
-    files:
-      - reconcile.py=config/reconcile.py
-      - migrate_embeddings.py=config/migrate_embeddings.py
   - name: open-webui-searxng-config
     files:
       - fallback-settings.yml=config/searxng-fallback-settings.yml

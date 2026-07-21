@@ -16,6 +16,12 @@ spec:
       port: 3000
       targetPort: access-http
       protocol: TCP
+    # Cluster clients use the authenticated MCP API directly. The browser UI
+    # remains behind the LAN/VPN allowlist and MCPHub's native Authentik OIDC.
+    - name: mcp
+      port: 3001
+      targetPort: http
+      protocol: TCP
 ---
 apiVersion: v1
 kind: Service

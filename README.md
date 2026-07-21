@@ -7,9 +7,11 @@ not deploy them. The former Docker Compose deployment and SWAG edge are retired.
 For operating details, see the [cluster architecture](docs/architecture.md),
 the [service integration catalog](docs/service-catalog.md), the
 [catalog design decision](docs/service-catalog-design.md), the
+[configuration ownership policy](docs/configuration-ownership.md), the
 [service lifecycle manual](docs/service-operations.md), the
 [cluster and node operations manual](docs/cluster-operations.md), the
 [Open WebUI operating model](docs/open-webui.md), and the
+[personal assistant integrations](docs/personal-assistant.md), plus the
 [incident runbook](docs/runbook.md).
 
 ## Production topology
@@ -49,9 +51,11 @@ Beelink control plane and the Pi NFS server are known single points of failure.
 | Understand the topology, traffic, storage, and security boundaries | [Cluster architecture](docs/architecture.md) |
 | Register cross-service DNS, auth, Homepage, monitoring, placement, and backup intent | [Service integration catalog](docs/service-catalog.md) |
 | Understand why the catalog is designed this way or extend its compiler | [Catalog design decision](docs/service-catalog-design.md) |
+| Decide whether a setting belongs in Git or in backed-up application state | [Configuration ownership](docs/configuration-ownership.md) |
 | Add, modify, roll back, or retire an application | [Service lifecycle manual](docs/service-operations.md) |
 | Understand placement, add/remove a node, or move a workload | [Cluster and node operations manual](docs/cluster-operations.md) |
 | Use or modify Open WebUI profiles, models, research, retrieval, or memory | [Open WebUI operating model](docs/open-webui.md) |
+| Operate Vikunja, personal Gmail/Calendar, Obsidian, and research MCP tools | [Personal assistant integrations](docs/personal-assistant.md) |
 | Diagnose an outage, reconcile Flux, or restore data | [Incident runbook](docs/runbook.md) |
 
 The node operations manual also records current live deviations that still need
@@ -63,7 +67,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Area | Workloads | Entry points |
 | --- | --- | --- |
 | Identity and home | Authentik, Homepage, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
-| Personal apps | Actual Budget, MCPHub, Open WebUI with Tika, internal SearXNG and GPT Researcher, Speedtest Tracker | `budget.reza.network`, `mcphub.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
+| Personal apps | Actual Budget, Vikunja, MCPHub, Open WebUI with Tika, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Jellyseerr | `jellyfin.reza.network`, `jellyseerr.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
@@ -87,9 +91,9 @@ show workload health and resource use. It has no permission to read Secrets,
 logs, or application data and cannot mutate cluster resources.
 
 AnythingLLM and the Gemini Telegram bot are intentionally excluded from the
-cluster. Open WebUI remains the supported local LLM interface. Its managed
-profiles, model approval cycle, GPT Researcher integration, retrieval model,
-and personal-memory boundaries are documented in the
+cluster. Open WebUI remains the supported local LLM interface. Its profiles,
+model approval cycle, GPT Researcher integration, retrieval model, and
+personal-memory boundaries are documented in the
 [Open WebUI operating model](docs/open-webui.md).
 
 ## GitOps workflow

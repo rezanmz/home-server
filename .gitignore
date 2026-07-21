@@ -40,6 +40,10 @@ services/*/config/*.pem
 __pycache__/
 *.py[cod]
 
+# Reproducible container build output
+images/**/node_modules/
+images/**/dist/
+
 # Backup files
 *.bak
 *.backup

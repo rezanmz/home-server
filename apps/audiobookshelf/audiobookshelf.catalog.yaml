@@ -42,8 +42,8 @@ spec:
           - type: logout
             url: https://audiobooks.reza.network/login
         secret:
-          manifest: apps/audiobookshelf/secrets.sops.yaml
-          key: oidc-client-secret
+          managedBy: application-state
+          reason: Audiobookshelf stores its configured OIDC client in the backed-up application database.
   placement:
     mode: beelink
     manifest: apps/audiobookshelf/deployment.yaml
