@@ -30,120 +30,6 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-        - name: reconcile-security-policy
-          image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
-          imagePullPolicy: IfNotPresent
-          command:
-            - python
-            - /policy/reconcile.py
-          env:
-            - name: HOME
-              value: /tmp
-            - name: PYTHONDONTWRITEBYTECODE
-              value: "1"
-            - name: GPT_RESEARCHER_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: gpt-researcher-secrets
-                  key: api-token
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: data
-              mountPath: /app/backend/data
-            - name: security-policy
-              mountPath: /policy
-              readOnly: true
-            - name: tmp
-              mountPath: /tmp
-        - name: migrate-gemini-embeddings
-          image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
-          imagePullPolicy: IfNotPresent
-          command:
-            - python
-            - /policy/migrate_embeddings.py
-          env:
-            - name: TZ
-              value: America/Toronto
-            - name: HOME
-              value: /tmp
-            - name: XDG_CACHE_HOME
-              value: /app/backend/data/cache
-            - name: PYTHONDONTWRITEBYTECODE
-              value: "1"
-            # Running an absolute script sets sys.path[0] to /policy. Make the
-            # application's backend package importable for JWT generation and
-            # the temporary loopback server.
-            - name: PYTHONPATH
-              value: /app/backend
-            - name: STATIC_DIR
-              value: /app/backend/data/static
-            - name: SAFE_MODE
-              value: "True"
-            - name: ENABLE_OLLAMA_API
-              value: "False"
-            - name: ENABLE_SIGNUP
-              value: "False"
-            - name: ENABLE_LOGIN_FORM
-              value: "False"
-            - name: ENABLE_OAUTH_SIGNUP
-              value: "False"
-            - name: CONTENT_EXTRACTION_ENGINE
-              value: tika
-            - name: TIKA_SERVER_URL
-              value: http://tika:9998
-            - name: RAG_EMBEDDING_TIMEOUT
-              value: "300"
-            # v0.10.2 reads these prefixes directly from the environment rather
-            # than from its database-backed ConfigVars.
-            - name: RAG_EMBEDDING_CONTENT_PREFIX
-              value: "title: none | text: "
-            - name: RAG_EMBEDDING_QUERY_PREFIX
-              value: "task: question answering | query: "
-            - name: WEBUI_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: open-webui-secrets
-                  key: webui-secret-key
-          resources:
-            requests:
-              cpu: 250m
-              memory: 768Mi
-            limits:
-              cpu: "1"
-              memory: 1536Mi
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: data
-              mountPath: /app/backend/data
-            - name: security-policy
-              mountPath: /policy
-              readOnly: true
-            - name: tmp
-              mountPath: /tmp
       containers:
         - name: open-webui
           image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
@@ -250,12 +136,6 @@ spec:
               value: tika
             - name: TIKA_SERVER_URL
               value: http://tika:9998
-            # Gemini Embedding 2 recommends distinct retrieval-document and
-            # question-answering query task prefixes.
-            - name: RAG_EMBEDDING_CONTENT_PREFIX
-              value: "title: none | text: "
-            - name: RAG_EMBEDDING_QUERY_PREFIX
-              value: "task: question answering | query: "
             - name: BYPASS_MODEL_ACCESS_CONTROL
               value: "False"
             - name: WEBUI_URL
@@ -376,10 +256,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: open-webui-data
-        - name: security-policy
-          configMap:
-            name: open-webui-security-policy
-            defaultMode: 0444
         - name: tmp
           emptyDir:
             sizeLimit: 256Mi

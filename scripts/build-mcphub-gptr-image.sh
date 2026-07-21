@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly GPT_RESEARCHER_VERSION="0.16.0"
-readonly ADAPTER_REVISION="4"
-readonly IMAGE_NAMESPACE="${GPT_RESEARCHER_IMAGE_NAMESPACE:-rezanmz}"
-readonly IMAGE_NAME="gpt-researcher-service"
-readonly IMAGE_TAG="${GPT_RESEARCHER_VERSION}-${ADAPTER_REVISION}"
-readonly BUILDER="${GPT_RESEARCHER_BUILDX_BUILDER:-gpt-researcher-builder}"
-readonly PLATFORMS="${GPT_RESEARCHER_PLATFORMS:-linux/amd64,linux/arm64}"
+readonly MCPHUB_VERSION="1.0.24"
+readonly GPTR_MCP_REVISION="63884773685b1f12c7f0d9e283b3d71a5b9b5fda"
+readonly GPTR_MCP_SHORT_REVISION="${GPTR_MCP_REVISION:0:12}"
+readonly IMAGE_NAMESPACE="${MCPHUB_IMAGE_NAMESPACE:-rezanmz}"
+readonly IMAGE_NAME="mcphub-gptr"
+readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}"
+readonly BUILDER="${MCPHUB_BUILDX_BUILDER:-mcphub-gptr-builder}"
+readonly PLATFORMS="${MCPHUB_PLATFORMS:-linux/amd64,linux/arm64}"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-context="${repo_root}/images/gpt-researcher-service"
+context="${repo_root}/images/mcphub-gptr"
 
 if ! docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
   docker buildx create --name "$BUILDER" --driver docker-container

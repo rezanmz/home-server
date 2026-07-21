@@ -36,6 +36,12 @@ jobs:
         with:
           version: v1.36.2
 
+      - name: Install Node.js for MCP validation
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.7.0
+          package-manager-cache: false
+
       - name: Install pinned validation tools
         env:
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -99,6 +105,9 @@ jobs:
 
       - name: Reject plaintext Kubernetes Secrets
         run: python3 scripts/ci/validate-secrets.py
+
+      - name: Enforce application-state ownership
+        run: python3 scripts/ci/validate-application-state-ownership.py
 
       - name: Render home cluster
         run: |

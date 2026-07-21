@@ -1319,22 +1319,35 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                                 errors,
                             )
                             if relying_secret is not None:
-                                reject_unknown(
-                                    relying_secret,
-                                    {"key", "manifest"},
-                                    f"{label}.web.auth.client.secret",
-                                    errors,
-                                )
-                                secret_references(
-                                    [
-                                        {
-                                            "path": relying_secret.get("manifest"),
-                                            "key": relying_secret.get("key"),
-                                        }
-                                    ],
-                                    f"{label}.web.auth.client.secret",
-                                    errors,
-                                )
+                                if relying_secret.get("managedBy") == "application-state":
+                                    reject_unknown(
+                                        relying_secret,
+                                        {"managedBy", "reason"},
+                                        f"{label}.web.auth.client.secret",
+                                        errors,
+                                    )
+                                    require_nonempty_string(
+                                        relying_secret.get("reason"),
+                                        f"{label}.web.auth.client.secret.reason",
+                                        errors,
+                                    )
+                                else:
+                                    reject_unknown(
+                                        relying_secret,
+                                        {"key", "manifest"},
+                                        f"{label}.web.auth.client.secret",
+                                        errors,
+                                    )
+                                    secret_references(
+                                        [
+                                            {
+                                                "path": relying_secret.get("manifest"),
+                                                "key": relying_secret.get("key"),
+                                            }
+                                        ],
+                                        f"{label}.web.auth.client.secret",
+                                        errors,
+                                    )
                             if (
                                 provider_secret_manifest is not None
                                 and service_id is not None
@@ -1882,10 +1895,16 @@ def explain(catalog: dict[str, Any], service_id: str) -> None:
             print("  - Exact browser/mobile login and logout behavior")
             if client.get("type") == "confidential":
                 secret = client.get("secret", {})
-                print(
-                    "  - Encrypted relying-party secret: "
-                    f"{secret.get('manifest')} / {secret.get('key')}"
-                )
+                if secret.get("managedBy") == "application-state":
+                    print(
+                        "  - Relying-party secret is application-owned state: "
+                        f"{secret.get('reason')}"
+                    )
+                else:
+                    print(
+                        "  - Encrypted relying-party secret: "
+                        f"{secret.get('manifest')} / {secret.get('key')}"
+                    )
     for item in data.get("manifests", []):
         print(f"  - Storage/backup declaration: {item}")
     for item in observability.get("manifests", []):

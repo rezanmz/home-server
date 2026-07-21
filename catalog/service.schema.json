@@ -226,7 +226,12 @@
           "minItems": 1,
           "items": {"$ref": "#/$defs/redirectUri"}
         },
-        "secret": {"$ref": "#/$defs/secretRef"},
+        "secret": {
+          "oneOf": [
+            {"$ref": "#/$defs/secretRef"},
+            {"$ref": "#/$defs/applicationSecret"}
+          ]
+        },
         "pkce": {"$ref": "#/$defs/pkce"}
       },
       "allOf": [
@@ -259,6 +264,15 @@
       "properties": {
         "manifest": {"$ref": "#/$defs/path"},
         "key": {"type": "string", "minLength": 1}
+      }
+    },
+    "applicationSecret": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["managedBy", "reason"],
+      "properties": {
+        "managedBy": {"const": "application-state"},
+        "reason": {"$ref": "#/$defs/reason"}
       }
     },
     "pkce": {

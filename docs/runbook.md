@@ -1108,284 +1108,118 @@ Never stage Open WebUI user-import CSV files under
 authentication. Keep recovery imports outside the static tree with mode 0600
 and verify the former URL returns 404 after cleanup.
 
-### Open WebUI security policy and extensions
+### Open WebUI application state and search
 
-Open WebUI stores administrator configuration and custom Functions in
-`/app/backend/data/webui.db`, so Kubernetes environment variables alone are
-not a complete source of truth. The `reconcile-security-policy` init container
-applies the reviewed policy in `apps/open-webui/config/reconcile.py` while the
-database is offline. It preserves chats, files, memories, users, provider
-connections, and ordinary preferences.
+Open WebUI owns its profiles, prompts, models, automations, retrieval settings,
+memories, and MCP connection in its persistent database. Do not repair these by
+editing SQLite or adding a startup reconciler. Use the supported administrator
+UI, then verify that the change survives an ordinary pod restart.
 
-The policy deliberately:
-
-- removes the retired Auto Memory, Smart Context Manager, Smart Mind Map, and
-  Deep Research at Home Functions after saving mode-0600 source-only copies
-  outside the web-served static directory at
-  `quarantine/open-webui-functions/`;
-- replaces the memory and context filters with Open WebUI's native,
-  user-controlled memory tools and context compaction; automatic background
-  review stays off because v0.10.2 can review temporary chats;
-- creates private `Rigorous`, `Deep Research`, and `Model Steward` profiles,
-  registers the authenticated internal GPT Researcher OpenAPI tool, and seeds
-  the read-only weekly model-market advisory;
-- disables same-origin/forms privileges for rendered HTML, applies an iframe
-  CSP, and prevents non-admin users from using shared paid or executable
-  features by default;
-- bounds file ingestion plus search, loader, embedding, thread-pool, and
-  outbound HTTP concurrency/timeouts, and removes the retired memory
-  vocabulary cache and an unused local embedding model cache (the latter is
-  preserved whenever it is the selected model); and
-- retains the newest three pre-change SQLite backups under
-  `remediation-backups/`, including
-  `webui-pre-security-policy-v6.db` for this policy.
-
-Standard provider models start with Web Search selected. Their reviewed
-built-in tools also include time, memory, chat history, notes, knowledge, task
-management, and calendar. The curated companion additionally enables Code
-Interpreter. Making a tool available does not authorize unsolicited external
-actions: the personal companion prompt requires an explicit user request
-before creating, modifying, deleting, sending, or scheduling anything.
-Channels remain disabled. Automations are enabled so the one managed weekly
-advisory can run, but they are not selected as an ordinary model tool. The
-`Rigorous`, `Deep Research`, and `Model Steward` profiles are read-only and
-have deliberately narrower tool sets.
-
-Managed prompts do not contain the cluster owner's name. Preserve that
-property when changing prompt policy; the reconciler unit test rejects a
-regression.
-
-Open WebUI v0.10.2 has no wildcard meaning "select every present and future
-external tool." Local Tools and server-side MCP/OpenAPI connections therefore
-still require explicit reviewed IDs in a model profile. Browser-local direct
-tool servers are intentionally per-browser and per-chat. Do not treat those
-as durable cluster configuration.
-
-`SAFE_MODE=True` deactivates every custom Function at each start. Do not remove
-safe mode or import a Function directly from the community. If a custom
-Function becomes necessary, keep its source and tests in this repository,
-review all input-to-network/database/browser paths, use immutable per-request
-state, and deploy it only after deliberately replacing the safe-mode policy.
-Function and Tool Valve secrets are encrypted with `WEBUI_SECRET_KEY`; rotating
-that key makes existing encrypted valves unreadable.
-
-The reconciler manages security boundaries plus the selected internal search
-and research backends. It reuses the existing OpenRouter provider credential
-for retrieval without writing it to Git. It preserves unrelated future MCP or
-OpenAPI connections and removes one known-stale `git-mcp-server` connection
-whose MCPHub server and bearer key no longer exist. Add future MCPHub
-connections with server-scoped keys, an explicit tool allow-list, and private
-access grants.
-
-#### Internal SearXNG search
-
-SearXNG is a stateless component of Open WebUI, not a separately exposed
-homelab application. It has no HTTPRoute, public or split-horizon DNS name,
-Homepage card, or Authentik application. NetworkPolicy permits only the Open
-WebUI and GPT Researcher application pods to reach its ClusterIP service on
-port 8080. Prometheus can reach only the provider adapter's metrics port.
-SearXNG may resolve cluster DNS and its pod may contact globally routed HTTPS
-search providers; it cannot reach Kubernetes, LAN, link-local, or reserved
-networks.
-
-The reviewed search gateway is
-`apps/open-webui/config/search_provider_proxy.py`; the loopback SearXNG worker
-configuration is `apps/open-webui/config/searxng-fallback-settings.yml`. The
-worker enables only JSON output, disables public-instance mode, the image proxy,
-and the Valkey-backed public limiter, and uses a SOPS-managed cryptographic
-secret. The gateway tries DuckDuckGo, Mojeek, Startpage, Brave API, and SerpAPI
-sequentially and stops when one returns usable results. Failed public engines
-are skipped for 15 minutes. A query never fans out across providers, and paid
-allowances are used only when earlier providers fail or return nothing. The API
-keys are isolated in `searxng-provider-secrets.sops.yaml`; SerpAPI's
-query-parameter credential never enters SearXNG, an exception, or a log line.
-The public engines run on pod-loopback port 8082, which is absent from the
-Service. The gateway itself serves the SearXNG-compatible JSON API on port 8080
-and strips bang control prefixes from forwarded query tokens, so a caller
-cannot override the sequential provider choice.
-The cache is ephemeral and has no backup requirement.
-
-Open WebUI's database-backed ConfigVars take precedence over environment
-variables. The offline reconciler therefore owns the search engine selection,
-the internal query URL, result/concurrency bounds, and removal of the retired
-Perplexity key. After a rollout, inspect these values without printing
-credentials:
+Check the application and supporting services:
 
 ```bash
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); keys=("web.search.enable","web.search.engine","web.search.searxng_query_url","web.search.result_count","web.search.concurrent_requests"); [print(k, json.loads(v) if isinstance(v,str) else v) for k,v in c.execute("select key,value from config where key in (?,?,?,?,?) order by key", keys)]'
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); v=c.execute("select value from config where key=?",("web.search.perplexity_api_key",)).fetchone(); print("perplexity key:", "empty" if v and not json.loads(v[0]) else "unexpectedly set")'
+sudo k3s kubectl -n apps get deploy,pod,svc \
+  -l 'app.kubernetes.io/name in (open-webui,mcphub)'
+sudo k3s kubectl -n apps logs deploy/open-webui -c open-webui --tail=150
+sudo k3s kubectl -n apps logs deploy/mcphub -c mcphub --tail=150
 ```
 
-Exercise the internal backend from the Open WebUI pod:
+Exercise the internal search path from Open WebUI without exposing SearXNG:
 
 ```bash
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG Open WebUI"); u=f"http://searxng:8080/search?q={q}&format=json"; d=json.load(urllib.request.urlopen(u,timeout=35)); print("results:",len(d.get("results",[])),"engines:",sorted({e for r in d.get("results",[]) for e in r.get("engines",[])}))'
+sudo k3s kubectl -n apps exec deploy/open-webui -c open-webui -- python -c \
+  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("Open WebUI search health"); d=json.load(urllib.request.urlopen(f"http://searxng:8080/search?q={q}&format=json",timeout=35)); print("results:",len(d.get("results",[])))'
 ```
 
-Repeat the request from GPT Researcher, then inspect provider outcomes without
-printing search queries or credentials:
+Inspect the search-provider adapter and paid-fallback counters:
 
 ```bash
-sudo k3s kubectl -n apps exec deploy/gpt-researcher -- python -c \
-  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG GPT Researcher"); d=json.load(urllib.request.urlopen(f"http://searxng.apps.svc.cluster.local:8080/search?q={q}&format=json",timeout=35)); print("results:",len(d.get("results",[])))'
-sudo k3s kubectl -n apps logs deploy/searxng -c search-provider-proxy --tail=100
-sudo k3s kubectl -n apps get --raw \
-  '/api/v1/namespaces/apps/services/http:searxng:provider-metrics/proxy/metrics'
+sudo k3s kubectl -n apps logs deploy/open-webui -c search-provider-proxy --tail=150
 ```
 
-The `AI Services` dashboard uses
-`searxng_provider_requests_total{provider,outcome}` and
-`searxng_search_requests_total{outcome}`. Provider outcomes include success,
-empty, error, and cooldown. Its 30-day paid-provider counters are a
-cluster-observed approximation, not the provider's billing calendar: verify
-the Brave and SerpAPI account dashboards before changing plans. Alerts fire at
-800 observed Brave attempts, 200 observed SerpAPI attempts, or two searches
-that exhaust every provider in an hour. Individual provider failures remain
-visible in Grafana without alerting when a later fallback succeeds.
+The **AI Services** Grafana dashboard shows SearXNG failures, provider outcomes,
+paid fallback attempts, pod availability, restarts, CPU, and memory. A failed
+free provider is not an outage when a later provider succeeds.
 
-The old Perplexity key may remain in historical Longhorn backups even after it
-is erased from the live database. Revoke it in the Perplexity account after
-the SearXNG acceptance test succeeds.
+After changing the embedding model, re-index files, knowledge collections, and
+memory through Open WebUI before treating retrieval as healthy. Verify a known
+fact from a disposable document and inspect the cited chunk. Never leave a
+completed migration in the normal pod startup path.
 
-After an Open WebUI version upgrade, run the local reconciler unit test and
-review the upstream configuration/schema changes before rollout:
+If application state must be restored, restore the Longhorn volume from B2,
+then verify OIDC login, profile model choices, the single MCPHub connection,
+search, retrieval, and memory. Git recreates the workload but not these
+application-owned settings.
+
+### MCPHub and official GPT Researcher
+
+MCPHub is the only MCP registry. The official GPT Researcher server, Vikunja,
+Obsidian filesystem access, and Google remote servers are configured there.
+Open WebUI connects to one curated MCPHub group rather than to each server.
+
+Check MCPHub, its database, and the installed packages:
 
 ```bash
-python3 -m unittest \
-  scripts.ci.test_open_webui_reconcile \
-  scripts.ci.test_open_webui_embedding_migration
-kubectl kustomize apps/open-webui >/tmp/open-webui-rendered.yaml
+sudo k3s kubectl -n apps get deploy,pod,svc,pvc \
+  -l app.kubernetes.io/name=mcphub
+sudo k3s kubectl -n apps logs deploy/mcphub -c mcphub --tail=200
+sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- \
+  sh -lc 'command -v mcp-server-filesystem && command -v vikunja-mcp && test -f /opt/gptr-mcp/server.py'
 ```
 
-To inspect the applied state without printing credentials:
+Open MCPHub from the LAN or WireGuard and use **Servers** for connection state,
+**Groups** for the tool allow-list, and **Activity** for call history and errors.
+Server environment values are intentionally stored in MCPHub's database. Edit
+GPT Researcher models, retriever, breadth, depth, and limits there, then reload
+only that server.
+
+The official GPT Researcher server should expose `deep_research`,
+`quick_search`, `write_report`, `get_research_sources`, and
+`get_research_context`. A missing or different list indicates the wrong entry
+command or an upstream package change. Do not replace it with a local MCP
+implementation.
+
+For a smoke test, use a small, explicit research request from the Deep Research
+profile. Confirm the response includes sources, then inspect the matching
+MCPHub activity. Avoid repeated tests because the server can make several paid
+model and search calls.
+
+MCPHub must have a persistent JWT secret. A startup warning that it generated a
+temporary JWT secret means existing dashboard sessions will break after a
+restart and the deployment secret wiring must be repaired.
+
+### Personal assistant MCP
+
+Vikunja is the task system of record. Verify its application and native OIDC
+before testing the MCP adapter:
 
 ```bash
-sudo k3s kubectl -n apps logs deploy/open-webui -c reconcile-security-policy
-sudo k3s kubectl -n apps exec deploy/open-webui -- \
-  python -c 'import sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); print(c.execute("select id,is_active from function").fetchall())'
+sudo k3s kubectl -n apps get deploy,pod,svc,pvc -l app.kubernetes.io/name=vikunja
+sudo k3s kubectl -n apps logs deploy/vikunja --tail=150
+sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- \
+  sh -lc 'test -r /vault && test -w /vault/Inbox && test -w /vault/Daily'
 ```
 
-Inspect the managed profiles, automation, and embedding migration state without
-printing provider or tool credentials:
+In MCPHub, confirm the Vikunja server uses the published package, points at the
+cluster-internal Vikunja API, and has write and delete tiers disabled unless a
+reviewed workflow needs them. Test a read first. Use a disposable task for an
+additive test.
 
-```bash
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); print("models",c.execute("select id,name,base_model_id,is_active from model where id in (?,?,?) order by id",("deep-research","model-steward","rigorous")).fetchall()); print("automation",c.execute("select id,name,is_active,next_run_at from automation where id=?",("home-server-model-steward-weekly",)).fetchall()); keys=("rag.embedding_model","home-server.embedding_migration_state","home-server.memory_embedding_migration_state"); print("embedding",[(k,json.loads(v)) for k,v in c.execute("select key,value from config where key in (?,?,?)",keys)])'
-sudo k3s kubectl -n apps logs deploy/open-webui -c migrate-gemini-embeddings
-```
+The filesystem server should receive the vault root as its only allowed path.
+The root is mounted read-only, while Inbox and Daily are writable submounts.
+Confirm a read of an ordinary Markdown note and create disposable entries only
+inside those two folders. Keep overwrite, move, and delete tools out of the
+normal assistant group.
 
-The admin model selector should expose the complete live provider catalog, not
-just locally configured model rows. `Companion`, `Rigorous`, `Deep Research`,
-and `Model Steward` are the only policy-managed pins. Check this without
-printing credentials:
+For Google, verify the authorized account is personal, Gmail scopes are
+read-only, and Calendar scopes are limited to event read/write. Test mail with a
+search/read, and Calendar with a disposable event. Never authorize a work
+account or copy work content into this cluster.
 
-```bash
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import json,sqlite3; c=sqlite3.connect("/app/backend/data/webui.db"); s=json.loads(c.execute("select settings from user where role=\"admin\" order by created_at limit 1").fetchone()[0]); print("pins",s.get("ui",{}).get("pinnedModels")); print("managed",c.execute("select id,base_model_id,is_active from model where id in (?,?,?,?) order by id",("companion","deep-research","model-steward","rigorous")).fetchall()); print("catalog_overrides",c.execute("select count(*) from model where json_extract(meta,\"$.homeServer.managedCatalogOverride\")=1").fetchone()[0])'
-```
-
-`BYPASS_ADMIN_ACCESS_CONTROL=False` and
-`BYPASS_MODEL_ACCESS_CONTROL=False` must both remain in the deployment. The
-former preserves ownership boundaries for every user's notes, files,
-knowledge, prompts, tools, and other workspace resources; the latter keeps
-ordinary users from inheriting the paid provider catalog.
-
-Open WebUI v0.10.2 turns global default model metadata into ownerless synthetic
-model records, which strict access control hides. The reconciler therefore
-fetches OpenRouter's public text-model catalog at startup and mirrors it into
-private administrator-owned base-model overrides with the reviewed tool
-defaults. It never overwrites a pre-existing unmarked override. A successful
-catalog is retained in SQLite; after that, a temporary OpenRouter catalog
-failure keeps the last healthy rows and reports `catalog_sync_error` in the
-init-container log. If no usable cache exists, startup fails closed. Restart
-Open WebUI when an urgently needed provider model was released after the
-current pod started.
-
-The first Gemini embedding rollout can take several minutes because the init
-container rebuilds all non-empty files, knowledge collections, and per-user
-memory collections before the main container starts. It temporarily disables
-Automations and restores the exact previous value before exit, so maintenance
-cannot claim a due scheduled task. On an initial failure it restores both the
-old Chroma directory and old retrieval configuration.
-
-File/knowledge and memory completion are tracked independently. If the file
-migration is already complete but the memory marker is missing, the init
-container creates `remediation-backups/vector-db-pre-gemini-memory-v4` and
-rebuilds only memory. A failure in that repair restores that memory-only
-snapshot without reverting the working file index or target retrieval
-configuration. Do not delete either `vector-db-pre-gemini-v4` or
-`vector-db-pre-gemini-memory-v4` until ordinary retrieval and memory recall
-have both been tested after multiple restarts.
-
-### GPT Researcher
-
-GPT Researcher is an internal-only, authenticated service. It has no
-HTTPRoute, DNS catalog entry, Homepage link, or persistent report volume. Only
-Open WebUI can call port 8000; Prometheus can scrape the unauthenticated
-`/metrics` endpoint through a separate NetworkPolicy ingress rule. The service
-cannot reach Kubernetes or private networks.
-
-Check rollout and service health:
-
-```bash
-sudo k3s kubectl -n apps get deploy,pod,service,servicemonitor,prometheusrule \
-  -l app.kubernetes.io/name=gpt-researcher -o wide
-sudo k3s kubectl -n apps logs deploy/gpt-researcher --tail=100
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import json,urllib.request; print(json.load(urllib.request.urlopen("http://gpt-researcher:8000/health",timeout=5)))'
-```
-
-A `401` from `/openapi.json` without a bearer token is correct. Do not print
-the token merely to test it. Confirm the managed connection structurally from
-the offline database and redact its key:
-
-```bash
-sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import sqlite3,json; c=sqlite3.connect("/app/backend/data/webui.db"); row=c.execute("select value from config where key=?",("tool_server.connections",)).fetchone(); connections=json.loads(row[0]); managed=[x for x in connections if x.get("info",{}).get("id")=="gpt-researcher"]; [x.__setitem__("key","<redacted>") for x in managed]; print(json.dumps(managed,indent=2))'
-```
-
-`GPTResearcherUnavailable` means Prometheus could not scrape a healthy
-service for five minutes. Inspect the Deployment, endpoint, and NetworkPolicy.
-`GPTResearcherRepeatedFailures` means at least three jobs failed or timed out
-in one hour. Inspect logs by request ID, SearXNG health, public egress, and the
-OpenRouter account before retrying. Do not repeatedly run a paid report as a
-health probe.
-
-The service accepts only one job at a time and rejects overlaps with HTTP 429.
-Each accepted job has a 15-minute hard timeout. Model roles and research depth
-are configured centrally in
-`apps/gpt-researcher/config/researcher.json`. Review cost implications before
-raising breadth, depth, iterations, source count, token limits, or model tier.
-The Grafana **AI Services** dashboard shows outcomes, average duration, busy
-responses, resource use, and best-effort reported cost.
-
-Validate the configured LLM roles against the current public OpenRouter catalog
-without making an inference request:
-
-```bash
-python3 scripts/update_gpt_researcher_models.py
-```
-
-For a role change, run **GPT Researcher model maintenance** from GitHub Actions
-and supply exact IDs for only the roles being changed. The workflow rejects
-missing, expired, non-text, undersized, or parameter-incompatible models,
-reports catalog pricing, runs the repository tests, dispatches the full cluster
-validation against its candidate branch, and then opens an approval PR. Blank
-inputs preserve current mappings. No PR means either nothing changed or a
-validation stage failed. Never add `EMBEDDING` to this workflow; use the
-embedding migration procedure above.
-
-The custom adapter image is built by
-`scripts/build-gpt-researcher-image.sh`. Update the exact GPT Researcher
-version, reviewed upstream commit, base-image digest, and published
-multi-architecture digest together. Run its API tests inside the final image
-and render the Kubernetes app before rollout. The image contains a documented
-minimal import-order patch for upstream version `0.16.0`; remove it only after
-confirming that the selected upstream artifact imports cleanly without it.
-
+After a MCPHub restore or credential rotation, verify every server connection,
+review the group's exact tool list, and perform one harmless call through Open
+WebUI. Never print server environment values, OAuth tokens, bearer keys, or API
+keys while troubleshooting.
 ### Retired Duplicati recovery artifacts
 
 `apps/duplicati/kustomization.yaml` reconciles only `storage.yaml`. The retired

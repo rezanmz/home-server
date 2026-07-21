@@ -78,8 +78,10 @@ class ServiceCatalogTests(unittest.TestCase):
                 "grafana.yaml",
                 "headlamp.yaml",
                 "homepage.yaml",
+                "mcphub.yaml",
                 "open-webui.yaml",
                 "stork.yaml",
+                "vikunja.yaml",
             ],
         )
         self.assertIn(
@@ -112,7 +114,9 @@ class ServiceCatalogTests(unittest.TestCase):
                 "AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET",
+                "AUTHENTIK_OIDC_MCPHUB_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET",
+                "AUTHENTIK_OIDC_VIKUNJA_CLIENT_SECRET",
             ],
         )
         self.assertNotIn("AUTHENTIK_OIDC_STORK_CLIENT_SECRET", names)
@@ -150,8 +154,9 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["AI & Data"],
-            ["Open WebUI", "GPT Researcher", "MCPHub", "Argilla"],
+            ["Open WebUI", "MCPHub", "Argilla"],
         )
+        self.assertEqual(groups["Productivity"], ["Vikunja"])
         self.assertEqual(
             groups["Operations"],
             ["Grafana", "Headlamp", "ISC Stork", "Syncthing", "WireGuard"],
@@ -165,6 +170,17 @@ class ServiceCatalogTests(unittest.TestCase):
         self.assertTrue(
             any("homepage contains unknown field: typo" in error for error in errors)
         )
+
+    def test_application_owned_oidc_secret_does_not_require_a_manifest(self) -> None:
+        audiobookshelf = next(
+            service
+            for service in service_catalog.services(self.catalog)
+            if service["id"] == "audiobookshelf"
+        )
+        secret = audiobookshelf["web"]["auth"]["client"]["secret"]
+        self.assertEqual(secret["managedBy"], "application-state")
+        self.assertNotIn("manifest", secret)
+        self.assertNotIn("key", secret)
 
     def test_cross_host_oidc_redirect_is_rejected(self) -> None:
         catalog = copy.deepcopy(self.catalog)

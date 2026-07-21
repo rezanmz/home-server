@@ -36,11 +36,16 @@ flowchart LR
     H --> J["CI accepts or rejects the change"]
 ```
 
-Kubernetes manifests remain the runtime source of truth. The descriptor records
+Kubernetes manifests remain the cluster-runtime source of truth. The descriptor records
 cross-service intent and lets the compiler remove repetitive integration
 plumbing. This separation matters: the catalog must not invent a public route,
 backup promise, node pin, callback, claim, role mapping, secret, or network
 permission.
+
+Application settings remain owned by each application's persistent data. The
+[configuration ownership policy](configuration-ownership.md) defines that
+boundary; the catalog must not be used to reintroduce application-database
+reconciliation.
 
 Cluster-wide facts live in `catalog/cluster.yaml`: the base domain, the
 split-DNS address, Homepage group order, and the Authentik provider-secret
@@ -213,6 +218,12 @@ For a confidential client, the compiler derives
 shared encrypted Authentik Secret, checks the relying-party Secret reference,
 and generates the worker's required `secretKeyRef`. It never creates or prints
 the secret value.
+
+When an application stores its relying-party secret in its own backed-up
+database, declare `secret.managedBy: application-state` with a reason instead
+of inventing a redundant Kubernetes Secret. The compiler still validates the
+Authentik provider copy. Rotation then requires a coordinated application UI
+change and provider-secret change; Flux must not overwrite the application.
 
 A public client must supply reviewed PKCE evidence and cannot declare a secret:
 

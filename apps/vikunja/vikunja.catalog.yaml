@@ -2,48 +2,47 @@
 apiVersion: catalog.reza.network/v1alpha1
 kind: Service
 metadata:
-  name: mcphub
+  name: vikunja
 spec:
-  name: MCPHub
+  name: Vikunja
   workload:
     namespace: apps
-    app: mcphub
+    app: vikunja
   homepage:
-    order: 20
-    group: AI & Data
-    icon: mdi-hubspot
-    description: MCP service registry
+    order: 25
+    group: Productivity
+    icon: vikunja.png
+    description: Tasks and personal planning
   web:
-    hostname: mcphub.reza.network
-    route: apps/mcphub/route.yaml
-    visibility: private
-    accessMiddleware: lan-vpn-only
+    hostname: tasks.reza.network
+    route: apps/vikunja/route.yaml
+    visibility: public
     dns:
       cloudflare: true
       splitHorizon: true
     auth:
       mode: oidc
       profile: authentik-oidc-v1
-      blueprintName: MCPHub OIDC
+      blueprintName: Vikunja OIDC
       application:
-        slug: mcphub
-        launchUrl: https://mcphub.reza.network/
+        slug: vikunja
+        launchUrl: https://tasks.reza.network/
       client:
         type: confidential
-        id: mcphub
+        id: vikunja
         grantTypes: [authorization_code, refresh_token]
         scopes: [openid, email, profile]
         redirectUris:
           - type: authorization
-            url: https://mcphub.reza.network/api/auth/better/oauth2/callback/oidc
+            url: https://tasks.reza.network/auth/openid/authentik
         secret:
-          manifest: apps/mcphub/secrets.sops.yaml
+          manifest: apps/vikunja/secrets.sops.yaml
           key: oidc-client-secret
   placement:
     mode: floating
   data:
     class: longhorn
     protection: longhorn-b2
-    manifests: [apps/mcphub/pvc.yaml]
+    manifests: [apps/vikunja/pvc.yaml]
   observability:
     mode: kubernetes

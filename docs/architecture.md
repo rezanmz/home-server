@@ -71,40 +71,44 @@ pod logs, or application APIs and cannot change cluster state.
 
 Open WebUI is the personal AI entry point at `chat.reza.network`. Authentik
 provides its native OIDC login; there is no local password login or public
-signup. Tika, SearXNG, and GPT Researcher are cluster-only supporting services
-with no external routes. SearXNG supplies ordinary native web search. The
-separate GPT Researcher adapter is called only by the private `Deep Research`
-profile through an authenticated OpenAPI connection and can run only one
-bounded job at a time. It uses SearXNG for discovery and public HTTPS for
-source retrieval and OpenRouter, while NetworkPolicy blocks all private and
-reserved destination ranges.
+signup. Tika and SearXNG are cluster-only supporting services with no external
+routes. SearXNG supplies ordinary native web search. MCPHub is the single MCP
+registry and execution boundary for Open WebUI; its browser UI is LAN/VPN-only
+and uses native Authentik OIDC.
 
-Open WebUI's ordinary provider choice stays editable at runtime because the
-model market changes quickly. Git owns stable policy—profile behavior, tool
-boundaries, search, retrieval, research roles, and cost controls—while the
-administrator owns each managed profile's current base model. The full live
-provider catalog remains visible to the administrator; only the four managed
-profiles are pinned. The startup reconciler represents provider models as
-private administrator-owned catalog overrides, rather than enabling Open
-WebUI's broad administrator access-control bypass. Ownership checks therefore
-remain active for other users' notes, files, knowledge, prompts, tools, and
-workspace content. A weekly read-only `Model Steward` automation recommends
-changes but cannot apply them. GPT Researcher's internal role mapping remains
-Git-reviewed because it is a separate service. Its weekly workflow validates
-the current mappings against the public OpenRouter catalog, while a manual
-dispatch validates proposed IDs and opens a PR after the full cluster check.
-It never changes embeddings or selects, benchmarks, merges, or deploys a model
-autonomously.
+The MCPHub runtime image adds pinned, reviewed packages but no assistant
+settings. Deep research uses the official `assafelovic/gptr-mcp` server and the
+upstream GPT Researcher library. Obsidian access uses the MCP reference
+filesystem server, with the vault mounted read-only except for writable Inbox
+and Daily submounts. Vikunja uses a focused published MCP package with
+destructive operations disabled by default. Open WebUI reaches MCPHub only;
+MCPHub starts each package as a local stdio child. Research models, search
+limits, API keys, remote MCP registrations, enabled tools, and group membership
+are stored in MCPHub's backed-up PostgreSQL database and can be changed in its
+UI without a cluster rollout.
 
-Open WebUI retrieval uses Gemini Embedding 2 through the existing OpenRouter
-connection. A rollout init container backs up the previous Chroma index,
-rebuilds persisted files and knowledge through the application's own API, and
-rebuilds per-user memory from the authoritative SQLite rows with the same
-embedding helper. Independent completion markers and backups let a memory-only
-repair roll back without undoing an already verified file migration. Validation
-covers vector dimensions, model metadata, memory IDs, documents, metadata, and
-collection ownership. The local copies are rollback aids on the same Longhorn
-volume, not a separate backup.
+Open WebUI's provider selection, prompts, profiles, tool attachments, memory,
+retrieval, and embedding choices are likewise application-owned state. The full
+provider catalog remains visible. Companion, Rigorous, Deep Research, and Model
+Steward are ordinary editable application records, not Git-enforced profiles.
+There is deliberately no startup reconciler and no repository workflow that
+rewrites the current research model. A model recommendation has no effect until
+the administrator changes the corresponding Open WebUI or MCPHub setting.
+
+Vikunja is the task system at `tasks.reza.network`, with native Authentik OIDC
+and a Longhorn volume covered by the normal B2 backup policy. Google Gmail and
+Calendar use Google's remote MCP services when authorized: Gmail is limited to
+read-only access, while Calendar may create or update events. Those OAuth grants
+belong to MCPHub application state. The repository deploys the durable
+infrastructure and package runtime, but never stores Vikunja API tokens, Google
+refresh tokens, MCP groups, or enabled-tool selections.
+
+Open WebUI retrieval currently uses Gemini Embedding 2 through OpenRouter. Its
+persisted files, knowledge, memories, and vector index were migrated and
+verified once. Future model changes and re-index operations are initiated from
+the application rather than replayed by a rollout init container. The Open
+WebUI Longhorn volume is the authoritative application state and is included in
+the normal off-cluster backup policy.
 
 wg-easy masquerades client traffic before it leaves its pod, so Traefik and the
 application access proxies see the Pi node's fixed pod CIDR (`10.42.1.0/24`)
