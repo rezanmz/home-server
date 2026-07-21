@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-agent
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: hermes-agent
+    app.kubernetes.io/component: application
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hermes-agent
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hermes-agent
+        app.kubernetes.io/component: application
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 10000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: hermes-agent
+          # Official release v2026.7.20 (Hermes Agent v0.19.0), pinned to
+          # upstream revision 3ef6bbd201263d354fd83ec55b3c306ded2eb72a.
+          image: docker.io/nousresearch/hermes-agent:v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+          imagePullPolicy: IfNotPresent
+          args: [gateway, run]
+          env:
+            - {name: TZ, value: America/Toronto}
+            - {name: HERMES_DASHBOARD, value: "1"}
+            - {name: HERMES_DASHBOARD_HOST, value: 0.0.0.0}
+            - {name: HERMES_DASHBOARD_PORT, value: "9119"}
+            - {name: HERMES_DASHBOARD_PUBLIC_URL, value: "https://hermes.reza.network"}
+            - name: HERMES_DASHBOARD_OIDC_ISSUER
+              value: https://auth.reza.network/application/o/hermes-agent/
+            - {name: HERMES_DASHBOARD_OIDC_CLIENT_ID, value: hermes-dashboard}
+            - {name: HERMES_DASHBOARD_OIDC_SCOPES, value: "openid profile email"}
+            # The OpenAI-compatible API is not needed for the companion and
+            # must not create a second remotely callable agent surface.
+            - {name: API_SERVER_ENABLED, value: "false"}
+          ports:
+            - name: dashboard
+              containerPort: 9119
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 3Gi
+          startupProbe:
+            tcpSocket:
+              port: dashboard
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - /command/s6-svstat -u /run/service/gateway-default >/dev/null && curl -fsS http://127.0.0.1:9119/login >/dev/null
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /command/s6-svstat
+                - -u
+                - /run/service/gateway-default
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            # The official s6 image requires a root PID 1 to initialize its
+            # supervision tree and repair /opt/data ownership. Every Hermes
+            # service is then launched as the image's uid 10000 user.
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
+          volumeMounts:
+            - {name: data, mountPath: /opt/data}
+            # s6 creates its runtime supervision tree below /run and requires
+            # executable files there. This mount must not be marked noexec.
+            - {name: run, mountPath: /run}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hermes-agent-data
+        - name: run
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi

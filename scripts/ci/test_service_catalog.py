@@ -36,7 +36,7 @@ class ServiceCatalogTests(unittest.TestCase):
     def test_catalog_is_decentralized_and_versioned(self) -> None:
         self.assertFalse((REPO_ROOT / "catalog" / "services.yaml").exists())
         entries = service_catalog.services(self.catalog)
-        self.assertEqual(len(entries), 33)
+        self.assertEqual(len(entries), 34)
         sources = [entry["_source"] for entry in entries]
         self.assertEqual(len(sources), len(set(sources)))
         self.assertTrue(all(source.endswith(".catalog.yaml") for source in sources))
@@ -77,6 +77,7 @@ class ServiceCatalogTests(unittest.TestCase):
                 "audiobookshelf.yaml",
                 "grafana.yaml",
                 "headlamp.yaml",
+                "hermes-agent.yaml",
                 "homepage.yaml",
                 "mcphub.yaml",
                 "open-webui.yaml",
@@ -154,7 +155,7 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["AI & Data"],
-            ["Open WebUI", "MCPHub", "Argilla"],
+            ["Open WebUI", "MCPHub", "Argilla", "Hermes Agent"],
         )
         self.assertEqual(groups["Productivity"], ["Vikunja"])
         self.assertEqual(

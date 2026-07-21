@@ -107,6 +107,12 @@
         description: Dataset curation and annotation
         namespace: apps
         app: argilla
+    - Hermes Agent:
+        icon: mdi-robot-happy-outline
+        href: https://hermes.reza.network/
+        description: Proactive personal companion
+        namespace: apps
+        app: hermes-agent
 - Operations:
     - Grafana:
         icon: grafana.png

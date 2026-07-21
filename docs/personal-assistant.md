@@ -1,11 +1,13 @@
 # Personal assistant integrations
 
-MCPHub is the control plane for personal tools. Open WebUI has one connection
-to MCPHub; MCPHub launches local servers, connects to remote servers, limits
-which tools are exposed, and records activity.
+MCPHub is the control plane for personal tools. Open WebUI and Hermes Agent each
+have one least-privilege connection to MCPHub; MCPHub launches local servers,
+connects to remote servers, limits which tools are exposed, and records
+activity.
 
 ```text
-Open WebUI -> MCPHub
+Open WebUI ------> MCPHub
+Hermes Agent ----> MCPHub
                 |-- official GPT Researcher MCP -> SearXNG + model provider
                 |-- Vikunja MCP -> self-hosted Vikunja
                 |-- reference filesystem MCP -> Syncthing Obsidian vault
@@ -17,6 +19,48 @@ Open WebUI -> MCPHub
 Server definitions, credentials, OAuth sessions, groups, and tool filters live
 in MCPHub's PostgreSQL database. They are changed in MCPHub and protected by
 the normal Longhorn and B2 backups. They are not reconciled from Git.
+
+## Hermes Agent
+
+Hermes is the always-on companion and automation runtime. Open WebUI remains
+the place for deliberate interactive chats and experimentation; Hermes owns
+messaging sessions, persistent companion memory, scheduled jobs, and durable
+background work. The proactive mechanism is Hermes cron plus its durable
+Kanban dispatcher, not an unbounded magic heartbeat. A bounded recurring
+"pulse" may inspect changes and decide whether to stay silent, but it must have
+an explicit schedule, tool budget, quiet hours, and mutation limits.
+
+The dashboard is public at `hermes.reza.network` only behind Hermes' native
+Authentik OIDC/PKCE gate. The OpenAI-compatible API server is disabled. The
+container receives no Kubernetes service-account token, Docker socket, host
+filesystem mount, or route to private address space. Upstream requires root PID
+1 for its s6 bootstrap; the supervised agent and dashboard processes run as uid
+10000, the root filesystem is read-only, and only the capabilities required for
+ownership repair and privilege drop remain.
+
+All mutable Hermes state lives on `apps/hermes-agent-data` under `/opt/data` and
+is protected by Longhorn's nightly B2 backup. Configure models, provider keys,
+Telegram, allowlisted user IDs, `SOUL.md`, memory, skills, MCP connections,
+toolsets, schedules, and pulse behavior in Hermes. Do not put them in this
+repository. In particular, do not put a person's name in the companion prompt
+or `SOUL.md` unless they explicitly ask for it.
+
+Hermes connects only to a dedicated MCPHub group and bearer key. Start from the
+same safe capabilities as **Assistant actions**: Gmail read-only, Actual
+read-only, Calendar read/create/update, Vikunja read/create/update/complete,
+and Obsidian reads plus writes limited by the mounted Inbox/Daily boundary.
+Vikunja task deletion may remain available because it was explicitly requested,
+but Hermes must ask for confirmation immediately before destructive use.
+Calendar deletion and unrelated filesystem mutation remain absent. GPT
+Researcher is for explicit research requests, not routine pulse jobs.
+
+Before enabling a messaging channel, use `hermes tools` to replace that
+platform's broad defaults with the smallest required set. Keep terminal,
+code-execution, browser, Kubernetes, Docker, host filesystem, outbound
+messaging-to-third-parties, and Home Assistant mutation disabled initially.
+Enable `tool_loop_guardrails.hard_stop_enabled`, cap repeated failures and
+no-progress calls, and verify unknown Telegram users are rejected. Use a
+separate Telegram bot from infrastructure alerts.
 
 ## Current packages
 
@@ -31,10 +75,11 @@ the Syncthing vault read-only, with writable over-mounts for `Inbox` and
 a broader filesystem tool. In the MCPHub group used by chat, keep destructive
 filesystem tools disabled unless a specific workflow needs them.
 
-Vikunja uses the published `@eargollo/vikunja-mcp` package. Read and additive
-operations are available by default. Its optional write tier and delete tier
-remain off until deliberately enabled. The Vikunja API token should be scoped
-to the areas the assistant actually uses.
+Vikunja uses the published `@eargollo/vikunja-mcp` package. Read, additive,
+update, completion, and task-deletion operations are available in action-capable
+groups. Deletion was explicitly requested but still requires immediate user
+confirmation before use. The Vikunja API token should be scoped to the areas
+the assistant actually uses.
 
 Gmail uses the published `@klodr/gmail-mcp` package with only the
 `gmail.readonly` OAuth scope. The package filters its advertised tools from the
@@ -101,7 +146,9 @@ Use separate MCPHub groups for different risk levels:
   vault reads, Actual Budget reads, and web research.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, and note creation in Inbox or Daily.
-- Destructive task, calendar, and filesystem tools stay out of both groups.
+- Calendar deletion and destructive filesystem tools stay out of both groups.
+  Vikunja task deletion is the single reviewed exception in action-capable
+  groups and requires explicit confirmation immediately before the call.
 
 Open WebUI should use the smallest group that fits a profile. A rigorous
 fact-checking profile does not need mutation tools. A companion profile can use

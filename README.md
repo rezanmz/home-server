@@ -55,7 +55,7 @@ Beelink control plane and the Pi NFS server are known single points of failure.
 | Add, modify, roll back, or retire an application | [Service lifecycle manual](docs/service-operations.md) |
 | Understand placement, add/remove a node, or move a workload | [Cluster and node operations manual](docs/cluster-operations.md) |
 | Use or modify Open WebUI profiles, models, research, retrieval, or memory | [Open WebUI operating model](docs/open-webui.md) |
-| Operate Vikunja, personal Gmail/Calendar, Obsidian, and research MCP tools | [Personal assistant integrations](docs/personal-assistant.md) |
+| Operate Hermes, Vikunja, personal Gmail/Calendar, Obsidian, and research MCP tools | [Personal assistant integrations](docs/personal-assistant.md) |
 | Diagnose an outage, reconcile Flux, or restore data | [Incident runbook](docs/runbook.md) |
 
 The node operations manual also records current live deviations that still need
@@ -67,7 +67,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Area | Workloads | Entry points |
 | --- | --- | --- |
 | Identity and home | Authentik, Homepage, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
-| Personal apps | Actual Budget, Vikunja, MCPHub, Open WebUI with Tika, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
+| Personal apps | Actual Budget, Vikunja, MCPHub, Hermes Agent, Open WebUI with Tika, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `hermes.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Jellyseerr | `jellyfin.reza.network`, `jellyseerr.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network` |
@@ -90,11 +90,13 @@ embedded proxy outpost, and uses read-only Kubernetes and Metrics API access to
 show workload health and resource use. It has no permission to read Secrets,
 logs, or application data and cannot mutate cluster resources.
 
-AnythingLLM and the Gemini Telegram bot are intentionally excluded from the
-cluster. Open WebUI remains the supported local LLM interface. Its profiles,
-model approval cycle, GPT Researcher integration, retrieval model, and
-personal-memory boundaries are documented in the
-[Open WebUI operating model](docs/open-webui.md).
+AnythingLLM and the former Gemini Telegram bot are intentionally excluded from
+the cluster. Open WebUI remains the interactive LLM workbench; Hermes Agent is
+the separate always-on companion runtime. Open WebUI's profiles, model approval
+cycle, GPT Researcher integration, retrieval model, and personal-memory
+boundaries are documented in the [Open WebUI operating model](docs/open-webui.md).
+Hermes and the shared personal-tool boundary are documented in the
+[personal assistant integrations](docs/personal-assistant.md).
 
 ## GitOps workflow
 
