@@ -18,5 +18,4 @@ resources:
   - deployments.yaml
   - services.yaml
   - networkpolicy.yaml
-  - monitoring.yaml
   - route.yaml

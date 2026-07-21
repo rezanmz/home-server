@@ -11,6 +11,7 @@ resources:
   - backup-dashboard.yaml
   - media-storage-dashboard.yaml
   - ai-services-dashboard.yaml
+  - ai-services-monitoring.yaml
   - media-storage-exporter.yaml
   - backup-health-rules.yaml
   - rbac.yaml

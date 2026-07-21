@@ -1,10 +1,58 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: searxng-provider
-  namespace: apps
+  name: gpt-researcher
+  namespace: monitoring
   labels: {release: observability}
 spec:
+  namespaceSelector:
+    matchNames: [apps]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gpt-researcher
+      app.kubernetes.io/component: application
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gpt-researcher
+  namespace: monitoring
+  labels: {release: observability}
+spec:
+  groups:
+    - name: home-server.gpt-researcher
+      rules:
+        - alert: GPTResearcherUnavailable
+          expr: absent(up{namespace="apps",service="gpt-researcher"}) or max(up{namespace="apps",service="gpt-researcher"}) == 0
+          for: 5m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: GPT Researcher is unavailable
+            description: Open WebUI deep-research requests cannot reach the internal research service.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#gpt-researcher
+        - alert: GPTResearcherRepeatedFailures
+          expr: increase(gpt_researcher_failure_total[1h]) >= 3
+          for: 5m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: GPT Researcher is repeatedly failing
+            description: At least three explicit deep-research requests failed or timed out during the last hour.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#gpt-researcher
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: searxng-provider
+  namespace: monitoring
+  labels: {release: observability}
+spec:
+  namespaceSelector:
+    matchNames: [apps]
   selector:
     matchLabels:
       app.kubernetes.io/name: open-webui
@@ -19,7 +67,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: searxng-provider
-  namespace: apps
+  namespace: monitoring
   labels: {release: observability}
 spec:
   groups:
