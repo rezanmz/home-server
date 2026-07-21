@@ -10,12 +10,21 @@ ARG FILESYSTEM_MCP_VERSION=2026.7.10
 ARG VIKUNJA_MCP_VERSION=1.2.0
 ARG GMAIL_MCP_VERSION=1.3.1
 ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
+ARG ACTUAL_MCP_REVISION=24925803dff2dfb697cb6e53c06662ee66c94f01
+ARG ACTUAL_API_VERSION=26.7.0
+ARG ACTUAL_MCP_HONO_VERSION=4.12.31
+ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
+ARG ACTUAL_MCP_QS_VERSION=6.15.3
+ARG ACTUAL_MCP_BRACE_EXPANSION_VERSION=2.1.2
+ARG ACTUAL_MCP_UA_PARSER_VERSION=2.0.10
+ARG ACTUAL_MCP_ADM_ZIP_VERSION=0.6.0
+ARG ACTUAL_MCP_BETTER_SQLITE_VERSION=12.11.1
 
 LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
-      org.opencontainers.image.description="MCPHub plus pinned GPT Researcher, filesystem, Vikunja, Gmail, and Google Calendar MCP packages" \
+      org.opencontainers.image.description="MCPHub plus pinned GPT Researcher, filesystem, Vikunja, Gmail, Google Calendar, and Actual Budget MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT" \
-      org.opencontainers.image.version="1.0.24-gptr-mcp-assistant1" \
+      org.opencontainers.image.version="1.0.24-gptr-mcp-actual" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -24,7 +33,12 @@ USER 0:0
 # official OCI image. Install the official assafelovic/gptr-mcp source into a
 # private virtual environment so MCPHub can launch it as a stdio child process.
 # The Node packages are the reference MCP filesystem server and reviewed,
-# published integrations for Vikunja, read-only Gmail, and Google Calendar.
+# published integrations for Vikunja, read-only Gmail, Google Calendar, and
+# Actual Budget. Actual MCP is installed from a reviewed upstream revision and
+# its lockfile because its official Actual API dependency includes a native
+# SQLite module; building it here supplies the correct binary for each target
+# platform. Exact dependency overrides align the API with the deployed Actual
+# version and replace the runtime packages covered by current advisories.
 # Runtime paths, OAuth material, permissions, models, retrievers, API keys, and
 # research parameters are deliberately absent here; MCPHub owns those values
 # in its backed-up application state. GPT Researcher 0.16.0 imports three typing
@@ -42,6 +56,26 @@ RUN apt-get update \
     && git -C /opt/gptr-mcp checkout --detach "${GPTR_MCP_REVISION}" \
     && test "$(git -C /opt/gptr-mcp rev-parse HEAD)" = "${GPTR_MCP_REVISION}" \
     && rm -rf /opt/gptr-mcp/.git \
+    && git clone --filter=blob:none https://github.com/s-stefanov/actual-mcp.git /opt/actual-mcp \
+    && git -C /opt/actual-mcp checkout --detach "${ACTUAL_MCP_REVISION}" \
+    && test "$(git -C /opt/actual-mcp rev-parse HEAD)" = "${ACTUAL_MCP_REVISION}" \
+    && npm --prefix /opt/actual-mcp ci \
+    && npm --prefix /opt/actual-mcp pkg set \
+         "dependencies.@actual-app/api=${ACTUAL_API_VERSION}" \
+         "dependencies.@actual-app/core=${ACTUAL_API_VERSION}" \
+         "overrides.hono=${ACTUAL_MCP_HONO_VERSION}" \
+         "overrides.body-parser=${ACTUAL_MCP_BODY_PARSER_VERSION}" \
+         "overrides.qs=${ACTUAL_MCP_QS_VERSION}" \
+         "overrides.brace-expansion=${ACTUAL_MCP_BRACE_EXPANSION_VERSION}" \
+         "overrides.ua-parser-js=${ACTUAL_MCP_UA_PARSER_VERSION}" \
+         "overrides.adm-zip=${ACTUAL_MCP_ADM_ZIP_VERSION}" \
+         "overrides.better-sqlite3=${ACTUAL_MCP_BETTER_SQLITE_VERSION}" \
+    && npm --prefix /opt/actual-mcp install --no-fund \
+    && npm --prefix /opt/actual-mcp run build \
+    && npm --prefix /opt/actual-mcp run test:unit \
+    && npm --prefix /opt/actual-mcp prune --omit=dev \
+    && npm --prefix /opt/actual-mcp audit --omit=dev --audit-level=low \
+    && rm -rf /opt/actual-mcp/.git \
     && uv venv --python /usr/local/bin/python3 /opt/gptr-mcp/.venv \
     && uv pip install \
          --python /opt/gptr-mcp/.venv/bin/python \
@@ -57,6 +91,7 @@ RUN apt-get update \
     && command -v vikunja-mcp \
     && command -v gmail-mcp \
     && command -v google-calendar-mcp \
-    && chown -R 1000:1000 /opt/gptr-mcp
+    && test -x /opt/actual-mcp/build/index.js \
+    && chown -R 1000:1000 /opt/gptr-mcp /opt/actual-mcp
 
 USER 1000:1000

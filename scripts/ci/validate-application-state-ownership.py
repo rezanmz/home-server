@@ -82,6 +82,7 @@ def main() -> int:
         "@eargollo/vikunja-mcp@",
         "@klodr/gmail-mcp@",
         "@cocal/google-calendar-mcp@",
+        "https://github.com/s-stefanov/actual-mcp.git",
     )
     for required in required_package_evidence:
         if required not in package_image:

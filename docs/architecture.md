@@ -81,7 +81,9 @@ settings. Deep research uses the official `assafelovic/gptr-mcp` server and the
 upstream GPT Researcher library. Obsidian access uses the MCP reference
 filesystem server, with the vault mounted read-only except for writable Inbox
 and Daily submounts. Vikunja uses a focused published MCP package with
-destructive operations disabled by default. Open WebUI reaches MCPHub only;
+destructive operations disabled by default. Actual Budget uses a maintained
+community MCP package in executable-level read-only mode, backed by Actual's
+official API. Open WebUI reaches MCPHub only;
 MCPHub starts each package as a local stdio child. Research models, search
 limits, API keys, remote MCP registrations, enabled tools, and group membership
 are stored in MCPHub's backed-up PostgreSQL database and can be changed in its

@@ -102,7 +102,7 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|lan-vpn-only
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|syncthing-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|wg-easy-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 mutable-git-ref|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec.ref/branch=main/url/https://github.com/rezanmz/home-server.git
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/c988b0d1b18e7d9bc3160ea24475a049db4e770eb3fd10d16d53daa765b7558f
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/d09d7d5931c2d3e7b3cfdb802996f04f93af6c9571dd92a4e750247fb4456a2c
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|argilla-datastores|spec/sha256/09dbe85fcd8006733310829a710029b2aa64ef332b2d2ef41a8f1b60b5d24941
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|spec/sha256/ba7d8303e306f01b3847f93fcfc8831d039f24f4ca848c49e36146bbd69be0c7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|spec/sha256/68e4643c3e7da8deded68ecaa30f6ad5ed0587c4f82f5d6f6e97ea12d59d6221
