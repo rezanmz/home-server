@@ -6,7 +6,7 @@ readonly GPTR_MCP_REVISION="63884773685b1f12c7f0d9e283b3d71a5b9b5fda"
 readonly GPTR_MCP_SHORT_REVISION="${GPTR_MCP_REVISION:0:12}"
 readonly IMAGE_NAMESPACE="${MCPHUB_IMAGE_NAMESPACE:-rezanmz}"
 readonly IMAGE_NAME="mcphub-gptr"
-readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}"
+readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}-assistant1"
 readonly BUILDER="${MCPHUB_BUILDX_BUILDER:-mcphub-gptr-builder}"
 readonly PLATFORMS="${MCPHUB_PLATFORMS:-linux/amd64,linux/arm64}"
 

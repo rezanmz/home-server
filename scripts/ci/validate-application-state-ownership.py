@@ -80,6 +80,8 @@ def main() -> int:
         "https://github.com/assafelovic/gptr-mcp.git",
         "@modelcontextprotocol/server-filesystem@",
         "@eargollo/vikunja-mcp@",
+        "@klodr/gmail-mcp@",
+        "@cocal/google-calendar-mcp@",
     )
     for required in required_package_evidence:
         if required not in package_image:
