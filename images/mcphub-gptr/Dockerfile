@@ -110,6 +110,7 @@ RUN apt-get update \
     && command -v gmail-mcp \
     && command -v google-calendar-mcp \
     && command -v gcloud-mcp \
+    && test -x /usr/bin/gcloud-mcp \
     && /opt/google-cloud-sdk/bin/gcloud --version \
     && chmod 0755 /opt/vision-guard/bin/gcloud /usr/local/bin/start-gcloud-mcp \
     && test -x /opt/actual-mcp/build/index.js \
