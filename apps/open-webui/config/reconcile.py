@@ -1067,6 +1067,14 @@ modalities, tool-calling support, release status, and current input/output
 pricing. Treat rankings and benchmark summaries as weak evidence unless their
 method and date are clear.
 
+Use only agentic `search_web` and `fetch_url`; never request or duplicate a
+traditional pre-search. One run may make at most six distinct `search_web`
+calls and at most eight `fetch_url` calls. Never repeat an equivalent query,
+and prefer fetching a primary source already found over issuing another broad
+search. If two consecutive searches return no usable results or an error,
+stop searching, explain the evidence gap, and finish with what was verified.
+These are hard ceilings, not targets; use fewer calls whenever possible.
+
 Evaluate candidates separately for: a natural conversational companion,
 evidence-heavy rigorous answers, and GPT Researcher's fast, smart, strategic,
 and embedding roles. Prefer stable models for unattended use. A preview model
@@ -1258,7 +1266,9 @@ DESIRED_CONFIG: dict[str, Any] = {
     ),
     "web.search.searxng_language": "all",
     "web.search.result_count": 8,
-    "web.search.concurrent_requests": 3,
+    # Traditional pre-search remains available to ordinary legacy models, but
+    # serialize its generated queries so it cannot burst the paid adapter.
+    "web.search.concurrent_requests": 1,
     "web.loader.concurrent_requests": 3,
     "web.loader.timeout": "20",
     "web.loader.ssl_verification": True,
@@ -1759,6 +1769,9 @@ def _reconcile_models(conn: sqlite3.Connection, now: int) -> int:
     companion_params = {
         "system": PERSONAL_COMPANION_PROMPT,
         "temperature": 0.7,
+        # Curated profiles use agentic search_web/fetch_url. Explicit native
+        # function calling prevents Open WebUI's legacy pre-search path.
+        "function_calling": "native",
     }
     companion = conn.execute(
         "SELECT user_id, base_model_id, name, params, meta, is_active "
@@ -1813,7 +1826,11 @@ def _reconcile_models(conn: sqlite3.Connection, now: int) -> int:
             ("companion",),
         )
 
-    params = {"system": RIGOROUS_PROMPT, "temperature": 0.2}
+    params = {
+        "system": RIGOROUS_PROMPT,
+        "temperature": 0.2,
+        "function_calling": "native",
+    }
     current = conn.execute(
         "SELECT user_id, base_model_id, name, params, meta, is_active FROM model WHERE id = ?",
         ("rigorous",),
@@ -1866,6 +1883,8 @@ def _reconcile_models(conn: sqlite3.Connection, now: int) -> int:
     deep_params = {
         "system": DEEP_RESEARCH_PROFILE_PROMPT,
         "temperature": 0.2,
+        # This profile uses only the purpose-built GPT Researcher tool.
+        "function_calling": "native",
     }
     deep = conn.execute(
         "SELECT user_id, base_model_id, name, params, meta, is_active "
@@ -1923,6 +1942,7 @@ def _reconcile_models(conn: sqlite3.Connection, now: int) -> int:
     steward_params = {
         "system": MODEL_STEWARD_PROMPT,
         "temperature": 0.1,
+        "function_calling": "native",
     }
     steward = conn.execute(
         "SELECT user_id, base_model_id, name, params, meta, is_active "

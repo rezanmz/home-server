@@ -184,6 +184,10 @@ spec:
               value: "True"
             - name: THREAD_POOL_SIZE
               value: "8"
+            # Bound agentic tool loops. The upstream default of 256 can turn a
+            # bad search result into a large burst of provider requests.
+            - name: CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS
+              value: "12"
             # v0.10.2 treats unset aiohttp pool values and the total timeout as
             # unlimited despite documenting bounded defaults.
             - name: AIOHTTP_POOL_CONNECTIONS
@@ -487,7 +491,62 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: searxng
+        - name: search-provider-proxy
+          image: ghcr.io/searxng/searxng:2026.7.19-6da6eee26@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
+          imagePullPolicy: IfNotPresent
+          command: [python, /provider/search-provider-proxy.py]
+          env:
+            - name: SEARXNG_INTERNAL_SEARCH_URL
+              value: http://127.0.0.1:8082/search
+            - name: BRAVE_SEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: searxng-provider-secrets
+                  key: brave-api-key
+            - name: SERPAPI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: searxng-provider-secrets
+                  key: serpapi-api-key
+          ports:
+            - name: search
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 8081
+              protocol: TCP
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 150m, memory: 128Mi}
+          startupProbe:
+            httpGet: {path: /healthz, port: search}
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 20
+          readinessProbe:
+            httpGet: {path: /healthz, port: search}
+            periodSeconds: 15
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: search}
+            periodSeconds: 30
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 977
+            runAsGroup: 977
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - name: config
+              mountPath: /provider
+              readOnly: true
+            - name: provider-tmp
+              mountPath: /tmp
+        - name: searxng-free-engines
           image: ghcr.io/searxng/searxng:2026.7.19-6da6eee26@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
           imagePullPolicy: IfNotPresent
           env:
@@ -502,45 +561,37 @@ spec:
             - name: GRANIAN_WORKERS
               value: "1"
             - name: GRANIAN_BLOCKING_THREADS
-              value: "4"
+              value: "3"
+            - name: SEARXNG_PORT
+              value: "8082"
             - name: SEARXNG_BASE_URL
-              value: http://searxng.apps.svc.cluster.local:8080/
+              value: http://127.0.0.1:8082/
             - name: SEARXNG_SECRET
               valueFrom:
                 secretKeyRef:
                   name: open-webui-searxng-secrets
                   key: searxng-secret-key
           ports:
-            - name: http
-              containerPort: 8080
+            - name: free-search
+              containerPort: 8082
               protocol: TCP
           resources:
-            requests:
-              cpu: 50m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 768Mi
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 256Mi}
           startupProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 24
+            httpGet: {path: /healthz, port: free-search}
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 20
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            httpGet: {path: /healthz, port: free-search}
             periodSeconds: 15
-            timeoutSeconds: 3
+            timeoutSeconds: 2
             failureThreshold: 3
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            httpGet: {path: /healthz, port: free-search}
             periodSeconds: 30
-            timeoutSeconds: 3
+            timeoutSeconds: 2
             failureThreshold: 3
           securityContext:
             runAsNonRoot: true
@@ -548,25 +599,33 @@ spec:
             runAsGroup: 977
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
+            capabilities: {drop: [ALL]}
           volumeMounts:
-            - name: config
+            - name: fallback-config
               mountPath: /etc/searxng
               readOnly: true
-            - name: cache
+            - name: fallback-cache
               mountPath: /var/cache/searxng
-            - name: tmp
+            - name: fallback-tmp
               mountPath: /tmp
       volumes:
         - name: config
           configMap:
             name: open-webui-searxng-config
             defaultMode: 0444
-        - name: cache
+        - name: provider-tmp
           emptyDir:
-            sizeLimit: 256Mi
-        - name: tmp
+            sizeLimit: 16Mi
+        - name: fallback-config
+          configMap:
+            name: open-webui-searxng-config
+            defaultMode: 0444
+            items:
+              - key: fallback-settings.yml
+                path: settings.yml
+        - name: fallback-cache
           emptyDir:
-            sizeLimit: 64Mi
+            sizeLimit: 128Mi
+        - name: fallback-tmp
+          emptyDir:
+            sizeLimit: 32Mi

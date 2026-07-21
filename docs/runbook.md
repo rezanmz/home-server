@@ -1182,15 +1182,27 @@ access grants.
 SearXNG is a stateless component of Open WebUI, not a separately exposed
 homelab application. It has no HTTPRoute, public or split-horizon DNS name,
 Homepage card, or Authentik application. NetworkPolicy permits only the Open
-WebUI application pod to reach its ClusterIP service on port 8080. SearXNG may
-resolve cluster DNS and contact globally routed HTTPS search providers; it
-cannot reach Kubernetes, LAN, loopback, link-local, or reserved networks.
+WebUI and GPT Researcher application pods to reach its ClusterIP service on
+port 8080. Prometheus can reach only the provider adapter's metrics port.
+SearXNG may resolve cluster DNS and its pod may contact globally routed HTTPS
+search providers; it cannot reach Kubernetes, LAN, link-local, or reserved
+networks.
 
-The reviewed SearXNG configuration is
-`apps/open-webui/config/searxng-settings.yml`. It enables only the JSON search
-format required by Open WebUI, disables public-instance mode, the image proxy,
+The reviewed search gateway is
+`apps/open-webui/config/search_provider_proxy.py`; the loopback SearXNG worker
+configuration is `apps/open-webui/config/searxng-fallback-settings.yml`. The
+worker enables only JSON output, disables public-instance mode, the image proxy,
 and the Valkey-backed public limiter, and uses a SOPS-managed cryptographic
-secret. No API-backed search engine or search-provider credential is required.
+secret. The gateway tries DuckDuckGo, Mojeek, Startpage, Brave API, and SerpAPI
+sequentially and stops when one returns usable results. Failed public engines
+are skipped for 15 minutes. A query never fans out across providers, and paid
+allowances are used only when earlier providers fail or return nothing. The API
+keys are isolated in `searxng-provider-secrets.sops.yaml`; SerpAPI's
+query-parameter credential never enters SearXNG, an exception, or a log line.
+The public engines run on pod-loopback port 8082, which is absent from the
+Service. The gateway itself serves the SearXNG-compatible JSON API on port 8080
+and strips bang control prefixes from forwarded query tokens, so a caller
+cannot override the sequential provider choice.
 The cache is ephemeral and has no backup requirement.
 
 Open WebUI's database-backed ConfigVars take precedence over environment
@@ -1210,12 +1222,29 @@ Exercise the internal backend from the Open WebUI pod:
 
 ```bash
 sudo k3s kubectl -n apps exec deploy/open-webui -- python -c \
-  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG Open WebUI"); u=f"http://searxng:8080/search?q={q}&format=json"; d=json.load(urllib.request.urlopen(u,timeout=20)); print("results:",len(d.get("results",[])),"engines:",sorted({e for r in d.get("results",[]) for e in r.get("engines",[])}))'
+  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG Open WebUI"); u=f"http://searxng:8080/search?q={q}&format=json"; d=json.load(urllib.request.urlopen(u,timeout=35)); print("results:",len(d.get("results",[])),"engines:",sorted({e for r in d.get("results",[]) for e in r.get("engines",[])}))'
 ```
 
-The configured engine set is intentionally limited to Brave, DuckDuckGo,
-Google CSE, and Startpage. Add an engine only after checking result quality,
-duplicate rate, terms, and whether it requires a secret.
+Repeat the request from GPT Researcher, then inspect provider outcomes without
+printing search queries or credentials:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/gpt-researcher -- python -c \
+  'import json,urllib.parse,urllib.request; q=urllib.parse.quote("SearXNG GPT Researcher"); d=json.load(urllib.request.urlopen(f"http://searxng.apps.svc.cluster.local:8080/search?q={q}&format=json",timeout=35)); print("results:",len(d.get("results",[])))'
+sudo k3s kubectl -n apps logs deploy/searxng -c search-provider-proxy --tail=100
+sudo k3s kubectl -n apps get --raw \
+  '/api/v1/namespaces/apps/services/http:searxng:provider-metrics/proxy/metrics'
+```
+
+The `AI Services` dashboard uses
+`searxng_provider_requests_total{provider,outcome}` and
+`searxng_search_requests_total{outcome}`. Provider outcomes include success,
+empty, error, and cooldown. Its 30-day paid-provider counters are a
+cluster-observed approximation, not the provider's billing calendar: verify
+the Brave and SerpAPI account dashboards before changing plans. Alerts fire at
+800 observed Brave attempts, 200 observed SerpAPI attempts, or two searches
+that exhaust every provider in an hour. Individual provider failures remain
+visible in Grafana without alerting when a later fallback succeeds.
 
 The old Perplexity key may remain in historical Longhorn backups even after it
 is erased from the live database. Revoke it in the Perplexity account after

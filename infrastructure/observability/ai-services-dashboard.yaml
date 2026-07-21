@@ -11,7 +11,7 @@ data:
   ai-services.json: |
     {
       "annotations": {"list": []},
-      "description": "Availability, use, failures, latency, and estimated OpenRouter cost for the cluster's internal AI services. GPT Researcher runs only when the Deep Research profile explicitly invokes it.",
+      "description": "Availability, use, failures, latency, paid-search usage, and estimated OpenRouter cost for the cluster's internal AI services. GPT Researcher runs only when the Deep Research profile explicitly invokes it.",
       "editable": false,
       "graphTooltip": 1,
       "links": [
@@ -150,6 +150,39 @@ data:
           "targets": [{"expr": "sum by (pod, container) (container_memory_working_set_bytes{namespace=\"apps\",pod=~\"(open-webui|searxng|tika|gpt-researcher)-.*\",container!=\"\",image!=\"\"})", "legendFormat": "{{pod}} / {{container}}", "refId": "A"}],
           "title": "AI service memory",
           "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Sequential provider decisions observed by this cluster over the last 30 days. Brave and SerpAPI are paid fallbacks; this rolling window may differ from their billing calendars.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 800}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 23},
+          "id": 11,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum by (provider) (increase(searxng_provider_requests_total[30d]))", "instant": true, "legendFormat": "{{provider}}", "refId": "A"}],
+          "title": "Search provider decisions (30d)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "SerpAPI is attempted only after the free engines and Brave return no usable result.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 200}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 23},
+          "id": 12,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(searxng_provider_requests_total{provider=\"serpapi\"}[30d])) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "SerpAPI fallbacks (30d)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Failed free or paid provider attempts over the last 24 hours. A later provider can still succeed.",
+          "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 3}]}, "unit": "short"}},
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 23},
+          "id": 13,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(searxng_provider_requests_total{outcome=\"error\"}[24h])) or vector(0)", "instant": true, "refId": "A"}],
+          "title": "Search provider errors (24h)",
+          "type": "stat"
         }
       ],
       "refresh": "30s",
@@ -161,5 +194,5 @@ data:
       "timezone": "browser",
       "title": "AI Services",
       "uid": "home-server-ai-services",
-      "version": 1
+      "version": 2
     }

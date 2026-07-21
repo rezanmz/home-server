@@ -1,0 +1,49 @@
+# Loopback-only SearXNG worker used by the sequential provider adapter. It is
+# deliberately absent from the Service, so Open WebUI and GPT Researcher can
+# reach only the front-door SearXNG process and cannot bypass provider ordering.
+use_default_settings:
+  engines:
+    keep_only:
+      - duckduckgo
+      - mojeek
+      - startpage
+
+engines:
+  - name: duckduckgo
+    disabled: true
+    timeout: 3.0
+
+  - name: mojeek
+    disabled: true
+    timeout: 3.0
+
+  - name: startpage
+    disabled: true
+    timeout: 3.0
+
+general:
+  debug: false
+  instance_name: Open WebUI Sequential Search Worker
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - json
+
+server:
+  secret_key: ultrasecretkey
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  method: GET
+
+outgoing:
+  request_timeout: 3.0
+  max_request_timeout: 4.0
+  pool_connections: 5
+  pool_maxsize: 3
+  enable_http2: true
