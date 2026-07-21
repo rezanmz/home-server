@@ -34,5 +34,34 @@ data:
           proxy_set_header Connection $connection_upgrade;
         }
       }
+      # Cluster-only canonical-host bridge for the read-only Grafana MCP
+      # client. NetworkPolicy restricts this listener to MCPHub.
+      server {
+        listen 16122;
+        client_max_body_size 10m;
+        location / {
+          proxy_pass http://127.0.0.1:3000;
+          proxy_http_version 1.1;
+          proxy_set_header Host grafana.reza.network;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_header X-Forwarded-Host grafana.reza.network;
+        }
+      }
     }
-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-mcp
+  namespace: monitoring
+spec:
+  selector:
+    app.kubernetes.io/instance: observability
+    app.kubernetes.io/name: grafana
+  ports:
+    - name: http-mcp
+      port: 16122
+      targetPort: 16122
+      protocol: TCP
