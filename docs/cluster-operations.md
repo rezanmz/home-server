@@ -158,7 +158,7 @@ allow it.
 | `apps` | Actual Budget, Homepage, Jellyseerr, Speedtest Tracker | Longhorn for stateful workloads; Homepage is stateless |
 | `apps` | Argilla server/worker, PostgreSQL, Elasticsearch, Redis | Separate Longhorn PVCs; application is multi-component, not transactionally backed up as one unit |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
-| `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent | Longhorn |
+| `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent; internal LlamaCloud MCP | Longhorn for state; LlamaCloud is stateless and reads the Syncthing vault over NFS |
 | `apps` | Open WebUI and Tika | Open WebUI uses Longhorn; Tika is stateless; Authentik OIDC dependency |
 | `apps` | Cloudflare DDNS | Stateless; Cloudflare API dependency |
 | `monitoring` | Headlamp | Stateless; Kubernetes API and Authentik dependencies |

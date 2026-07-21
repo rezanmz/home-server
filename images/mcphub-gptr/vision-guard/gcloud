@@ -1,0 +1,250 @@
+#!/opt/vision-guard/.venv/bin/python
+"""Fail-closed Google Vision quota and staging-bucket guard for gcloud-mcp.
+
+This is not an MCP server. It is a narrowly scoped executable shim used by
+Google's official gcloud MCP server. The guard reserves billable PDF pages
+before OCR, persists the current monthly total, and delegates only the small
+set of gcloud commands needed for document OCR.
+"""
+
+from __future__ import annotations
+
+import os
+import sqlite3
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from urllib.parse import urlparse
+
+from pypdf import PdfReader
+
+
+EXIT_POLICY_DENIED = 77
+PACIFIC_STANDARD_TIME = timezone(timedelta(hours=-8))
+
+
+def fail(message: str, exit_code: int = EXIT_POLICY_DENIED) -> None:
+    print(f"Vision OCR guard: {message}", file=sys.stderr)
+    raise SystemExit(exit_code)
+
+
+def required_env(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        fail(f"required environment variable {name} is not configured")
+    return value
+
+
+def current_billing_month() -> str:
+    # Google monthly SKU tiers reset at midnight UTC-8. A fixed UTC-8 clock is
+    # conservative during daylight-saving time because it resets no earlier.
+    return datetime.now(PACIFIC_STANDARD_TIME).strftime("%Y-%m")
+
+
+def staging_uri(bucket: str, prefix: str, uri: str) -> bool:
+    parsed = urlparse(uri)
+    return parsed.scheme == "gs" and parsed.netloc == bucket and parsed.path.startswith(f"/{prefix}/")
+
+
+def canonical_vault_pdf(path_value: str) -> Path:
+    vault_root = Path(required_env("VISION_VAULT_ROOT")).resolve(strict=True)
+    path = Path(path_value).resolve(strict=True)
+    try:
+        path.relative_to(vault_root)
+    except ValueError:
+        fail(f"input must be a PDF inside {vault_root}")
+    if path.suffix.lower() != ".pdf" or not path.is_file():
+        fail("input must be an existing .pdf file")
+    return path
+
+
+def connect_db() -> sqlite3.Connection:
+    db_path = Path(required_env("VISION_QUOTA_DB"))
+    db_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    connection = sqlite3.connect(db_path, timeout=30, isolation_level=None)
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA synchronous=FULL")
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS reservations (
+          billing_month TEXT NOT NULL,
+          input_uri TEXT NOT NULL,
+          pages INTEGER NOT NULL CHECK (pages > 0),
+          source_path TEXT NOT NULL,
+          uploaded_at TEXT NOT NULL,
+          consumed_at TEXT,
+          PRIMARY KEY (billing_month, input_uri)
+        )
+        """
+    )
+    return connection
+
+
+def delegate(args: list[str]) -> int:
+    real_gcloud = os.environ.get("VISION_REAL_GCLOUD", "/opt/google-cloud-sdk/bin/gcloud")
+    completed = subprocess.run([real_gcloud, *args], check=False)
+    return completed.returncode
+
+
+def handle_storage_cp(args: list[str], bucket: str) -> int:
+    if len(args) != 4:
+        fail("use exactly: storage cp /vault/path/file.pdf gs://bucket/input/unique.pdf")
+    source, destination = args[2], args[3]
+    if not staging_uri(bucket, "input", destination):
+        fail(f"uploads are limited to gs://{bucket}/input/")
+
+    source_path = canonical_vault_pdf(source)
+    try:
+        pages = len(PdfReader(source_path).pages)
+    except Exception as exc:
+        fail(f"cannot determine PDF page count: {exc}")
+    if pages < 1:
+        fail("PDF has no pages")
+
+    month = current_billing_month()
+    connection = connect_db()
+    existing = connection.execute(
+        "SELECT consumed_at FROM reservations WHERE billing_month = ? AND input_uri = ?",
+        (month, destination),
+    ).fetchone()
+    if existing and existing[0] is not None:
+        fail("that staging object was already consumed; use a new unique input object name")
+
+    result = delegate(args)
+    if result != 0:
+        return result
+
+    now = datetime.now(timezone.utc).isoformat()
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        connection.execute(
+            """
+            INSERT INTO reservations
+              (billing_month, input_uri, pages, source_path, uploaded_at, consumed_at)
+            VALUES (?, ?, ?, ?, ?, NULL)
+            ON CONFLICT (billing_month, input_uri) DO UPDATE SET
+              pages = excluded.pages,
+              source_path = excluded.source_path,
+              uploaded_at = excluded.uploaded_at,
+              consumed_at = NULL
+            """,
+            (month, destination, pages, str(source_path), now),
+        )
+        connection.execute("COMMIT")
+    except Exception:
+        connection.execute("ROLLBACK")
+        raise
+
+    print(f"Vision OCR guard: staged {pages} page(s); no monthly quota consumed yet.", file=sys.stderr)
+    return 0
+
+
+def handle_vision_ocr(args: list[str], bucket: str, monthly_limit: int) -> int:
+    if len(args) < 5:
+        fail("use: ml vision detect-text-pdf gs://bucket/input/file.pdf gs://bucket/output/unique-prefix")
+    input_uri, output_uri = args[3], args[4]
+    if not staging_uri(bucket, "input", input_uri):
+        fail(f"OCR input is limited to gs://{bucket}/input/")
+    if not staging_uri(bucket, "output", output_uri):
+        fail(f"OCR output is limited to gs://{bucket}/output/")
+
+    month = current_billing_month()
+    connection = connect_db()
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        row = connection.execute(
+            "SELECT pages, consumed_at FROM reservations WHERE billing_month = ? AND input_uri = ?",
+            (month, input_uri),
+        ).fetchone()
+        if row is None:
+            fail("input is not registered; upload it through this guarded MCP server first")
+        pages, consumed_at = int(row[0]), row[1]
+        if consumed_at is not None:
+            fail("this input was already submitted to Vision; use its existing output or upload a new object")
+
+        used = int(
+            connection.execute(
+                "SELECT COALESCE(SUM(pages), 0) FROM reservations WHERE billing_month = ? AND consumed_at IS NOT NULL",
+                (month,),
+            ).fetchone()[0]
+        )
+        if used + pages > monthly_limit:
+            fail(
+                f"monthly free-tier gate would be exceeded ({used} used + {pages} requested > {monthly_limit}); "
+                "use LlamaParse or wait for the next Google billing month"
+            )
+
+        # Reserve before the API call. Failures remain counted deliberately so
+        # retries cannot accidentally cross the external billing threshold.
+        connection.execute(
+            "UPDATE reservations SET consumed_at = ? WHERE billing_month = ? AND input_uri = ?",
+            (datetime.now(timezone.utc).isoformat(), month, input_uri),
+        )
+        connection.execute("COMMIT")
+    except SystemExit:
+        connection.execute("ROLLBACK")
+        raise
+    except Exception:
+        connection.execute("ROLLBACK")
+        raise
+
+    result = delegate(args)
+    remaining = monthly_limit - used - pages
+    print(
+        f"Vision OCR guard: reserved {pages} page(s) for {month}; {remaining} of {monthly_limit} remain. "
+        "A failed request remains reserved conservatively.",
+        file=sys.stderr,
+    )
+    return result
+
+
+def handle_storage_cat(args: list[str], bucket: str) -> int:
+    if len(args) != 3 or not staging_uri(bucket, "output", args[2]):
+        fail(f"reads are limited to one object under gs://{bucket}/output/")
+    return delegate(args)
+
+
+def handle_storage_rm(args: list[str], bucket: str) -> int:
+    targets = [arg for arg in args[2:] if not arg.startswith("-")]
+    if not targets:
+        fail("storage rm needs at least one staging object")
+    if any(
+        not (staging_uri(bucket, "input", target) or staging_uri(bucket, "output", target))
+        for target in targets
+    ):
+        fail(f"deletion is limited to gs://{bucket}/input/ and gs://{bucket}/output/")
+    return delegate(args)
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if not args:
+        return delegate(args)
+
+    # Required by gcloud-mcp for executable discovery and syntax linting.
+    if args[0] in {"--version", "version"} or args[:2] == ["meta", "lint-gcloud-commands"]:
+        return delegate(args)
+
+    bucket = required_env("VISION_STAGING_BUCKET")
+    try:
+        monthly_limit = int(required_env("VISION_MONTHLY_PAGE_LIMIT"))
+    except ValueError:
+        fail("VISION_MONTHLY_PAGE_LIMIT must be an integer")
+    if not 1 <= monthly_limit <= 1000:
+        fail("VISION_MONTHLY_PAGE_LIMIT must be between 1 and Google's 1,000-page free tier")
+
+    if args[:2] == ["storage", "cp"]:
+        return handle_storage_cp(args, bucket)
+    if args[:3] == ["ml", "vision", "detect-text-pdf"]:
+        return handle_vision_ocr(args, bucket, monthly_limit)
+    if args[:2] == ["storage", "cat"]:
+        return handle_storage_cat(args, bucket)
+    if args[:2] == ["storage", "rm"]:
+        return handle_storage_rm(args, bucket)
+
+    fail("command is outside the document-OCR allowlist")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
