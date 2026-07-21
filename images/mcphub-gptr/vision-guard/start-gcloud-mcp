@@ -20,6 +20,12 @@ chmod 0600 "$runtime_dir/credentials.json"
 unset GOOGLE_VISION_SERVICE_ACCOUNT_JSON
 
 export GOOGLE_APPLICATION_CREDENTIALS="$runtime_dir/credentials.json"
+# Application Default Credentials are consumed by Google client libraries,
+# while the gcloud CLI maintains its own authentication configuration. Point
+# both mechanisms at the same ephemeral, owner-only credential file so the
+# official gcloud MCP can execute non-interactively without persisting an
+# activated account in the application volume.
+export CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE="$runtime_dir/credentials.json"
 export CLOUDSDK_CONFIG="$runtime_dir/gcloud"
 export CLOUDSDK_CORE_PROJECT="$GOOGLE_VISION_PROJECT"
 export VISION_QUOTA_DB="/app/data/google-vision/quota.sqlite3"
