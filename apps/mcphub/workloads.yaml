@@ -20,6 +20,7 @@ spec:
         app.kubernetes.io/name: mcphub
         app.kubernetes.io/component: application
     spec:
+      serviceAccountName: mcphub-observer
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -55,7 +56,7 @@ spec:
           # Extends the ordinary (not -full) MCPHub image with pinned, reviewed
           # MCP packages. Server registrations and all runtime settings remain
           # application-owned state in MCPHub's PostgreSQL database.
-          image: docker.io/rezanmz/mcphub-gptr:1.0.24-63884773685b-actual-24925803dff2-ocr-0.5.3-2@sha256:f05b8ee0ea8d2a08fe6f1663050f0725d0b9b696a5f514eb1674c131b675b14d
+          image: docker.io/rezanmz/mcphub-gptr:1.0.24-63884773685b-actual-24925803dff2-assistant-suite-2@sha256:243c63bf4f5c4f80d7aa977ae0a33ca88dfc921b65e1a84c71bf3c8d32a49ef2
           imagePullPolicy: IfNotPresent
           env:
             - name: HOME
@@ -164,6 +165,12 @@ spec:
             - name: obsidian-vault
               mountPath: /vault/Daily
               subPath: vault/Daily
+            # A short-lived projected token is available only for the official
+            # Kubernetes MCP server. Its ClusterRole is read-only and excludes
+            # Secrets, exec, attach, port-forward, and every mutation verb.
+            - name: kubernetes-api-access
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
         - name: access-proxy
           image: nginx:1.31.3-alpine@sha256:2776cd5b70d8983e27e9f5c90abee3d24c690014ae8ecbb529572d954a459096
           imagePullPolicy: IfNotPresent
@@ -201,6 +208,21 @@ spec:
         - name: obsidian-vault
           persistentVolumeClaim:
             claimName: syncthing-data
+        - name: kubernetes-api-access
+          projected:
+            defaultMode: 0400
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - {key: ca.crt, path: ca.crt}
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef: {fieldPath: metadata.namespace}
         - {name: nginx-tmp, emptyDir: {}}
         - {name: nginx-cache, emptyDir: {}}
 ---

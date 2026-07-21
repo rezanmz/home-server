@@ -14,6 +14,13 @@ Hermes Agent ----> MCPHub
                 |-- Google Gmail MCP -> personal Gmail, read only
                 |-- Google Calendar MCP -> personal calendar, read/write
                 |-- Actual Budget MCP -> primary budget, read only
+                |-- Home Assistant native MCP -> exposed home entities
+                |-- Jellyseerr MCP -> media search and reviewed requests
+                |-- mcp-arr -> Radarr/Sonarr/Prowlarr reads + Lidarr music actions
+                |-- Navidrome MCP -> library reads and playlist actions
+                |-- Grafana MCP -> dashboards, metrics, logs, and alerts, read only
+                |-- Kubernetes MCP -> cluster diagnostics, read only
+                |-- GitHub MCP -> personal repository context, read only
                 |-- LlamaCloud MCP -> LlamaParse Agentic document parsing
                 `-- Google gcloud MCP -> quota-guarded Vision PDF OCR
 ```
@@ -111,6 +118,43 @@ password method from the browser and accepts it only when a client explicitly
 selects it. Keep that credential in MCPHub's application state and never in a
 Kubernetes Secret or repository file.
 
+Home Assistant uses its built-in Model Context Protocol Server integration at
+`/api/mcp`; it is not wrapped by a custom adapter. Home Assistant remains the
+authorization boundary: expose only the entities, scripts, and areas an agent
+should be able to inspect or control. The read group receives state/context
+tools only. Control belongs only in action-capable groups and still requires an
+explicit request for consequential changes such as locks, security devices, or
+appliances.
+
+Media automation deliberately separates discovery from mutation. The reviewed
+`aserper/jellyseerr-mcp` package supplies health, search, request lookup, and
+media requests; its generic `raw_request` escape hatch is excluded from every
+group. The published `mcp-arr-server` package provides Radarr, Sonarr, Prowlarr,
+and Lidarr APIs. Read groups may inspect health, queues, calendars, libraries,
+profiles, and indexers. Action-capable groups add only the chosen music
+acquisition tools for Lidarr; they do not gain arbitrary Radarr/Sonarr deletion
+or queue mutation. The MCP server reaches the raw cluster Services, while the
+human-facing Arr UIs remain LAN/WireGuard-only.
+
+Navidrome uses the published `navidrome-mcp` package. It may search and inspect
+the library, listening history, and playlists. Action-capable groups may manage
+playlists, ratings, and starred items; destructive library or local-playback
+tools remain excluded. Its dedicated MCP user authenticates with native
+Subsonic credentials stored only in `navidrome-mcp`'s settings file on the
+backed-up MCPHub application-data volume; its MCPHub registration stores only
+the settings path. Browser traffic uses Authentik
+forward authentication, while `/rest/*` and the internal MCP endpoint strip
+external identity headers and use native credentials.
+
+Operations tools are read-only at more than one layer. Grafana's official MCP
+server starts with `--disable-write` and a Viewer service-account token. The
+official Kubernetes MCP server starts with `--read-only` and a dedicated
+service account that cannot read Secrets, exec into pods, or mutate resources.
+The official GitHub MCP server starts with `--read-only`; use a fine-grained
+personal token limited to the personal repositories the assistant actually
+needs. None of these tools turns ordinary conversation into authorization to
+make a change.
+
 PDF reading has two providers behind the same MCPHub groups. LlamaParse uses
 LlamaIndex's published `@llamaindex/llama-cloud-mcp` package and is the primary
 provider for layout-heavy documents; request the `agentic` tier and `latest`
@@ -175,13 +219,18 @@ user explicitly asks or confirms that action.
 Use separate MCPHub groups for different risk levels:
 
 - **Assistant read** contains Gmail read-only, calendar reads, Vikunja reads,
-  vault reads, Actual Budget reads, web research, and both document-reading
-  providers.
+  vault reads, Actual Budget reads, media/library reads, Home Assistant state,
+  read-only Grafana/Kubernetes/GitHub diagnostics, web research, and both
+  document-reading providers.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
-  task tools, and note creation in Inbox or Daily.
+  task tools, note creation in Inbox or Daily, reviewed Home Assistant control,
+  Jellyseerr requests, Lidarr music acquisition, and Navidrome playlist/rating
+  operations.
 - Calendar deletion and destructive filesystem tools stay out of both groups.
   Vikunja task deletion is the single reviewed exception in action-capable
   groups and requires explicit confirmation immediately before the call.
+  Generic HTTP escape hatches, Arr deletion/queue mutation, Kubernetes/Grafana
+  writes, and GitHub writes stay out of every group.
 
 Open WebUI should use the smallest group that fits a profile. A rigorous
 fact-checking profile does not need mutation tools. A companion profile can use

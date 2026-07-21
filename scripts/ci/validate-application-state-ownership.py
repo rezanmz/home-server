@@ -82,6 +82,12 @@ def main() -> int:
         "@eargollo/vikunja-mcp@",
         "@klodr/gmail-mcp@",
         "@cocal/google-calendar-mcp@",
+        "mcp-arr-server@",
+        "navidrome-mcp@",
+        "https://github.com/aserper/jellyseerr-mcp.git",
+        "https://github.com/grafana/mcp-grafana.git",
+        "https://github.com/containers/kubernetes-mcp-server.git",
+        "https://github.com/github/github-mcp-server.git",
         "https://github.com/s-stefanov/actual-mcp.git",
     )
     for required in required_package_evidence:

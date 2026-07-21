@@ -1259,6 +1259,102 @@ After a MCPHub restore or credential rotation, verify every server connection,
 review the group's exact tool list, and perform one harmless call through Open
 WebUI. Never print server environment values, OAuth tokens, bearer keys, or API
 keys while troubleshooting.
+
+### Navidrome and Lidarr
+
+Navidrome streams the music library at `music.reza.network`; Lidarr manages
+music acquisition at the LAN/WireGuard-only `lidarr.reza.network`. Both run on
+Beelink. Lidarr shares the downloads pod's Gluetun network namespace, qBittorrent,
+and `/media` NFS mount. Navidrome has a separate pod, a Longhorn data volume,
+and a read-only `/music` view of `/home/reza/media/music` on the Pi.
+
+Before first reconciliation, the Pi directory must exist as uid/gid 1000:
+
+```bash
+sudo install -d -o 1000 -g 1000 -m 0775 /home/reza/media/music
+```
+
+After deployment, sign into Navidrome through Authentik once. The first
+externally authenticated user becomes its administrator. Create a separate,
+non-administrator native Navidrome user for MCPHub; store that username and
+password only in `navidrome-mcp`'s settings file on MCPHub's backed-up
+application-data volume. The MCPHub server record contains only the path to
+that file. Browser traffic reaches
+the public policy-proxy port, native Subsonic clients use `/rest/*`, MCPHub uses
+`http://navidrome-api.media.svc.cluster.local:4533`, and Prometheus has a
+metrics-only port. Navidrome itself listens on loopback and trusts external
+identity headers only from the local proxy.
+
+Configure Lidarr in its UI or API-backed application state, not in Git:
+
+1. add `/media/music` as the root folder;
+2. add qBittorrent at `127.0.0.1:8080` with a dedicated `music` category;
+3. register Lidarr in Prowlarr so compatible indexers are synchronized;
+4. choose an explicit metadata profile and a conservative lossless/lossy
+   quality profile before adding artists;
+5. test one monitored album and verify the completed path lands beneath
+   `/media/music` with uid/gid 1000;
+6. confirm Navidrome's next bounded scan imports it.
+
+MCPHub owns all media MCP registrations and credentials. Recommended server
+boundaries are:
+
+- Jellyseerr: allow `ping`, search, request lookup, and (only in action groups)
+  media requests. Never expose `raw_request`.
+- mcp-arr: allow health/library/queue/calendar/profile reads. Add only reviewed
+  Lidarr artist/album acquisition operations to action groups. Exclude arbitrary
+  Radarr/Sonarr deletion, queue deletion, and generic mutation.
+- Navidrome: allow library/history/playlist reads; add playlist, star, and
+  rating mutations to action groups. Exclude library deletion and local
+  playback control.
+
+Health checks:
+
+```bash
+sudo k3s kubectl -n media get deployment/downloads deployment/navidrome pods services persistentvolumeclaims
+sudo k3s kubectl -n media logs deploy/downloads -c lidarr --tail=150
+sudo k3s kubectl -n media logs deploy/navidrome -c navidrome --tail=150
+sudo k3s kubectl -n media logs deploy/navidrome -c policy-proxy --tail=100
+sudo k3s kubectl -n media exec deploy/downloads -c lidarr -- \
+  sh -lc 'test -w /media/music && curl -fsS http://127.0.0.1:8686/ping'
+```
+
+Longhorn and B2 protect Navidrome and Lidarr application state. The actual
+music files are on Pi NFS and are not covered by that claim-level backup; add
+the music path to the separate file-backup policy if it becomes
+non-reproducible. Restore the data/config volumes before reconnecting the MCP
+servers, then test reads before any acquisition or playlist mutation.
+
+### Assistant operations MCP
+
+Grafana, Kubernetes, and GitHub are diagnostic context, not an administrative
+back door. Grafana uses a dedicated Viewer service account and its official MCP
+server's `--disable-write` mode. Kubernetes uses the projected token for
+`mcphub-observer`, the official server's `--read-only` mode, and RBAC that
+excludes Secrets, exec, ConfigMaps, and every write verb. GitHub uses the
+official server's `--read-only` mode and a fine-grained token restricted to the
+personal repositories that need inspection.
+
+After a package or credential change, verify the binaries and effective access:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- sh -lc '
+  command -v mcp-grafana &&
+  command -v kubernetes-mcp-server &&
+  command -v github-mcp-server &&
+  command -v jellyseerr-mcp &&
+  command -v mcp-arr &&
+  command -v navidrome-mcp'
+sudo k3s kubectl auth can-i --as=system:serviceaccount:apps:mcphub-observer get pods --all-namespaces
+sudo k3s kubectl auth can-i --as=system:serviceaccount:apps:mcphub-observer get secrets --all-namespaces
+sudo k3s kubectl auth can-i --as=system:serviceaccount:apps:mcphub-observer create deployments -n apps
+```
+
+The first authorization check should say `yes`; the latter two must say `no`.
+Run a harmless dashboard search, pod listing, and repository read through the
+curated Assistant read group. Inspect MCPHub Activity, then verify the action
+group still contains no operations write tools.
+
 ### Retired Duplicati recovery artifacts
 
 `apps/duplicati/kustomization.yaml` reconciles only `storage.yaml`. The retired

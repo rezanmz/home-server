@@ -32,6 +32,7 @@ spec:
             - prowlarr
             - radarr
             - sonarr
+            - lidarr
             - shelfmark
       securityContext:
         seccompProfile:
@@ -69,7 +70,7 @@ spec:
             - {name: DNS_UPSTREAM_RESOLVERS, value: "cloudflare,google"}
             - name: FIREWALL_INPUT_PORTS
               value: |
-                7878,8080,8084,8191,8989,9696,17878,18080,18084,18989,19696
+                7878,8080,8084,8191,8686,8989,9696,17878,18080,18084,18686,18989,19696
             - name: FIREWALL_OUTBOUND_SUBNETS
               value: "10.42.0.0/16,10.43.0.0/16,192.168.1.0/24"
           startupProbe:
@@ -247,6 +248,34 @@ spec:
           volumeMounts:
             - {name: sonarr-config, mountPath: /config}
             - {name: media-library, mountPath: /media}
+        - name: lidarr
+          image: linuxserver/lidarr:3.1.0.4875-ls35@sha256:1caffbd1e5ad5fe3cf6f63de4aa6941e9d31625b0d7e08b60c6eeb6cf09e3a91
+          imagePullPolicy: IfNotPresent
+          env: *linuxserver-env
+          ports:
+            - {name: lidarr, containerPort: 8686, protocol: TCP}
+          startupProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8686/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18
+          readinessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8686/ping]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec: {command: [curl, -fsS, http://127.0.0.1:8686/ping]}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 750m, memory: 768Mi}
+          securityContext: {allowPrivilegeEscalation: false}
+          volumeMounts:
+            - {name: lidarr-config, mountPath: /config}
+            - {name: media-library, mountPath: /media}
         - name: shelfmark
           image: ghcr.io/calibrain/shelfmark:v1.3.2@sha256:8700c1d3b6bb94e1b5f9482bac12e39652ed737de02f256920e1ad982a7ac0f1
           imagePullPolicy: IfNotPresent
@@ -354,6 +383,22 @@ spec:
             - {name: so-nginx-tmp, mountPath: /tmp}
             - {name: so-nginx-cache, mountPath: /var/cache/nginx}
         - <<: *access-proxy
+          name: lidarr-access-proxy
+          ports:
+            - {name: li-access, containerPort: 18686, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          volumeMounts:
+            - {name: li-access-config, mountPath: /etc/nginx, readOnly: true}
+            - {name: li-nginx-tmp, mountPath: /tmp}
+            - {name: li-nginx-cache, mountPath: /var/cache/nginx}
+        - <<: *access-proxy
           name: shelfmark-access-proxy
           ports:
             - {name: sh-access, containerPort: 18084, protocol: TCP}
@@ -382,6 +427,8 @@ spec:
           persistentVolumeClaim: {claimName: radarr-config}
         - name: sonarr-config
           persistentVolumeClaim: {claimName: sonarr-config}
+        - name: lidarr-config
+          persistentVolumeClaim: {claimName: lidarr-config}
         - name: shelfmark-config
           persistentVolumeClaim: {claimName: shelfmark-config}
         - name: calibre-web-ingest
@@ -398,6 +445,8 @@ spec:
           configMap: {name: radarr-access-proxy}
         - name: so-access-config
           configMap: {name: sonarr-access-proxy}
+        - name: li-access-config
+          configMap: {name: lidarr-access-proxy}
         - name: sh-access-config
           configMap: {name: shelfmark-access-proxy}
         - {name: qb-nginx-tmp, emptyDir: {}}
@@ -408,5 +457,7 @@ spec:
         - {name: ra-nginx-cache, emptyDir: {}}
         - {name: so-nginx-tmp, emptyDir: {}}
         - {name: so-nginx-cache, emptyDir: {}}
+        - {name: li-nginx-tmp, emptyDir: {}}
+        - {name: li-nginx-cache, emptyDir: {}}
         - {name: sh-nginx-tmp, emptyDir: {}}
         - {name: sh-nginx-cache, emptyDir: {}}

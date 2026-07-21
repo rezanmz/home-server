@@ -123,6 +123,16 @@ the durable infrastructure and pinned package runtime, but never stores
 Vikunja API tokens, Google OAuth material, MCP groups, or enabled-tool
 selections.
 
+The same boundary also contains the official Home Assistant remote MCP, a
+reviewed Jellyseerr adapter, the published multi-Arr and Navidrome adapters,
+and official read-only Grafana, Kubernetes, and GitHub servers. Git pins the
+executables and establishes network/RBAC ceilings. MCPHub's backed-up database
+owns endpoints, credentials, enabled tools, and group membership. Kubernetes
+diagnostics are independently constrained by a read-only flag and an RBAC role
+that excludes Secrets, pod exec, and all mutation. Grafana uses a Viewer token
+with server-side writes disabled; GitHub uses read-only mode and a
+repository-scoped token.
+
 Open WebUI retrieval currently uses Gemini Embedding 2 through OpenRouter. Its
 persisted files, knowledge, memories, and vector index were migrated and
 verified once. Future model changes and re-index operations are initiated from

@@ -1,8 +1,36 @@
 # syntax=docker/dockerfile:1.7
 ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.24@sha256:2a1d22d636b437194b68ff30dd333b52e17da25492abe1e6ac5976653ae383a1
 ARG GCLOUD_IMAGE=gcr.io/google.com/cloudsdktool/google-cloud-cli:571.0.0-slim@sha256:61cdaee8f89a2500c8e93fac2499d98a5b7692fcc3d7d69abbef48200477cb71
+ARG GO_IMAGE=golang:1.26.3-bookworm@sha256:386d475a660466863d9f8c766fec64d7fdad3edac2c6a05020c09534d71edb4b
 
 FROM ${GCLOUD_IMAGE} AS gcloud
+FROM ${GO_IMAGE} AS operations-mcp-builder
+
+ARG GRAFANA_MCP_REVISION=fac7c8a312c6f6aee8330de72182dcf45bf4ae26
+ARG KUBERNETES_MCP_REVISION=56d6dfe9a1b994faca27fa3310cb54e3d3bc42ed
+ARG GITHUB_MCP_REVISION=7629b6e7337e1fc4b11a0ca5fdea4af4edd21f6e
+
+# Build the official upstream operations servers from their signed release
+# revisions. Static binaries keep the final MCPHub image small and allow the
+# same Dockerfile to produce amd64 and arm64 images without downloading an
+# architecture-specific release asset at build time.
+RUN git clone --filter=blob:none https://github.com/grafana/mcp-grafana.git /src/mcp-grafana \
+    && git -C /src/mcp-grafana checkout --detach "${GRAFANA_MCP_REVISION}" \
+    && test "$(git -C /src/mcp-grafana rev-parse HEAD)" = "${GRAFANA_MCP_REVISION}" \
+    && git clone --filter=blob:none https://github.com/containers/kubernetes-mcp-server.git /src/kubernetes-mcp-server \
+    && git -C /src/kubernetes-mcp-server checkout --detach "${KUBERNETES_MCP_REVISION}" \
+    && test "$(git -C /src/kubernetes-mcp-server rev-parse HEAD)" = "${KUBERNETES_MCP_REVISION}" \
+    && git clone --filter=blob:none https://github.com/github/github-mcp-server.git /src/github-mcp-server \
+    && git -C /src/github-mcp-server checkout --detach "${GITHUB_MCP_REVISION}" \
+    && test "$(git -C /src/github-mcp-server rev-parse HEAD)" = "${GITHUB_MCP_REVISION}" \
+    && mkdir -p /out \
+    && cd /src/mcp-grafana \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/mcp-grafana ./cmd/mcp-grafana \
+    && cd /src/kubernetes-mcp-server \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/kubernetes-mcp-server ./cmd/kubernetes-mcp-server \
+    && cd /src/github-mcp-server \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/github-mcp-server ./cmd/github-mcp-server
+
 FROM ${MCPHUB_IMAGE}
 
 ARG GPTR_MCP_REVISION=63884773685b1f12c7f0d9e283b3d71a5b9b5fda
@@ -14,9 +42,18 @@ ARG GMAIL_MCP_VERSION=1.3.1
 ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
 ARG GCLOUD_MCP_VERSION=0.5.3
 ARG PYPDF_VERSION=6.1.1
+ARG JELLYSEERR_MCP_REVISION=fccf5689d64ad3ac6fc69dff8d4cb5ccf625a29a
+ARG JELLYSEERR_MCP_HTTPX_VERSION=0.28.1
+ARG JELLYSEERR_MCP_DOTENV_VERSION=1.2.2
+ARG JELLYSEERR_MCP_RICH_VERSION=14.3.4
+ARG JELLYSEERR_MCP_SDK_VERSION=1.28.1
+ARG MCP_ARR_VERSION=1.6.5
+ARG NAVIDROME_MCP_VERSION=2.1.0
 ARG ACTUAL_MCP_REVISION=24925803dff2dfb697cb6e53c06662ee66c94f01
 ARG ACTUAL_API_VERSION=26.7.0
 ARG ACTUAL_MCP_HONO_VERSION=4.12.31
+ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.0.11
+ARG ACTUAL_MCP_FAST_URI_VERSION=3.1.4
 ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
 ARG ACTUAL_MCP_QS_VERSION=6.15.3
 ARG ACTUAL_MCP_BRACE_EXPANSION_VERSION=2.1.2
@@ -25,10 +62,10 @@ ARG ACTUAL_MCP_ADM_ZIP_VERSION=0.6.0
 ARG ACTUAL_MCP_BETTER_SQLITE_VERSION=12.11.1
 
 LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
-      org.opencontainers.image.description="MCPHub plus pinned GPT Researcher, filesystem, Vikunja, Gmail, Google Calendar, Google Cloud, and Actual Budget MCP packages" \
+      org.opencontainers.image.description="MCPHub plus pinned personal-assistant, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
-      org.opencontainers.image.licenses="Apache-2.0 AND MIT" \
-      org.opencontainers.image.version="1.0.24-gptr-mcp-actual" \
+      org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
+      org.opencontainers.image.version="1.0.24-assistant-suite-2" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -38,13 +75,19 @@ COPY vision-guard/gcloud /opt/vision-guard/bin/gcloud
 COPY vision-guard/test_vision_guard.py /opt/vision-guard/bin/test_vision_guard.py
 COPY vision-guard/start-gcloud-mcp /usr/local/bin/start-gcloud-mcp
 COPY vision-guard/gcloud-mcp-allowlist.json /opt/vision-guard/gcloud-mcp-allowlist.json
+COPY jellyseerr-mcp /usr/local/bin/jellyseerr-mcp
+COPY --from=operations-mcp-builder /out/mcp-grafana /usr/local/bin/mcp-grafana
+COPY --from=operations-mcp-builder /out/kubernetes-mcp-server /usr/local/bin/kubernetes-mcp-server
+COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-mcp-server
 
 # The upstream GPT Researcher project publishes source and a Dockerfile, but no
 # official OCI image. Install the official assafelovic/gptr-mcp source into a
 # private virtual environment so MCPHub can launch it as a stdio child process.
 # The Node packages are the reference MCP filesystem server and reviewed,
-# published integrations for Vikunja, read-only Gmail, Google Calendar, and
-# Actual Budget. Actual MCP is installed from a reviewed upstream revision and
+# published integrations for Vikunja, read-only Gmail, Google Calendar, the
+# Arr suite, Navidrome, and Actual Budget. The Jellyseerr server is installed
+# from a reviewed upstream revision because it has no package release. Actual
+# MCP is installed from a reviewed upstream revision and
 # its lockfile because its official Actual API dependency includes a native
 # SQLite module; building it here supplies the correct binary for each target
 # platform. Exact dependency overrides align the API with the deployed Actual
@@ -54,6 +97,8 @@ COPY vision-guard/gcloud-mcp-allowlist.json /opt/vision-guard/gcloud-mcp-allowli
 # in its backed-up application state. GPT Researcher 0.16.0 imports three typing
 # annotations after using them, so the released dependency receives a one-line
 # import-order repair; the official MCP server source is unchanged.
+# Jellyseerr's upstream Rich console defaults to stdout. The small sed below
+# preserves the upstream server while moving logs off the stdio JSON-RPC stream.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates libmagic1 \
     && rm -rf /var/lib/apt/lists/* \
@@ -63,6 +108,8 @@ RUN apt-get update \
          "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
          "@cocal/google-calendar-mcp@${GOOGLE_CALENDAR_MCP_VERSION}" \
          "@google-cloud/gcloud-mcp@${GCLOUD_MCP_VERSION}" \
+         "mcp-arr-server@${MCP_ARR_VERSION}" \
+         "navidrome-mcp@${NAVIDROME_MCP_VERSION}" \
     && git clone --filter=blob:none https://github.com/assafelovic/gptr-mcp.git /opt/gptr-mcp \
     && git -C /opt/gptr-mcp checkout --detach "${GPTR_MCP_REVISION}" \
     && test "$(git -C /opt/gptr-mcp rev-parse HEAD)" = "${GPTR_MCP_REVISION}" \
@@ -70,11 +117,21 @@ RUN apt-get update \
     && git clone --filter=blob:none https://github.com/s-stefanov/actual-mcp.git /opt/actual-mcp \
     && git -C /opt/actual-mcp checkout --detach "${ACTUAL_MCP_REVISION}" \
     && test "$(git -C /opt/actual-mcp rev-parse HEAD)" = "${ACTUAL_MCP_REVISION}" \
+    && git clone --filter=blob:none https://github.com/aserper/jellyseerr-mcp.git /opt/jellyseerr-mcp \
+    && git -C /opt/jellyseerr-mcp checkout --detach "${JELLYSEERR_MCP_REVISION}" \
+    && test "$(git -C /opt/jellyseerr-mcp rev-parse HEAD)" = "${JELLYSEERR_MCP_REVISION}" \
+    && sed -i 's/console = Console()/console = Console(stderr=True)/' \
+         /opt/jellyseerr-mcp/jellyseerr_mcp/logging_setup.py \
+    && grep -Fq 'Console(stderr=True)' \
+         /opt/jellyseerr-mcp/jellyseerr_mcp/logging_setup.py \
+    && rm -rf /opt/jellyseerr-mcp/.git \
     && npm --prefix /opt/actual-mcp ci \
     && npm --prefix /opt/actual-mcp pkg set \
          "dependencies.@actual-app/api=${ACTUAL_API_VERSION}" \
          "dependencies.@actual-app/core=${ACTUAL_API_VERSION}" \
          "overrides.hono=${ACTUAL_MCP_HONO_VERSION}" \
+         "overrides.@hono/node-server=${ACTUAL_MCP_HONO_NODE_SERVER_VERSION}" \
+         "overrides.fast-uri=${ACTUAL_MCP_FAST_URI_VERSION}" \
          "overrides.body-parser=${ACTUAL_MCP_BODY_PARSER_VERSION}" \
          "overrides.qs=${ACTUAL_MCP_QS_VERSION}" \
          "overrides.brace-expansion=${ACTUAL_MCP_BRACE_EXPANSION_VERSION}" \
@@ -97,6 +154,13 @@ RUN apt-get update \
     && uv pip install \
          --python /opt/vision-guard/.venv/bin/python \
          "pypdf==${PYPDF_VERSION}" \
+    && uv venv --python /usr/local/bin/python3 /opt/jellyseerr-mcp/.venv \
+    && uv pip install \
+         --python /opt/jellyseerr-mcp/.venv/bin/python \
+         "httpx==${JELLYSEERR_MCP_HTTPX_VERSION}" \
+         "python-dotenv==${JELLYSEERR_MCP_DOTENV_VERSION}" \
+         "rich==${JELLYSEERR_MCP_RICH_VERSION}" \
+         "mcp==${JELLYSEERR_MCP_SDK_VERSION}" \
     && /opt/vision-guard/.venv/bin/python \
          /opt/vision-guard/bin/test_vision_guard.py \
     && rm /opt/vision-guard/bin/test_vision_guard.py \
@@ -110,10 +174,16 @@ RUN apt-get update \
     && command -v gmail-mcp \
     && command -v google-calendar-mcp \
     && command -v gcloud-mcp \
+    && command -v mcp-arr \
+    && command -v navidrome-mcp \
+    && command -v mcp-grafana \
+    && command -v kubernetes-mcp-server \
+    && command -v github-mcp-server \
+    && /opt/jellyseerr-mcp/.venv/bin/python -c 'import sys; sys.path.insert(0, "/opt/jellyseerr-mcp"); from jellyseerr_mcp.server import mcp' \
     && test -x /usr/bin/gcloud-mcp \
     && /opt/google-cloud-sdk/bin/gcloud --version \
-    && chmod 0755 /opt/vision-guard/bin/gcloud /usr/local/bin/start-gcloud-mcp \
+    && chmod 0755 /opt/vision-guard/bin/gcloud /usr/local/bin/start-gcloud-mcp /usr/local/bin/jellyseerr-mcp \
     && test -x /opt/actual-mcp/build/index.js \
-    && chown -R 1000:1000 /opt/gptr-mcp /opt/actual-mcp
+    && chown -R 1000:1000 /opt/gptr-mcp /opt/actual-mcp /opt/jellyseerr-mcp
 
 USER 1000:1000

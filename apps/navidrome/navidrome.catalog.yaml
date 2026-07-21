@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: navidrome
+spec:
+  name: Navidrome
+  workload:
+    namespace: media
+    app: navidrome
+  homepage:
+    order: 25
+    group: Media
+    icon: navidrome.png
+    description: Personal music library
+  web:
+    hostname: music.reza.network
+    route: apps/navidrome/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v1
+      blueprintName: Navidrome proxy authentication
+      application:
+        slug: navidrome
+        launchUrl: https://music.reza.network/
+      middleware: navidrome-authentik
+  placement:
+    mode: beelink
+    manifest: apps/navidrome/deployment.yaml
+    reason: Keeps the public media service off the NFS-hosting Pi while retaining fast transcoding capacity.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/navidrome/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects Navidrome state; the NFS music library needs an explicit backup decision.
+  observability:
+    mode: metrics
+    manifests: [apps/navidrome/monitoring.yaml]

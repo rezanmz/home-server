@@ -17,6 +17,7 @@ spec:
         - {port: 17878, protocol: TCP}
         - {port: 18080, protocol: TCP}
         - {port: 18084, protocol: TCP}
+        - {port: 18686, protocol: TCP}
         - {port: 18989, protocol: TCP}
         - {port: 19696, protocol: TCP}
     - from:
@@ -31,6 +32,21 @@ spec:
       ports:
         - {port: 7878, protocol: TCP}
         - {port: 8989, protocol: TCP}
+    - from:
+        # MCPHub launches the reviewed Arr MCP server. It receives only raw API
+        # access; client-visible tools remain constrained by MCPHub groups.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcphub
+              app.kubernetes.io/component: application
+      ports:
+        - {port: 7878, protocol: TCP}
+        - {port: 8686, protocol: TCP}
+        - {port: 8989, protocol: TCP}
+        - {port: 9696, protocol: TCP}
   egress:
     # Gluetun owns this Pod's routes, firewall and VPN kill switch. Kubernetes
     # egress filtering here interferes with its tunnel and encrypted DNS.
