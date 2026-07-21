@@ -14,3 +14,25 @@ spec:
       port: 5006
       targetPort: access-http
       protocol: TCP
+---
+# The public service deliberately terminates at the LAN/WireGuard allow-listing
+# proxy. MCPHub needs Actual's official headless API instead, so give it a
+# stable, separate DNS name that targets the application container directly.
+# NetworkPolicy still permits this destination only from the MCPHub pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: actual-budget-api
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: actual-budget
+    app.kubernetes.io/component: internal-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: actual-budget
+  ports:
+    - name: http
+      port: 5006
+      targetPort: http
+      protocol: TCP
