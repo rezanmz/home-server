@@ -37,8 +37,7 @@ spec:
             - -ec
             - >-
               mkdir -p /state/data/oauth/google/gmail-state;
-              chmod 0700 /state/data/oauth /state/data/oauth/google
-                /state/data/oauth/google/gmail-state;
+              chmod 0700 /state/data/oauth /state/data/oauth/google /state/data/oauth/google/gmail-state;
               touch /state/.env;
               if [ ! -s /state/mcp_settings.json ]; then
                 printf '{ "mcpServers": {} }\n' > /state/mcp_settings.json;
