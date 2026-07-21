@@ -1194,13 +1194,17 @@ path is `/app/node_modules/@llamaindex/vault/<vault-relative-path>`; Google uses
 
 ```text
 gcloud storage cp /vault/path/file.pdf gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf
-gcloud ml vision detect-text-pdf gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf gs://rezanmz-homelab-ocr-staging/output/<uuid>
-gcloud storage cat gs://rezanmz-homelab-ocr-staging/output/<uuid>/output-1-to-*.json
-gcloud storage rm --recursive gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf gs://rezanmz-homelab-ocr-staging/output/<uuid>
+gcloud ml vision detect-text-pdf gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf gs://rezanmz-homelab-ocr-staging/output/<uuid>/
+gcloud storage cat gs://rezanmz-homelab-ocr-staging/output/<uuid>/output-1-to-<min(20,pages)>.json
+gcloud storage rm gs://rezanmz-homelab-ocr-staging/input/<uuid>.pdf gs://rezanmz-homelab-ocr-staging/output/<uuid>/**
 ```
 
-The exact `storage cat` object name comes from the OCR command output. Do not
-broaden the gcloud allowlist, service-account roles, bucket, or source path.
+The OCR operation is asynchronous, so wait and retry only the output read; do
+not resubmit the OCR command. The output prefix must end in `/`. Google writes
+up to 20 pages into each deterministic `output-N-to-M.json` shard by default;
+use the page count reported by the guarded upload to determine the shard names.
+Delete the exact input and the output-prefix wildcard without `--recursive`.
+Do not broaden the gcloud allowlist, service-account roles, bucket, or source path.
 The persistent counter is `/app/data/google-vision/quota.sqlite3`; back up the
 MCPHub volume before any manual repair and never decrement a current-month
 reservation merely because a request failed. Verify the native project quotas
