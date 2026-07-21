@@ -15,7 +15,7 @@ access-proxy-boundary|v1/ConfigMap|media|qbittorrent-access-proxy|data/sha256/bd
 access-proxy-boundary|v1/ConfigMap|media|radarr-access-proxy|data/sha256/a7d22dd9b3dac6608f9f738634d490d6baca4d2b4f2ae6322f3140f4b2600abf
 access-proxy-boundary|v1/ConfigMap|media|shelfmark-access-proxy|data/sha256/077d00e32d663a951590461f021f5e37bab5db09bc161efb6524c94b9cbda5bd
 access-proxy-boundary|v1/ConfigMap|media|sonarr-access-proxy|data/sha256/4ef931967e6a9ad696b2b2792e56e310a2c28631196d5404263756a745e29e24
-access-proxy-boundary|v1/ConfigMap|monitoring|grafana-access-proxy|data/sha256/7061b3a22c601b07d6049c839d71475eb4f322e5b83918fa5fbbc18def731a29
+access-proxy-boundary|v1/ConfigMap|monitoring|grafana-access-proxy|data/sha256/4db29e6b7de30c467ff9baaa4d31f8897e37e43486b17787fb9aa2122a65694f
 access-proxy-boundary|v1/ConfigMap|monitoring|headlamp-access-proxy|data/sha256/6624020b5e14dec81f49a62c7fea34313e6ab670a33df38a59b520335ffb0e5b
 access-proxy-boundary|v1/ConfigMap|network-services|syncthing-access-proxy-kchm4kb2hk|data/sha256/8512bd9fee0a65638c8a90cb4635bebe18cac10e69c07d3b4e93c1254ca88b8d
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/CHOWN
@@ -144,7 +144,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|de
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|spec/sha256/205cfdf9d6a5ddd33e48f1fc6948b41348941475a62a0a351a429dc6091fd157
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|spec/sha256/4957b6343fe2d1983d0cda3f0145ccbbaff5b57d2c2ee139e5d420c3811d6470
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-grafana|spec/sha256/13de3076df0fdb65cd1b8dd74ae9af8eea116ab0b5e2ee8c6b625232db0f670a
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-grafana|spec/sha256/5a6acc836d87fb8f70abcdd2d2ed9bff76a6026278b5819bf9648c8a515f09c5
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-kube-state-metrics|spec/sha256/568e4e3adc59dee5d715cfbbc7a0bff80b3a6100a2650817ed97e704ce8da22a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-operator|spec/sha256/ea0634a480229e2a6326b2550d7102cd2c5e6767e09383fc8a2d53cbac34dead
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-prometheus|spec/sha256/b7ebb5cda7c3367b90b7ddbd1219c81337c968cb08ef963bb5b01ab2c01f59cc
