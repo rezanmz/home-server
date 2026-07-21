@@ -159,6 +159,7 @@ allow it.
 | `apps` | Argilla server/worker, PostgreSQL, Elasticsearch, Redis | Separate Longhorn PVCs; application is multi-component, not transactionally backed up as one unit |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
 | `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent; internal LlamaCloud MCP | Longhorn for state; LlamaCloud is stateless and reads the Syncthing vault over NFS |
+| `media` | Navidrome | Longhorn for application state; read-only Pi NFS music library; pinned to Beelink |
 | `apps` | Open WebUI and Tika | Open WebUI uses Longhorn; Tika is stateless; Authentik OIDC dependency |
 | `apps` | Cloudflare DDNS | Stateless; Cloudflare API dependency |
 | `monitoring` | Headlamp | Stateless; Kubernetes API and Authentik dependencies |
@@ -166,7 +167,7 @@ allow it.
 | `monitoring` | Grafana, Prometheus, Alertmanager, Prometheus Operator, kube-state-metrics | Floating multi-architecture workloads; Longhorn observability PVCs; Authentik and Telegram dependencies |
 | `traefik` | Shared error-pages Deployment | Stateless |
 
-Prowlarr, Radarr, and Sonarr directories contain their PVCs, routes, Services,
+Prowlarr, Radarr, Sonarr, and Lidarr directories contain their PVCs, routes, Services,
 and proxy resources, but their containers live in the downloads Deployment.
 Shelfmark's container also lives there while its route and related resources
 are grouped with the Calibre-Web module.
@@ -206,7 +207,7 @@ The Pi has two actual NFS export roots:
 
 | Export | Access | Typical consumers |
 | --- | --- | --- |
-| `/home/reza/media` | Read/write from both nodes | Jellyfin, downloads, Samba, and library consumers; the books and downloads PVs are subpaths of this one broad export |
+| `/home/reza/media` | Read/write from both nodes | Jellyfin, downloads, Samba, and library consumers; books, downloads, and music PVs are subpaths of this one broad export |
 | `/home/reza/persistent/syncthing/data` | Read/write | Syncthing and its read-only backup mount |
 
 The retained `/home/reza/persistent` legacy tree is intentionally not exported.
@@ -214,7 +215,8 @@ Do not add a parent export around the Syncthing path: overlapping parent and
 child NFS exports with different access modes can cause NFSv4 clients to apply
 the parent's read-only policy to the child.
 
-`/home/reza/media/books` and `/home/reza/media/downloads` are Kubernetes PV
+`/home/reza/media/books`, `/home/reza/media/downloads`, and
+`/home/reza/media/music` are Kubernetes PV
 paths, not separately authorized export roots. Granting a node access to
 `/home/reza/media` grants it NFS access to the whole media tree; PV subpaths are
 not an NFS security boundary.

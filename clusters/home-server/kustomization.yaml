@@ -16,6 +16,7 @@ resources:
   - ../../apps/actual-budget
   - ../../apps/authentik
   - ../../apps/jellyseerr
+  - ../../apps/navidrome
   - ../../apps/mcphub
   - ../../apps/hermes-agent
   - ../../apps/open-webui
@@ -29,6 +30,7 @@ resources:
   - ../../apps/prowlarr
   - ../../apps/radarr
   - ../../apps/sonarr
+  - ../../apps/lidarr
   - ../../apps/blocky
   - ../../apps/kea
   - ../../apps/stork

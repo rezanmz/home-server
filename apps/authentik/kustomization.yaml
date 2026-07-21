@@ -9,5 +9,6 @@ resources:
   - services.yaml
   - networkpolicy.yaml
   - route.yaml
+  - reference-grant.yaml
 patches:
   - path: generated-oidc-worker-env.yaml

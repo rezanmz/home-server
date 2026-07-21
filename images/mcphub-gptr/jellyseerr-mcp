@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+cd /opt/jellyseerr-mcp
+exec .venv/bin/python -m jellyseerr_mcp

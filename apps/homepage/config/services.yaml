@@ -45,6 +45,12 @@
         description: Media requests
         namespace: apps
         app: jellyseerr
+    - Navidrome:
+        icon: navidrome.png
+        href: https://music.reza.network/
+        description: Personal music library
+        namespace: media
+        app: navidrome
     - Audiobookshelf:
         icon: audiobookshelf.png
         href: https://audiobooks.reza.network/
@@ -80,6 +86,12 @@
         icon: sonarr.png
         href: https://sonarr.reza.network/
         description: Television automation
+        namespace: media
+        app: media-vpn
+    - Lidarr:
+        icon: lidarr.png
+        href: https://lidarr.reza.network/
+        description: Music acquisition and organization
         namespace: media
         app: media-vpn
     - Shelfmark:

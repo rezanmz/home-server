@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: lidarr
+spec:
+  name: Lidarr
+  workload:
+    namespace: media
+    app: media-vpn
+  homepage:
+    order: 50
+    group: Downloads & Automation
+    icon: lidarr.png
+    description: Music acquisition and organization
+  web:
+    hostname: lidarr.reza.network
+    route: apps/lidarr/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Lidarr has no native OIDC support and remains behind the LAN/WireGuard boundary.
+  placement:
+    mode: beelink
+    manifest: apps/downloads/deployment.yaml
+    reason: Its container shares the downloads pod's Gluetun network namespace.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/lidarr/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects configuration; downloaded NFS music needs an explicit backup decision.
+  observability:
+    mode: kubernetes

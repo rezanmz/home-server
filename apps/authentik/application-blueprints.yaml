@@ -277,6 +277,35 @@ data:
           name: "MCPHub"
           provider: !KeyOf mcphub-provider
           meta_launch_url: "https://mcphub.reza.network/"
+  navidrome.yaml: |
+    version: 1
+    metadata:
+      name: "Navidrome proxy authentication"
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_proxy.proxyprovider
+        id: navidrome-provider
+        identifiers:
+          name: "Provider for Navidrome"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://music.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: navidrome
+        attrs:
+          name: "Navidrome"
+          provider: !KeyOf navidrome-provider
+          meta_launch_url: "https://music.reza.network/"
+      - model: authentik_outposts.outpost
+        identifiers:
+          name: authentik Embedded Outpost
+        attrs:
+          providers:
+            - !KeyOf navidrome-provider
   open-webui.yaml: |
     version: 1
     metadata:

@@ -1,0 +1,58 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: navidrome-authentik
+  namespace: media
+spec:
+  forwardAuth:
+    address: http://authentik.apps.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik
+    trustForwardHeader: true
+    authResponseHeaders:
+      - X-authentik-username
+      - X-authentik-groups
+      - X-authentik-entitlements
+      - X-authentik-email
+      - X-authentik-name
+      - X-authentik-uid
+      - X-authentik-jwt
+      - X-authentik-meta-jwks
+      - X-authentik-meta-outpost
+      - X-authentik-meta-provider
+      - X-authentik-meta-app
+      - X-authentik-meta-version
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: navidrome
+  namespace: media
+spec:
+  parentRefs:
+    - {name: home, namespace: traefik}
+  hostnames: [music.reza.network]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /outpost.goauthentik.io}
+      filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: custom-errors}
+      backendRefs:
+        - name: authentik
+          namespace: apps
+          port: 9000
+    - matches:
+        # Subsonic/OpenSubsonic clients use Navidrome's native credentials and
+        # do not understand an interactive Authentik redirect.
+        - path: {type: PathPrefix, value: /rest}
+      filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: custom-errors}
+      backendRefs:
+        - {name: navidrome, port: 4533}
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: custom-errors}
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: navidrome-authentik}
+      backendRefs:
+        - {name: navidrome, port: 4533}
