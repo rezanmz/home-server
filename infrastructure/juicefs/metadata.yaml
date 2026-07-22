@@ -73,6 +73,9 @@ spec:
           env:
             - {name: POSTGRES_DB, value: juicefs}
             - {name: POSTGRES_USER, value: juicefs}
+            # Longhorn formats the volume as ext4, whose mount root contains
+            # lost+found. PostgreSQL requires an empty data directory.
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
             - {name: POSTGRES_INITDB_ARGS, value: --auth-host=scram-sha-256}
             - name: POSTGRES_PASSWORD
               valueFrom:
