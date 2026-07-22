@@ -32,7 +32,10 @@ spec:
           command:
             - /usr/local/bin/mcp-v8
           args:
-            - --http-port
+            # The upstream Streamable HTTP transport accepts loopback Host
+            # headers only and does not expose its allow-list in the release
+            # CLI. Use its supported SSE transport for Kubernetes service DNS.
+            - --sse-port
             - "8080"
             - --heap-memory-max
             - "8"
