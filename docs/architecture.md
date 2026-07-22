@@ -125,13 +125,21 @@ selections.
 
 The same boundary also contains the official Home Assistant remote MCP, a
 reviewed Jellyseerr adapter, the published multi-Arr and Navidrome adapters,
-and official read-only Grafana, Kubernetes, and GitHub servers. Git pins the
+official read-only Grafana, Kubernetes, and GitHub servers, and a stateless
+`mcp-v8` JavaScript evaluator for bounded calculations. Git pins the
 executables and establishes network/RBAC ceilings. MCPHub's backed-up database
 owns endpoints, credentials, enabled tools, and group membership. Kubernetes
 diagnostics are independently constrained by a read-only flag and an RBAC role
 that excludes Secrets, pod exec, and all mutation. Grafana uses a Viewer token
 with server-side writes disabled; GitHub uses read-only mode and a
 repository-scoped token.
+
+The code evaluator is a separate non-root pod with a read-only root filesystem,
+no service-account token, no persistent volume, and deny-all egress. It accepts
+traffic only from MCPHub. The runtime disables filesystem, subprocess, module,
+network, and upstream-MCP capabilities, enables every available sandbox
+hardening switch, and has strict concurrency and pod resource limits. Only
+action-capable MCPHub groups receive its `run_js` tool; read-only groups do not.
 
 Open WebUI retrieval currently uses Gemini Embedding 2 through OpenRouter. Its
 persisted files, knowledge, memories, and vector index were migrated and

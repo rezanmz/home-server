@@ -1155,7 +1155,8 @@ application-owned settings.
 
 MCPHub is the only MCP registry. The official GPT Researcher server, Vikunja,
 Obsidian filesystem access, Actual Budget, Google personal-service adapters,
-and both PDF-reading providers are configured there.
+both PDF-reading providers, and the isolated `mcp-v8` evaluator are configured
+there.
 Open WebUI connects to one curated MCPHub group rather than to each server.
 
 Check MCPHub, its database, and the installed packages:
@@ -1168,6 +1169,9 @@ sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- \
   sh -lc 'command -v mcp-server-filesystem && command -v vikunja-mcp && command -v gcloud-mcp && test -x /usr/local/bin/start-gcloud-mcp && test -f /opt/gptr-mcp/server.py && test -x /opt/actual-mcp/build/index.js'
 sudo k3s kubectl -n apps get deploy,pod,svc -l app.kubernetes.io/name=llamacloud-mcp
 sudo k3s kubectl -n apps get networkpolicy llamacloud-mcp
+sudo k3s kubectl -n apps get deploy,pod,svc,networkpolicy \
+  -l app.kubernetes.io/name=mcp-v8
+sudo k3s kubectl -n apps logs deploy/mcp-v8 --tail=100
 ```
 
 Open MCPHub from the LAN or WireGuard and use **Servers** for connection state,
@@ -1181,6 +1185,24 @@ The official GPT Researcher server should expose `deep_research`,
 `get_research_context`. A missing or different list indicates the wrong entry
 command or an upstream package change. Do not replace it with a local MCP
 implementation.
+
+The `mcp-v8` server should expose only `run_js` in stateless mode. It is a
+calculation and small-transformation tool, not a shell. Verify a harmless
+expression such as `(17 * 23) + Math.sqrt(144)` returns `403`, then confirm
+`fetch("https://example.com")`, file reads, external imports, and subprocesses
+are rejected. In MCPHub, keep it out of the read-only group and include it only
+in the action-capable and Hermes companion groups. The pod must have no
+service-account mount or persistent volume, and its NetworkPolicy must retain
+empty egress.
+
+To upgrade the executor, review the upstream `r33drichards/mcp-js` release and
+security notes, update both architecture-specific release checksums in
+`images/mcp-v8/Dockerfile`, increment the image revision in
+`scripts/build-mcp-v8-image.sh`, build the multi-architecture image, and replace
+the manifest's tag and digest together. Re-run the arithmetic and blocked-host-
+capability tests before merging. Do not switch to the archived Pyodide-based
+`pydantic/mcp-run-python`; its maintainers explicitly retired it over sandbox
+and memory-isolation failures.
 
 For a smoke test, use a small, explicit research request from the Deep Research
 profile. Confirm the response includes sources, then inspect the matching
