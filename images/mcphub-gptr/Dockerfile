@@ -65,7 +65,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="1.0.24-assistant-suite-2" \
+      org.opencontainers.image.version="1.0.24-assistant-suite-3" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -76,6 +76,7 @@ COPY vision-guard/test_vision_guard.py /opt/vision-guard/bin/test_vision_guard.p
 COPY vision-guard/start-gcloud-mcp /usr/local/bin/start-gcloud-mcp
 COPY vision-guard/gcloud-mcp-allowlist.json /opt/vision-guard/gcloud-mcp-allowlist.json
 COPY jellyseerr-mcp /usr/local/bin/jellyseerr-mcp
+COPY actual-mcp-reconciliation.patch /tmp/actual-mcp-reconciliation.patch
 COPY --from=operations-mcp-builder /out/mcp-grafana /usr/local/bin/mcp-grafana
 COPY --from=operations-mcp-builder /out/kubernetes-mcp-server /usr/local/bin/kubernetes-mcp-server
 COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-mcp-server
@@ -94,7 +95,10 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # version and replace the runtime packages covered by current advisories.
 # Runtime paths, OAuth material, permissions, models, retrievers, API keys, and
 # research parameters are deliberately absent here; MCPHub owns those values
-# in its backed-up application state. GPT Researcher 0.16.0 imports three typing
+# in its backed-up application state. The small revision-locked Actual patch
+# exposes account reconciliation timestamps already returned by Actual's API;
+# it neither adds write access nor forks the maintained MCP server. GPT
+# Researcher 0.16.0 imports three typing
 # annotations after using them, so the released dependency receives a one-line
 # import-order repair; the official MCP server source is unchanged.
 # Jellyseerr's upstream Rich console defaults to stdout. The small sed below
@@ -117,6 +121,8 @@ RUN apt-get update \
     && git clone --filter=blob:none https://github.com/s-stefanov/actual-mcp.git /opt/actual-mcp \
     && git -C /opt/actual-mcp checkout --detach "${ACTUAL_MCP_REVISION}" \
     && test "$(git -C /opt/actual-mcp rev-parse HEAD)" = "${ACTUAL_MCP_REVISION}" \
+    && git -C /opt/actual-mcp apply --check /tmp/actual-mcp-reconciliation.patch \
+    && git -C /opt/actual-mcp apply /tmp/actual-mcp-reconciliation.patch \
     && git clone --filter=blob:none https://github.com/aserper/jellyseerr-mcp.git /opt/jellyseerr-mcp \
     && git -C /opt/jellyseerr-mcp checkout --detach "${JELLYSEERR_MCP_REVISION}" \
     && test "$(git -C /opt/jellyseerr-mcp rev-parse HEAD)" = "${JELLYSEERR_MCP_REVISION}" \

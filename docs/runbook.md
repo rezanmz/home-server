@@ -1275,7 +1275,9 @@ For Actual Budget, confirm the server command is `node` with
 `ACTUAL_DATA_DIR=/tmp/actual-mcp` in MCPHub. The sync ID is the budget's
 `groupId`/Advanced-settings sync ID, not its server-side file ID. The server
 must advertise exactly eight tools. Test `get-accounts`, then a narrow monthly
-summary; do not paste raw transaction output into logs or tickets.
+summary. Confirm that `get-accounts` returns `lastReconciledAt` and
+`daysSinceReconciliation` for a reconciled account; do not paste raw transaction
+output into logs or tickets.
 
 After a MCPHub restore or credential rotation, verify every server connection,
 review the group's exact tool list, and perform one harmless call through Open

@@ -16,6 +16,11 @@ data:
       real_ip_recursive on;
       server {
         listen 15006;
+        # Actual's encrypted sync uploads may legitimately approach its own
+        # 50 MiB application limit. Keep a finite proxy ceiling above that
+        # limit so nginx does not reject ordinary sync payloads at its 1 MiB
+        # default while Actual remains the endpoint-specific size boundary.
+        client_max_body_size 64m;
         allow 192.168.1.0/24;
         allow 10.8.0.0/24;
         allow 10.42.1.0/24; # wg-easy masqueraded clients on the Pi

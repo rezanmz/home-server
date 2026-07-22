@@ -1,0 +1,160 @@
+diff --git a/src/tools/get-accounts/index.test.ts b/src/tools/get-accounts/index.test.ts
+new file mode 100644
+index 0000000..74979da
+--- /dev/null
++++ b/src/tools/get-accounts/index.test.ts
+@@ -0,0 +1,82 @@
++import { beforeEach, describe, expect, it, vi } from 'vitest';
++
++vi.mock('../../core/data/fetch-accounts.js', () => ({
++  fetchAllAccounts: vi.fn(),
++}));
++
++vi.mock('@actual-app/api', () => ({
++  getAccountBalance: vi.fn(),
++}));
++
++import { getAccountBalance } from '@actual-app/api';
++import { fetchAllAccounts } from '../../core/data/fetch-accounts.js';
++import { daysSinceReconciliation, handler, normalizeLastReconciled } from './index.js';
++
++describe('get-accounts reconciliation metadata', () => {
++  beforeEach(() => {
++    vi.clearAllMocks();
++  });
++
++  it('normalizes Actual millisecond timestamps', () => {
++    expect(normalizeLastReconciled('1784688927512')).toBe('2026-07-22T02:55:27.512Z');
++  });
++
++  it('preserves valid ISO timestamps', () => {
++    expect(normalizeLastReconciled('2026-07-01T12:00:00.000Z')).toBe('2026-07-01T12:00:00.000Z');
++  });
++
++  it('returns null for absent or invalid reconciliation timestamps', () => {
++    expect(normalizeLastReconciled(null)).toBeNull();
++    expect(normalizeLastReconciled('not-a-date')).toBeNull();
++  });
++
++  it('computes whole elapsed days and does not return negative ages', () => {
++    const now = new Date('2026-07-22T23:00:00.000Z');
++    expect(daysSinceReconciliation('2026-07-20T12:00:00.000Z', now)).toBe(2);
++    expect(daysSinceReconciliation('2026-07-23T12:00:00.000Z', now)).toBe(0);
++    expect(daysSinceReconciliation(null, now)).toBeNull();
++  });
++
++  it('returns reconciliation metadata with the existing account details', async () => {
++    vi.mocked(fetchAllAccounts).mockResolvedValue([
++      {
++        id: 'account-1',
++        name: 'Checking',
++        type: 'checking',
++        offbudget: false,
++        closed: false,
++        last_reconciled: '1784688927512',
++      },
++      {
++        id: 'account-2',
++        name: 'Cash',
++        type: 'cash',
++        offbudget: false,
++        closed: false,
++        last_reconciled: null,
++      },
++    ] as unknown as Awaited<ReturnType<typeof fetchAllAccounts>>);
++    vi.mocked(getAccountBalance).mockResolvedValue(12345);
++
++    const result = await handler();
++    const content = result.content[0];
++    expect(content.type).toBe('text');
++    if (content.type !== 'text') {
++      throw new Error(`Expected text result, received ${content.type}`);
++    }
++
++    const accounts = JSON.parse(content.text);
++    expect(accounts[0]).toMatchObject({
++      id: 'account-1',
++      name: 'Checking',
++      balance: '$123.45',
++      lastReconciledAt: '2026-07-22T02:55:27.512Z',
++    });
++    expect(accounts[0].daysSinceReconciliation).toEqual(expect.any(Number));
++    expect(accounts[1]).toMatchObject({
++      id: 'account-2',
++      lastReconciledAt: null,
++      daysSinceReconciliation: null,
++    });
++  });
++});
+diff --git a/src/tools/get-accounts/index.ts b/src/tools/get-accounts/index.ts
+index b9cb48d..67db1bd 100644
+--- a/src/tools/get-accounts/index.ts
++++ b/src/tools/get-accounts/index.ts
+@@ -11,17 +11,56 @@ import { z, toJSONSchema } from 'zod';
+ import { type ToolInput } from '../../types.js';
+ 
+ // Define an empty schema with zod
+ const GetAccountsArgsSchema = z.object({});
++const MILLISECONDS_PER_DAY = 86_400_000;
++
++type ReconciliationAccount = Account & {
++  last_reconciled?: string | number | null;
++};
++
++/** Normalize Actual's millisecond-string field while tolerating future ISO values. */
++export function normalizeLastReconciled(value: string | number | null | undefined): string | null {
++  if (value === null || value === undefined) return null;
++
++  const text = String(value).trim();
++  if (!text) return null;
++
++  const timestamp = /^\d+$/.test(text) ? Number(text) : Date.parse(text);
++  if (!Number.isFinite(timestamp)) return null;
++
++  const date = new Date(timestamp);
++  return Number.isNaN(date.getTime()) ? null : date.toISOString();
++}
++
++/** Return whole elapsed days so agents can compare reconciliation recency. */
++export function daysSinceReconciliation(
++  value: string | number | null | undefined,
++  now: Date = new Date()
++): number | null {
++  const normalized = normalizeLastReconciled(value);
++  if (!normalized) return null;
++
++  const elapsed = now.getTime() - Date.parse(normalized);
++  return Math.max(0, Math.floor(elapsed / MILLISECONDS_PER_DAY));
++}
+ 
+ export const schema = {
+   name: 'get-accounts',
+-  description: 'Retrieve a list of all accounts with their current balance and ID.',
++  description:
++    'Retrieve all Actual Budget accounts with IDs, balances, budget/closed flags, and the timestamp and age of their last completed reconciliation. Use this read-only tool to answer account-balance questions or identify accounts that may need reconciliation; it does not reconcile accounts.',
+   inputSchema: toJSONSchema(GetAccountsArgsSchema) as ToolInput,
++  annotations: {
++    title: 'List accounts and reconciliation status',
++    readOnlyHint: true,
++    destructiveHint: false,
++    idempotentHint: true,
++    openWorldHint: false,
++  },
+ };
+ 
+ export async function handler(): Promise<ReturnType<typeof successWithJson> | ReturnType<typeof errorFromCatch>> {
+   try {
+-    const accounts: Account[] = await fetchAllAccounts();
++    const accounts = (await fetchAllAccounts()) as ReconciliationAccount[];
+ 
+     for (const account of accounts) {
+       account.balance = await getAccountBalance(account.id, new Date('2099-01-01'));
+@@ -34,6 +73,8 @@ export async function handler(): Promise<ReturnType<typeof successWithJson> | R
+       balance: formatAmount(account.balance),
+       closed: account.closed,
+       offBudget: account.offbudget,
++      lastReconciledAt: normalizeLastReconciled(account.last_reconciled),
++      daysSinceReconciliation: daysSinceReconciliation(account.last_reconciled),
+     }));
+ 
+     return successWithJson(structured);

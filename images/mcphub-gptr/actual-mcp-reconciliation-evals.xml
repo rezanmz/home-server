@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<evals>
+  <eval id="1">
+    <question>Which open account was reconciled least recently, and what is its current balance?</question>
+    <expected>Call get-accounts, exclude closed accounts, choose the greatest non-null daysSinceReconciliation, and report its balance and lastReconciledAt.</expected>
+  </eval>
+  <eval id="2">
+    <question>List accounts that have not been reconciled in the last 30 days, then show this month's transactions for the stalest one.</question>
+    <expected>Call get-accounts, filter by daysSinceReconciliation greater than 30, then call get-transactions with the selected account ID and a current-month date range.</expected>
+  </eval>
+  <eval id="3">
+    <question>Are any active accounts missing a reconciliation date? If so, compare their balances.</question>
+    <expected>Call get-accounts, filter out closed accounts, identify lastReconciledAt null, and compare the balances already returned without inventing a date.</expected>
+  </eval>
+  <eval id="4">
+    <question>For my most recently reconciled on-budget account, summarize spending by category over the last month.</question>
+    <expected>Call get-accounts, select the on-budget account with the smallest non-null age, then call spending-by-category with that account ID and the requested range.</expected>
+  </eval>
+  <eval id="5">
+    <question>Compare the three stalest open accounts and give their three-month balance histories.</question>
+    <expected>Call get-accounts, sort open accounts by reconciliation age, then call balance-history once for each of the three selected IDs.</expected>
+  </eval>
+  <eval id="6">
+    <question>Inspect last year's transactions for the stalest account without requesting an unbounded transaction dump.</question>
+    <expected>Call get-accounts, choose the stalest active account, then call get-transactions in bounded monthly or quarterly date ranges and continue only when more detail is needed.</expected>
+  </eval>
+  <eval id="7">
+    <question>The account list has no reconciliation date for one account. Determine whether it is closed before recommending action.</question>
+    <expected>Call get-accounts and use the same result's closed and lastReconciledAt fields; do not treat null as a fabricated date or invoke a write tool.</expected>
+  </eval>
+  <eval id="8">
+    <question>If retrieving accounts fails because Actual cannot synchronize, what should you do before trying to analyze reconciliation age?</question>
+    <expected>Call get-accounts once, report the actionable synchronization/authentication error, and do not substitute cached guesses or repeatedly retry.</expected>
+  </eval>
+  <eval id="9">
+    <question>Check whether an off-budget investment account is overdue for reconciliation and summarize its recent balance movement.</question>
+    <expected>Call get-accounts, identify the requested off-budget account and its reconciliation age, then call balance-history with includeOffBudget enabled.</expected>
+  </eval>
+  <eval id="10">
+    <question>Prepare a concise monthly financial check-in that includes accounts overdue for reconciliation and the current monthly summary.</question>
+    <expected>Call get-accounts to identify overdue accounts, call monthly-summary for the current period, and combine both results without modifying Actual.</expected>
+  </eval>
+</evals>
