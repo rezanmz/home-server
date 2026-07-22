@@ -28,6 +28,13 @@ credential and filesystem name allow the CSI driver to share one mount pod per
 node. Consumers use category `subPath` mounts and retain the established
 application paths.
 
+Every eligible node must expose `/dev/fuse` and apply
+`infrastructure/hosts/common/99-home-server-juicefs.conf`. Run
+`scripts/prepare-juicefs-hosts.sh` after provisioning or replacing a node. The
+inotify limit is a host prerequisite: K3s containers share the root user's
+quota, and an exhausted quota prevents the CSI driver from loading its watched
+configuration before it can serve any mount.
+
 ## Rollout state
 
 The migration is intentionally staged:
