@@ -65,7 +65,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="1.0.24-assistant-suite-3" \
+      org.opencontainers.image.version="1.0.24-assistant-suite-4" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -96,8 +96,9 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # Runtime paths, OAuth material, permissions, models, retrievers, API keys, and
 # research parameters are deliberately absent here; MCPHub owns those values
 # in its backed-up application state. The small revision-locked Actual patch
-# exposes account reconciliation timestamps already returned by Actual's API;
-# it neither adds write access nor forks the maintained MCP server. GPT
+# exposes account reconciliation timestamps through Actual's supported,
+# read-only AQL API; it neither adds write access nor forks the maintained MCP
+# server. GPT
 # Researcher 0.16.0 imports three typing
 # annotations after using them, so the released dependency receives a one-line
 # import-order repair; the official MCP server source is unchanged.
