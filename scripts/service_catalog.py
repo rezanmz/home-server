@@ -450,54 +450,65 @@ def authentik_oidc_blueprint(service: dict[str, Any], auth: dict[str, Any]) -> s
     return "\n".join(lines) + "\n"
 
 
-def authentik_forward_blueprint(service: dict[str, Any], auth: dict[str, Any]) -> str:
-    name = str(service["name"])
-    hostname = str(service["web"]["hostname"])
-    application = auth["application"]
-    slug = str(application["slug"])
-    provider_id = f"{slug}-provider"
-    blueprint_name = str(
-        auth.get("blueprintName", f"{name} proxy authentication")
-    )
-    provider_name = str(auth.get("providerName", f"Provider for {name}"))
-    launch_url = str(application.get("launchUrl", f"https://{hostname}/"))
-    return "\n".join(
+def authentik_forward_blueprint(
+    entries: list[tuple[dict[str, Any], dict[str, Any]]],
+) -> str:
+    lines = [
+        "version: 1",
+        "metadata:",
+        '  name: "Forward-auth applications"',
+        "  labels:",
+        '    blueprints.goauthentik.io/instantiate: "true"',
+        "entries:",
+    ]
+    provider_ids: list[str] = []
+    for service, auth in entries:
+        name = str(service["name"])
+        hostname = str(service["web"]["hostname"])
+        application = auth["application"]
+        slug = str(application["slug"])
+        provider_id = f"{slug}-provider"
+        provider_ids.append(provider_id)
+        provider_name = str(auth.get("providerName", f"Provider for {name}"))
+        launch_url = str(application.get("launchUrl", f"https://{hostname}/"))
+        lines.extend(
+            [
+                "  - model: authentik_providers_proxy.proxyprovider",
+                f"    id: {provider_id}",
+                "    identifiers:",
+                f"      name: {yaml_string(provider_name)}",
+                "    attrs:",
+                "      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]",
+                "      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]",
+                "      mode: forward_single",
+                f"      external_host: {yaml_string(f'https://{hostname}')}",
+                "  - model: authentik_core.application",
+                "    identifiers:",
+                f"      slug: {slug}",
+                "    attrs:",
+                f"      name: {yaml_string(name)}",
+                f"      provider: !KeyOf {provider_id}",
+                f"      meta_launch_url: {yaml_string(launch_url)}",
+            ]
+        )
+
+    lines.extend(
         [
-            "version: 1",
-            "metadata:",
-            f"  name: {yaml_string(blueprint_name)}",
-            "  labels:",
-            '    blueprints.goauthentik.io/instantiate: "true"',
-            "entries:",
-            "  - model: authentik_providers_proxy.proxyprovider",
-            f"    id: {provider_id}",
-            "    identifiers:",
-            f"      name: {yaml_string(provider_name)}",
-            "    attrs:",
-            "      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]",
-            "      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]",
-            "      mode: forward_single",
-            f"      external_host: {yaml_string(f'https://{hostname}')}",
-            "  - model: authentik_core.application",
-            "    identifiers:",
-            f"      slug: {slug}",
-            "    attrs:",
-            f"      name: {yaml_string(name)}",
-            f"      provider: !KeyOf {provider_id}",
-            f"      meta_launch_url: {yaml_string(launch_url)}",
             "  - model: authentik_outposts.outpost",
             "    identifiers:",
             "      name: authentik Embedded Outpost",
             "    attrs:",
             "      providers:",
-            f"        - !KeyOf {provider_id}",
-            "",
         ]
     )
+    lines.extend(f"        - !KeyOf {provider_id}" for provider_id in provider_ids)
+    lines.append("")
+    return "\n".join(lines)
 
 
 def authentik_blueprints_document(catalog: dict[str, Any]) -> str:
     entries: list[tuple[str, str]] = []
+    forward_auth_entries: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for service in sorted(services(catalog), key=lambda item: str(item.get("id"))):
         auth = service.get("web", {}).get("auth", {})
         mode = auth.get("mode")
@@ -506,9 +517,16 @@ def authentik_blueprints_document(catalog: dict[str, Any]) -> str:
                 (f"{service['id']}.yaml", authentik_oidc_blueprint(service, auth))
             )
         elif mode == "forward-auth":
-            entries.append(
-                (f"{service['id']}.yaml", authentik_forward_blueprint(service, auth))
+            forward_auth_entries.append((service, auth))
+
+    if forward_auth_entries:
+        entries.append(
+            (
+                "forward-auth.yaml",
+                authentik_forward_blueprint(forward_auth_entries),
             )
+        )
+    entries.sort(key=lambda item: item[0])
 
     lines = [
         "# Generated from colocated *.catalog.yaml descriptors by scripts/service_catalog.py.",
