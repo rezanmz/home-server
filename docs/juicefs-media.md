@@ -34,6 +34,10 @@ Every eligible node must expose `/dev/fuse` and apply
 inotify limit is a host prerequisite: K3s containers share the root user's
 quota, and an exhausted quota prevents the CSI driver from loading its watched
 configuration before it can serve any mount.
+On hosts that enforce Ubuntu's `fusermount3` AppArmor profile, the same script
+installs the narrow rule in
+`infrastructure/hosts/common/juicefs-fusermount3`. It permits FUSE mounts only
+under the `/jfs` path used inside JuiceFS mount pods and reloads the profile.
 
 ## Rollout state
 
