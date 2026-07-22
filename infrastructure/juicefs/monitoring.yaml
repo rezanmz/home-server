@@ -75,7 +75,7 @@ spec:
             summary: JuiceFS is receiving B2 object-store errors
             description: JuiceFS reported {{ $value | printf "%.0f" }} failed object operations in ten minutes.
         - alert: JuiceFSMetadataBackupStale
-          expr: time() - max(last_successful_backup{vol_name="media"}) > 10800
+          expr: time() - max(juicefs_last_successful_backup{vol_name="media"}) > 10800
           for: 2h
           labels: {severity: critical}
           annotations:

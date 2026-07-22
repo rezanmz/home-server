@@ -1,0 +1,5 @@
+# Ubuntu's fusermount3 AppArmor profile does not allow the /jfs path used
+# inside JuiceFS CSI mount pods. Keep this exception limited to FUSE mounts
+# below that dedicated mount-pod path.
+mount fstype=@{fuse_types} options=(nosuid,nodev) options in (ro,rw,noatime,dirsync,nodiratime,noexec,sync) -> /jfs/**/,
+umount /jfs/**/,

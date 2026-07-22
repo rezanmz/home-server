@@ -23,6 +23,11 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [juicefs-csi-driver, juicefs-mount]
       ports:
         - {port: 5432, protocol: TCP}
     - from:
