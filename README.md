@@ -10,8 +10,9 @@ the [service integration catalog](docs/service-catalog.md), the
 [configuration ownership policy](docs/configuration-ownership.md), the
 [service lifecycle manual](docs/service-operations.md), the
 [cluster and node operations manual](docs/cluster-operations.md), the
-[Open WebUI operating model](docs/open-webui.md), and the
-[personal assistant integrations](docs/personal-assistant.md), plus the
+[Open WebUI operating model](docs/open-webui.md), the
+[personal assistant integrations](docs/personal-assistant.md), the
+[JuiceFS media-storage manual](docs/juicefs-media.md), and the
 [incident runbook](docs/runbook.md).
 
 ## Production topology
@@ -56,6 +57,7 @@ Beelink control plane and the Pi NFS server are known single points of failure.
 | Understand placement, add/remove a node, or move a workload | [Cluster and node operations manual](docs/cluster-operations.md) |
 | Use or modify Open WebUI profiles, models, research, retrieval, or memory | [Open WebUI operating model](docs/open-webui.md) |
 | Operate Hermes, Vikunja, personal Gmail/Calendar, Obsidian, and research MCP tools | [Personal assistant integrations](docs/personal-assistant.md) |
+| Operate, recover, resize, or migrate the B2-backed media filesystem | [JuiceFS media-storage manual](docs/juicefs-media.md) |
 | Diagnose an outage, reconcile Flux, or restore data | [Incident runbook](docs/runbook.md) |
 
 The node operations manual also records current live deviations that still need

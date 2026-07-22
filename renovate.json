@@ -21,6 +21,21 @@
       "/^(?:clusters|infrastructure)/.+\\.ya?ml$/"
     ]
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep both JuiceFS CE mount-image references on one reviewed release.",
+      "managerFilePatterns": [
+        "/^infrastructure/juicefs/release\\.yaml$/"
+      ],
+      "matchStrings": [
+        "(?:ce|ceMountImage):\\s+docker\\.io/juicedata/mount:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "juicedata/mount",
+      "versioningTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
       "description": "All LinuxServer.io images use non-SemVer compound tag formats. Apply loose versioning, exclude nightly/development builds, and exclude stale Ubuntu-era tags (e.g. '14.3.9.xxx...ubuntu20.04.1-ls166') which sort higher than real app-version tags under loose versioning.",

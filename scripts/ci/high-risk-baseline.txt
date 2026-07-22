@@ -48,6 +48,7 @@ explicit-root-user|apps/v1/Deployment|network-services|kea-dhcp4|init-container/
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec/sha256/39862bedcf4ef916bdcd6ff920a8397bfdbcfbc2d0e6b3bd59a6f21ad5c9433e
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec/sha256/ec39ed3f8b3be6b9508be7c0e55284e3deb2783ca80348711796ed6e5e04749d
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|gateway-api|spec/sha256/248c0de258ecc0e14646ffdebed9fd42061a8efdf4023cd2f0f954fae777293a
+external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|juicefs-csi-driver|spec/sha256/b32f2ce85f8ecdd09bec684e5a92869c883659331574a9ab2fba830eae052117
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|longhorn|spec/sha256/a3bd2d5b166d91332c7faac9eae737b27da6b223eee6388e7e0d48359c290d1b
 external-source-boundary|source.toolkit.fluxcd.io/v1/OCIRepository|flux-system|cert-manager|spec/sha256/74fbbadae2b4222db801b7ddca75052b8a91faccb2dbff48a82b902418b8c606
 external-source-boundary|source.toolkit.fluxcd.io/v1/OCIRepository|flux-system|kube-prometheus-stack|spec/sha256/42eeb97bcf2f42e3ff5dfdb4e367732854ceb5873ff924bf31e85de00f7d3dd8
@@ -71,6 +72,7 @@ helm-externally-exposed-service|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|tr
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.web.hostPort/value-80
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.websecure.hostPort/value-443
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/5bb4ca36703dbcd5375ca8d8183c797ea9e41888d66183ec7579a6c4c9344b20
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/71ae8178d6cde282a8e60d996a562c06c73ea2c7524246655b827d161d3bfc4a
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/f1357329293aec180c410ae80640d441d11dde948b3186baf974b893e93376f4
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/dabfe45453521cac08b274094c8a90cd15250408a17dc70d6b75eee9b771601c
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/dbc0436675279f674af7c3fbc31cd7ab5854f99e3ab3493c749e2b44395ec1d4
@@ -139,6 +141,8 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|spec/sha256/9e8889aa30075eb5715602faa8bc6ef3b41957d1d88c3e674f58780d916919e1
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|tika|spec/sha256/75787649c5cc65abdb9d4b53762cfbb17b685080007a1cf68a2fa7c4ef003d03
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vikunja|spec/sha256/dcc1255377ad4ce12e740741d3c11f91f2cad9f13b4fb38143c442985a33fb7e
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|juicefs-postgresql|spec/sha256/2428a847948c3c886da817e496d0441b7665a4073154eb9a097e6dddcbab485c
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|kube-system|observability-node-exporter|spec/sha256/37f053596d712e401b7faf79f7d085250ee55ff0a7a846017d84ea06e0e31885
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|spec/sha256/2d4344f4b1c91c64c784bf14c9e172b0bf08717181145edb8ad11a72a3f1876b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|spec/sha256/67ba0f809134cd806cf0229cca8d7d6b99fecfde40972c4121bfce36d6c979ef
@@ -222,4 +226,5 @@ universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec.verify/url/https://github.com/kubernetes-csi/external-snapshotter.git/ref/tag=<immutable-selector>,commit=<immutable-commit>
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec.verify/url/https://github.com/rezanmz/home-server.git/ref/branch=main
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|gateway-api|spec.verify/url/https://github.com/kubernetes-sigs/gateway-api.git/ref/tag=<immutable-selector>,commit=<immutable-commit>
+unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|juicefs-csi-driver|spec.verify/url/https://github.com/juicedata/charts.git/ref/tag=<immutable-selector>,commit=<immutable-commit>
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|longhorn|spec.verify/url/https://github.com/longhorn/longhorn.git/ref/tag=<immutable-selector>,commit=<immutable-commit>

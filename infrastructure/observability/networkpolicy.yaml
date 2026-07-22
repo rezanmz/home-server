@@ -103,6 +103,8 @@ spec:
         - {port: 9153, protocol: TCP}
         - {port: 9402, protocol: TCP}
         - {port: 9547, protocol: TCP}
+        - {port: 9567, protocol: TCP}
+        - {port: 9187, protocol: TCP}
         - {port: 9500, protocol: TCP}
         - {port: 10250, protocol: TCP}
         - {port: 14535, protocol: TCP}
@@ -118,6 +120,8 @@ spec:
         - {port: 9100, protocol: TCP}
         - {port: 9153, protocol: TCP}
         - {port: 9402, protocol: TCP}
+        - {port: 9567, protocol: TCP}
+        - {port: 9187, protocol: TCP}
         - {port: 9500, protocol: TCP}
         - {port: 10250, protocol: TCP}
         - {port: 14535, protocol: TCP}

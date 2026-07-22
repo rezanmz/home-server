@@ -143,6 +143,29 @@ render_release() {
   printf '%s/%s\n' "${namespace}" "${name}" >>"${rendered_releases}"
 }
 
+checkout_git_chart() {
+  local source_file="$1"
+  local display_name="$2"
+  local url tag commit name checkout resolved_commit
+
+  url="$(yq -r '.spec.url' "${source_file}")"
+  tag="$(yq -r '.spec.ref.tag' "${source_file}")"
+  commit="$(yq -r '.spec.ref.commit' "${source_file}")"
+  name="$(yq -r '.metadata.name' "${source_file}")"
+  checkout="${tmp}/${name}"
+  git -C "${tmp}" init -q "${name}"
+  git -C "${checkout}" remote add origin "${url}"
+  git -C "${checkout}" fetch -q --depth=1 origin "refs/tags/${tag}"
+  resolved_commit="$(git -C "${checkout}" rev-parse 'FETCH_HEAD^{commit}')"
+  [[ "${resolved_commit}" == "${commit}" ]] || {
+    printf '%s tag/commit mismatch: expected %s, got %s\n' \
+      "${display_name}" "${commit}" "${resolved_commit}" >&2
+    return 1
+  }
+  git -C "${checkout}" checkout -q --detach FETCH_HEAD
+  printf '%s\n' "${checkout}"
+}
+
 : >"${output}"
 
 cert_manager_release="${tmp}/cert-manager-release.yaml"
@@ -184,22 +207,20 @@ extract_resource HelmRelease longhorn-system longhorn "${longhorn_release}"
 extract_resource GitRepository flux-system longhorn "${longhorn_source}"
 validate_release_reference \
   "${longhorn_release}" GitRepository flux-system longhorn ./chart
-longhorn_url="$(yq -r '.spec.url' "${longhorn_source}")"
-longhorn_tag="$(yq -r '.spec.ref.tag' "${longhorn_source}")"
-longhorn_commit="$(yq -r '.spec.ref.commit' "${longhorn_source}")"
-longhorn_checkout="${tmp}/longhorn"
-git -C "${tmp}" init -q longhorn
-git -C "${longhorn_checkout}" remote add origin "${longhorn_url}"
-git -C "${longhorn_checkout}" fetch -q --depth=1 origin "refs/tags/${longhorn_tag}"
-resolved_commit="$(git -C "${longhorn_checkout}" rev-parse 'FETCH_HEAD^{commit}')"
-[[ "${resolved_commit}" == "${longhorn_commit}" ]] || {
-  printf 'Longhorn tag/commit mismatch: expected %s, got %s\n' \
-    "${longhorn_commit}" "${resolved_commit}" >&2
-  exit 1
-}
-git -C "${longhorn_checkout}" checkout -q --detach FETCH_HEAD
+longhorn_checkout="$(checkout_git_chart "${longhorn_source}" Longhorn)"
 longhorn_chart_path="$(yq -r '.spec.chart.spec.chart' "${longhorn_release}")"
 render_release "${longhorn_release}" "${longhorn_checkout}/${longhorn_chart_path#./}"
+
+juicefs_source="${tmp}/juicefs-source.yaml"
+juicefs_release="${tmp}/juicefs-release.yaml"
+extract_resource HelmRelease kube-system juicefs-csi-driver "${juicefs_release}"
+extract_resource GitRepository flux-system juicefs-csi-driver "${juicefs_source}"
+validate_release_reference \
+  "${juicefs_release}" GitRepository flux-system juicefs-csi-driver \
+  ./charts/juicefs-csi-driver
+juicefs_checkout="$(checkout_git_chart "${juicefs_source}" 'JuiceFS CSI')"
+juicefs_chart_path="$(yq -r '.spec.chart.spec.chart' "${juicefs_release}")"
+render_release "${juicefs_release}" "${juicefs_checkout}/${juicefs_chart_path#./}"
 
 observability_release="${tmp}/observability-release.yaml"
 observability_source="${tmp}/observability-source.yaml"
