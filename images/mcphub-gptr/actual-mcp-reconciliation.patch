@@ -1,9 +1,9 @@
 diff --git a/src/tools/get-accounts/index.test.ts b/src/tools/get-accounts/index.test.ts
 new file mode 100644
-index 0000000..74979da
+index 0000000..2548444
 --- /dev/null
 +++ b/src/tools/get-accounts/index.test.ts
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,92 @@
 +import { beforeEach, describe, expect, it, vi } from 'vitest';
 +
 +vi.mock('../../core/data/fetch-accounts.js', () => ({
@@ -11,10 +11,14 @@ index 0000000..74979da
 +}));
 +
 +vi.mock('@actual-app/api', () => ({
++  aqlQuery: vi.fn(),
 +  getAccountBalance: vi.fn(),
++  q: vi.fn(() => ({
++    select: vi.fn(() => ({ table: 'accounts', fields: ['id', 'last_reconciled'] })),
++  })),
 +}));
 +
-+import { getAccountBalance } from '@actual-app/api';
++import { aqlQuery, getAccountBalance, q } from '@actual-app/api';
 +import { fetchAllAccounts } from '../../core/data/fetch-accounts.js';
 +import { daysSinceReconciliation, handler, normalizeLastReconciled } from './index.js';
 +
@@ -43,7 +47,7 @@ index 0000000..74979da
 +    expect(daysSinceReconciliation(null, now)).toBeNull();
 +  });
 +
-+  it('returns reconciliation metadata with the existing account details', async () => {
++  it('joins authoritative AQL reconciliation metadata with public account details', async () => {
 +    vi.mocked(fetchAllAccounts).mockResolvedValue([
 +      {
 +        id: 'account-1',
@@ -51,7 +55,6 @@ index 0000000..74979da
 +        type: 'checking',
 +        offbudget: false,
 +        closed: false,
-+        last_reconciled: '1784688927512',
 +      },
 +      {
 +        id: 'account-2',
@@ -59,9 +62,14 @@ index 0000000..74979da
 +        type: 'cash',
 +        offbudget: false,
 +        closed: false,
-+        last_reconciled: null,
 +      },
 +    ] as unknown as Awaited<ReturnType<typeof fetchAllAccounts>>);
++    vi.mocked(aqlQuery).mockResolvedValue({
++      data: [
++        { id: 'account-1', last_reconciled: '1784688927512' },
++        { id: 'account-2', last_reconciled: null },
++      ],
++    });
 +    vi.mocked(getAccountBalance).mockResolvedValue(12345);
 +
 +    const result = await handler();
@@ -72,6 +80,8 @@ index 0000000..74979da
 +    }
 +
 +    const accounts = JSON.parse(content.text);
++    expect(q).toHaveBeenCalledWith('accounts');
++    expect(aqlQuery).toHaveBeenCalledOnce();
 +    expect(accounts[0]).toMatchObject({
 +      id: 'account-1',
 +      name: 'Checking',
@@ -87,18 +97,26 @@ index 0000000..74979da
 +  });
 +});
 diff --git a/src/tools/get-accounts/index.ts b/src/tools/get-accounts/index.ts
-index b9cb48d..67db1bd 100644
+index ddaeee3..33083b6 100644
 --- a/src/tools/get-accounts/index.ts
 +++ b/src/tools/get-accounts/index.ts
-@@ -11,17 +11,56 @@ import { z, toJSONSchema } from 'zod';
+@@ -5,36 +5,101 @@
+ import { successWithJson, errorFromCatch } from '../../utils/response.js';
+ import { fetchAllAccounts } from '../../core/data/fetch-accounts.js';
+ import type { Account } from '../../core/types/domain.js';
+-import { getAccountBalance } from '@actual-app/api';
++import { aqlQuery, getAccountBalance, q } from '@actual-app/api';
+ import { formatAmount } from '../../utils.js';
+ import { z, toJSONSchema } from 'zod';
  import { type ToolInput } from '../../types.js';
  
  // Define an empty schema with zod
  const GetAccountsArgsSchema = z.object({});
 +const MILLISECONDS_PER_DAY = 86_400_000;
 +
-+type ReconciliationAccount = Account & {
-+  last_reconciled?: string | number | null;
++type ReconciliationRow = {
++  id?: unknown;
++  last_reconciled?: unknown;
 +};
 +
 +/** Normalize Actual's millisecond-string field while tolerating future ISO values. */
@@ -126,6 +144,25 @@ index b9cb48d..67db1bd 100644
 +  const elapsed = now.getTime() - Date.parse(normalized);
 +  return Math.max(0, Math.floor(elapsed / MILLISECONDS_PER_DAY));
 +}
++
++/**
++ * Actual's public getAccounts() shape deliberately omits last_reconciled.
++ * Query that read-only field through Actual's supported AQL API and join by ID.
++ */
++async function fetchReconciliationDates(): Promise<Map<string, string | number | null>> {
++  const result = (await aqlQuery(q('accounts').select(['id', 'last_reconciled']))) as {
++    data?: ReconciliationRow[];
++  };
++  const dates = new Map<string, string | number | null>();
++
++  for (const row of Array.isArray(result?.data) ? result.data : []) {
++    if (typeof row.id !== 'string') continue;
++    const value = row.last_reconciled;
++    dates.set(row.id, typeof value === 'string' || typeof value === 'number' ? value : null);
++  }
++
++  return dates;
++}
  
  export const schema = {
    name: 'get-accounts',
@@ -144,17 +181,34 @@ index b9cb48d..67db1bd 100644
  
  export async function handler(): Promise<ReturnType<typeof successWithJson> | ReturnType<typeof errorFromCatch>> {
    try {
--    const accounts: Account[] = await fetchAllAccounts();
-+    const accounts = (await fetchAllAccounts()) as ReconciliationAccount[];
+     const accounts: Account[] = await fetchAllAccounts();
++    const reconciliationDates = await fetchReconciliationDates();
  
      for (const account of accounts) {
        account.balance = await getAccountBalance(account.id, new Date('2099-01-01'));
-@@ -34,6 +73,8 @@ export async function handler(): Promise<ReturnType<typeof successWithJson> | R
-       balance: formatAmount(account.balance),
-       closed: account.closed,
-       offBudget: account.offbudget,
-+      lastReconciledAt: normalizeLastReconciled(account.last_reconciled),
-+      daysSinceReconciliation: daysSinceReconciliation(account.last_reconciled),
-     }));
+     }
+
+-    const structured = accounts.map((account) => ({
+-      id: account.id,
+-      name: account.name,
+-      type: account.type || 'Account',
+-      balance: formatAmount(account.balance),
+-      closed: account.closed,
+-      offBudget: account.offbudget,
+-    }));
++    const structured = accounts.map((account) => {
++      const lastReconciled = reconciliationDates.get(account.id) ?? null;
++      return {
++        id: account.id,
++        name: account.name,
++        type: account.type || 'Account',
++        balance: formatAmount(account.balance),
++        closed: account.closed,
++        offBudget: account.offbudget,
++        lastReconciledAt: normalizeLastReconciled(lastReconciled),
++        daysSinceReconciliation: daysSinceReconciliation(lastReconciled),
++      };
++    });
  
      return successWithJson(structured);
+   } catch (err) {

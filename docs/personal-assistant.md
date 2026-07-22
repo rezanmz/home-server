@@ -123,7 +123,9 @@ its production dependency audit reports an advisory. It is launched without
 transactions, grouped categories, payees, rules, balance history, monthly
 summary, and spending by category. The account tool also returns each account's
 last completed reconciliation timestamp and its age in days; this is a small,
-tested patch over the pinned maintained package, not a separate MCP server. The
+tested patch over the pinned maintained package. It joins the ordinary account
+result with that read-only field through Actual's supported AQL interface; it is
+not a separate MCP server. The
 integration targets the active primary budget. Its local API cache belongs in `/tmp/actual-mcp`, not on MCPHub's
 persistent volume, to avoid making an unnecessary second backup copy of the
 plaintext financial database.

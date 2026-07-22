@@ -11,7 +11,7 @@ readonly MCP_ARR_VERSION="1.6.5"
 readonly NAVIDROME_MCP_VERSION="2.1.0"
 readonly IMAGE_NAMESPACE="${MCPHUB_IMAGE_NAMESPACE:-rezanmz}"
 readonly IMAGE_NAME="mcphub-gptr"
-readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}-actual-${ACTUAL_MCP_SHORT_REVISION}-assistant-suite-3"
+readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}-actual-${ACTUAL_MCP_SHORT_REVISION}-assistant-suite-4"
 readonly BUILDER="${MCPHUB_BUILDX_BUILDER:-mcphub-gptr-builder}"
 readonly PLATFORMS="${MCPHUB_PLATFORMS:-linux/amd64,linux/arm64}"
 
