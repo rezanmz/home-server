@@ -75,12 +75,11 @@ class ServiceCatalogTests(unittest.TestCase):
             [
                 "actual-budget.yaml",
                 "audiobookshelf.yaml",
+                "forward-auth.yaml",
                 "grafana.yaml",
                 "headlamp.yaml",
                 "hermes-agent.yaml",
-                "homepage.yaml",
                 "mcphub.yaml",
-                "navidrome.yaml",
                 "open-webui.yaml",
                 "stork.yaml",
                 "vikunja.yaml",
@@ -98,7 +97,36 @@ class ServiceCatalogTests(unittest.TestCase):
             "https://audiobooks.reza.network/auth/openid/mobile-redirect",
             data["audiobookshelf.yaml"],
         )
-        self.assertIn("mode: forward_single", data["homepage.yaml"])
+        self.assertIn("mode: forward_single", data["forward-auth.yaml"])
+
+    def test_forward_auth_blueprint_has_one_authoritative_outpost(self) -> None:
+        document = service_catalog.load_single_document(
+            REPO_ROOT / "apps" / "authentik" / "application-blueprints.yaml"
+        )
+        data = document["data"]
+        combined = "\n".join(data.values())
+        self.assertEqual(
+            combined.count("model: authentik_outposts.outpost"),
+            1,
+        )
+
+        forward_auth = data["forward-auth.yaml"]
+        outpost = forward_auth.split(
+            "  - model: authentik_outposts.outpost",
+            maxsplit=1,
+        )[1]
+        provider_ids = sorted(
+            service["web"]["auth"]["application"]["slug"] + "-provider"
+            for service in service_catalog.services(self.catalog)
+            if service.get("web", {}).get("auth", {}).get("mode")
+            == "forward-auth"
+        )
+        self.assertEqual(
+            outpost.count("        - !KeyOf "),
+            len(provider_ids),
+        )
+        for provider_id in provider_ids:
+            self.assertIn(f"        - !KeyOf {provider_id}", outpost)
 
     def test_authentik_worker_patch_contains_only_confidential_clients(self) -> None:
         patch = service_catalog.load_single_document(
