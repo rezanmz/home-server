@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: soularr
+spec:
+  name: Soularr
+  workload:
+    namespace: media
+    app: media-vpn
+  homepage:
+    order: 55
+    group: Downloads & Automation
+    icon: mdi-music-search
+    description: Soulseek automation for missing Lidarr albums
+  web:
+    hostname: soularr.reza.network
+    route: apps/soulseek/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v1
+      blueprintName: Soularr proxy authentication
+      application:
+        slug: soularr
+        launchUrl: https://soularr.reza.network/
+      middleware: soularr-authentik
+  placement:
+    mode: beelink
+    manifest: apps/downloads/deployment.yaml
+    reason: Shares the downloads pod with Lidarr and slskd so all acquisition traffic remains behind Gluetun.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/soulseek/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects operational settings and failed-import state; downloaded music is stored on NFS.
+  observability:
+    mode: kubernetes
+    manifests: [apps/soulseek/monitoring.yaml]

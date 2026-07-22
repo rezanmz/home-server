@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: slskd
+  namespace: monitoring
+  labels: {release: observability}
+spec:
+  namespaceSelector:
+    matchNames: [media]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: slskd
+  endpoints:
+    - {port: http, path: /metrics, interval: 30s, scrapeTimeout: 10s}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: soulseek
+  namespace: monitoring
+  labels: {release: observability}
+spec:
+  groups:
+    - name: home-server.soulseek
+      rules:
+        - alert: SlskdUnavailable
+          expr: absent(up{namespace="media",service="slskd"}) or max(up{namespace="media",service="slskd"}) == 0
+          for: 5m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: slskd is unavailable
+            description: Soulseek searches and downloads are unavailable. Check the shared downloads pod, Gluetun, slskd state volume, and NFS download mount.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#soularr-and-slskd
+        - alert: SoularrUnavailable
+          expr: absent(kube_pod_container_status_ready{namespace="media",container="soularr"}) or max(kube_pod_container_status_ready{namespace="media",container="soularr"}) == 0
+          for: 5m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: Soularr is unavailable
+            description: Lidarr's Soulseek automation loop is unavailable. Check the Soularr container and its connections to Lidarr and slskd.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#soularr-and-slskd

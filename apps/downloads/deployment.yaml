@@ -33,14 +33,53 @@ spec:
             - radarr
             - sonarr
             - lidarr
+            - slskd
+            - soularr
             - shelfmark
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        - name: prepare-soulseek-state
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          command:
+            - sh
+            - -ec
+            - |
+              chown 1000:1000 /slskd-state /soularr-data
+              chmod 0770 /slskd-state /soularr-data
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, FOWNER]
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          volumeMounts:
+            - {name: slskd-state, mountPath: /slskd-state}
+            - {name: soularr-data, mountPath: /soularr-data}
+        - name: prepare-soulseek-downloads
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          command: [sh, -ec, "mkdir -p /downloads/slskd/complete /downloads/slskd/incomplete"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          volumeMounts:
+            - {name: media-downloads, mountPath: /downloads}
         # Native sidecar: every application container below shares this network
         # namespace, preserving the old Docker `network_mode: container:gluetun`
-        # topology and a single Proton WireGuard session/forwarded port.
+        # topology and a single Proton WireGuard session.
         - name: gluetun
           image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
           imagePullPolicy: IfNotPresent
@@ -70,7 +109,7 @@ spec:
             - {name: DNS_UPSTREAM_RESOLVERS, value: "cloudflare,google"}
             - name: FIREWALL_INPUT_PORTS
               value: |
-                7878,8080,8084,8191,8686,8989,9696,17878,18080,18084,18686,18989,19696
+                5030,7878,8080,8084,8191,8265,8686,8989,9696,17878,18080,18084,18686,18989,19696
             - name: FIREWALL_OUTBOUND_SUBNETS
               value: "10.42.0.0/16,10.43.0.0/16,192.168.1.0/24"
           startupProbe:
@@ -276,6 +315,81 @@ spec:
           volumeMounts:
             - {name: lidarr-config, mountPath: /config}
             - {name: media-library, mountPath: /media}
+        - name: slskd
+          image: slskd/slskd:0.26.0@sha256:ecd4026d4f8fb504e2cc55323efa2c1f5b56d20d3686b018249cc36b48ea17a6
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: TZ, value: America/Toronto}
+            - {name: SLSKD_REMOTE_CONFIGURATION, value: "true"}
+            - {name: SLSKD_METRICS, value: "true"}
+            - {name: SLSKD_METRICS_NO_AUTH, value: "true"}
+            - {name: SLSKD_UMASK, value: "002"}
+          ports:
+            - {name: slskd, containerPort: 5030, protocol: TCP}
+          startupProbe:
+            httpGet: {path: /health, port: slskd}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+          readinessProbe:
+            httpGet: {path: /health, port: slskd}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /health, port: slskd}
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 750m, memory: 768Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: slskd-state, mountPath: /app}
+            - {name: media-downloads, mountPath: /downloads}
+        - name: soularr
+          image: mrusse08/soularr:v1.2.2@sha256:c4f97924fabfce4e0de539d821ea7d20519b95c4815a707bacfc9d7212597f20
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: TZ, value: America/Toronto}
+            - {name: SCRIPT_INTERVAL, value: "300"}
+            - {name: WEBUI_ENABLED, value: "true"}
+            - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
+          ports:
+            - {name: soularr, containerPort: 8265, protocol: TCP}
+          startupProbe:
+            httpGet: {path: /, port: soularr}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+          readinessProbe:
+            httpGet: {path: /, port: soularr}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /, port: soularr}
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 384Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: soularr-data, mountPath: /data}
+            - {name: media-downloads, mountPath: /downloads}
         - name: shelfmark
           image: ghcr.io/calibrain/shelfmark:v1.3.2@sha256:8700c1d3b6bb94e1b5f9482bac12e39652ed737de02f256920e1ad982a7ac0f1
           imagePullPolicy: IfNotPresent
@@ -429,6 +543,10 @@ spec:
           persistentVolumeClaim: {claimName: sonarr-config}
         - name: lidarr-config
           persistentVolumeClaim: {claimName: lidarr-config}
+        - name: slskd-state
+          persistentVolumeClaim: {claimName: slskd-state}
+        - name: soularr-data
+          persistentVolumeClaim: {claimName: soularr-data}
         - name: shelfmark-config
           persistentVolumeClaim: {claimName: shelfmark-config}
         - name: calibre-web-ingest
