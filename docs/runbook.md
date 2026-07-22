@@ -1347,6 +1347,62 @@ the music path to the separate file-backup policy if it becomes
 non-reproducible. Restore the data/config volumes before reconnecting the MCP
 servers, then test reads before any acquisition or playlist mutation.
 
+### Soularr and slskd
+
+Soularr complements Prowlarr for regional, older, obscure, and inconsistently
+named music. It reads Lidarr's missing-album queue, searches Soulseek through
+slskd, downloads a matching release, and asks Lidarr to import it. Prowlarr
+remains enabled and continues to handle ordinary indexer searches.
+
+Soularr and slskd run inside the existing `downloads` pod. They therefore share
+Gluetun's network namespace and VPN kill switch with Lidarr and qBittorrent.
+The stable Gluetun release and the current Proton connection provide one
+forwarded port, which remains assigned to qBittorrent. slskd can initiate
+Soulseek searches and downloads through the VPN but cannot accept incoming
+connections from peers that are also firewalled. Removing that limitation
+requires a separately generated Proton WireGuard configuration and a dedicated
+Gluetun tunnel; do not reuse or disrupt the torrent tunnel for it.
+
+The browser interfaces are LAN/WireGuard-only and protected by Authentik:
+
+- `https://soularr.reza.network` provides logs, failed-import state, and an
+  operational `config.ini` editor;
+- `https://slskd.reza.network` provides Soulseek searches, transfers, and
+  runtime configuration.
+
+Application settings and credentials are deliberately stored on the
+`soularr-data` and `slskd-state` Longhorn volumes, not generated into Git.
+Those volumes participate in the default nightly B2 backup. Completed and
+incomplete transfers use `/home/reza/media/downloads/slskd` on the Pi NFS
+filesystem. Soularr sees that as `/downloads/slskd/complete`; Lidarr sees the
+same directory as `/media/downloads/slskd/complete`, which keeps imports on the
+same filesystem as `/media/music`.
+
+The initial operational configuration should keep downloads conservative:
+process only a small batch on each five-minute run, retain the failed-import
+denylist, accept common FLAC and MP3 variants, and skip release-region matching
+so Persian releases are not rejected solely because of incomplete MusicBrainz
+country metadata. Do not configure a shared directory without an explicit
+decision to upload local media to Soulseek.
+
+Health checks:
+
+```bash
+sudo k3s kubectl -n media get deployment/downloads pod services persistentvolumeclaims
+sudo k3s kubectl -n media logs deploy/downloads -c gluetun --tail=150
+sudo k3s kubectl -n media logs deploy/downloads -c slskd --tail=150
+sudo k3s kubectl -n media logs deploy/downloads -c soularr --tail=150
+sudo k3s kubectl -n media exec deploy/downloads -c slskd -- \
+  wget -qO- http://127.0.0.1:5030/health
+sudo k3s kubectl -n media exec deploy/downloads -c soularr -- \
+  python -c 'import urllib.request; print(urllib.request.urlopen("http://127.0.0.1:8265/").status)'
+```
+
+Prometheus scrapes slskd's internal `/metrics` endpoint and alerts when slskd
+or the Soularr container is unavailable. If searches stop producing results,
+check the Gluetun forwarded-port log, Soulseek login state, Lidarr's wanted
+queue, Soularr's failed-import list, and NFS permissions in that order.
+
 ### Assistant operations MCP
 
 Grafana, Kubernetes, and GitHub are diagnostic context, not an administrative

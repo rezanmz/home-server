@@ -70,7 +70,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Personal apps | Actual Budget, Vikunja, MCPHub, Hermes Agent, Open WebUI with Tika, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `hermes.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Jellyseerr, Navidrome | `jellyfin.reza.network`, `jellyseerr.reza.network`, `music.reza.network` |
-| Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network`, `lidarr.reza.network` |
+| Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Soularr, slskd | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network`, `lidarr.reza.network`, `soularr.reza.network`, `slskd.reza.network` |
 | Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
 | Network services | Blocky DNS, Kea DHCP, ISC Stork, wg-easy, Samba, Syncthing | DNS at `192.168.1.2`, DHCP from `192.168.1.3`, read-only `stork.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
 | Operations | Grafana, Prometheus, Alertmanager, Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `grafana.reza.network`, scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |

@@ -14,9 +14,11 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: traefik
       ports:
+        - {port: 5030, protocol: TCP}
         - {port: 17878, protocol: TCP}
         - {port: 18080, protocol: TCP}
         - {port: 18084, protocol: TCP}
+        - {port: 8265, protocol: TCP}
         - {port: 18686, protocol: TCP}
         - {port: 18989, protocol: TCP}
         - {port: 19696, protocol: TCP}
@@ -47,6 +49,12 @@ spec:
         - {port: 8686, protocol: TCP}
         - {port: 8989, protocol: TCP}
         - {port: 9696, protocol: TCP}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - {port: 5030, protocol: TCP}
   egress:
     # Gluetun owns this Pod's routes, firewall and VPN kill switch. Kubernetes
     # egress filtering here interferes with its tunnel and encrypted DNS.

@@ -29,6 +29,8 @@ added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/NET_B
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/NET_RAW
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/SETGID
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/SETUID
+added-capability|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state/CHOWN
+added-capability|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state/FOWNER
 added-capability|apps/v1/Deployment|network-services|blocky|container/blocky/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_RAW
@@ -37,9 +39,11 @@ added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/N
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_RAW
 explicit-root-group|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-group|apps/v1/Deployment|apps|home-assistant|container/home-assistant
+explicit-root-group|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
 explicit-root-group|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 explicit-root-user|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-user|apps/v1/Deployment|apps|home-assistant|container/home-assistant
+explicit-root-user|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
 explicit-root-user|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec/sha256/39862bedcf4ef916bdcd6ff920a8397bfdbcfbc2d0e6b3bd59a6f21ad5c9433e
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec/sha256/ec39ed3f8b3be6b9508be7c0e55284e3deb2783ca80348711796ed6e5e04749d
@@ -105,6 +109,8 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec/sha256
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|lan-vpn-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|navidrome-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
+middleware-boundary|traefik.io/v1alpha1/Middleware|media|slskd-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
+middleware-boundary|traefik.io/v1alpha1/Middleware|media|soularr-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
 middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|grafana-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|headlamp-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
@@ -139,7 +145,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/5d2a81a0dfbf63e5944a87f5dd4560040d36e53e5c691096a79632488248fb9c
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-storage-exporter|spec/sha256/3f8b7ab4c2f08673fef8ab841b8c28bb2ffcaef6986c6f7dc279539e64a063ab
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/2512e49c2dd1842e1954490063d8eb2bf2d706f5b89541a79891025cf50af99b
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/402ecb6a1e83aca4307e55becc2ed81c805534b532be42533489d23116371903
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|navidrome|spec/sha256/879d46cf7d6a8e1d3e153328dc52d9a713dff616f7ba36b97f986987c54d2fc9
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
@@ -193,7 +199,9 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|prowlarr|spec/sha256
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|qbittorrent|spec/sha256/32ce418d04d71d76a48bff45337ea661345231b4bb884e47cd95ad126d64a948
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|radarr|spec/sha256/657408efebab064eab2d7ce8659e26329b749985f76da939822d740debe059a6
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|shelfmark|spec/sha256/1ccafcf99e09f35d35ee79930a739655cbf90902df499a6af1141662386107a6
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|slskd|spec/sha256/a06a6ac4af98a6fe51f3aab6c1d4b2c377b6f46e8139cacf2e592f5efc2f1838
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|sonarr|spec/sha256/3cf356d1d8a89de253764c39db9d9049474a79c86769f6f760189d381be7389a
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|soularr|spec/sha256/d998e1ce59c41150c14e032dabd409dcaf76d9c2e65190e95e340b4637ac4df6
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|monitoring|grafana|spec/sha256/78696ebd688166f52e501db0de487180e2ae579b9d3df13a39e9792084e1c511
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|monitoring|headlamp|spec/sha256/529f435b352be73ee21faf1097292ddaa76138c7cf93f6e0b30705ed3f8cc895
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|stork|spec/sha256/f6846bc2b09ff806a3d636ecdb997bafc2f32c8dd5d677e1fca92969b2cdf052

@@ -138,6 +138,38 @@ data:
           name: "Navidrome"
           provider: !KeyOf navidrome-provider
           meta_launch_url: "https://music.reza.network/"
+      - model: authentik_providers_proxy.proxyprovider
+        id: slskd-provider
+        identifiers:
+          name: "Provider for slskd"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://slskd.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: slskd
+        attrs:
+          name: "slskd"
+          provider: !KeyOf slskd-provider
+          meta_launch_url: "https://slskd.reza.network/"
+      - model: authentik_providers_proxy.proxyprovider
+        id: soularr-provider
+        identifiers:
+          name: "Provider for Soularr"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://soularr.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: soularr
+        attrs:
+          name: "Soularr"
+          provider: !KeyOf soularr-provider
+          meta_launch_url: "https://soularr.reza.network/"
       - model: authentik_outposts.outpost
         identifiers:
           name: authentik Embedded Outpost
@@ -145,6 +177,8 @@ data:
           providers:
             - !KeyOf homepage-provider
             - !KeyOf navidrome-provider
+            - !KeyOf slskd-provider
+            - !KeyOf soularr-provider
   grafana.yaml: |
     version: 1
     metadata:
