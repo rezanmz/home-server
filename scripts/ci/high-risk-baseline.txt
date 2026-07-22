@@ -125,6 +125,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-ass
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/f7228b2eb8074a96ddf64edf7d2f753a41b6e19ef89c983950b158a8234ba695
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|spec/sha256/5b591bf03cfc218f687e0db623c80288d4592e801fe9c052860fd3fcf3c5634e
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcp-v8|spec/sha256/32f934c59f12825edd076b4f9137756d9088ec197f4efe3afe6f96e9a4f0eb51
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/37abc13945951611dc511d657e61ec658c4c29371de0f1182349f0e1b1179ac3
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff

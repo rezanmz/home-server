@@ -21,6 +21,7 @@ Hermes Agent ----> MCPHub
                 |-- Grafana MCP -> dashboards, metrics, logs, and alerts, read only
                 |-- Kubernetes MCP -> cluster diagnostics, read only
                 |-- GitHub MCP -> personal repository context, read only
+                |-- mcp-v8 -> stateless, isolated JavaScript calculations
                 |-- LlamaCloud MCP -> LlamaParse Agentic document parsing
                 `-- Google gcloud MCP -> quota-guarded Vision PDF OCR
 ```
@@ -63,10 +64,24 @@ but Hermes must ask for confirmation immediately before destructive use.
 Calendar deletion and unrelated filesystem mutation remain absent. GPT
 Researcher is for explicit research requests, not routine pulse jobs.
 
+For short calculations and data transformations, Hermes uses the maintained
+`r33drichards/mcp-js` (`mcp-v8`) server. It exposes one stateless `run_js` tool;
+each call starts with a fresh V8 isolate. All upstream sandbox-hardening switches
+are enabled, host filesystem reads, subprocesses, external imports, network
+fetches, persistent heaps, and calls to other MCP servers remain disabled, and a
+Kubernetes NetworkPolicy denies all egress. The pod has no service-account token,
+runs non-root with a read-only root filesystem, permits one execution at a time,
+and is capped at 250m CPU and 256 MiB memory. The normal execution defaults are
+an 8 MiB V8 heap and five seconds. Use it for arithmetic, date calculations,
+sorting, filtering, and small JSON transformations—not package installation,
+web access, file processing, or background jobs.
+
 Before enabling a messaging channel, use `hermes tools` to replace that
 platform's broad defaults with the smallest required set. Keep terminal,
-code-execution, browser, Kubernetes, Docker, host filesystem, outbound
-messaging-to-third-parties, and Home Assistant mutation disabled initially.
+browser, Kubernetes, Docker, host filesystem, outbound messaging-to-third-parties,
+and Home Assistant mutation disabled initially. The one code-execution exception
+is MCPHub's bounded `mcp-v8` tool described above; it is not a shell and cannot
+reach the host, filesystem, network, environment, or other MCP servers.
 Enable `tool_loop_guardrails.hard_stop_enabled`, cap repeated failures and
 no-progress calls, and verify unknown Telegram users are rejected. Use a
 separate Telegram bot from infrastructure alerts.
@@ -225,7 +240,8 @@ Use separate MCPHub groups for different risk levels:
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, note creation in Inbox or Daily, reviewed Home Assistant control,
   Jellyseerr requests, Lidarr music acquisition, and Navidrome playlist/rating
-  operations.
+  operations. It may also expose stateless `mcp-v8` execution for bounded
+  calculations and transformations.
 - Calendar deletion and destructive filesystem tools stay out of both groups.
   Vikunja task deletion is the single reviewed exception in action-capable
   groups and requires explicit confirmation immediately before the call.

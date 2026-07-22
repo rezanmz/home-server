@@ -6,6 +6,7 @@ resources:
   - secrets.sops.yaml
   - pvc.yaml
   - workloads.yaml
+  - code-execution.yaml
   - llamacloud-mcp.yaml
   - services.yaml
   - networkpolicy.yaml

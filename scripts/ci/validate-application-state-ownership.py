@@ -94,6 +94,15 @@ def main() -> int:
         if required not in package_image:
             errors.append(f"reviewed MCP package pin is missing: {required}")
 
+    code_image = read("images/mcp-v8/Dockerfile")
+    for required in (
+        "https://github.com/r33drichards/mcp-js/releases/download/",
+        "sha256sum --check --strict",
+        "USER 65532:65532",
+    ):
+        if required not in code_image:
+            errors.append(f"sandboxed code-execution image guard is missing: {required}")
+
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
