@@ -5,6 +5,7 @@ resources:
   - ../../infrastructure/namespaces
   - ../../infrastructure/snapshot-controller
   - ../../infrastructure/longhorn
+  - ../../infrastructure/juicefs
   - ../../infrastructure/metallb
   - ../../infrastructure/gateway-api
   - ../../infrastructure/traefik

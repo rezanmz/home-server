@@ -1,0 +1,112 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: juicefs-csi-driver
+  namespace: kube-system
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: ./charts/juicefs-csi-driver
+      sourceRef:
+        kind: GitRepository
+        name: juicefs-csi-driver
+        namespace: flux-system
+      interval: 12h
+      reconcileStrategy: Revision
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    image:
+      repository: docker.io/juicedata/juicefs-csi-driver
+      tag: v0.32.0@sha256:856e1c20175331428515b957fbfe3a3aba2ccce3d375d0eddc099cf416d95899
+    defaultMountImage:
+      ce: docker.io/juicedata/mount:ce-v1.4.0@sha256:5b2f5f9e0ac5fb694a7711fddfebc4a4d3c9e2f872dbc4d776f61e412178e35c
+    sidecars:
+      livenessProbeImage:
+        repository: registry.k8s.io/sig-storage/livenessprobe
+        tag: v2.12.0@sha256:5baeb4a6d7d517434292758928bb33efc6397368cbb48c8a4cf29496abf4e987
+      nodeDriverRegistrarImage:
+        repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+        tag: v2.9.0@sha256:cd21e19cd8bbd5bc56f1b4f1398a436e7897da2995d6d036c9729be3f4e456e6
+      csiProvisionerImage:
+        repository: registry.k8s.io/sig-storage/csi-provisioner
+        tag: v2.2.2@sha256:04c55b93a032ad8075cae540d60fc740a72c31006590dbdb61ad4ab9813959d0
+      csiResizerImage:
+        repository: registry.k8s.io/sig-storage/csi-resizer
+        tag: v1.9.0@sha256:f1f352df97874442624fcef23eab04aa038f66cb0e361212f6ec09e92998184d
+      csiSnapshotterImage:
+        repository: registry.k8s.io/sig-storage/csi-snapshotter
+        tag: v8.4.0@sha256:c7e0a3718832b6197ce8b29fefb3fed3d84f4fbcdf08f4606140dbec2566501d
+    dashboard:
+      enabled: false
+    metrics:
+      enabled: true
+      port: 9567
+      service:
+        servicePort: 9567
+    controller:
+      replicas: 2
+      cacheClientConf: false
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    node:
+      fsShareMount: true
+      mountPodNonPreempting: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    globalConfig:
+      enabled: true
+      manageByHelm: true
+      mountPodPatch:
+        - pvcSelector:
+            matchLabels:
+              storage.reza.network/juicefs-media: "true"
+          ceMountImage: docker.io/juicedata/mount:ce-v1.4.0@sha256:5b2f5f9e0ac5fb694a7711fddfebc4a4d3c9e2f872dbc4d776f61e412178e35c
+          labels:
+            observability.reza.network/scrape: juicefs-client
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "4"
+              memory: 2Gi
+          terminationGracePeriodSeconds: 60
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "stat ${MOUNT_POINT}/${SUB_PATH} >/dev/null"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          mountOptions:
+            - cache-dir=/var/lib/juicefs-cache
+            - cache-size=409600
+            - free-space-ratio=0.25
+            - cache-eviction=lru
+            - cache-expire=0
+            - cache-large-write
+            - verify-cache-checksum=extend
+            - prefetch=2
+            - max-readahead=256M
+            - metrics=0.0.0.0:9567
+            - no-usage-report
+            - check-storage
+            - backup-meta=1h

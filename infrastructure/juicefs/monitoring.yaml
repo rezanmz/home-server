@@ -1,0 +1,111 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: juicefs-csi
+  namespace: monitoring
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [juicefs-csi-driver, juicefs-mount]
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: juicefs-postgresql
+  namespace: monitoring
+  labels:
+    release: observability
+spec:
+  namespaceSelector:
+    matchNames: [juicefs-system]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: juicefs-postgresql
+      app.kubernetes.io/component: metadata
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: juicefs-media
+  namespace: monitoring
+  labels:
+    release: observability
+spec:
+  groups:
+    - name: juicefs-media
+      rules:
+        - alert: JuiceFSMountUnavailable
+          expr: max by (volume_id, volume_path) (juicefs_volume_path_health) == 0
+          for: 2m
+          labels: {severity: critical}
+          annotations:
+            summary: JuiceFS media mount {{ $labels.volume_id }} is unavailable
+            description: The JuiceFS CSI driver reports an unhealthy mount path for more than two minutes.
+        - alert: JuiceFSCSIMountErrors
+          expr: increase(juicefs_volume_errors[10m]) > 0
+          labels: {severity: warning}
+          annotations:
+            summary: JuiceFS CSI mount operations are failing
+            description: The CSI driver reported {{ $value | printf "%.0f" }} volume errors in ten minutes.
+        - alert: JuiceFSMetadataDatabaseDown
+          expr: absent(pg_up{namespace="juicefs-system"}) or max(pg_up{namespace="juicefs-system"}) == 0
+          for: 2m
+          labels: {severity: critical}
+          annotations:
+            summary: JuiceFS PostgreSQL metadata database is unavailable
+            description: PostgreSQL is required to interpret every object in the media bucket.
+        - alert: JuiceFSObjectStoreErrors
+          expr: sum(increase(juicefs_object_request_errors[10m])) > 0
+          labels: {severity: warning}
+          annotations:
+            summary: JuiceFS is receiving B2 object-store errors
+            description: JuiceFS reported {{ $value | printf "%.0f" }} failed object operations in ten minutes.
+        - alert: JuiceFSMetadataBackupStale
+          expr: time() - max(last_successful_backup{vol_name="media"}) > 10800
+          for: 2h
+          labels: {severity: critical}
+          annotations:
+            summary: JuiceFS metadata has not been exported to B2 recently
+            description: No mount client has reported a successful automatic metadata backup within three hours.
+        - alert: JuiceFSCapacity75Percent
+          expr: max(juicefs_used_space) / 2199023255552 > 0.75
+          for: 30m
+          labels: {severity: warning}
+          annotations:
+            summary: JuiceFS media storage is more than 75% full
+            description: Review growth before the 2 TiB hard limit is reached.
+        - alert: JuiceFSCapacity85Percent
+          expr: max(juicefs_used_space) / 2199023255552 > 0.85
+          for: 15m
+          labels: {severity: warning}
+          annotations:
+            summary: JuiceFS media storage is more than 85% full
+            description: Add B2 capacity or remove media soon.
+        - alert: JuiceFSCapacity95Percent
+          expr: max(juicefs_used_space) / 2199023255552 > 0.95
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: JuiceFS media storage is more than 95% full
+            description: New imports will soon fail at the 2 TiB hard limit.
+        - alert: JuiceFSUnexpectedWritebackStaging
+          expr: max(juicefs_staging_blocks) > 0
+          for: 15m
+          labels: {severity: warning}
+          annotations:
+            summary: JuiceFS has asynchronously staged write blocks
+            description: Writeback is intentionally disabled; staged blocks need investigation.

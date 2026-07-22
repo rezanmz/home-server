@@ -4,10 +4,20 @@
 # a risk therefore also removes its exception; adding one requires an explicit
 # baseline change for review. Format: rule|apiVersion/kind|namespace|name|location
 added-capability|apps/v1/DaemonSet|metallb-system|metallb-speaker|container/speaker/NET_RAW
+added-capability|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|container/juicefs-plugin/SYS_ADMIN
+allow-privilege-escalation|apps/v1/DaemonSet|kube-system|juicefs-csi-node|container/juicefs-plugin
+allow-privilege-escalation|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|container/juicefs-plugin
 cluster-admin-binding|rbac.authorization.k8s.io/v1/ClusterRoleBinding|default|longhorn-support-bundle|roleRef
 explicit-root-user|apps/v1/Deployment|longhorn-system|longhorn-driver-deployer|pod-security-context
 externally-exposed-service|v1/Service|traefik|traefik|LoadBalancer/target/<none>
 host-network|apps/v1/DaemonSet|metallb-system|metallb-speaker|pod-spec
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/device-dir/path//dev
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/jfs-dir/path//var/lib/juicefs/volume
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/jfs-fuse-fd/path//var/run/juicefs-csi
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/jfs-root-dir/path//var/lib/juicefs/config
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/kubelet-dir/path//var/lib/kubelet
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/plugin-dir/path//var/lib/kubelet/csi-plugins/csi.juicefs.com/
+host-path|apps/v1/DaemonSet|kube-system|juicefs-csi-node|volume/registration-dir/path//var/lib/kubelet/plugins_registry/
 host-path|apps/v1/DaemonSet|kube-system|observability-prometheus-node-exporter|volume/proc/path//proc
 host-path|apps/v1/DaemonSet|kube-system|observability-prometheus-node-exporter|volume/root/path//
 host-path|apps/v1/DaemonSet|kube-system|observability-prometheus-node-exporter|volume/sys/path//sys
@@ -16,11 +26,15 @@ host-path|apps/v1/DaemonSet|longhorn-system|longhorn-manager|volume/dev/path//de
 host-path|apps/v1/DaemonSet|longhorn-system|longhorn-manager|volume/etc/path//etc/
 host-path|apps/v1/DaemonSet|longhorn-system|longhorn-manager|volume/longhorn/path//var/lib/longhorn/
 host-path|apps/v1/DaemonSet|longhorn-system|longhorn-manager|volume/proc/path//proc/
+host-path|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|volume/jfs-dir/path//var/lib/juicefs/volume
+host-path|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|volume/jfs-root-dir/path//var/lib/juicefs/config
 host-path|batch/v1/Job|longhorn-system|longhorn-pre-upgrade|volume/proc/path//proc/
 host-port|apps/v1/DaemonSet|traefik|traefik|container/traefik/web/host-80
 host-port|apps/v1/DaemonSet|traefik|traefik|container/traefik/websecure/host-443
 missing-default-deny|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec
+privileged-container|apps/v1/DaemonSet|kube-system|juicefs-csi-node|container/juicefs-plugin
 privileged-container|apps/v1/DaemonSet|longhorn-system|longhorn-manager|container/longhorn-manager
+privileged-container|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|container/juicefs-plugin
 privileged-container|batch/v1/Job|longhorn-system|longhorn-pre-upgrade|container/longhorn-pre-upgrade
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|cert-manager-cainjector|rule/1/resource/secrets/verb/get/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|cert-manager-cainjector|rule/1/resource/secrets/verb/list/names/all
@@ -50,6 +64,16 @@ rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|cer
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|cert-manager-controller-orders|rule/6/resource/secrets/verb/get/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|cert-manager-controller-orders|rule/6/resource/secrets/verb/list/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|cert-manager-controller-orders|rule/6/resource/secrets/verb/watch/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-node-service-role|rule/3/resource/secrets/verb/create/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-node-service-role|rule/3/resource/secrets/verb/get/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-node-service-role|rule/3/resource/secrets/verb/patch/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-node-service-role|rule/3/resource/secrets/verb/update/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-provisioner-role|rule/6/resource/secrets/verb/create/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-provisioner-role|rule/6/resource/secrets/verb/get/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-provisioner-role|rule/6/resource/secrets/verb/list/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-provisioner-role|rule/6/resource/secrets/verb/patch/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-provisioner-role|rule/6/resource/secrets/verb/update/names/all
+rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-provisioner-role|rule/6/resource/secrets/verb/watch/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|longhorn-role|rule/2/resource/secrets/verb/get/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|longhorn-role|rule/2/resource/secrets/verb/list/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/ClusterRole|default|longhorn-role|rule/2/resource/secrets/verb/watch/names/all
@@ -75,7 +99,9 @@ rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/Role|metallb-system|met
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/Role|metallb-system|metallb-pod-lister|rule/1/resource/secrets/verb/get/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/Role|metallb-system|metallb-pod-lister|rule/1/resource/secrets/verb/list/names/all
 rbac-secret-or-token-access|rbac.authorization.k8s.io/v1/Role|metallb-system|metallb-pod-lister|rule/1/resource/secrets/verb/watch/names/all
+rbac-workload-exec|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-node-service-role|rule/6/resource/pods/exec/verb/create
 route-boundary|gateway.networking.k8s.io/v1/Gateway|traefik|home|spec/sha256/0c973d2b418839860edb4f909e2e7fbb0684d4b78a22c1ff56ea41ebcbb58d75
+service-account-token-mounted|apps/v1/DaemonSet|kube-system|juicefs-csi-node|pod-spec
 service-account-token-mounted|apps/v1/DaemonSet|longhorn-system|longhorn-manager|pod-spec
 service-account-token-mounted|apps/v1/DaemonSet|metallb-system|metallb-speaker|pod-spec
 service-account-token-mounted|apps/v1/DaemonSet|traefik|traefik|pod-spec
@@ -88,10 +114,12 @@ service-account-token-mounted|apps/v1/Deployment|metallb-system|metallb-controll
 service-account-token-mounted|apps/v1/Deployment|monitoring|observability-grafana|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|observability-kube-state-metrics|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|observability-operator|pod-spec
+service-account-token-mounted|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|pod-spec
 service-account-token-mounted|batch/v1/Job|cert-manager|cert-manager-startupapicheck|pod-spec
 service-account-token-mounted|batch/v1/Job|longhorn-system|longhorn-post-upgrade|pod-spec
 service-account-token-mounted|batch/v1/Job|longhorn-system|longhorn-pre-upgrade|pod-spec
 service-account-token-mounted|batch/v1/Job|longhorn-system|longhorn-uninstall|pod-spec
+wildcard-rbac|rbac.authorization.k8s.io/v1/ClusterRole|default|juicefs-csi-external-node-service-role|rule/2/verbs
 wildcard-rbac|rbac.authorization.k8s.io/v1/ClusterRole|default|longhorn-role|rule/0/verbs
 wildcard-rbac|rbac.authorization.k8s.io/v1/ClusterRole|default|longhorn-role|rule/10/verbs
 wildcard-rbac|rbac.authorization.k8s.io/v1/ClusterRole|default|longhorn-role|rule/11/verbs

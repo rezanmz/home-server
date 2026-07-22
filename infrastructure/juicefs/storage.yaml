@@ -1,0 +1,107 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: juicefs-media
+provisioner: csi.juicefs.com
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+allowVolumeExpansion: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: juicefs-media-media
+spec:
+  capacity: {storage: 2Ti}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: juicefs-media
+  mountOptions:
+    - noatime
+  csi:
+    driver: csi.juicefs.com
+    volumeHandle: juicefs-media-media
+    fsType: juicefs
+    nodePublishSecretRef:
+      name: juicefs-media-credentials
+      namespace: juicefs-system
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-library-juicefs
+  namespace: media
+  labels:
+    storage.reza.network/juicefs-media: "true"
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: juicefs-media
+  volumeName: juicefs-media-media
+  resources:
+    requests: {storage: 2Ti}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: juicefs-media-apps
+spec:
+  capacity: {storage: 2Ti}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: juicefs-media
+  mountOptions:
+    - noatime
+  csi:
+    driver: csi.juicefs.com
+    volumeHandle: juicefs-media-apps
+    fsType: juicefs
+    nodePublishSecretRef:
+      name: juicefs-media-credentials
+      namespace: juicefs-system
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-library-juicefs
+  namespace: apps
+  labels:
+    storage.reza.network/juicefs-media: "true"
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: juicefs-media
+  volumeName: juicefs-media-apps
+  resources:
+    requests: {storage: 2Ti}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: juicefs-media-network-services
+spec:
+  capacity: {storage: 2Ti}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: juicefs-media
+  mountOptions:
+    - noatime
+  csi:
+    driver: csi.juicefs.com
+    volumeHandle: juicefs-media-network-services
+    fsType: juicefs
+    nodePublishSecretRef:
+      name: juicefs-media-credentials
+      namespace: juicefs-system
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-library-juicefs
+  namespace: network-services
+  labels:
+    storage.reza.network/juicefs-media: "true"
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: juicefs-media
+  volumeName: juicefs-media-network-services
+  resources:
+    requests: {storage: 2Ti}
