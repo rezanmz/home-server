@@ -177,7 +177,7 @@ spec:
             # Hundreds of unrestricted torrents can push libtorrent above the
             # old 512 MiB cgroup ceiling even while the node has ample memory.
             requests: {cpu: 100m, memory: 512Mi}
-            limits: {cpu: 500m, memory: 2Gi}
+            limits: {cpu: 500m, memory: 3Gi}
           securityContext:
             allowPrivilegeEscalation: false
           volumeMounts:
