@@ -257,10 +257,14 @@ sudo journalctl -fu juicefs-media-migration
 categories, defaults to four transfer threads and 158 Mbps (60% of the measured
 encrypted B2 upload rate), preserves directories, permissions, and symlinks,
 and checks every new or changed file. It never accepts `downloads`, never
-deletes from the source, keeps resumable checkpoints in the root-only runtime
-directory, and refuses credentials supplied in command arguments. A failed or
-interrupted category is resumed by running the same script with that category
-name. Remove the runtime credential directory after the copy finishes.
+deletes from the source, and refuses credentials supplied in command arguments.
+JuiceFS writes a hidden `.juicefs-sync-checkpoint.*.json` file in each
+destination category; it contains paths and transfer state, not credentials.
+A failed or interrupted category is resumed by running the same script with
+that category name. Remove successful categories' current checkpoint files
+after final verification; their small superseded versions remain recoverable in
+seven-day JuiceFS trash. Remove the root-only runtime credential directory after
+the copy finishes.
 
 If `--check-change` reports a file that changed before writers were quiesced,
 stop those writers and rerun only that category with
