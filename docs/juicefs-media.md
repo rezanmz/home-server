@@ -178,6 +178,14 @@ copy of all three:
 - RSA passphrase;
 - SOPS age identity and this recovery manual.
 
+This deployment's recovery material is also stored in the operator Mac's login
+Keychain under the `home-server/juicefs-media/` service prefix. The entries for
+the SOPS age identity, RSA private key, RSA passphrase, B2 key ID, and B2
+application key were verified against the live values by SHA-256 fingerprint.
+Do not use `security find-generic-password -w` in a recorded terminal or paste
+its output into a ticket; recover it only into a root-owned memory-backed
+directory for a drill or incident.
+
 Never rotate the RSA key by generating a replacement for an existing volume.
 The original key is required to decrypt existing chunks. Test the external copy
 by decrypting it into a temporary memory-backed directory, using it to load a
