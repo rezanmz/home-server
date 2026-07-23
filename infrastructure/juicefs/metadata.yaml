@@ -55,13 +55,6 @@ spec:
         app.kubernetes.io/component: metadata
     spec:
       automountServiceAccountToken: false
-      # TEMPORARY: keep the metadata authority on Beelink while the Pi's root
-      # filesystem also holds the pre-cutover media source. Remove this
-      # selector only after the source library has been reclaimed, Pi free
-      # space is above the normal kubelet threshold, and the second Longhorn
-      # replica has rebuilt successfully.
-      nodeSelector:
-        kubernetes.io/hostname: beelink
       # A metadata restart makes every JuiceFS mount unavailable. Protect this
       # pod from ordinary pressure-based eviction without allowing it to evict
       # another workload.

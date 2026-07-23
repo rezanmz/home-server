@@ -8,15 +8,11 @@ kubelet-arg:
   # wg-easy needs these two network-namespace sysctls. Allow only the exact
   # names so the pod can declare them without a privileged init container.
   - allowed-unsafe-sysctls=net.ipv4.ip_forward,net.ipv4.conf.all.src_valid_mark
-  # TEMPORARY: the JuiceFS migration reads the existing media library from the
-  # Pi's root filesystem. Media and K3s imagefs therefore share capacity, and
-  # the default 15% eviction threshold would evict DNS and storage components
-  # even with about 60 GiB free. Torrents must remain paused while this 5%
-  # migration threshold is active. Remove these three arguments after the
-  # verified source library is deleted and free space is back above 15%.
-  - image-gc-high-threshold=95
-  - image-gc-low-threshold=90
-  - eviction-hard=memory.available<100Mi,nodefs.available<5%,imagefs.available<5%,nodefs.inodesFree<5%,imagefs.inodesFree<5%
+  # K3s 1.36 defaults this node to a 5% disk-eviction floor. Enforce the
+  # upstream-style steady-state margins now that the migration source no
+  # longer consumes the Pi: image storage at 15%, node storage at 10%, and
+  # the standard memory and inode guards.
+  - eviction-hard=memory.available<100Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%,imagefs.inodesFree<5%
 node-label:
   - homelab.rezan.dev/cpu-arch=arm64
   - homelab.rezan.dev/storage=nvme

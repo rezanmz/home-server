@@ -62,7 +62,9 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertIn("kill -TERM", script)
 
     def test_download_stack_keeps_torrents_outside_juicefs(self) -> None:
-        spec = pod_spec(deployment("apps/downloads/deployment.yaml", "downloads"))
+        resource = deployment("apps/downloads/deployment.yaml", "downloads")
+        self.assertEqual(resource["spec"]["replicas"], 1)
+        spec = pod_spec(resource)
         volumes = {item["name"]: item for item in spec["volumes"]}
         self.assertEqual(
             volumes["media-library"]["persistentVolumeClaim"]["claimName"],
@@ -102,6 +104,10 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         for relative_path, pv_name in (
             ("infrastructure/nfs-media/media.yaml", "media-downloads-media"),
             ("infrastructure/nfs-media/apps.yaml", "media-downloads-apps"),
+            (
+                "infrastructure/nfs-media/network-services.yaml",
+                "media-downloads-network-services",
+            ),
         ):
             resources = documents(relative_path)
             pv = next(
@@ -111,6 +117,38 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
                 and doc.get("metadata", {}).get("name") == pv_name
             )
             self.assertEqual(pv["spec"]["nfs"]["path"], "/home/reza/media/downloads")
+
+            media_pvs = [
+                doc
+                for doc in resources
+                if doc.get("kind") == "PersistentVolume"
+                and doc.get("spec", {}).get("storageClassName") == "nfs-media"
+            ]
+            self.assertEqual([item["metadata"]["name"] for item in media_pvs], [pv_name])
+
+        exports = (
+            REPO_ROOT / "infrastructure/hosts/raspberrypi/home-server.exports"
+        ).read_text().splitlines()
+        media_exports = [line for line in exports if line.startswith("/home/reza/media")]
+        self.assertEqual(len(media_exports), 1)
+        self.assertTrue(media_exports[0].startswith("/home/reza/media/downloads "))
+
+    def test_temporary_cutover_safety_overrides_are_removed(self) -> None:
+        metadata = next(
+            doc
+            for doc in documents("infrastructure/juicefs/metadata.yaml")
+            if doc.get("kind") == "StatefulSet"
+        )
+        self.assertNotIn("nodeSelector", pod_spec(metadata))
+
+        agent_config = (
+            REPO_ROOT / "infrastructure/k3s/agent-pi-config.yaml"
+        ).read_text()
+        self.assertNotIn("image-gc-high-threshold", agent_config)
+        self.assertNotIn("image-gc-low-threshold", agent_config)
+        self.assertNotIn("imagefs.available<5%", agent_config)
+        self.assertIn("nodefs.available<10%", agent_config)
+        self.assertIn("imagefs.available<15%", agent_config)
 
     def test_read_only_consumers_cannot_write_the_cloud_library(self) -> None:
         consumers = (
