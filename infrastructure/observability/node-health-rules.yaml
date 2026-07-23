@@ -69,6 +69,60 @@ spec:
                   pod=~"observability-prometheus-node-exporter-.*"
                 }
               )
+        # Raspberry Pi OS does not currently expose /proc/pressure. Use
+        # portable node-exporter signals only for instances where the matching
+        # PSI metric is absent, avoiding duplicate alerts on Beelink.
+        - record: home_server_node_resource_pressure
+          labels: {resource: io-wait, unit: percent}
+          expr: |
+            (
+              100
+              * avg without (cpu, mode) (
+                  rate(
+                    node_cpu_seconds_total{
+                      job="observability-prometheus-node-exporter",
+                      mode="iowait"
+                    }[5m]
+                  )
+                )
+              unless on (instance)
+                node_pressure_io_stalled_seconds_total{
+                  job="observability-prometheus-node-exporter"
+                }
+            )
+            * on (namespace, pod) group_left (node)
+              max by (namespace, pod, node) (
+                kube_pod_info{
+                  namespace="kube-system",
+                  pod=~"observability-prometheus-node-exporter-.*"
+                }
+              )
+        - record: home_server_node_resource_pressure
+          labels: {resource: memory-used, unit: percent}
+          expr: |
+            (
+              100
+              * (
+                  1
+                  - node_memory_MemAvailable_bytes{
+                      job="observability-prometheus-node-exporter"
+                    }
+                    / node_memory_MemTotal_bytes{
+                        job="observability-prometheus-node-exporter"
+                      }
+                )
+              unless on (instance)
+                node_pressure_memory_stalled_seconds_total{
+                  job="observability-prometheus-node-exporter"
+                }
+            )
+            * on (namespace, pod) group_left (node)
+              max by (namespace, pod, node) (
+                kube_pod_info{
+                  namespace="kube-system",
+                  pod=~"observability-prometheus-node-exporter-.*"
+                }
+              )
     - name: home-server.node-health-alerting
       rules:
         - alert: HomeServerNodeResourcePressure
@@ -76,6 +130,8 @@ spec:
             home_server_node_resource_pressure{resource="io"} > 15
             or home_server_node_resource_pressure{resource="memory"} > 5
             or home_server_node_resource_pressure{resource="swap"} > 67108864
+            or home_server_node_resource_pressure{resource="io-wait"} > 20
+            or home_server_node_resource_pressure{resource="memory-used"} > 92
           for: 15m
           labels:
             severity: warning
