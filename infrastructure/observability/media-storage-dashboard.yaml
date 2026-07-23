@@ -83,7 +83,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Logical space remaining below the 2 TiB JuiceFS capacity ceiling.",
+          "description": "Logical space remaining below the 10 TiB JuiceFS capacity ceiling.",
           "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixedColor"}, "decimals": 1, "unit": "bytes"}},
           "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
           "id": 5,

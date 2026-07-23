@@ -1611,6 +1611,18 @@ If Gluetun is unhealthy, keep the download clients stopped or unready until its
 tunnel and firewall are healthy. Do not bypass the sidecar with an ordinary
 pod-level egress route.
 
+qBittorrent's operational share policy lives in its backed-up application
+volume rather than in the infrastructure manifests. Public-tracker torrents
+seed for at most 20,160 minutes (14 days), after which qBittorrent removes both
+the torrent and its local content. The ratio limit is disabled: combining a
+short ratio target with the destructive action could remove a fast torrent
+before an Arr application's completed-download handler imports it. Radarr,
+Sonarr, and Lidarr have completed-download handling enabled and remove their
+own imported torrents normally; the 14-day qBittorrent ceiling also bounds
+manual or otherwise unowned torrents. Review this policy in qBittorrent under
+**Settings > BitTorrent > Seeding Limits** after restoring its configuration
+volume.
+
 ## Secrets and recovery identities
 
 Only SOPS ciphertext belongs in Git. The age public recipient is in the SOPS

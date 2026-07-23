@@ -14,7 +14,7 @@ media library; it is not an application-specific configuration guide.
 | Portable metadata exports | The bucket's JuiceFS-managed `meta/` objects | Written automatically by a mounted client every hour |
 | Node cache | `/var/lib/juicefs-cache` on each node | Persistent but disposable; not authoritative and not backed up |
 
-The filesystem has a 2,048 GiB hard capacity and seven-day JuiceFS trash
+The filesystem has a 10,240 GiB hard capacity and seven-day JuiceFS trash
 retention. Compression and writeback are disabled. Client-side
 `aes256gcm-rsa` encryption protects file contents before B2 receives them;
 Backblaze's SSE-B2 remains a second, server-side layer. File names and other
@@ -131,7 +131,7 @@ signals are:
 - age of `last_successful_backup`, which proves a client completed the hourly
   portable metadata export;
 - B2 request errors and latency;
-- filesystem logical usage against the 2 TiB ceiling;
+- filesystem logical usage against the 10 TiB ceiling;
 - per-node cache bytes, hit ratio, evictions, and B2 GET/PUT traffic;
 - free space in the Pi-local downloads directory.
 
@@ -250,14 +250,16 @@ listing is not a metadata restore test.
 
 ## Capacity change
 
-The 2 TiB limit is a JuiceFS logical quota, not the size of either cache. To
+The 10 TiB limit is a JuiceFS logical quota, not the size of either cache. To
 raise it:
 
 1. Review expected B2 cost and the alert thresholds.
 2. Run `juicefs config META_URL --capacity NEW_GIB` once from a controlled
    client using secret environment injection.
-3. Update `format-options`, all static PV/PVC display capacities, dashboard
-   constants, and 75/85/95 percent alert expressions in the same Git change.
+3. Update `format-options`, all static PV advertised capacities, dashboard
+   descriptions, and 75/85/95 percent alert expressions in the same Git
+   change. The existing bound static PVC requests remain at their immutable
+   2 TiB minimum; they do not constrain `df` or the JuiceFS quota.
    `format-options` documents bootstrap intent but does not change an already
    formatted volume by itself.
 4. Reconcile and verify `juicefs status` reports the new limit.
