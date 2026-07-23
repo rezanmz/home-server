@@ -68,6 +68,17 @@ The migration is intentionally staged:
 6. Delete only verified source categories and narrow the NFS export to
    downloads.
 
+The production cutover completed at 2026-07-23 13:13 America/Toronto. The old
+NFS categories remain frozen through at least 2026-07-25 13:13 as the rollback
+copy. During that window, `apps/downloads/deployment.yaml` intentionally has
+zero replicas so automatic grabs cannot consume the Pi's remaining space.
+After the window and final application checks, reclaim only the six verified
+source categories, restore the downloads deployment to one replica, remove the
+temporary 5% kubelet eviction threshold, and build the second Longhorn replica
+for `juicefs-postgresql`. Until then, PostgreSQL stays pinned to Beelink with a
+single healthy replica plus its completed Longhorn B2 backup and hourly
+portable metadata exports.
+
 During the initial migration, qBittorrent is deliberately paused and the Pi
 kubelet uses a temporary 5% image-filesystem eviction threshold. The Pi's
 organized library and K3s image store share one root filesystem, so the normal

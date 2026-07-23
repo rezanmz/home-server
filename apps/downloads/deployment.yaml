@@ -6,7 +6,11 @@ metadata:
   labels:
     app.kubernetes.io/name: media-vpn
 spec:
-  replicas: 1
+  # TEMPORARY: keep automatic acquisitions stopped during the JuiceFS
+  # rollback window. Restore this to 1 only after the frozen NFS library has
+  # passed its 48-hour observation period and the verified source categories
+  # have been reclaimed from the Pi.
+  replicas: 0
   strategy:
     type: Recreate
   selector:
