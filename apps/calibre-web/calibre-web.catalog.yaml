@@ -25,9 +25,9 @@ spec:
       mode: native
       reason: Calibre-Web uses its built-in account authentication; the route is LAN/WireGuard-only.
   placement:
-    mode: beelink
+    mode: floating
     manifest: apps/calibre-web/workloads.yaml
-    reason: Shares the calibre-web-ingest Longhorn RWO claim with the downloads pod.
+    reason: Dynamically follows the downloads pod because both workloads share the calibre-web-ingest Longhorn RWO claim.
   data:
     class: mixed
     protection: longhorn-b2

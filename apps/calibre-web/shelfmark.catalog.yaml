@@ -25,9 +25,9 @@ spec:
       mode: none
       reason: Shelfmark has no supported native SSO; both route and in-pod proxy restrict it to LAN/WireGuard clients.
   placement:
-    mode: beelink
+    mode: floating
     manifest: apps/downloads/deployment.yaml
-    reason: Its container shares the downloads pod and calibre-web-ingest Longhorn RWO claim.
+    reason: Its container floats with the downloads pod and shares the calibre-web-ingest Longhorn RWO claim.
   data:
     class: mixed
     protection: longhorn-b2

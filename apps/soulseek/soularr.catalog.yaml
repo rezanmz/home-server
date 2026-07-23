@@ -30,9 +30,9 @@ spec:
         launchUrl: https://soularr.reza.network/
       middleware: soularr-authentik
   placement:
-    mode: beelink
+    mode: floating
     manifest: apps/downloads/deployment.yaml
-    reason: Shares the downloads pod with Lidarr and slskd so all acquisition traffic remains behind Gluetun.
+    reason: Floats with the downloads pod, Lidarr, and slskd so all acquisition traffic remains behind Gluetun.
   data:
     class: mixed
     protection: longhorn-b2

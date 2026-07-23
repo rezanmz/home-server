@@ -116,8 +116,6 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
-| `media/calibre-web` | Must be colocated with downloads because both controllers mount the `calibre-web-ingest` Longhorn RWO claim | Longhorn configuration and shared ingest claim plus JuiceFS books |
-| `media/downloads` | Consolidated VPN/download topology, host device, and shared RWO claim with Calibre-Web | `/dev/net/tun`, multiple Longhorn configs including `calibre-web-ingest`, Pi-local NFS downloads, and writable JuiceFS library |
 | `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, and read-only JuiceFS library |
 | `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, writable JuiceFS audiobooks/podcasts, read-only JuiceFS books, and Authentik OIDC |
 | `media/navidrome` | Keeps music scanning and streaming on the main compute node | Longhorn application state and read-only JuiceFS music |
@@ -129,8 +127,7 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 
 The downloads Deployment is one pod containing Gluetun, qBittorrent,
 FlareSolverr, Prowlarr, Radarr, Sonarr, Shelfmark, and their access proxies.
-They share Gluetun's network namespace and must be treated as one placement and
-upgrade unit.
+They share Gluetun's network namespace and must be treated as one upgrade unit.
 
 ### Pinned to the Raspberry Pi
 
@@ -157,6 +154,7 @@ allow it.
 
 | Namespace | Workloads | Storage or external dependency |
 | --- | --- | --- |
+| `media` | Downloads/Arr stack and Calibre-Web | Downloads softly prefers a non-control-plane worker. Calibre-Web follows it through required pod affinity because both mount the `calibre-web-ingest` RWO claim. Neither names a physical node. Pi-hosted NFS downloads and JuiceFS remain reachable from either node. |
 | `apps` | Actual Budget, Homepage, Jellyseerr, Speedtest Tracker | Longhorn for stateful workloads; Homepage is stateless |
 | `apps` | Argilla server/worker, PostgreSQL, Elasticsearch, Redis | Separate Longhorn PVCs; application is multi-component, not transactionally backed up as one unit |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
@@ -209,7 +207,7 @@ The production storage paths are:
 | Storage | Access | Typical consumers |
 | --- | --- | --- |
 | JuiceFS `media` volume | RWX; permissions and pod mounts constrain writers | Organized movies, TV, music, books, audiobooks, and podcasts |
-| Pi `/home/reza/media/downloads` NFS export | Read/write from the Beelink while download automation runs there | qBittorrent, Arr importers, Soularr/slskd, Homepage, and the storage exporter |
+| Pi `/home/reza/media/downloads` NFS export | Read/write from whichever node runs download automation | qBittorrent, Arr importers, Soularr/slskd, Homepage, and the storage exporter |
 | Pi `/home/reza/persistent/syncthing/data` NFS export | Read/write | Syncthing and its read-only backup mount |
 
 Each JuiceFS consumer uses its namespace-local `media-library-juicefs` claim.
