@@ -225,10 +225,11 @@ Do not add a parent export around the Syncthing path: overlapping parent and
 child NFS exports with different access modes can cause NFSv4 clients to apply
 the parent's read-only policy to the child.
 
-During the migration rollback window, the broader `/home/reza/media` export and
-old NFS claims may remain present but frozen. They are retired only after the
+During a migration rollback window, the broader `/home/reza/media` export and
+old NFS claims may remain present but frozen. Retire them only after the
 cross-node, application, playback, and metadata-restore acceptance checks pass.
-The steady-state export is the exact downloads directory, not its parent.
+The production steady state exports the exact downloads directory, never its
+parent; all organized categories are authoritative in JuiceFS/B2.
 
 Removing one of the two current storage nodes makes every two-replica Longhorn
 volume degraded. For permanent node removal, add and prepare a replacement

@@ -68,24 +68,21 @@ The migration is intentionally staged:
 6. Delete only verified source categories and narrow the NFS export to
    downloads.
 
-The production cutover completed at 2026-07-23 13:13 America/Toronto. The old
-NFS categories remain frozen through at least 2026-07-25 13:13 as the rollback
-copy. During that window, `apps/downloads/deployment.yaml` intentionally has
-zero replicas so automatic grabs cannot consume the Pi's remaining space.
-After the window and final application checks, reclaim only the six verified
-source categories, restore the downloads deployment to one replica, remove the
-temporary 5% kubelet eviction threshold, and build the second Longhorn replica
-for `juicefs-postgresql`. Until then, PostgreSQL stays pinned to Beelink with a
-single healthy replica plus its completed Longhorn B2 backup and hourly
-portable metadata exports.
+The production cutover completed at 2026-07-23 13:13 America/Toronto. The
+operator explicitly waived the remainder of the 48-hour rollback soak after
+the complete inventory and bounded checksums matched, metadata restoration
+passed, two concurrent streams passed, and uncached browser playback of both a
+1.8 GiB H.264 file and a 13.2 GiB 4K HEVC file started and sought without delay
+or dropped frames. The latter grew Beelink's persistent cache from zero to
+4.4 GiB, proving the cold B2 read and subsequent local-cache path.
 
-During the initial migration, qBittorrent is deliberately paused and the Pi
-kubelet uses a temporary 5% image-filesystem eviction threshold. The Pi's
-organized library and K3s image store share one root filesystem, so the normal
-15% threshold would otherwise evict Blocky and Longhorn while approximately
-60 GiB remains free. Do not resume torrents until the verified source library
-has been reclaimed. Remove the temporary kubelet arguments immediately after
-free space is back above 15%.
+This revision is the steady-state configuration used by the controlled final
+cleanup: only the exact downloads directory remains exported from the Pi,
+automatic acquisitions return to one replica, PostgreSQL may float between
+nodes after its second Longhorn replica is healthy, and normal kubelet disk
+pressure thresholds replace the temporary migration exception. Do not apply
+only part of this state; the operator must first delete only the six verified
+source categories while retaining `/home/reza/media/downloads`.
 
 The current production stage must be recorded in the pull request and operator
 handoff. Never infer that the presence of a JuiceFS PVC means the applications
@@ -331,15 +328,15 @@ For final cutover:
 5. Reconcile the PVC switch and validate each application before resuming
    downloads.
 
-During the 48-hour rollback window, the old NFS categories stay frozen and
+During an optional rollback window, the old NFS categories stay frozen and
 read-only. To roll back, stop all writers, reverse-sync only changes made after
 cutover into the frozen tree, restore the old PVC references, and validate
 before resuming. Never delete the NFS source merely because pods reached Ready.
 
-After the window, record a final verification report, delete only the six old
-category directories, retain `/home/reza/media/downloads`, and narrow the Pi
-NFS export to that directory. Removing obsolete PV/PVCs is a separate,
-identity-checked cleanup.
+When the rollback copy is deliberately retired, record a final verification
+report, delete only the six old category directories, retain
+`/home/reza/media/downloads`, and narrow the Pi NFS export to that directory.
+Remove obsolete PV/PVCs only after proving that no live Pod references them.
 
 ## Security boundaries
 
