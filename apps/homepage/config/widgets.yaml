@@ -1,6 +1,13 @@
 - resources:
-    label: Media SSD
+    label: Cloud library
     disk: /mnt/media
+    expanded: true
+    diskUnits: bytes
+    refresh: 60000
+
+- resources:
+    label: Local downloads
+    disk: /mnt/downloads
     expanded: true
     diskUnits: bytes
     refresh: 60000

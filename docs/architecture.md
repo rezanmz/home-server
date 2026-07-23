@@ -264,13 +264,19 @@ the shared Calibre ebook library is mounted separately and read-only.
 
 ## Storage
 
-Two storage mechanisms serve different data classes:
+Four storage mechanisms serve different data classes:
 
 - Longhorn stores small databases, configuration, and application state. Its
   default StorageClass uses two replicas, `Retain`, and
   `WaitForFirstConsumer`.
-- Static NFS volumes exported by the Pi store media, downloads, audiobooks, books, shared
-  Syncthing data, and read-only access to the former persistent-data tree.
+- JuiceFS stores the organized movies, TV, music, books, audiobooks, and
+  podcasts library. Backblaze B2 is authoritative; persistent per-node SSD
+  caches accelerate reads but are disposable.
+- The Pi exports only active downloads and seeding torrents over NFS. That
+  local tree is deliberately outside JuiceFS so seeding never produces B2
+  reads and an import is a copy across filesystems rather than a hardlink.
+- The Pi's separate Syncthing export remains protected by its dedicated
+  encrypted file-level B2 backup.
 
 K3s does not bundle the Kubernetes CSI snapshot APIs. The cluster therefore
 reconciles the upstream external-snapshotter CRDs and common snapshot controller
@@ -278,10 +284,12 @@ from the exact `v8.5.0` commit used by Longhorn's snapshotter sidecars; the
 controller image is pinned to a multi-architecture digest. This restores the
 snapshot API, but local snapshots are not an independent backup target.
 
-The Pi NFS exports are the current authoritative shared storage. No independent
-NAS is planned at present. This is an accepted single point of failure: the two
-Longhorn replicas protect small state against one disk or node loss, but they do
-not make the K3s control plane or Pi-hosted NFS data highly available.
+The organized media payload survives either node or SSD failing because B2 is
+authoritative. It still requires the JuiceFS PostgreSQL metadata to interpret
+those objects. That database is a two-replica Longhorn volume, receives normal
+Longhorn backups, and also drives JuiceFS's periodic metadata export. The Pi
+remains a single point of failure for active downloads and seeding only; it is
+not the authoritative organized library.
 
 The pre-migration rollback snapshot at
 `/srv/home-server-backups/pre-k3s-20260712` on the Beelink contains a copy of the
@@ -327,8 +335,9 @@ require operational monitoring. Indefinite physical version retention is
 accepted initially because Longhorn prohibits a backupstore lifecycle rule; it
 is not a bounded 14-copy guarantee.
 
-The Longhorn BackupTarget does not include the Pi's NFS exports. Media remains
-an explicitly reconstructible data class, while the active Syncthing tree at
+The Longhorn BackupTarget does not include B2 media payloads or the Pi's NFS
+exports. JuiceFS media already resides in its own encrypted B2 bucket and is
+not a second independent backup copy. The active Syncthing tree at
 `/home/reza/persistent/syncthing/data` has a separate file-level Restic backup.
 The hardened `network-services/syncthing-backup` CronJob mounts that NFS PVC
 read-only plus only `config.xml` from Syncthing's config PVC. It writes a

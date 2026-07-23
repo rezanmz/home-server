@@ -101,7 +101,8 @@ spec:
           volumeMounts:
             - name: media
               mountPath: /media
+              mountPropagation: HostToContainer
       volumes:
         - name: media
           persistentVolumeClaim:
-            claimName: media-library
+            claimName: media-library-juicefs

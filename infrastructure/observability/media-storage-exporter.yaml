@@ -13,11 +13,12 @@ data:
     readonly WEB_ROOT="${WEB_ROOT:-/var/www}"
     readonly LISTEN_PORT="${LISTEN_PORT:-9100}"
     readonly MEDIA_ROOT="${MEDIA_ROOT:-/media}"
+    readonly DOWNLOADS_ROOT="${DOWNLOADS_ROOT:-/downloads}"
     readonly METRICS_FILE="${WEB_ROOT}/metrics.txt"
     readonly INTERVAL_SECONDS="${INTERVAL_SECONDS:-900}"
     readonly TOP_FILES_LIMIT="${TOP_FILES_LIMIT:-20}"
-    readonly CATEGORIES="movies tv downloads books audiobooks podcasts"
-    readonly FILE_SCAN_ORDER="movies tv books audiobooks podcasts downloads"
+    readonly CATEGORIES="movies tv music books audiobooks podcasts"
+    readonly FILE_SCAN_ORDER="movies tv music books audiobooks podcasts"
 
     mkdir -p "${WEB_ROOT}"
     printf 'ok\n' >"${WEB_ROOT}/healthz.txt"
@@ -49,37 +50,64 @@ data:
       filesystem_available_bytes="$3"
       [ "${filesystem_size_bytes}" -gt 0 ]
 
+      set -- $(df -Pk "${DOWNLOADS_ROOT}" | awk 'NR == 2 {printf "%.0f %.0f %.0f", $2 * 1024, $3 * 1024, $4 * 1024}')
+      [ "$#" -eq 3 ]
+      downloads_filesystem_size_bytes="$1"
+      downloads_filesystem_used_bytes="$2"
+      downloads_filesystem_available_bytes="$3"
+      [ "${downloads_filesystem_size_bytes}" -gt 0 ]
+      downloads_tree_kib="$(du -sk "${DOWNLOADS_ROOT}" | awk 'NR == 1 {print $1}')"
+      downloads_tree_bytes=$((downloads_tree_kib * 1024))
+      downloads_files="$(find "${DOWNLOADS_ROOT}" -xdev -type f | wc -l | tr -d ' ')"
+
       media_tree_kib="$(du -sk "${MEDIA_ROOT}" | awk 'NR == 1 {print $1}')"
       media_tree_bytes=$((media_tree_kib * 1024))
       logical_total_bytes=0
 
       {
         cat <<'EOF'
-    # HELP home_server_media_filesystem_size_bytes Total size of the filesystem that contains the Pi media tree.
+    # HELP home_server_media_filesystem_size_bytes Logical capacity of the JuiceFS cloud media library.
     # TYPE home_server_media_filesystem_size_bytes gauge
     EOF
         printf 'home_server_media_filesystem_size_bytes %s\n' "${filesystem_size_bytes}"
         cat <<'EOF'
-    # HELP home_server_media_filesystem_used_bytes Used bytes on the filesystem that contains the Pi media tree, including non-media data.
+    # HELP home_server_media_filesystem_used_bytes Logical used bytes in the JuiceFS cloud media library.
     # TYPE home_server_media_filesystem_used_bytes gauge
     EOF
         printf 'home_server_media_filesystem_used_bytes %s\n' "${filesystem_used_bytes}"
         cat <<'EOF'
-    # HELP home_server_media_filesystem_available_bytes Bytes available to non-root users on the filesystem that contains the Pi media tree.
+    # HELP home_server_media_filesystem_available_bytes Logical bytes available under the JuiceFS capacity ceiling.
     # TYPE home_server_media_filesystem_available_bytes gauge
     EOF
         printf 'home_server_media_filesystem_available_bytes %s\n' "${filesystem_available_bytes}"
         cat <<'EOF'
-    # HELP home_server_media_filesystem_used_ratio Used fraction of the filesystem that contains the Pi media tree.
+    # HELP home_server_media_filesystem_used_ratio Used fraction of the JuiceFS cloud media capacity.
     # TYPE home_server_media_filesystem_used_ratio gauge
     EOF
         awk -v used="${filesystem_used_bytes}" -v size="${filesystem_size_bytes}" \
           'BEGIN {printf "home_server_media_filesystem_used_ratio %.12f\n", used / size}'
         cat <<'EOF'
-    # HELP home_server_media_tree_physical_bytes Allocated bytes in the complete media tree, counting hardlinked inodes once.
+    # HELP home_server_media_tree_physical_bytes Logical allocated bytes in the organized JuiceFS media tree.
     # TYPE home_server_media_tree_physical_bytes gauge
     EOF
         printf 'home_server_media_tree_physical_bytes %s\n' "${media_tree_bytes}"
+        cat <<'EOF'
+    # HELP home_server_media_downloads_filesystem_size_bytes Total size of the Pi filesystem containing active downloads.
+    # TYPE home_server_media_downloads_filesystem_size_bytes gauge
+    # HELP home_server_media_downloads_filesystem_used_bytes Used bytes on the Pi filesystem containing active downloads, K3s, and the operating system.
+    # TYPE home_server_media_downloads_filesystem_used_bytes gauge
+    # HELP home_server_media_downloads_filesystem_available_bytes Bytes available to normal users on the Pi filesystem containing active downloads.
+    # TYPE home_server_media_downloads_filesystem_available_bytes gauge
+    # HELP home_server_media_downloads_bytes Allocated bytes in the Pi-local downloads tree.
+    # TYPE home_server_media_downloads_bytes gauge
+    # HELP home_server_media_downloads_files File count in the Pi-local downloads tree.
+    # TYPE home_server_media_downloads_files gauge
+    EOF
+        printf 'home_server_media_downloads_filesystem_size_bytes %s\n' "${downloads_filesystem_size_bytes}"
+        printf 'home_server_media_downloads_filesystem_used_bytes %s\n' "${downloads_filesystem_used_bytes}"
+        printf 'home_server_media_downloads_filesystem_available_bytes %s\n' "${downloads_filesystem_available_bytes}"
+        printf 'home_server_media_downloads_bytes %s\n' "${downloads_tree_bytes}"
+        printf 'home_server_media_downloads_files %s\n' "${downloads_files}"
         cat <<'EOF'
     # HELP home_server_media_category_bytes Logical allocated bytes in one managed media directory.
     # TYPE home_server_media_category_bytes gauge
@@ -107,20 +135,11 @@ data:
           printf 'home_server_media_category_present{category="%s"} %s\n' "${category}" "${category_present}"
         done
 
-        hardlink_savings_bytes=$((logical_total_bytes - media_tree_bytes))
-        if [ "${hardlink_savings_bytes}" -lt 0 ]; then
-          hardlink_savings_bytes=0
-        fi
         cat <<'EOF'
-    # HELP home_server_media_logical_category_bytes Sum of category directory sizes; hardlinks crossing categories are counted in each category.
+    # HELP home_server_media_logical_category_bytes Sum of the organized JuiceFS category directory sizes.
     # TYPE home_server_media_logical_category_bytes gauge
     EOF
         printf 'home_server_media_logical_category_bytes %s\n' "${logical_total_bytes}"
-        cat <<'EOF'
-    # HELP home_server_media_hardlink_savings_bytes Difference between logical category bytes and physical media-tree bytes.
-    # TYPE home_server_media_hardlink_savings_bytes gauge
-    EOF
-        printf 'home_server_media_hardlink_savings_bytes %s\n' "${hardlink_savings_bytes}"
       } >"${output}"
 
       : >"${inode_list}"
@@ -285,7 +304,11 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: script, mountPath: /scripts, readOnly: true}
-            - {name: media, mountPath: /media, readOnly: true}
+            - name: media
+              mountPath: /media
+              readOnly: true
+              mountPropagation: HostToContainer
+            - {name: downloads, mountPath: /downloads, readOnly: true}
             - {name: web, mountPath: /var/www}
             - {name: tmp, mountPath: /tmp}
       volumes:
@@ -295,7 +318,11 @@ spec:
             defaultMode: 0555
         - name: media
           persistentVolumeClaim:
-            claimName: media-library
+            claimName: media-library-juicefs
+            readOnly: true
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: media-downloads
             readOnly: true
         - {name: web, emptyDir: {sizeLimit: 4Mi}}
         - {name: tmp, emptyDir: {sizeLimit: 128Mi}}

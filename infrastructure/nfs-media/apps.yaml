@@ -30,6 +30,35 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  name: media-downloads-apps
+spec:
+  capacity:
+    storage: 1Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+  mountOptions: [nfsvers=4.2, hard, noatime]
+  nfs:
+    server: 192.168.1.2
+    path: /home/reza/media/downloads
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-downloads
+  namespace: apps
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-media
+  volumeName: media-downloads-apps
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
   name: syncthing-data-apps
 spec:
   capacity:

@@ -24,26 +24,32 @@ Internet -> router -> Traefik host ports -> Gateway API routes -> applications
 
 GitHub -> Flux -> K3s
                   |-- beelink (.3): server, compute, media acceleration
-                  `-- raspberrypi (.2): agent, LAN services, NFS storage
+                  `-- raspberrypi (.2): agent, LAN services, download NFS/cache
+
+Organized media -> JuiceFS -> encrypted Backblaze B2
+                         `-> persistent read cache on both nodes
 ```
 
 - `beelink` (`192.168.1.3`, amd64) is the only K3s server and the main compute
   node. Kea DHCP is pinned here because ISC's official image is amd64-only.
 - `raspberrypi` (`192.168.1.2`, arm64) runs network-facing workloads such as
-  Blocky DNS, WireGuard, Samba, and Syncthing. It also exports the media tree
-  (including downloads and books), Syncthing data, and the read-only legacy
-  tree over NFS.
+  Blocky DNS, WireGuard, Samba, and Syncthing. It exports active downloads and
+  Syncthing data over separate NFS paths and holds one disposable JuiceFS read
+  cache.
 - Traefik runs as a DaemonSet with host ports 80 and 443. The router can retain
   the Pi as its public forwarding target, while `192.168.1.240` is the MetalLB
   address for the same Gateway inside the LAN.
 - cert-manager obtains the `reza.network` wildcard certificate with Cloudflare
   DNS-01. Application and infrastructure secrets are SOPS/age-encrypted in Git.
 - Longhorn stores small application databases and configuration with two
-  replicas. The Pi NFS exports remain the single source for large shared data.
+  replicas. The organized media library is a shared JuiceFS filesystem whose
+  authoritative encrypted chunks live in Backblaze B2; Pi-local downloads are
+  mounted over `/media/downloads` and never enter B2 merely for seeding.
 
-This is intentionally not a highly available cluster. There is no third K3s
-server or independent shared-storage/NAS system planned at present. The
-Beelink control plane and the Pi NFS server are known single points of failure.
+This is intentionally not a fully highly available cluster. There is no third
+K3s server. The Beelink control plane remains a single point of failure, and a
+Pi outage interrupts active downloads and Syncthing, although organized media
+payloads remain authoritative in B2.
 
 ## Operator manuals
 

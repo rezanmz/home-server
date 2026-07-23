@@ -76,9 +76,19 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /config}
             - {name: metadata, mountPath: /metadata}
-            - {name: audiobooks, mountPath: /audiobooks}
-            - {name: podcasts, mountPath: /podcasts}
-            - {name: ebooks, mountPath: /ebooks, readOnly: true}
+            - name: audiobooks
+              mountPath: /audiobooks
+              subPath: audiobooks
+              mountPropagation: HostToContainer
+            - name: podcasts
+              mountPath: /podcasts
+              subPath: podcasts
+              mountPropagation: HostToContainer
+            - name: ebooks
+              mountPath: /ebooks
+              subPath: books
+              readOnly: true
+              mountPropagation: HostToContainer
             - {name: tmp, mountPath: /tmp}
       volumes:
         - name: config
@@ -89,13 +99,13 @@ spec:
             claimName: audiobookshelf-metadata
         - name: audiobooks
           persistentVolumeClaim:
-            claimName: media-audiobooks
+            claimName: media-library-juicefs
         - name: podcasts
           persistentVolumeClaim:
-            claimName: media-podcasts
+            claimName: media-library-juicefs
         - name: ebooks
           persistentVolumeClaim:
-            claimName: media-books
+            claimName: media-library-juicefs
         - name: tmp
           emptyDir:
             sizeLimit: 2Gi

@@ -28,6 +28,15 @@ credential and filesystem name allow the CSI driver to share one mount pod per
 node. Consumers use category `subPath` mounts and retain the established
 application paths.
 
+Production consumers mount the JuiceFS claim with
+`mountPropagation: HostToContainer` so CSI mount recovery can propagate a
+replacement FUSE mount into an existing container. The downloads stack mounts
+the Pi-local `media-downloads` NFS claim over `/media/downloads`; this nested
+mount is the boundary that prevents torrent writes and seeding reads from
+reaching B2. qBittorrent receives the parent JuiceFS mount read-only. Radarr,
+Sonarr, and Lidarr receive it read-write because imports copy into the cloud
+library. All read-only consumers retain read-only mounts.
+
 Every eligible node must expose `/dev/fuse` and apply
 `infrastructure/hosts/common/99-home-server-juicefs.conf`. Run
 `scripts/prepare-juicefs-hosts.sh` after provisioning or replacing a node. The
