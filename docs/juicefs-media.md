@@ -249,7 +249,7 @@ tmpfs path `/run/juicefs-media-migration`, then run:
 
 ```bash
 sudo systemd-run --unit=juicefs-media-migration \
-  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=3G \
+  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=4G \
   --property=IPAccounting=yes \
   /usr/local/sbin/run-juicefs-media-migration.sh
 sudo journalctl -fu juicefs-media-migration
