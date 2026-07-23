@@ -27,7 +27,7 @@ spec:
   placement:
     mode: floating
     manifest: apps/downloads/deployment.yaml
-    reason: Its container floats with the downloads pod and shares the calibre-web-ingest Longhorn RWO claim.
+    reason: Its container floats with the downloads pod and shares an RWX Longhorn ingest claim with Calibre-Web.
   data:
     class: mixed
     protection: longhorn-b2

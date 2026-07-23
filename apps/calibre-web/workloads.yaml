@@ -13,16 +13,6 @@ spec:
         home-server.reza.network/internal-client: "true"
     spec:
       automountServiceAccountToken: false
-      # Shelfmark in the downloads pod and Calibre-Web share the ingest RWO
-      # claim. Follow that pod dynamically instead of pinning both workloads
-      # to one physical node.
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: media-vpn
-              topologyKey: kubernetes.io/hostname
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:
@@ -67,4 +57,4 @@ spec:
         - name: books
           persistentVolumeClaim: {claimName: media-library-juicefs}
         - name: ingest
-          persistentVolumeClaim: {claimName: calibre-web-ingest}
+          persistentVolumeClaim: {claimName: calibre-web-ingest-rwx}

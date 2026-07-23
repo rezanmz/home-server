@@ -88,6 +88,10 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             volumes["media-downloads"]["persistentVolumeClaim"]["claimName"],
             "media-downloads",
         )
+        self.assertEqual(
+            volumes["calibre-web-ingest"]["persistentVolumeClaim"]["claimName"],
+            "calibre-web-ingest-rwx",
+        )
 
         containers = {item["name"]: item for item in spec["containers"]}
         qb_mounts = {item["name"]: item for item in containers["qbittorrent"]["volumeMounts"]}
@@ -114,18 +118,26 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             self.assertIn("media-downloads", mount_names)
             self.assertNotIn("media-library", mount_names)
 
-    def test_calibre_web_follows_downloads_without_a_hostname_pin(self) -> None:
+    def test_calibre_web_floats_with_rwx_ingest_storage(self) -> None:
         resource = deployment("apps/calibre-web/workloads.yaml", "calibre-web")
         spec = pod_spec(resource)
         self.assertNotIn("nodeSelector", spec)
-        required = spec["affinity"]["podAffinity"][
-            "requiredDuringSchedulingIgnoredDuringExecution"
-        ]
-        self.assertEqual(len(required), 1)
-        self.assertEqual(required[0]["topologyKey"], "kubernetes.io/hostname")
+        self.assertNotIn("affinity", spec)
+        ingest = named(spec["volumes"], "ingest")
         self.assertEqual(
-            required[0]["labelSelector"]["matchLabels"],
-            {"app.kubernetes.io/name": "media-vpn"},
+            ingest["persistentVolumeClaim"]["claimName"],
+            "calibre-web-ingest-rwx",
+        )
+
+        claims = {
+            doc["metadata"]["name"]: doc
+            for doc in documents("apps/calibre-web/pvc.yaml")
+            if doc.get("kind") == "PersistentVolumeClaim"
+        }
+        self.assertNotIn("calibre-web-ingest", claims)
+        self.assertEqual(
+            claims["calibre-web-ingest-rwx"]["spec"]["accessModes"],
+            ["ReadWriteMany"],
         )
 
     def test_pi_nfs_claims_export_only_the_downloads_subdirectory(self) -> None:

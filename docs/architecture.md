@@ -231,8 +231,9 @@ The downloads deployment combines Gluetun, qBittorrent, FlareSolverr, Prowlarr,
 Radarr, Sonarr, Shelfmark, and their access proxies in one pod. This preserves
 the VPN network-namespace contract. Gluetun owns the encrypted egress path,
 firewall, kill switch, and ProtonVPN forwarded port. The pod is not pinned: it
-softly prefers a worker without the control-plane role, while Calibre-Web uses
-pod affinity to follow it because the two workloads share an RWO ingest claim.
+softly prefers a worker without the control-plane role. Calibre-Web floats
+independently because its Shelfmark ingest handoff uses a Longhorn RWX claim;
+neither workload names a physical node.
 
 Singleton applications and databases stay at one replica even though their
 volumes are replicated. Storage replication is not application-level
