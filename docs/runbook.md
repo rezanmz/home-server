@@ -1626,8 +1626,10 @@ volume.
 ## Node resource pressure
 
 `HomeServerNodeResourcePressure` detects sustained full I/O stalls, full memory
-stalls, or swap traffic. Short bursts are ignored for 15 minutes. When it fires,
-identify the resource label and inspect both the host and the cluster:
+stalls, or swap traffic. On nodes whose kernel does not expose PSI, it falls
+back to CPU I/O wait and available-memory thresholds. Short bursts are ignored
+for 15 minutes. When it fires, identify the resource label and inspect both the
+host and the cluster:
 
 ```bash
 ssh beelink 'uptime; free -h; vmstat 1 5; cat /proc/pressure/io; cat /proc/pressure/memory'
