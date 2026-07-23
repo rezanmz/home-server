@@ -133,6 +133,31 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertEqual(len(media_exports), 1)
         self.assertTrue(media_exports[0].startswith("/home/reza/media/downloads "))
 
+    def test_juicefs_capacity_contract_is_ten_tib(self) -> None:
+        resources = documents("infrastructure/juicefs/storage.yaml")
+        media_pvs = [
+            item
+            for item in resources
+            if item.get("kind") == "PersistentVolume"
+            and item.get("spec", {}).get("storageClassName") == "juicefs-media"
+        ]
+        self.assertEqual(len(media_pvs), 3)
+        for pv in media_pvs:
+            self.assertEqual(pv["spec"]["capacity"]["storage"], "10Ti")
+
+        # Bound static PVC requests cannot be resized. They remain minimums;
+        # the JuiceFS metadata quota and PV capacities advertise the real size.
+        media_pvcs = [
+            item
+            for item in resources
+            if item.get("kind") == "PersistentVolumeClaim"
+        ]
+        self.assertEqual(len(media_pvcs), 3)
+        for pvc in media_pvcs:
+            self.assertEqual(
+                pvc["spec"]["resources"]["requests"]["storage"], "2Ti"
+            )
+
     def test_temporary_cutover_safety_overrides_are_removed(self) -> None:
         metadata = next(
             doc
@@ -234,6 +259,12 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         ):
             self.assertIn('vol_name="media"', rules[alert_name])
         self.assertIn("absent(", rules["JuiceFSMetadataBackupStale"])
+        for alert_name in (
+            "JuiceFSCapacity75Percent",
+            "JuiceFSCapacity85Percent",
+            "JuiceFSCapacity95Percent",
+        ):
+            self.assertIn("10995116277760", rules[alert_name])
 
 
 if __name__ == "__main__":

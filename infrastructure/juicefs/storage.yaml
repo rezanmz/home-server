@@ -12,7 +12,7 @@ kind: PersistentVolume
 metadata:
   name: juicefs-media-media
 spec:
-  capacity: {storage: 2Ti}
+  capacity: {storage: 10Ti}
   accessModes: [ReadWriteMany]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: juicefs-media
@@ -38,6 +38,8 @@ spec:
   storageClassName: juicefs-media
   volumeName: juicefs-media-media
   resources:
+    # This bound static claim's request is an immutable minimum. JuiceFS's
+    # actual quota and the PV's advertised capacity are 10 TiB.
     requests: {storage: 2Ti}
 ---
 apiVersion: v1
@@ -45,7 +47,7 @@ kind: PersistentVolume
 metadata:
   name: juicefs-media-apps
 spec:
-  capacity: {storage: 2Ti}
+  capacity: {storage: 10Ti}
   accessModes: [ReadWriteMany]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: juicefs-media
@@ -71,6 +73,8 @@ spec:
   storageClassName: juicefs-media
   volumeName: juicefs-media-apps
   resources:
+    # This bound static claim's request is an immutable minimum. JuiceFS's
+    # actual quota and the PV's advertised capacity are 10 TiB.
     requests: {storage: 2Ti}
 ---
 apiVersion: v1
@@ -78,7 +82,7 @@ kind: PersistentVolume
 metadata:
   name: juicefs-media-network-services
 spec:
-  capacity: {storage: 2Ti}
+  capacity: {storage: 10Ti}
   accessModes: [ReadWriteMany]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: juicefs-media
@@ -104,4 +108,6 @@ spec:
   storageClassName: juicefs-media
   volumeName: juicefs-media-network-services
   resources:
+    # This bound static claim's request is an immutable minimum. JuiceFS's
+    # actual quota and the PV's advertised capacity are 10 TiB.
     requests: {storage: 2Ti}
