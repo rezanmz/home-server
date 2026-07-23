@@ -15,5 +15,9 @@ network:
         - to: default
           via: 192.168.1.1
       nameservers:
+        # Cluster nodes must not depend on the Blocky workload they are
+        # responsible for recreating. LAN clients still receive Blocky through
+        # Kea; only the node host resolver uses independent upstreams.
         addresses:
-          - 192.168.1.2
+          - 1.1.1.1
+          - 9.9.9.9

@@ -300,6 +300,37 @@ REMOTE_UNATTENDED_UPGRADES
 run_agent \
   "if systemctl list-unit-files network-watchdog.timer >/dev/null 2>&1; then sudo -n systemctl disable --now network-watchdog.timer; fi"
 
+# Blocky binds the Pi's host address. The node itself must use independent
+# resolvers so it can pull and recreate Blocky (and its storage driver) after a
+# reboot, eviction, or image garbage collection. LAN clients still receive
+# Blocky from Kea; this changes only the node host resolver.
+run_agent sudo -n bash -s <<'REMOTE_NODE_DNS'
+set -euo pipefail
+
+device=eth0
+connection="$(nmcli -g GENERAL.CONNECTION device show "${device}")"
+if [[ -z "${connection}" || "${connection}" == -- ]]; then
+  printf 'No active NetworkManager connection on %s.\n' "${device}" >&2
+  exit 1
+fi
+
+method="$(nmcli -g ipv4.method connection show "${connection}")"
+addresses="$(nmcli -g ipv4.addresses connection show "${connection}")"
+gateway="$(nmcli -g ipv4.gateway connection show "${connection}")"
+if [[ "${method}" != manual ]] ||
+  [[ "${addresses}" != *192.168.1.2/24* ]] ||
+  [[ "${gateway}" != 192.168.1.1 ]]; then
+  printf '%s\n' \
+    'Refusing to change DNS: the Pi static IPv4 profile does not match the cluster contract.' >&2
+  exit 1
+fi
+
+nmcli connection modify "${connection}" \
+  ipv4.dns '1.1.1.1 9.9.9.9' ipv4.ignore-auto-dns yes
+nmcli device reapply "${device}"
+getent ahostsv4 ghcr.io >/dev/null
+REMOTE_NODE_DNS
+
 # A one-hour agent bootstrap token is validated and atomically installed. The
 # receiver preserves any old token file if creation or transfer fails.
 "${token_installer}" "${server_host}" "${agent_host}" raspberrypi
