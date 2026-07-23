@@ -44,6 +44,16 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertIn("--check-change", script)
         self.assertIn("--max-failure=0", script)
 
+    def test_encrypted_direct_sync_cannot_checksum_remote_payloads(self) -> None:
+        script = (REPO_ROOT / "scripts/run-juicefs-media-migration.sh").read_text()
+        self.assertNotIn("--check-new", script)
+        self.assertNotIn("--check-all", script)
+        self.assertIn("JUICEFS_MIGRATION_MAX_GET_BYTES", script)
+        self.assertIn("IPIngressBytes", script)
+        self.assertIn("IPAccounting", script)
+        self.assertIn("juicefs_sync_copied_bytes", script)
+        self.assertIn("kill -TERM", script)
+
     def test_download_stack_keeps_torrents_outside_juicefs(self) -> None:
         spec = pod_spec(deployment("apps/downloads/deployment.yaml", "downloads"))
         volumes = {item["name"]: item for item in spec["volumes"]}

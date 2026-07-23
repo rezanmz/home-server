@@ -124,9 +124,9 @@ spec:
             summary: Pi-local download storage has less than 40 GiB free
             description: Pause qBittorrent immediately; K3s eviction and DNS/storage disruption are imminent.
         - alert: JuiceFSAbnormalB2ReadGrowth
-          expr: sum(increase(juicefs_object_request_data_bytes{vol_name="media",method="GET"}[6h])) > 107374182400
-          for: 15m
+          expr: sum(increase(juicefs_object_request_data_bytes{vol_name="media",method="GET"}[30m])) > 26843545600
+          for: 5m
           labels: {severity: warning}
           annotations:
-            summary: JuiceFS downloaded more than 100 GiB from B2 in six hours
-            description: Check cache churn, uncached playback, and accidental bulk scans before egress continues.
+            summary: JuiceFS downloaded more than 25 GiB from B2 in 30 minutes
+            description: Check cache churn, uncached playback, and accidental bulk scans before chargeable egress continues.

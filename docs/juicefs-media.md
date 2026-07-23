@@ -237,7 +237,8 @@ Shrinking below current usage is forbidden. Category quotas are not enabled.
 
 Initial and final copy operations include only `movies`, `tv`, `music`,
 `books`, `audiobooks`, and `podcasts`. Every command is category-scoped,
-resumable, and byte-checks new objects. `downloads` is always excluded.
+resumable, and checks that source files did not change while being copied.
+`downloads` is always excluded.
 
 The initial background copy runs directly on the Pi host instead of as a Pod.
 This is intentional: a migration Pod is itself eligible for eviction on the
@@ -249,6 +250,7 @@ tmpfs path `/run/juicefs-media-migration`, then run:
 ```bash
 sudo systemd-run --unit=juicefs-media-migration \
   --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=3G \
+  --property=IPAccounting=yes \
   /usr/local/sbin/run-juicefs-media-migration.sh
 sudo journalctl -fu juicefs-media-migration
 ```
@@ -256,8 +258,28 @@ sudo journalctl -fu juicefs-media-migration
 `scripts/run-juicefs-media-migration.sh` accepts only the six organized
 categories, defaults to four transfer threads and 158 Mbps (60% of the measured
 encrypted B2 upload rate), preserves directories, permissions, and symlinks,
-and checks every new or changed file. It never accepts `downloads`, never
-deletes from the source, and refuses credentials supplied in command arguments.
+and rejects files that change during transfer. It never accepts `downloads`,
+never deletes from the source, and refuses credentials supplied in command
+arguments.
+
+Do not add JuiceFS sync's `--check-new` or `--check-all` options to this direct
+`jfs://` migration. With client-side encryption in JuiceFS 1.4.0, a ranged
+checksum read decrypts the entire 4 MiB object, while sync reads checksum data
+in 32 KiB pieces. That can turn one logical byte verification into roughly 128
+bytes downloaded from B2. The migration wrapper therefore leaves remote byte
+verification disabled and requires systemd IP accounting. It independently
+aborts when total inbound traffic exceeds 64 MiB plus five percent of copied
+bytes. The allowance covers TCP acknowledgements and PostgreSQL responses but
+is tiny compared with the prior 128x read amplification. If either systemd's
+counter or the loopback sync metrics cannot be read, the migration fails closed.
+
+Verify payload integrity after migration through the normal CSI/FUSE mount,
+where full-block caching is enabled. Hash a deterministic sample from each
+category with no more than 1 GiB of total source data. Record
+`juicefs_object_request_data_bytes{method="GET"}` immediately before and after;
+the B2-read delta must stay below the sample's logical size plus 64 MiB. Do not
+run an exhaustive remote checksum until its expected B2 download volume and
+available free-egress allowance have been reviewed.
 JuiceFS writes a hidden `.juicefs-sync-checkpoint.*.json` file in each
 destination category; it contains paths and transfer state, not credentials.
 A failed or interrupted category is resumed by running the same script with
