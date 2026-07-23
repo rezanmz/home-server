@@ -574,7 +574,7 @@ spec:
         - name: shelfmark-config
           persistentVolumeClaim: {claimName: shelfmark-config}
         - name: calibre-web-ingest
-          persistentVolumeClaim: {claimName: calibre-web-ingest}
+          persistentVolumeClaim: {claimName: calibre-web-ingest-rwx}
         - name: media-library
           persistentVolumeClaim: {claimName: media-library-juicefs}
         - name: media-downloads

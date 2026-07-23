@@ -1646,6 +1646,13 @@ if the event count is still increasing or the corresponding Longhorn volume is
 not `attached` and `healthy`; verify the database or application health before
 restarting anything.
 
+Calibre-Web and the downloads pod are independently floating workloads. Their
+Shelfmark handoff uses `calibre-web-ingest-rwx`; do not replace it with an RWO
+claim or pod affinity. Pod affinity is evaluated only when scheduling and can
+leave the two controllers on different nodes after a later move. The obsolete
+`calibre-web-ingest` RWO claim may be deleted only after the RWX claim is mounted
+by both workloads and the old claim is confirmed to contain no pending books.
+
 ## Secrets and recovery identities
 
 Only SOPS ciphertext belongs in Git. The age public recipient is in the SOPS

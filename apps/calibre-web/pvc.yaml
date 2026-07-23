@@ -9,9 +9,9 @@ spec:
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
-metadata: {name: calibre-web-ingest, namespace: media}
+metadata: {name: calibre-web-ingest-rwx, namespace: media}
 spec:
-  accessModes: [ReadWriteOnce]
+  accessModes: [ReadWriteMany]
   storageClassName: longhorn
   resources:
     requests: {storage: 20Gi}

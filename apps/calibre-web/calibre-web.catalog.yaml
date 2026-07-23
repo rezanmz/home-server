@@ -27,13 +27,13 @@ spec:
   placement:
     mode: floating
     manifest: apps/calibre-web/workloads.yaml
-    reason: Dynamically follows the downloads pod because both workloads share the calibre-web-ingest Longhorn RWO claim.
+    reason: Uses an RWX Longhorn ingest claim so it can float independently from the downloads pod.
   data:
     class: mixed
     protection: longhorn-b2
     manifests:
       - apps/calibre-web/pvc.yaml
       - infrastructure/nfs-media/media.yaml
-    note: Longhorn protects configuration and ingest state; the NFS book library is treated as reproducible.
+    note: Longhorn protects configuration and shared RWX ingest state; the JuiceFS book library is authoritative media data.
   observability:
     mode: kubernetes
