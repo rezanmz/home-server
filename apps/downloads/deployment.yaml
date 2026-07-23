@@ -19,8 +19,17 @@ spec:
         home-server.reza.network/internal-client: "true"
     spec:
       automountServiceAccountToken: false
-      nodeSelector:
-        kubernetes.io/hostname: beelink
+      # Keep acquisition work away from the single control-plane node when a
+      # worker has capacity, without making any physical node mandatory. The
+      # Pi-hosted NFS claim remains reachable from either node.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       # Keep service-name URLs in the migrated application databases working.
       # These names all resolved to Gluetun's shared namespace in Docker.
       hostAliases:

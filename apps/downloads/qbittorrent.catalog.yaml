@@ -25,9 +25,9 @@ spec:
       mode: native
       reason: qBittorrent uses its built-in Web UI authentication behind the LAN/WireGuard boundary.
   placement:
-    mode: beelink
+    mode: floating
     manifest: apps/downloads/deployment.yaml
-    reason: Runs in the shared Gluetun network namespace and mounts shared Longhorn RWO claims.
+    reason: Floats with a soft preference for a non-control-plane worker while retaining the shared Gluetun network namespace.
   data:
     class: mixed
     protection: longhorn-b2

@@ -17,8 +17,8 @@ definitions are no longer part of this repository.
 The cluster has two wired nodes:
 
 - `beelink` (`192.168.1.3`, amd64) is the single K3s server and the main compute
-  node. It hosts ordinary application workloads, databases, the consolidated
-  VPN/download pod, and Jellyfin with `/dev/dri` hardware access.
+  node. It hosts ordinary application workloads, databases, and Jellyfin with
+  `/dev/dri` hardware access.
 - `raspberrypi` (`192.168.1.2`, arm64) is a K3s agent and the network/storage
   node. Workloads that depend on its LAN address, broadcasts, local files, or
   forwarded ports are pinned there.
@@ -230,7 +230,9 @@ resources. Explicit placement is used where the application needs:
 The downloads deployment combines Gluetun, qBittorrent, FlareSolverr, Prowlarr,
 Radarr, Sonarr, Shelfmark, and their access proxies in one pod. This preserves
 the VPN network-namespace contract. Gluetun owns the encrypted egress path,
-firewall, kill switch, and ProtonVPN forwarded port.
+firewall, kill switch, and ProtonVPN forwarded port. The pod is not pinned: it
+softly prefers a worker without the control-plane role, while Calibre-Web uses
+pod affinity to follow it because the two workloads share an RWO ingest claim.
 
 Singleton applications and databases stay at one replica even though their
 volumes are replicated. Storage replication is not application-level

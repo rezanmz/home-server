@@ -30,9 +30,9 @@ spec:
         launchUrl: https://slskd.reza.network/
       middleware: slskd-authentik
   placement:
-    mode: beelink
+    mode: floating
     manifest: apps/downloads/deployment.yaml
-    reason: Shares the existing Gluetun network namespace and Proton connection so Soulseek traffic remains behind the VPN kill switch.
+    reason: Floats with the existing Gluetun network namespace and Proton connection so Soulseek traffic remains behind the VPN kill switch.
   data:
     class: mixed
     protection: longhorn-b2

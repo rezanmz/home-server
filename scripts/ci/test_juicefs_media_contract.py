@@ -65,6 +65,20 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         resource = deployment("apps/downloads/deployment.yaml", "downloads")
         self.assertEqual(resource["spec"]["replicas"], 1)
         spec = pod_spec(resource)
+        self.assertNotIn("nodeSelector", spec)
+        worker_preference = spec["affinity"]["nodeAffinity"][
+            "preferredDuringSchedulingIgnoredDuringExecution"
+        ][0]
+        self.assertEqual(worker_preference["weight"], 100)
+        self.assertEqual(
+            worker_preference["preference"]["matchExpressions"],
+            [
+                {
+                    "key": "node-role.kubernetes.io/control-plane",
+                    "operator": "DoesNotExist",
+                }
+            ],
+        )
         volumes = {item["name"]: item for item in spec["volumes"]}
         self.assertEqual(
             volumes["media-library"]["persistentVolumeClaim"]["claimName"],
@@ -99,6 +113,20 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             }
             self.assertIn("media-downloads", mount_names)
             self.assertNotIn("media-library", mount_names)
+
+    def test_calibre_web_follows_downloads_without_a_hostname_pin(self) -> None:
+        resource = deployment("apps/calibre-web/workloads.yaml", "calibre-web")
+        spec = pod_spec(resource)
+        self.assertNotIn("nodeSelector", spec)
+        required = spec["affinity"]["podAffinity"][
+            "requiredDuringSchedulingIgnoredDuringExecution"
+        ]
+        self.assertEqual(len(required), 1)
+        self.assertEqual(required[0]["topologyKey"], "kubernetes.io/hostname")
+        self.assertEqual(
+            required[0]["labelSelector"]["matchLabels"],
+            {"app.kubernetes.io/name": "media-vpn"},
+        )
 
     def test_pi_nfs_claims_export_only_the_downloads_subdirectory(self) -> None:
         for relative_path, pv_name in (

@@ -1,0 +1,86 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: home-server-node-health
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: home-server-node-health
+    app.kubernetes.io/part-of: observability
+    release: observability
+spec:
+  groups:
+    - name: home-server.node-health-recording
+      interval: 30s
+      rules:
+        # The node-exporter runs without host networking, so enrich its
+        # namespace/pod identity with kube-state-metrics' Kubernetes node.
+        - record: home_server_node_resource_pressure
+          labels: {resource: io, unit: percent}
+          expr: |
+            100
+            * rate(
+                node_pressure_io_stalled_seconds_total{
+                  job="observability-prometheus-node-exporter"
+                }[5m]
+              )
+            * on (namespace, pod) group_left (node)
+              max by (namespace, pod, node) (
+                kube_pod_info{
+                  namespace="kube-system",
+                  pod=~"observability-prometheus-node-exporter-.*"
+                }
+              )
+        - record: home_server_node_resource_pressure
+          labels: {resource: memory, unit: percent}
+          expr: |
+            100
+            * rate(
+                node_pressure_memory_stalled_seconds_total{
+                  job="observability-prometheus-node-exporter"
+                }[5m]
+              )
+            * on (namespace, pod) group_left (node)
+              max by (namespace, pod, node) (
+                kube_pod_info{
+                  namespace="kube-system",
+                  pod=~"observability-prometheus-node-exporter-.*"
+                }
+              )
+        - record: home_server_node_resource_pressure
+          labels: {resource: swap, unit: bytes_per_second}
+          expr: |
+            (
+              rate(
+                node_vmstat_pswpin{
+                  job="observability-prometheus-node-exporter"
+                }[5m]
+              )
+              + rate(
+                  node_vmstat_pswpout{
+                    job="observability-prometheus-node-exporter"
+                  }[5m]
+                )
+            )
+            * 4096
+            * on (namespace, pod) group_left (node)
+              max by (namespace, pod, node) (
+                kube_pod_info{
+                  namespace="kube-system",
+                  pod=~"observability-prometheus-node-exporter-.*"
+                }
+              )
+    - name: home-server.node-health-alerting
+      rules:
+        - alert: HomeServerNodeResourcePressure
+          expr: |
+            home_server_node_resource_pressure{resource="io"} > 15
+            or home_server_node_resource_pressure{resource="memory"} > 5
+            or home_server_node_resource_pressure{resource="swap"} > 67108864
+          for: 15m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Node {{ $labels.node }} has sustained {{ $labels.resource }} pressure
+            description: "Node {{ $labels.node }} has reported {{ $value | humanize }} {{ $labels.unit }} of sustained {{ $labels.resource }} pressure. Reduce concurrent downloads/imports first, then inspect PSI, swap, Longhorn, and kubelet latency."
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#node-resource-pressure

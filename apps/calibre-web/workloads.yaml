@@ -13,8 +13,16 @@ spec:
         home-server.reza.network/internal-client: "true"
     spec:
       automountServiceAccountToken: false
-      nodeSelector:
-        kubernetes.io/hostname: beelink
+      # Shelfmark in the downloads pod and Calibre-Web share the ingest RWO
+      # claim. Follow that pod dynamically instead of pinning both workloads
+      # to one physical node.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: media-vpn
+              topologyKey: kubernetes.io/hostname
       securityContext:
         seccompProfile: {type: RuntimeDefault}
       containers:

@@ -1306,9 +1306,9 @@ keys while troubleshooting.
 ### Navidrome and Lidarr
 
 Navidrome streams the music library at `music.reza.network`; Lidarr manages
-music acquisition at the LAN/WireGuard-only `lidarr.reza.network`. Both run on
-Beelink. Lidarr shares the downloads pod's Gluetun network namespace, qBittorrent,
-and `/media` JuiceFS mount, with Pi-local NFS downloads mounted over
+music acquisition at the LAN/WireGuard-only `lidarr.reza.network`. Lidarr
+shares the floating downloads pod's Gluetun network namespace, qBittorrent,
+and `/media` JuiceFS mount, with Pi-hosted NFS downloads mounted over
 `/media/downloads`. Navidrome has a separate pod, a Longhorn data volume, and a
 read-only `/music` category view of the same JuiceFS filesystem.
 
@@ -1622,6 +1622,29 @@ own imported torrents normally; the 14-day qBittorrent ceiling also bounds
 manual or otherwise unowned torrents. Review this policy in qBittorrent under
 **Settings > BitTorrent > Seeding Limits** after restoring its configuration
 volume.
+
+## Node resource pressure
+
+`HomeServerNodeResourcePressure` detects sustained full I/O stalls, full memory
+stalls, or swap traffic. Short bursts are ignored for 15 minutes. When it fires,
+identify the resource label and inspect both the host and the cluster:
+
+```bash
+ssh beelink 'uptime; free -h; vmstat 1 5; cat /proc/pressure/io; cat /proc/pressure/memory'
+ssh beelink 'sudo k3s kubectl top nodes; sudo k3s kubectl top pods -A --sort-by=memory | head -30'
+```
+
+First check where the downloads pod is running and inspect qBittorrent's active
+torrent counts. It should normally prefer a non-control-plane worker, but it is
+allowed to run anywhere. If unrestricted concurrency causes sustained pressure,
+temporarily pause transfers and inspect Longhorn, Prometheus, JuiceFS, and NFS
+traffic before restarting or deleting any storage pod.
+
+Repeated Longhorn `FailedMount` events that say `no Pending workload pods` can
+be delayed retry noise after a node stall. Treat them as a storage incident only
+if the event count is still increasing or the corresponding Longhorn volume is
+not `attached` and `healthy`; verify the database or application health before
+restarting anything.
 
 ## Secrets and recovery identities
 

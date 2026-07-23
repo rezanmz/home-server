@@ -25,9 +25,9 @@ spec:
       mode: native
       reason: Radarr uses its built-in authentication behind the LAN/WireGuard boundary.
   placement:
-    mode: beelink
+    mode: floating
     manifest: apps/downloads/deployment.yaml
-    reason: Its container shares the downloads pod's Gluetun network namespace.
+    reason: Its container floats with the downloads pod's Gluetun network namespace.
   data:
     class: mixed
     protection: longhorn-b2
