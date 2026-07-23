@@ -11,7 +11,7 @@ juicefs_bin="${JUICEFS_BIN:-/usr/local/bin/juicefs}"
 threads="${JUICEFS_MIGRATION_THREADS:-4}"
 bwlimit="${JUICEFS_MIGRATION_BWLIMIT:-158}"
 metrics="${JUICEFS_MIGRATION_METRICS:-127.0.0.1:9568}"
-max_get_bytes="${JUICEFS_MIGRATION_MAX_GET_BYTES:-67108864}"
+max_ingress_base_bytes="${JUICEFS_MIGRATION_MAX_INGRESS_BASE_BYTES:-67108864}"
 categories=(podcasts audiobooks books music movies tv)
 active_sync_pid=''
 migration_unit=''
@@ -87,10 +87,10 @@ esac
 case "${bwlimit}" in
   '' | *[!0-9]*) printf '%s\n' 'Bandwidth limit must be a positive integer.' >&2; exit 2 ;;
 esac
-case "${max_get_bytes}" in
-  '' | *[!0-9]*) printf '%s\n' 'Object-download budget must be a positive integer.' >&2; exit 2 ;;
+case "${max_ingress_base_bytes}" in
+  '' | *[!0-9]*) printf '%s\n' 'Base ingress budget must be a positive integer.' >&2; exit 2 ;;
 esac
-if ((threads < 1 || threads > 16 || bwlimit < 1 || max_get_bytes < 1)); then
+if ((threads < 1 || threads > 16 || bwlimit < 1 || max_ingress_base_bytes < 1)); then
   printf '%s\n' 'Refusing unsafe thread count or bandwidth limit.' >&2
   exit 2
 fi
@@ -228,7 +228,7 @@ run_guarded_sync() {
       # The cgroup counter includes TCP ACKs and small PostgreSQL responses.
       # Five percent of copied bytes is deliberately more than healthy upload
       # traffic needs, but tiny compared with the 128x encrypted-read failure.
-      allowed_ingress=$((max_get_bytes + copied_bytes / 20))
+      allowed_ingress=$((max_ingress_base_bytes + copied_bytes / 20))
       if ((ingress_delta > allowed_ingress)); then
         printf 'ABORTING: inbound migration traffic reached %s bytes; dynamic budget is %s bytes.\n' \
           "${ingress_delta}" "${allowed_ingress}" >&2
@@ -257,7 +257,7 @@ run_guarded_sync() {
   fi
   active_sync_pid=''
   printf 'Egress guard: peak inbound traffic=%s bytes; fixed budget=%s bytes plus 5%% of copied bytes.\n' \
-    "${peak_ingress_bytes}" "${max_get_bytes}"
+    "${peak_ingress_bytes}" "${max_ingress_base_bytes}"
   return "${rc}"
 }
 

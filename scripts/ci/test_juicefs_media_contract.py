@@ -48,7 +48,7 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         script = (REPO_ROOT / "scripts/run-juicefs-media-migration.sh").read_text()
         self.assertNotIn("--check-new", script)
         self.assertNotIn("--check-all", script)
-        self.assertIn("JUICEFS_MIGRATION_MAX_GET_BYTES", script)
+        self.assertIn("JUICEFS_MIGRATION_MAX_INGRESS_BASE_BYTES", script)
         self.assertIn("IPIngressBytes", script)
         self.assertIn("IPAccounting", script)
         self.assertIn("juicefs_sync_copied_bytes", script)
