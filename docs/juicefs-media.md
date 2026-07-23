@@ -108,8 +108,8 @@ Inspect a mount without exposing credentials:
 
 ```bash
 pod="$(ssh beelink 'sudo k3s kubectl -n kube-system get pod -l app.kubernetes.io/name=juicefs-mount -o jsonpath={.items[0].metadata.name}')"
-ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- juicefs status \"\${META_URL}\""
-ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- juicefs stats -l 1 \"\${MOUNT_POINT}\""
+ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- sh -c 'juicefs status \"\${metaurl}\"'"
+ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- sh -c 'juicefs stats -l 1 -c 1 \"\$(findmnt -rn -t fuse.juicefs -o TARGET | head -n 1)\"'"
 ```
 
 Do not print the Secret, the PostgreSQL URL with its password, the RSA key, or
