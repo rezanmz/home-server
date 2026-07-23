@@ -120,7 +120,7 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 | `media/downloads` | Consolidated VPN/download topology, host device, and shared RWO claim with Calibre-Web | `/dev/net/tun`, multiple Longhorn configs including `calibre-web-ingest`, Pi-local NFS downloads, and writable JuiceFS library |
 | `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, and read-only JuiceFS library |
 | `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, writable JuiceFS audiobooks/podcasts, read-only JuiceFS books, and Authentik OIDC |
-| `apps/navidrome` | Keeps music scanning and streaming on the main compute node | Longhorn application state and read-only JuiceFS music |
+| `media/navidrome` | Keeps music scanning and streaming on the main compute node | Longhorn application state and read-only JuiceFS music |
 | `apps/home-assistant` | Keeps third-party integration code and selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; approved LAN integrations require protocol-scoped network policy |
 | `network-services/kea-dhcp4` | ISC's official image is amd64-only and DHCP must use a real LAN interface | Beelink host network, `enp1s0`, Longhorn lease database |
 | `network-services/stork-server`, `stork-postgresql` | The audited Stork images are currently built for amd64 and monitor the Beelink-hosted Kea service | Authentik OIDC, Longhorn database, and the Kea Stork agent at `10.42.0.1:8080` |

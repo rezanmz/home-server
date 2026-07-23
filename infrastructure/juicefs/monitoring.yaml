@@ -69,41 +69,41 @@ spec:
             summary: JuiceFS PostgreSQL metadata database is unavailable
             description: PostgreSQL is required to interpret every object in the media bucket.
         - alert: JuiceFSObjectStoreErrors
-          expr: sum(increase(juicefs_object_request_errors[10m])) > 0
+          expr: sum(increase(juicefs_object_request_errors{vol_name="media"}[10m])) > 0
           labels: {severity: warning}
           annotations:
             summary: JuiceFS is receiving B2 object-store errors
             description: JuiceFS reported {{ $value | printf "%.0f" }} failed object operations in ten minutes.
         - alert: JuiceFSMetadataBackupStale
-          expr: time() - max(juicefs_last_successful_backup{vol_name="media"}) > 10800
+          expr: absent(juicefs_last_successful_backup{vol_name="media"}) or time() - max(juicefs_last_successful_backup{vol_name="media"}) > 10800
           for: 2h
           labels: {severity: critical}
           annotations:
             summary: JuiceFS metadata has not been exported to B2 recently
             description: No mount client has reported a successful automatic metadata backup within three hours.
         - alert: JuiceFSCapacity75Percent
-          expr: max(juicefs_used_space) / 2199023255552 > 0.75
+          expr: max(juicefs_used_space{vol_name="media"}) / 2199023255552 > 0.75
           for: 30m
           labels: {severity: warning}
           annotations:
             summary: JuiceFS media storage is more than 75% full
             description: Review growth before the 2 TiB hard limit is reached.
         - alert: JuiceFSCapacity85Percent
-          expr: max(juicefs_used_space) / 2199023255552 > 0.85
+          expr: max(juicefs_used_space{vol_name="media"}) / 2199023255552 > 0.85
           for: 15m
           labels: {severity: warning}
           annotations:
             summary: JuiceFS media storage is more than 85% full
             description: Add B2 capacity or remove media soon.
         - alert: JuiceFSCapacity95Percent
-          expr: max(juicefs_used_space) / 2199023255552 > 0.95
+          expr: max(juicefs_used_space{vol_name="media"}) / 2199023255552 > 0.95
           for: 5m
           labels: {severity: critical}
           annotations:
             summary: JuiceFS media storage is more than 95% full
             description: New imports will soon fail at the 2 TiB hard limit.
         - alert: JuiceFSUnexpectedWritebackStaging
-          expr: max(juicefs_staging_blocks) > 0
+          expr: max(juicefs_staging_blocks{vol_name="media"}) > 0
           for: 15m
           labels: {severity: warning}
           annotations:

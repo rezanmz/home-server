@@ -233,12 +233,12 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Payload bytes transferred between active JuiceFS clients and Backblaze B2, split by object-store operation.",
+          "description": "Payload bytes transferred between active JuiceFS clients and Backblaze B2, split by mount pod and object-store operation.",
           "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "Bps"}, "overrides": []},
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 53},
           "id": 16,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "sum by (method) (rate(juicefs_object_request_data_bytes{vol_name=\"media\"}[5m]))", "legendFormat": "{{method}}", "refId": "A"}],
+          "targets": [{"expr": "sum by (pod, method) (rate(juicefs_object_request_data_bytes{vol_name=\"media\"}[5m]))", "legendFormat": "{{pod}} {{method}}", "refId": "A"}],
           "title": "B2 client traffic",
           "type": "timeseries"
         },
@@ -256,6 +256,61 @@ data:
           ],
           "title": "JuiceFS service health",
           "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Blocks evicted from each persistent node cache. Sustained eviction during normal playback indicates cache churn or an unexpectedly small effective cache.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 2, "unit": "ops"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 61},
+          "id": 18,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (pod) (rate(juicefs_blockcache_evicts{vol_name=\"media\"}[15m]))", "legendFormat": "{{pod}}", "refId": "A"}],
+          "title": "Cache eviction rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "95th-percentile Backblaze request duration by operation over five minutes.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 2, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 61},
+          "id": 19,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "histogram_quantile(0.95, sum by (le, pod, method) (rate(juicefs_object_request_durations_histogram_seconds_bucket{vol_name=\"media\"}[5m])))", "legendFormat": "{{pod}} {{method}}", "refId": "A"}],
+          "title": "B2 request latency p95",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Planning estimate using the approved US$0.0075 per GiB-month assumption. This excludes taxes, exchange rates, chunk overhead, trash, and hidden B2 versions; compare it with the Backblaze bill.",
+          "fieldConfig": {"defaults": {"decimals": 2, "unit": "currencyUSD"}},
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 69},
+          "id": 20,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(juicefs_used_space{vol_name=\"media\"}) / 1073741824 * 0.0075", "instant": true, "refId": "A"}],
+          "title": "Estimated media storage / month",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "B2 payload downloaded by JuiceFS mount clients over the rolling 30-day window. Direct migration traffic is intentionally not scraped.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 69},
+          "id": 21,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(juicefs_object_request_data_bytes{vol_name=\"media\",method=\"GET\"}[30d]))", "instant": true, "refId": "A"}],
+          "title": "Rolling 30-day B2 reads",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Rough egress-overage estimate at US$0.01/GB after the approved free allowance of three times current logical storage. Billing uses Backblaze's own average-storage calculation, so verify any nonzero estimate in its console.",
+          "fieldConfig": {"defaults": {"decimals": 2, "unit": "currencyUSD"}},
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 69},
+          "id": 22,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "clamp_min(sum(increase(juicefs_object_request_data_bytes{vol_name=\"media\",method=\"GET\"}[30d])) - 3 * max(juicefs_used_space{vol_name=\"media\"}), 0) / 1000000000 * 0.01", "instant": true, "refId": "A"}],
+          "title": "Estimated 30-day egress overage",
+          "type": "stat"
         }
       ],
       "refresh": "1m",
@@ -266,5 +321,5 @@ data:
       "timezone": "browser",
       "title": "Media Storage",
       "uid": "home-server-media-storage",
-      "version": 2
+      "version": 3
     }

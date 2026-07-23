@@ -60,8 +60,6 @@ data:
       downloads_tree_bytes=$((downloads_tree_kib * 1024))
       downloads_files="$(find "${DOWNLOADS_ROOT}" -xdev -type f | wc -l | tr -d ' ')"
 
-      media_tree_kib="$(du -sk "${MEDIA_ROOT}" | awk 'NR == 1 {print $1}')"
-      media_tree_bytes=$((media_tree_kib * 1024))
       logical_total_bytes=0
 
       {
@@ -86,11 +84,6 @@ data:
     EOF
         awk -v used="${filesystem_used_bytes}" -v size="${filesystem_size_bytes}" \
           'BEGIN {printf "home_server_media_filesystem_used_ratio %.12f\n", used / size}'
-        cat <<'EOF'
-    # HELP home_server_media_tree_physical_bytes Logical allocated bytes in the organized JuiceFS media tree.
-    # TYPE home_server_media_tree_physical_bytes gauge
-    EOF
-        printf 'home_server_media_tree_physical_bytes %s\n' "${media_tree_bytes}"
         cat <<'EOF'
     # HELP home_server_media_downloads_filesystem_size_bytes Total size of the Pi filesystem containing active downloads.
     # TYPE home_server_media_downloads_filesystem_size_bytes gauge
@@ -136,9 +129,12 @@ data:
         done
 
         cat <<'EOF'
+    # HELP home_server_media_tree_physical_bytes Sum of allocated bytes in the six organized JuiceFS media categories.
+    # TYPE home_server_media_tree_physical_bytes gauge
     # HELP home_server_media_logical_category_bytes Sum of the organized JuiceFS category directory sizes.
     # TYPE home_server_media_logical_category_bytes gauge
     EOF
+        printf 'home_server_media_tree_physical_bytes %s\n' "${logical_total_bytes}"
         printf 'home_server_media_logical_category_bytes %s\n' "${logical_total_bytes}"
       } >"${output}"
 

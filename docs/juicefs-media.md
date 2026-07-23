@@ -21,6 +21,9 @@ Backblaze's SSE-B2 remains a second, server-side layer. File names and other
 metadata live in PostgreSQL and its metadata exports, not as normal B2 object
 names. B2 contains implementation chunks and must never be edited, renamed, or
 restored with the Backblaze file browser.
+The bucket remains private with SSE-B2 enabled and Object Lock disabled. Its
+lifecycle keeps current objects and deletes hidden/previous object versions one
+day after they are superseded; it never age-expires current JuiceFS chunks.
 
 The three namespace-local `media-library-juicefs` claims deliberately refer to
 the same filesystem. `volumeHandle` remains unique per PV, while the shared
@@ -36,6 +39,9 @@ mount is the boundary that prevents torrent writes and seeding reads from
 reaching B2. qBittorrent receives the parent JuiceFS mount read-only. Radarr,
 Sonarr, and Lidarr receive it read-write because imports copy into the cloud
 library. All read-only consumers retain read-only mounts.
+The JuiceFS root contains an intentionally empty `downloads` directory solely
+as the nested mountpoint. It must never hold files: in every production
+consumer, the Pi-local NFS claim hides it before the application starts.
 
 Every eligible node must expose `/dev/fuse` and apply
 `infrastructure/hosts/common/99-home-server-juicefs.conf`. Run

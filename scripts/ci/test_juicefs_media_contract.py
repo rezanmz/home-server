@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 
@@ -122,6 +123,55 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         )
         self.assertNotIn('CATEGORIES="movies tv downloads', config)
         self.assertIn('readonly DOWNLOADS_ROOT="${DOWNLOADS_ROOT:-/downloads}"', config)
+
+    def test_dashboard_covers_cloud_cache_download_and_cost_layers(self) -> None:
+        config_map = next(
+            doc
+            for doc in documents("infrastructure/observability/media-storage-dashboard.yaml")
+            if doc.get("kind") == "ConfigMap"
+        )
+        dashboard = json.loads(config_map["data"]["media-storage.json"])
+        panels = {panel["title"]: panel for panel in dashboard["panels"]}
+        required_titles = {
+            "Cloud library data",
+            "Downloads footprint",
+            "JuiceFS cache by mount pod",
+            "JuiceFS cache hit ratio",
+            "Cache eviction rate",
+            "B2 client traffic",
+            "B2 request latency p95",
+            "JuiceFS service health",
+            "Estimated media storage / month",
+            "Rolling 30-day B2 reads",
+            "Estimated 30-day egress overage",
+        }
+        self.assertTrue(required_titles.issubset(panels))
+        traffic_expr = panels["B2 client traffic"]["targets"][0]["expr"]
+        self.assertIn("sum by (pod, method)", traffic_expr)
+        self.assertIn('vol_name="media"', traffic_expr)
+
+    def test_juicefs_alerts_are_scoped_to_the_media_volume(self) -> None:
+        rule = next(
+            doc
+            for doc in documents("infrastructure/juicefs/monitoring.yaml")
+            if doc.get("kind") == "PrometheusRule"
+        )
+        rules = {
+            item["alert"]: item["expr"]
+            for group in rule["spec"]["groups"]
+            for item in group["rules"]
+        }
+        for alert_name in (
+            "JuiceFSObjectStoreErrors",
+            "JuiceFSMetadataBackupStale",
+            "JuiceFSCapacity75Percent",
+            "JuiceFSCapacity85Percent",
+            "JuiceFSCapacity95Percent",
+            "JuiceFSUnexpectedWritebackStaging",
+            "JuiceFSAbnormalB2ReadGrowth",
+        ):
+            self.assertIn('vol_name="media"', rules[alert_name])
+        self.assertIn("absent(", rules["JuiceFSMetadataBackupStale"])
 
 
 if __name__ == "__main__":
