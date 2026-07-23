@@ -1642,6 +1642,12 @@ allowed to run anywhere. If unrestricted concurrency causes sustained pressure,
 temporarily pause transfers and inspect Longhorn, Prometheus, JuiceFS, and NFS
 traffic before restarting or deleting any storage pod.
 
+qBittorrent has a 512 MiB memory request and 2 GiB limit. The headroom is
+intentional: loading hundreds of unrestricted torrents can exceed 512 MiB after
+libtorrent and filesystem-cache overhead. If it is OOM-killed, inspect its
+fifteen-minute peak working set and the node's available memory before raising
+the limit; do not enable queueing merely to hide an undersized cgroup.
+
 Repeated Longhorn `FailedMount` events that say `no Pending workload pods` can
 be delayed retry noise after a node stall. Treat them as a storage incident only
 if the event count is still increasing or the corresponding Longhorn volume is

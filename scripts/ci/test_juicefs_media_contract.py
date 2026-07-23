@@ -95,6 +95,14 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
 
         containers = {item["name"]: item for item in spec["containers"]}
         qb_mounts = {item["name"]: item for item in containers["qbittorrent"]["volumeMounts"]}
+        self.assertEqual(
+            containers["qbittorrent"]["resources"]["requests"]["memory"],
+            "512Mi",
+        )
+        self.assertEqual(
+            containers["qbittorrent"]["resources"]["limits"]["memory"],
+            "2Gi",
+        )
         self.assertEqual(qb_mounts["media-library"]["mountPath"], "/media")
         self.assertTrue(qb_mounts["media-library"]["readOnly"])
         self.assertEqual(qb_mounts["media-library"]["mountPropagation"], "HostToContainer")
