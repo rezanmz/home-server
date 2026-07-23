@@ -249,11 +249,15 @@ tmpfs path `/run/juicefs-media-migration`, then run:
 
 ```bash
 sudo systemd-run --unit=juicefs-media-migration \
-  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=4G \
+  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=5G \
   --property=IPAccounting=yes \
   /usr/local/sbin/run-juicefs-media-migration.sh
 sudo journalctl -fu juicefs-media-migration
 ```
+
+The 5 GiB service limit includes source-file page cache charged to the cgroup;
+it is not an expected 5 GiB JuiceFS heap. During the initial copy the process
+RSS remained near 215 MiB while the kernel reclaimed the larger file cache.
 
 `scripts/run-juicefs-media-migration.sh` accepts only the six organized
 categories, defaults to four transfer threads and 158 Mbps (60% of the measured
