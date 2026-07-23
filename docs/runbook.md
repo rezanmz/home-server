@@ -434,6 +434,25 @@ systemctl is-enabled network-watchdog.timer  # expected: disabled
 systemctl is-active network-watchdog.timer   # expected: inactive
 ```
 
+The cluster nodes themselves use `1.1.1.1` and `9.9.9.9` as independent host
+resolvers. They must not use Blocky: after an eviction or reboot, a node may
+need DNS to pull the Blocky or Longhorn image required to restore DNS. Kea and
+WireGuard still advertise `192.168.1.2` to LAN/VPN clients, so ordinary client
+queries continue through Blocky and its filtering policy. Verify both sides:
+
+```bash
+ssh pi 'cat /etc/resolv.conf; getent ahostsv4 ghcr.io'
+ssh beelink 'resolvectl status enp1s0; getent ahostsv4 ghcr.io'
+dig +short @192.168.1.2 github.com A
+```
+
+If Blocky is unavailable while the Pi reports `DiskPressure=True`, first pause
+all qBittorrent torrents, restore the repository-defined migration kubelet
+threshold, restart `k3s-agent`, and wait for `DiskPressure=False`. Do not delete
+media or Longhorn replicas merely to make DNS start. A completed old Blocky Pod
+can retain host port 53 after a pressure eviction; delete that exact completed
+Pod only after its replacement is scheduled.
+
 ### Pi unattended security updates
 
 The Pi refreshes package metadata daily and applies packages only from the

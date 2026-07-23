@@ -53,6 +53,14 @@ The migration is intentionally staged:
 6. Delete only verified source categories and narrow the NFS export to
    downloads.
 
+During the initial migration, qBittorrent is deliberately paused and the Pi
+kubelet uses a temporary 5% image-filesystem eviction threshold. The Pi's
+organized library and K3s image store share one root filesystem, so the normal
+15% threshold would otherwise evict Blocky and Longhorn while approximately
+60 GiB remains free. Do not resume torrents until the verified source library
+has been reclaimed. Remove the temporary kubelet arguments immediately after
+free space is back above 15%.
+
 The current production stage must be recorded in the pull request and operator
 handoff. Never infer that the presence of a JuiceFS PVC means the applications
 have already cut over.
@@ -207,6 +215,29 @@ Shrinking below current usage is forbidden. Category quotas are not enabled.
 Initial and final copy operations include only `movies`, `tv`, `music`,
 `books`, `audiobooks`, and `podcasts`. Every command is category-scoped,
 resumable, and byte-checks new objects. `downloads` is always excluded.
+
+The initial background copy runs directly on the Pi host instead of as a Pod.
+This is intentional: a migration Pod is itself eligible for eviction on the
+source disk it must read. Install the exact JuiceFS 1.4.0 binary copied from the
+digest-pinned CSI mount image, verify its checksum, stage `metaurl`,
+`meta-password`, and `rsa-passphrase` as root-owned mode-0600 files under the
+tmpfs path `/run/juicefs-media-migration`, then run:
+
+```bash
+sudo systemd-run --unit=juicefs-media-migration \
+  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=3G \
+  /usr/local/sbin/run-juicefs-media-migration.sh
+sudo journalctl -fu juicefs-media-migration
+```
+
+`scripts/run-juicefs-media-migration.sh` accepts only the six organized
+categories, defaults to four transfer threads and 158 Mbps (60% of the measured
+encrypted B2 upload rate), preserves directories, permissions, and symlinks,
+and checks every new or changed file. It never accepts `downloads`, never
+deletes from the source, keeps resumable checkpoints in the root-only runtime
+directory, and refuses credentials supplied in command arguments. A failed or
+interrupted category is resumed by running the same script with that category
+name. Remove the runtime credential directory after the copy finishes.
 
 Before cutover, compare source and destination file counts, logical bytes,
 ownership, directory modes, symlinks, and a checksum sample per category.
