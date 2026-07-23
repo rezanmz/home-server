@@ -84,6 +84,29 @@ pressure thresholds replace the temporary migration exception. Do not apply
 only part of this state; the operator must first delete only the six verified
 source categories while retaining `/home/reza/media/downloads`.
 
+The host-side final cleanup completed on 2026-07-23 after Flux was suspended:
+
+- the source and JuiceFS path/size manifests both matched SHA-256
+  `4910e843163565b11dc5ea39298e25726c183682a2f330ee035f2c5cc9716d23`
+  across 941 files and 649,997,021,613 bytes immediately before deletion;
+- the guarded deletion removed only `movies`, `tv`, `music`, `books`,
+  `audiobooks`, and `podcasts` from the Pi;
+- the 1,016-file, 436,825,240,304-byte downloads tree retained manifest
+  `d08fd1957b6b96462f1aca93fe2a567975ee462f5a5e38763c0aa1699f009613`
+  before and after deletion;
+- Pi root usage fell from 92% to 40%, and NFS now exports only the exact
+  downloads directory plus the independent Syncthing tree;
+- live kubelet `configz` reports 15% `imagefs`, 10% `nodefs`, 5% inode, and
+  100 MiB memory eviction guards; and
+- the PostgreSQL Longhorn volume is healthy with one running replica on each
+  node.
+
+The merged steady-state revision removes the now-unused NFS claims, releases
+the PostgreSQL scheduling pin, and resumes the downloads stack. The local
+organized-library rollback copy no longer exists; recovery now relies on the
+authoritative encrypted B2 payloads, PostgreSQL metadata, portable metadata
+exports, recovery keys, and Longhorn backups described in this manual.
+
 The current production stage must be recorded in the pull request and operator
 handoff. Never infer that the presence of a JuiceFS PVC means the applications
 have already cut over.

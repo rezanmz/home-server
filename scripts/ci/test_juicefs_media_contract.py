@@ -147,6 +147,8 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertNotIn("image-gc-high-threshold", agent_config)
         self.assertNotIn("image-gc-low-threshold", agent_config)
         self.assertNotIn("imagefs.available<5%", agent_config)
+        self.assertIn("nodefs.available<10%", agent_config)
+        self.assertIn("imagefs.available<15%", agent_config)
 
     def test_read_only_consumers_cannot_write_the_cloud_library(self) -> None:
         consumers = (
