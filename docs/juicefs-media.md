@@ -280,10 +280,15 @@ counter or the loopback sync metrics cannot be read, the migration fails closed.
 Verify payload integrity after migration through the normal CSI/FUSE mount,
 where full-block caching is enabled. Hash a deterministic sample from each
 category with no more than 1 GiB of total source data. Record
-`juicefs_object_request_data_bytes{method="GET"}` immediately before and after;
-the B2-read delta must stay below the sample's logical size plus 64 MiB. Do not
-run an exhaustive remote checksum until its expected B2 download volume and
-available free-egress allowance have been reviewed.
+`juicefs_object_request_data_bytes{method="GET"}` immediately before and after.
+Allow at most the sampled bytes plus 32 MiB per independently opened sample
+file for block alignment, prefetch, and read-ahead. This remains a small,
+bounded multiplier and would still fail closed against the former 128x ranged
+checksum amplification. Do not run an exhaustive remote checksum until its
+expected B2 download volume and available free-egress allowance have been
+reviewed. The 2026-07-23 migration sampled 479,927,621 bytes across five files,
+matched every source hash, and recorded 618,870,475 B2 GET bytes (1.29x), below
+the resulting 640 MiB ceiling.
 JuiceFS writes a hidden `.juicefs-sync-checkpoint.*.json` file in each
 destination category; it contains paths and transfer state, not credentials.
 A failed or interrupted category is resumed by running the same script with
@@ -308,8 +313,8 @@ For final cutover:
 
 1. Pause automatic grabs and Flux reconciliation for the affected bundles.
 2. Scale every library writer and reader down.
-3. Run a dry-run destination-delete sync separately for each category and
-   review every proposed removal.
+3. Run `--dry-run --delete-dst` separately for each category and review every
+   proposed removal, then rerun with `--delete-dst` only after the review.
 4. Run final incremental sync, then repeat counts, bytes, permission, and
    changed-file checks.
 5. Reconcile the PVC switch and validate each application before resuming

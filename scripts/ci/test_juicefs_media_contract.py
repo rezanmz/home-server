@@ -44,6 +44,13 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertIn("--check-change", script)
         self.assertIn("--max-failure=0", script)
 
+    def test_final_reconciliation_can_delete_only_destination_extras(self) -> None:
+        script = (REPO_ROOT / "scripts/run-juicefs-media-migration.sh").read_text()
+        self.assertIn("--delete-dst", script)
+        self.assertIn("sync_args+=(--delete-dst)", script)
+        self.assertIn("The source is never deleted", script)
+        self.assertNotIn("--delete-src", script)
+
     def test_encrypted_direct_sync_cannot_checksum_remote_payloads(self) -> None:
         script = (REPO_ROOT / "scripts/run-juicefs-media-migration.sh").read_text()
         self.assertNotIn("--check-new", script)

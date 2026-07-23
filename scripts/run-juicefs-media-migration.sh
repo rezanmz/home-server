@@ -28,7 +28,7 @@ trap 'stop_active_sync; exit 143' TERM
 
 usage() {
   cat <<'EOF'
-Usage: run-juicefs-media-migration.sh [--dry-run] [--reset-checkpoint] [CATEGORY ...]
+Usage: run-juicefs-media-migration.sh [--dry-run] [--delete-dst] [--reset-checkpoint] [CATEGORY ...]
 
 Categories: podcasts audiobooks books music movies tv
 
@@ -38,6 +38,8 @@ Required root-only files under /run/juicefs-media-migration:
   rsa-passphrase   JuiceFS encrypted RSA-key passphrase
 
 The source is never deleted. Downloads are not an accepted category.
+--delete-dst removes only destination entries that are absent from the source;
+always review a --dry-run --delete-dst pass before executing it.
 The migration must run in an IPAccounting-enabled systemd service. It stops if
 inbound traffic exceeds 64 MiB plus a conservative allowance for upload ACKs.
 Use --reset-checkpoint only after stopping source writers when a prior run
@@ -51,12 +53,16 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 dry_run=false
+delete_dst=false
 reset_checkpoint=false
 requested=()
 while (($#)); do
   case "$1" in
     --dry-run)
       dry_run=true
+      ;;
+    --delete-dst)
+      delete_dst=true
       ;;
     --reset-checkpoint)
       reset_checkpoint=true
@@ -177,12 +183,15 @@ sync_args=(
 if [[ "${dry_run}" == true ]]; then
   sync_args+=(--dry)
 fi
+if [[ "${delete_dst}" == true ]]; then
+  sync_args+=(--delete-dst)
+fi
 if [[ "${reset_checkpoint}" == true ]]; then
   sync_args+=(--checkpoint-force-reset)
 fi
 
-printf 'JuiceFS media migration starting: categories=%s threads=%s bwlimit=%sMbps dry_run=%s reset_checkpoint=%s\n' \
-  "${categories[*]}" "${threads}" "${bwlimit}" "${dry_run}" "${reset_checkpoint}"
+printf 'JuiceFS media migration starting: categories=%s threads=%s bwlimit=%sMbps dry_run=%s delete_dst=%s reset_checkpoint=%s\n' \
+  "${categories[*]}" "${threads}" "${bwlimit}" "${dry_run}" "${delete_dst}" "${reset_checkpoint}"
 
 run_guarded_sync() {
   local source="$1"
