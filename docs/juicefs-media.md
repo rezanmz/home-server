@@ -262,6 +262,13 @@ directory, and refuses credentials supplied in command arguments. A failed or
 interrupted category is resumed by running the same script with that category
 name. Remove the runtime credential directory after the copy finishes.
 
+If `--check-change` reports a file that changed before writers were quiesced,
+stop those writers and rerun only that category with
+`--reset-checkpoint CATEGORY`. This uses JuiceFS's checkpoint reset flag to
+rescan current source metadata while retaining already completed destination
+files. Do not delete checkpoint files by hand, and never reset a checkpoint
+while the source is still changing.
+
 Before cutover, compare source and destination file counts, logical bytes,
 ownership, directory modes, symlinks, and a checksum sample per category.
 Normalize only inconsistent library ownership to UID/GID 1000 and directories

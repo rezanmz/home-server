@@ -37,6 +37,13 @@ def named(items: list[dict], name: str) -> dict:
 
 
 class JuiceFSMediaStorageContractTests(unittest.TestCase):
+    def test_migration_can_safely_reset_stale_checkpoints(self) -> None:
+        script = (REPO_ROOT / "scripts/run-juicefs-media-migration.sh").read_text()
+        self.assertIn("--reset-checkpoint", script)
+        self.assertIn("sync_args+=(--checkpoint-force-reset)", script)
+        self.assertIn("--check-change", script)
+        self.assertIn("--max-failure=0", script)
+
     def test_download_stack_keeps_torrents_outside_juicefs(self) -> None:
         spec = pod_spec(deployment("apps/downloads/deployment.yaml", "downloads"))
         volumes = {item["name"]: item for item in spec["volumes"]}

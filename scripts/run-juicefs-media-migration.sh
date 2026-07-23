@@ -15,7 +15,7 @@ categories=(podcasts audiobooks books music movies tv)
 
 usage() {
   cat <<'EOF'
-Usage: run-juicefs-media-migration.sh [--dry-run] [CATEGORY ...]
+Usage: run-juicefs-media-migration.sh [--dry-run] [--reset-checkpoint] [CATEGORY ...]
 
 Categories: podcasts audiobooks books music movies tv
 
@@ -25,6 +25,8 @@ Required root-only files under /run/juicefs-media-migration:
   rsa-passphrase   JuiceFS encrypted RSA-key passphrase
 
 The source is never deleted. Downloads are not an accepted category.
+Use --reset-checkpoint only after stopping source writers when a prior run
+recorded stale size or modification-time data.
 EOF
 }
 
@@ -34,11 +36,15 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 dry_run=false
+reset_checkpoint=false
 requested=()
 while (($#)); do
   case "$1" in
     --dry-run)
       dry_run=true
+      ;;
+    --reset-checkpoint)
+      reset_checkpoint=true
       ;;
     -h | --help)
       usage
@@ -143,9 +149,12 @@ sync_args=(
 if [[ "${dry_run}" == true ]]; then
   sync_args+=(--dry)
 fi
+if [[ "${reset_checkpoint}" == true ]]; then
+  sync_args+=(--checkpoint-force-reset)
+fi
 
-printf 'JuiceFS media migration starting: categories=%s threads=%s bwlimit=%sMbps dry_run=%s\n' \
-  "${categories[*]}" "${threads}" "${bwlimit}" "${dry_run}"
+printf 'JuiceFS media migration starting: categories=%s threads=%s bwlimit=%sMbps dry_run=%s reset_checkpoint=%s\n' \
+  "${categories[*]}" "${threads}" "${bwlimit}" "${dry_run}" "${reset_checkpoint}"
 
 for category in "${categories[@]}"; do
   source="${source_root}/${category}"
