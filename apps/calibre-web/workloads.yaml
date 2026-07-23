@@ -48,12 +48,15 @@ spec:
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
             - {name: config, mountPath: /config}
-            - {name: books, mountPath: /calibre-library}
+            - name: books
+              mountPath: /calibre-library
+              subPath: books
+              mountPropagation: HostToContainer
             - {name: ingest, mountPath: /cwa-book-ingest}
       volumes:
         - name: config
           persistentVolumeClaim: {claimName: calibre-web-config}
         - name: books
-          persistentVolumeClaim: {claimName: media-books}
+          persistentVolumeClaim: {claimName: media-library-juicefs}
         - name: ingest
           persistentVolumeClaim: {claimName: calibre-web-ingest}

@@ -87,7 +87,11 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: data, mountPath: /data}
-            - {name: music, mountPath: /music, readOnly: true}
+            - name: music
+              mountPath: /music
+              subPath: music
+              readOnly: true
+              mountPropagation: HostToContainer
             - {name: tmp, mountPath: /tmp}
         - name: policy-proxy
           image: nginx:1.31.3-alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752
@@ -121,7 +125,7 @@ spec:
         - name: data
           persistentVolumeClaim: {claimName: navidrome-data}
         - name: music
-          persistentVolumeClaim: {claimName: media-music}
+          persistentVolumeClaim: {claimName: media-library-juicefs}
         - name: tmp
           emptyDir: {sizeLimit: 2Gi}
         - name: proxy-config

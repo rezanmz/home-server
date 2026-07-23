@@ -232,10 +232,11 @@ document, encrypted secrets, NFS mounts, and root credential; do not bypass the
 hook or create the marker manually to clear the outage.
 
 Longhorn and its B2 target protect `/config` and `/metadata`. The writable
-`/home/reza/media/audiobooks` and `/home/reza/media/podcasts` NFS directories,
-including downloaded podcast episodes, are not included in Longhorn backups.
-Neither is the read-only Calibre source; all three remain part of the
-reconstructible media data class.
+`audiobooks` and `podcasts` directories and read-only `books` directory are
+category mounts from the shared JuiceFS media filesystem. Their encrypted
+payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
+metadata recovery is required to interpret those chunks. They are not included
+in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
 ## DNS and DHCP
 
@@ -567,34 +568,32 @@ state and do not replace an authenticated off-cluster BackupTarget. Use the
 parameter is `type: snap`; omitting it requests a remote backup instead of the
 intended local snapshot and therefore consumes the configured B2 target.
 
-Large and shared data remains on NFS exported by the Pi. Check the server and
-exports directly when multiple NFS-backed workloads or the Syncthing file-level
-backup fail at once:
+Active downloads and Syncthing data remain on separate NFS exports from the Pi.
+Check the server and exports directly when those consumers fail at once:
 
 ```bash
 ssh pi 'systemctl is-active nfs-server && sudo exportfs -v'
 sudo k3s kubectl get pv | grep nfs-media
 ```
 
-The Pi is the authoritative source for these trees. There is no independent NAS
-or third storage node, so a Pi outage is expected to interrupt every NFS-backed
-workload. Do not treat Longhorn replicas as copies of the NFS data.
+The Pi is authoritative only for those NFS trees. A Pi outage interrupts active
+downloads and Syncthing but does not remove the organized JuiceFS library stored
+in B2. Do not treat Longhorn replicas as copies of NFS or JuiceFS payload data.
 
 ### Media storage inventory
 
-The **Media Storage** Grafana dashboard compares the Pi SSD's overall capacity
-with the managed media tree. Its filesystem figures include everything on the
-Pi root filesystem, while category figures cover the `movies`, `tv`,
-`downloads`, `books`, `audiobooks`, and `podcasts` directories under
-`/home/reza/media`. Category sizes are logical: a hardlinked download and
-library file appears in both categories. The unique-media and hardlink-savings
-figures count the underlying inode only once.
+The **Media Storage** Grafana dashboard separates three storage layers: the
+2 TiB logical JuiceFS/B2 library, the Pi filesystem holding active downloads
+and K3s, and each node's disposable JuiceFS cache. Category figures cover
+`movies`, `tv`, `music`, `books`, `audiobooks`, and `podcasts`; downloads have
+their own local metrics because imports are copies across filesystems and no
+longer share hardlinks.
 
-The `media/media-storage-exporter` reads the NFS media PVC without write access
-and refreshes its bounded inventory every 15 minutes. It publishes only the 20
-largest unique files so that filenames do not create unbounded Prometheus
-cardinality. The dashboard's scan-age and scrape-health panels distinguish a
-stale inventory from actual storage growth.
+The `media/media-storage-exporter` reads the JuiceFS library and local-downloads
+claims without write access and refreshes its bounded inventory every 15
+minutes. It publishes only the 20 largest library files so that filenames do
+not create unbounded Prometheus cardinality. The dashboard's scan-age and
+scrape-health panels distinguish a stale inventory from actual storage growth.
 
 Check the collector and current metrics from the Beelink:
 
@@ -606,9 +605,9 @@ sudo k3s kubectl -n monitoring exec statefulset/prometheus-observability-prometh
   wget -qO- 'http://localhost:9090/api/v1/query?query=home_server_media_exporter_scan_success'
 ```
 
-The Homepage header deliberately shows only the SSD's total, used, and free
-space. Use Grafana for category history, file counts, disk I/O, hardlink
-savings, and the largest-file list.
+Homepage deliberately shows separate minimal summaries for the cloud library
+and local downloads. Use Grafana for category history, file counts, cache hit
+ratio, B2 traffic, health, and the largest-file list.
 
 The local pre-migration recovery set is on the Beelink:
 
@@ -666,10 +665,11 @@ restore tests remain desirable even after the block-level restore proof passes.
 
 ### Syncthing file-level backups
 
-The Longhorn target does not cover any `nfs-media` PersistentVolume. Media is
-accepted as reconstructible. Active Syncthing data is protected separately by
-Restic in the private `rezanmz-home-server-syncthing-backups` bucket. Never put
-Restic objects in the Longhorn or historical Duplicati bucket.
+The Longhorn target does not cover any `nfs-media` PersistentVolume or JuiceFS
+payload chunks. Organized media is authoritative in its dedicated B2 bucket;
+active Syncthing data is protected separately by Restic in the private
+`rezanmz-home-server-syncthing-backups` bucket. Never mix media chunks, Restic
+objects, Longhorn blocks, or historical Duplicati data between buckets.
 
 The B2 bucket must stay private with SSE-B2 enabled and Object Lock disabled.
 It currently uses `Keep all versions`: hidden object versions are useful
@@ -1308,14 +1308,9 @@ keys while troubleshooting.
 Navidrome streams the music library at `music.reza.network`; Lidarr manages
 music acquisition at the LAN/WireGuard-only `lidarr.reza.network`. Both run on
 Beelink. Lidarr shares the downloads pod's Gluetun network namespace, qBittorrent,
-and `/media` NFS mount. Navidrome has a separate pod, a Longhorn data volume,
-and a read-only `/music` view of `/home/reza/media/music` on the Pi.
-
-Before first reconciliation, the Pi directory must exist as uid/gid 1000:
-
-```bash
-sudo install -d -o 1000 -g 1000 -m 0775 /home/reza/media/music
-```
+and `/media` JuiceFS mount, with Pi-local NFS downloads mounted over
+`/media/downloads`. Navidrome has a separate pod, a Longhorn data volume, and a
+read-only `/music` category view of the same JuiceFS filesystem.
 
 After deployment, sign into Navidrome through Authentik once. The first
 externally authenticated user becomes its administrator. Create a separate,
@@ -1362,11 +1357,11 @@ sudo k3s kubectl -n media exec deploy/downloads -c lidarr -- \
   sh -lc 'test -w /media/music && curl -fsS http://127.0.0.1:8686/ping'
 ```
 
-Longhorn and B2 protect Navidrome and Lidarr application state. The actual
-music files are on Pi NFS and are not covered by that claim-level backup; add
-the music path to the separate file-backup policy if it becomes
-non-reproducible. Restore the data/config volumes before reconnecting the MCP
-servers, then test reads before any acquisition or playlist mutation.
+Longhorn backups protect Navidrome and Lidarr application state. The music
+payload is authoritative in the encrypted JuiceFS media bucket and requires
+the separately protected JuiceFS PostgreSQL metadata and RSA recovery key.
+Restore state and metadata before reconnecting MCP servers, then test reads
+before any acquisition or playlist mutation.
 
 ### Soularr and slskd
 
@@ -1396,8 +1391,9 @@ Application settings and credentials are deliberately stored on the
 Those volumes participate in the default nightly B2 backup. Completed and
 incomplete transfers use `/home/reza/media/downloads/slskd` on the Pi NFS
 filesystem. Soularr sees that as `/downloads/slskd/complete`; Lidarr sees the
-same directory as `/media/downloads/slskd/complete`, which keeps imports on the
-same filesystem as `/media/music`.
+same directory as `/media/downloads/slskd/complete`. Lidarr copies a completed
+release across the filesystem boundary into JuiceFS `/media/music`; the local
+torrent/Soulseek copy remains on the Pi only for its retention period.
 
 The initial operational configuration should keep downloads conservative:
 process only a small batch on each five-minute run, retain the failed-import

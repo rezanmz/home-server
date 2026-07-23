@@ -121,13 +121,17 @@ existing security policy is not acceptable.
 | Data | Use | Off-site coverage | Important limitation |
 | --- | --- | --- | --- |
 | Small application state, databases, and configuration | Longhorn RWO PVC | Nightly Longhorn B2 backups | Two replicas and block backups do not make a singleton app or multi-PVC database transactionally HA |
-| Large/shared media, downloads, and books | Static Pi NFS PV/PVC | None; media is treated as reproducible | Every consumer still fails when the Pi or its disk is unavailable |
+| Organized movies, TV, music, books, audiobooks, and podcasts | Namespace-local static JuiceFS RWX claim with the narrowest category `subPath` | Authoritative encrypted payloads in a dedicated B2 bucket; metadata is separately protected by Longhorn and JuiceFS export | B2 is the primary copy, not an independent backup; an internet, B2, or metadata outage can block uncached reads and all new writes |
+| Incomplete downloads and active seeding torrents | Static Pi NFS claim for the exact downloads export | None; transient/reproducible | Pi failure interrupts downloads; importing to JuiceFS copies rather than hardlinks, temporarily consuming both local and cloud space |
 | Syncthing file data | Pi NFS plus the dedicated Syncthing PVC | Daily encrypted Restic B2 backup | Live-file scan, not an atomic filesystem snapshot |
 | Stateless/cache data | `emptyDir` or no PVC | Not backed up | Lost on pod replacement |
 | Reproducible observability state | `longhorn-observability` RWO PVC | Deliberately excluded from the default B2 recurring job | Grafana preferences and recent metrics can be lost; dashboards and configuration remain in Git |
 
 A newly added NFS path is **not** automatically covered by either Longhorn or
-the Syncthing backup. If the data is not reproducible, define its independent
+the Syncthing backup. Do not put application databases or ordinary persistent
+state in JuiceFS merely because it is shared: use Longhorn for that class. Use
+JuiceFS only for large file libraries whose metadata and object-store recovery
+contract is understood. If new data is not reproducible, define its independent
 backup and restore test before deployment.
 
 ### Placement

@@ -42,10 +42,11 @@ copy and verify the affected service.
 | Ingress | Flux-managed Traefik DaemonSet on host ports 80/443 plus MetalLB VIP `192.168.1.240` |
 | DNS | Blocky on the Pi host network at `192.168.1.2:53` |
 | DHCP | Kea on the Beelink host network and `enp1s0`, pool `192.168.1.10-192.168.1.239` |
-| Shared storage | Pi NFS at `192.168.1.2` |
+| Shared organized media | JuiceFS with authoritative encrypted payloads in Backblaze B2 and persistent node caches |
+| Active downloads | Pi NFS at `192.168.1.2`, exported only from `/home/reza/media/downloads` |
 | Application block storage | Longhorn V1 engine, two replicas, one default disk per labeled node |
 | Longhorn node/upgrade safety | Storage scheduling disabled on cordoned nodes; automatic engine upgrades disabled |
-| Off-site storage | Separate Backblaze B2 repositories for Longhorn and Syncthing |
+| Off-site storage | Separate Backblaze B2 buckets for Longhorn backups, Syncthing backups, and authoritative JuiceFS media |
 
 The two nodes are schedulable workers as well as their special roles:
 
@@ -115,10 +116,11 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
-| `media/calibre-web` | Must be colocated with downloads because both controllers mount the `calibre-web-ingest` Longhorn RWO claim | Longhorn configuration and shared ingest claim plus Pi NFS books |
-| `media/downloads` | Consolidated VPN/download topology, host device, and shared RWO claim with Calibre-Web | `/dev/net/tun`, multiple Longhorn configs including `calibre-web-ingest`, Pi NFS library/downloads |
-| `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, Pi NFS library |
-| `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, Pi NFS media, Authentik OIDC |
+| `media/calibre-web` | Must be colocated with downloads because both controllers mount the `calibre-web-ingest` Longhorn RWO claim | Longhorn configuration and shared ingest claim plus JuiceFS books |
+| `media/downloads` | Consolidated VPN/download topology, host device, and shared RWO claim with Calibre-Web | `/dev/net/tun`, multiple Longhorn configs including `calibre-web-ingest`, Pi-local NFS downloads, and writable JuiceFS library |
+| `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, and read-only JuiceFS library |
+| `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, writable JuiceFS audiobooks/podcasts, read-only JuiceFS books, and Authentik OIDC |
+| `media/navidrome` | Keeps music scanning and streaming on the main compute node | Longhorn application state and read-only JuiceFS music |
 | `apps/home-assistant` | Keeps third-party integration code and selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; approved LAN integrations require protocol-scoped network policy |
 | `network-services/kea-dhcp4` | ISC's official image is amd64-only and DHCP must use a real LAN interface | Beelink host network, `enp1s0`, Longhorn lease database |
 | `network-services/stork-server`, `stork-postgresql` | The audited Stork images are currently built for amd64 and monitor the Beelink-hosted Kea service | Authentik OIDC, Longhorn database, and the Kea Stork agent at `10.42.0.1:8080` |
@@ -135,7 +137,7 @@ upgrade unit.
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
 | `network-services/blocky` | Preserves the established resolver address `192.168.1.2` | Pi host network and reproducible Longhorn list cache |
-| `network-services/samba` | SMB/NetBIOS LAN broadcast behavior | Host network and Pi NFS media |
+| `network-services/samba` | SMB/NetBIOS LAN broadcast behavior | Host network and writable JuiceFS library |
 | `network-services/syncthing` | LAN discovery and stable direct-sync ports | Host network, Longhorn config, Pi-local NFS data |
 | `network-services/wg-easy` | Router forwards UDP 1234 to the Pi; exact unsafe sysctls are allowed only there | Host port 1234 and Longhorn config |
 | `network-services/syncthing-backup` | Reads NFS locally and must share the Pi attachment of Syncthing's Longhorn RWO config claim | Read-only NFS data plus `config.xml` from `syncthing-config` |
@@ -159,7 +161,6 @@ allow it.
 | `apps` | Argilla server/worker, PostgreSQL, Elasticsearch, Redis | Separate Longhorn PVCs; application is multi-component, not transactionally backed up as one unit |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
 | `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent; internal LlamaCloud MCP | Longhorn for state; LlamaCloud is stateless and reads the Syncthing vault over NFS |
-| `media` | Navidrome | Longhorn for application state; read-only Pi NFS music library; pinned to Beelink |
 | `apps` | Open WebUI and Tika | Open WebUI uses Longhorn; Tika is stateless; Authentik OIDC dependency |
 | `apps` | Cloudflare DDNS | Stateless; Cloudflare API dependency |
 | `monitoring` | Headlamp | Stateless; Kubernetes API and Authentik dependencies |
@@ -203,28 +204,31 @@ default, one on each existing node. The workload frontend attaches to the node
 running the consuming pod. A floating RWO workload can relocate after
 detach/reattach; it cannot mount the same volume concurrently from both nodes.
 
-The Pi has two actual NFS export roots:
+The production storage paths are:
 
-| Export | Access | Typical consumers |
+| Storage | Access | Typical consumers |
 | --- | --- | --- |
-| `/home/reza/media` | Read/write from both nodes | Jellyfin, downloads, Samba, and library consumers; books, downloads, and music PVs are subpaths of this one broad export |
-| `/home/reza/persistent/syncthing/data` | Read/write | Syncthing and its read-only backup mount |
+| JuiceFS `media` volume | RWX; permissions and pod mounts constrain writers | Organized movies, TV, music, books, audiobooks, and podcasts |
+| Pi `/home/reza/media/downloads` NFS export | Read/write from the Beelink while download automation runs there | qBittorrent, Arr importers, Soularr/slskd, Homepage, and the storage exporter |
+| Pi `/home/reza/persistent/syncthing/data` NFS export | Read/write | Syncthing and its read-only backup mount |
+
+Each JuiceFS consumer uses its namespace-local `media-library-juicefs` claim.
+All claims address the same encrypted filesystem and use one consistent mount
+configuration so the CSI driver can share a mount pod per node. Consumers set
+`mountPropagation: HostToContainer` for automatic mount recovery. Category
+`subPath` mounts and `readOnly` flags enforce each application's expected view.
+The physical cache at `/var/lib/juicefs-cache` is persistent but disposable;
+never treat it as another media copy.
 
 The retained `/home/reza/persistent` legacy tree is intentionally not exported.
 Do not add a parent export around the Syncthing path: overlapping parent and
 child NFS exports with different access modes can cause NFSv4 clients to apply
 the parent's read-only policy to the child.
 
-`/home/reza/media/books`, `/home/reza/media/downloads`, and
-`/home/reza/media/music` are Kubernetes PV
-paths, not separately authorized export roots. Granting a node access to
-`/home/reza/media` grants it NFS access to the whole media tree; PV subpaths are
-not an NFS security boundary.
-
-Separate namespace-local PV/PVC pairs may point to the same export. The
-following bound NFS claims are currently unused by workloads and should not be
-mistaken for active consumers: `apps/media-library`,
-`network-services/media-books`, and `network-services/media-downloads`.
+During the migration rollback window, the broader `/home/reza/media` export and
+old NFS claims may remain present but frozen. They are retired only after the
+cross-node, application, playback, and metadata-restore acceptance checks pass.
+The steady-state export is the exact downloads directory, not its parent.
 
 Removing one of the two current storage nodes makes every two-replica Longhorn
 volume degraded. For permanent node removal, add and prepare a replacement
@@ -923,8 +927,9 @@ listed here so accepted risk does not turn into forgotten risk:
 - Add a third-server control-plane design only as an intentional three-member
   HA migration; two server nodes do not provide the desired embedded-etcd
   failure tolerance.
-- Replace Pi NFS with independent replicated storage only if the current
-  single-storage-node failure domain is no longer acceptable.
+- Periodically restore JuiceFS metadata into an isolated PostgreSQL instance
+  and mount the media filesystem from that restored metadata. B2 chunks alone
+  are not a usable recovery path.
 
 ## Related material
 

@@ -270,7 +270,11 @@ spec:
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 18
+            # A cold ARM64 start can take slightly longer than three minutes,
+            # especially after an image pull or while the node is doing storage
+            # work. Keep the steady-state liveness probe strict, but do not kill
+            # a healthy Elasticsearch bootstrap at its old 180-second boundary.
+            failureThreshold: 36
           readinessProbe:
             httpGet:
               path: /_cluster/health

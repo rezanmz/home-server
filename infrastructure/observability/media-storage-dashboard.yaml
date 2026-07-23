@@ -11,7 +11,7 @@ data:
   media-storage.json: |
     {
       "annotations": {"list": []},
-      "description": "Physical Pi SSD capacity, media-tree growth, logical category footprints, hardlink savings, scan health, disk activity, and the largest unique media files.",
+      "description": "B2-backed JuiceFS library capacity, Pi-local download pressure, category growth, client caches, B2 traffic, scan health, and the largest organized media files.",
       "editable": false,
       "graphTooltip": 1,
       "links": [
@@ -39,57 +39,57 @@ data:
       "panels": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Space currently available to normal users on the Pi SSD. The media tree shares this filesystem with K3s, Longhorn, logs, and the operating system.",
+          "description": "Space available to normal users on the Pi SSD that holds active downloads, K3s, Longhorn, logs, and the operating system.",
           "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "orange", "value": 107374182400}, {"color": "yellow", "value": 214748364800}, {"color": "green", "value": 322122547200}]}, "unit": "bytes"}},
           "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
           "id": 1,
           "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-          "targets": [{"expr": "home_server_media_filesystem_available_bytes", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "home_server_media_downloads_filesystem_available_bytes", "instant": true, "refId": "A"}],
           "title": "Pi SSD free",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Used fraction of the complete Pi SSD. Warning begins at 80%; critical begins at 85%.",
+          "description": "Used fraction of the complete Pi SSD that contains active downloads and K3s. Warning begins at 80%; critical begins at 85%.",
           "fieldConfig": {"defaults": {"decimals": 1, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.8}, {"color": "red", "value": 0.85}]}, "unit": "percentunit"}},
           "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
           "id": 2,
           "options": {"minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showThresholdLabels": false, "showThresholdMarkers": true, "sizing": "auto"},
-          "targets": [{"expr": "home_server_media_filesystem_used_ratio", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "home_server_media_downloads_filesystem_used_bytes / home_server_media_downloads_filesystem_size_bytes", "instant": true, "refId": "A"}],
           "title": "Pi SSD used",
           "type": "gauge"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Allocated bytes under /home/reza/media, with hardlinked inodes counted once.",
+          "description": "Logical allocated bytes in the organized B2-backed JuiceFS library.",
           "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
           "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
           "id": 3,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
           "targets": [{"expr": "home_server_media_tree_physical_bytes", "instant": true, "refId": "A"}],
-          "title": "Unique media data",
+          "title": "Cloud library data",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Logical size of /media/downloads. Files hardlinked into Movies or Series are also represented in those category totals.",
+          "description": "Allocated bytes in the Pi-local active torrent/download tree. This copy is separate from the authoritative cloud library during seeding.",
           "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
           "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
           "id": 4,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-          "targets": [{"expr": "home_server_media_category_bytes{category=\"downloads\"}", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "home_server_media_downloads_bytes", "instant": true, "refId": "A"}],
           "title": "Downloads footprint",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Estimated physical storage avoided by hardlinking imported downloads into the Movies and Series libraries.",
+          "description": "Logical space remaining below the 2 TiB JuiceFS capacity ceiling.",
           "fieldConfig": {"defaults": {"color": {"fixedColor": "green", "mode": "fixedColor"}, "decimals": 1, "unit": "bytes"}},
           "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
           "id": 5,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
-          "targets": [{"expr": "home_server_media_hardlink_savings_bytes", "instant": true, "refId": "A"}],
-          "title": "Hardlink savings",
+          "targets": [{"expr": "home_server_media_filesystem_available_bytes", "instant": true, "refId": "A"}],
+          "title": "Cloud capacity free",
           "type": "stat"
         },
         {
@@ -105,22 +105,23 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Filesystem usage includes K3s, Longhorn, logs, and OS data. Unique media counts allocated data under the media tree once, even when hardlinked.",
+          "description": "Cloud-library logical capacity is independent from the Pi filesystem used by active downloads and K3s.",
           "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "bytes"}, "overrides": []},
           "gridPos": {"h": 9, "w": 12, "x": 0, "y": 5},
           "id": 7,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "home_server_media_filesystem_used_bytes", "legendFormat": "Pi SSD used", "refId": "A"},
-            {"expr": "home_server_media_filesystem_available_bytes", "legendFormat": "Pi SSD available", "refId": "B"},
-            {"expr": "home_server_media_tree_physical_bytes", "legendFormat": "unique media data", "refId": "C"}
+            {"expr": "home_server_media_filesystem_used_bytes", "legendFormat": "cloud library used", "refId": "A"},
+            {"expr": "home_server_media_filesystem_available_bytes", "legendFormat": "cloud capacity free", "refId": "B"},
+            {"expr": "home_server_media_downloads_filesystem_used_bytes", "legendFormat": "Pi SSD used", "refId": "C"},
+            {"expr": "home_server_media_downloads_filesystem_available_bytes", "legendFormat": "Pi SSD free", "refId": "D"}
           ],
           "title": "Capacity history",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Logical directory footprints over time. Downloads can overlap Movies or Series through hardlinks, so category values should not be summed to infer physical disk use.",
+          "description": "Logical footprints of the six organized JuiceFS categories. Active downloads are shown separately because they remain on the Pi.",
           "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "bytes"}, "overrides": []},
           "gridPos": {"h": 9, "w": 12, "x": 12, "y": 5},
           "id": 8,
@@ -131,7 +132,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "Current logical size of every managed media directory. Downloads overlap imported library files when hardlinks are present.",
+          "description": "Current logical size of every organized category in the B2-backed JuiceFS library.",
           "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}, "overrides": []},
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
           "id": 9,
@@ -156,7 +157,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "The 20 largest unique files in the media tree. Hardlinked downloads are deduplicated by filesystem inode, and a library path is preferred over its downloads path.",
+          "description": "The 20 largest files in the organized JuiceFS library. Active torrent copies are intentionally outside this table.",
           "fieldConfig": {
             "defaults": {"decimals": 1},
             "overrides": [
@@ -169,7 +170,7 @@ data:
           "id": 11,
           "options": {"cellHeight": "sm", "footer": {"countRows": false, "enablePagination": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
           "targets": [{"expr": "topk(20, home_server_media_largest_file_bytes)", "format": "table", "instant": true, "refId": "A"}],
-          "title": "Largest unique media files",
+          "title": "Largest cloud-library files",
           "transformations": [
             {
               "id": "organize",
@@ -185,7 +186,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "description": "File counts are logical directory-entry counts. A hardlinked file in Downloads and a library category is counted in both.",
+          "description": "Logical file counts in each organized JuiceFS category.",
           "fieldConfig": {"defaults": {"decimals": 0, "unit": "short"}, "overrides": []},
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 37},
           "id": 12,
@@ -207,15 +208,118 @@ data:
           ],
           "title": "Media metrics health",
           "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Persistent JuiceFS read-cache residency reported by each active mount pod. Cache data is disposable and independent on each node.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "bytes"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 45},
+          "id": 14,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "max by (pod) (juicefs_store_cache_size_bytes{vol_name=\"media\"})", "legendFormat": "{{pod}}", "refId": "A"}],
+          "title": "JuiceFS cache by mount pod",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Share of cache-served bytes over 15 minutes. A cold first playback is expected to miss; repeated playback should approach 100%.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "max": 1, "min": 0, "unit": "percentunit"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 45},
+          "id": 15,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (pod) (rate(juicefs_blockcache_hit_bytes{vol_name=\"media\"}[15m])) / clamp_min(sum by (pod) (rate(juicefs_blockcache_hit_bytes{vol_name=\"media\"}[15m]) + rate(juicefs_blockcache_miss_bytes{vol_name=\"media\"}[15m])), 1)", "legendFormat": "{{pod}}", "refId": "A"}],
+          "title": "JuiceFS cache hit ratio",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Payload bytes transferred between active JuiceFS clients and Backblaze B2, split by mount pod and object-store operation.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 1, "unit": "Bps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 53},
+          "id": 16,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (pod, method) (rate(juicefs_object_request_data_bytes{vol_name=\"media\"}[5m]))", "legendFormat": "{{pod}} {{method}}", "refId": "A"}],
+          "title": "B2 client traffic",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Independent health signals for the metadata database, CSI mount paths, and B2 requests.",
+          "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "FAILED"}, "1": {"color": "green", "text": "HEALTHY"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 53},
+          "id": 17,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [
+            {"expr": "max(pg_up{namespace=\"juicefs-system\"})", "instant": true, "legendFormat": "PostgreSQL", "refId": "A"},
+            {"expr": "min(juicefs_volume_path_health)", "instant": true, "legendFormat": "CSI mount paths", "refId": "B"},
+            {"expr": "clamp_min(clamp_max(1 - sum(increase(juicefs_object_request_errors{vol_name=\"media\"}[10m])), 1), 0)", "instant": true, "legendFormat": "B2 requests", "refId": "C"}
+          ],
+          "title": "JuiceFS service health",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Blocks evicted from each persistent node cache. Sustained eviction during normal playback indicates cache churn or an unexpectedly small effective cache.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 2, "unit": "ops"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 61},
+          "id": 18,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (pod) (rate(juicefs_blockcache_evicts{vol_name=\"media\"}[15m]))", "legendFormat": "{{pod}}", "refId": "A"}],
+          "title": "Cache eviction rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "95th-percentile Backblaze request duration by operation over five minutes.",
+          "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false}, "decimals": 2, "unit": "s"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 61},
+          "id": 19,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "histogram_quantile(0.95, sum by (le, pod, method) (rate(juicefs_object_request_durations_histogram_seconds_bucket{vol_name=\"media\"}[5m])))", "legendFormat": "{{pod}} {{method}}", "refId": "A"}],
+          "title": "B2 request latency p95",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Planning estimate using the approved US$0.0075 per GiB-month assumption. This excludes taxes, exchange rates, chunk overhead, trash, and hidden B2 versions; compare it with the Backblaze bill.",
+          "fieldConfig": {"defaults": {"decimals": 2, "unit": "currencyUSD"}},
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 69},
+          "id": 20,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(juicefs_used_space{vol_name=\"media\"}) / 1073741824 * 0.0075", "instant": true, "refId": "A"}],
+          "title": "Estimated media storage / month",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "B2 payload downloaded by JuiceFS mount clients over the rolling 30-day window. Direct migration traffic is intentionally not scraped.",
+          "fieldConfig": {"defaults": {"decimals": 1, "unit": "bytes"}},
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 69},
+          "id": 21,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "sum(increase(juicefs_object_request_data_bytes{vol_name=\"media\",method=\"GET\"}[30d]))", "instant": true, "refId": "A"}],
+          "title": "Rolling 30-day B2 reads",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Rough egress-overage estimate at US$0.01/GB after the approved free allowance of three times current logical storage. Billing uses Backblaze's own average-storage calculation, so verify any nonzero estimate in its console.",
+          "fieldConfig": {"defaults": {"decimals": 2, "unit": "currencyUSD"}},
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 69},
+          "id": 22,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "clamp_min(sum(increase(juicefs_object_request_data_bytes{vol_name=\"media\",method=\"GET\"}[30d])) - 3 * max(juicefs_used_space{vol_name=\"media\"}), 0) / 1000000000 * 0.01", "instant": true, "refId": "A"}],
+          "title": "Estimated 30-day egress overage",
+          "type": "stat"
         }
       ],
       "refresh": "1m",
       "schemaVersion": 42,
-      "tags": ["media", "storage", "nfs", "raspberrypi", "hardlinks"],
+      "tags": ["media", "storage", "juicefs", "backblaze", "raspberrypi"],
       "templating": {"list": []},
       "time": {"from": "now-14d", "to": "now"},
       "timezone": "browser",
       "title": "Media Storage",
       "uid": "home-server-media-storage",
-      "version": 1
+      "version": 3
     }

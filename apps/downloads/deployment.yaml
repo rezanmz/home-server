@@ -171,7 +171,13 @@ spec:
             allowPrivilegeEscalation: false
           volumeMounts:
             - {name: qbittorrent-config, mountPath: /config}
-            - {name: media-library, mountPath: /media}
+            - name: media-library
+              mountPath: /media
+              readOnly: true
+              mountPropagation: HostToContainer
+            # Keep active torrents entirely on the Pi. This nested NFS mount
+            # hides the empty JuiceFS downloads directory from qBittorrent.
+            - {name: media-downloads, mountPath: /media/downloads}
         - name: flaresolverr
           image: flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
           imagePullPolicy: IfNotPresent
@@ -258,7 +264,10 @@ spec:
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
             - {name: radarr-config, mountPath: /config}
-            - {name: media-library, mountPath: /media}
+            - name: media-library
+              mountPath: /media
+              mountPropagation: HostToContainer
+            - {name: media-downloads, mountPath: /media/downloads}
         - name: sonarr
           image: linuxserver/sonarr:4.0.19.2979-ls320@sha256:24acea2956a0ccb11f103877d9f4f8576600fb34bff34820ed749c2256dab89f
           imagePullPolicy: IfNotPresent
@@ -286,7 +295,10 @@ spec:
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
             - {name: sonarr-config, mountPath: /config}
-            - {name: media-library, mountPath: /media}
+            - name: media-library
+              mountPath: /media
+              mountPropagation: HostToContainer
+            - {name: media-downloads, mountPath: /media/downloads}
         - name: lidarr
           image: linuxserver/lidarr:3.1.3-develop@sha256:17a94b05bb92474052b78a581275a858690d8b1babf695be5388c86bd473940b
           imagePullPolicy: IfNotPresent
@@ -314,7 +326,10 @@ spec:
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
             - {name: lidarr-config, mountPath: /config}
-            - {name: media-library, mountPath: /media}
+            - name: media-library
+              mountPath: /media
+              mountPropagation: HostToContainer
+            - {name: media-downloads, mountPath: /media/downloads}
         - name: slskd
           image: slskd/slskd:0.26.0@sha256:ecd4026d4f8fb504e2cc55323efa2c1f5b56d20d3686b018249cc36b48ea17a6
           imagePullPolicy: IfNotPresent
@@ -552,7 +567,7 @@ spec:
         - name: calibre-web-ingest
           persistentVolumeClaim: {claimName: calibre-web-ingest}
         - name: media-library
-          persistentVolumeClaim: {claimName: media-library}
+          persistentVolumeClaim: {claimName: media-library-juicefs}
         - name: media-downloads
           persistentVolumeClaim: {claimName: media-downloads}
         - name: qb-access-config

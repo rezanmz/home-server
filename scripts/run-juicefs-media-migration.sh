@@ -11,11 +11,24 @@ juicefs_bin="${JUICEFS_BIN:-/usr/local/bin/juicefs}"
 threads="${JUICEFS_MIGRATION_THREADS:-4}"
 bwlimit="${JUICEFS_MIGRATION_BWLIMIT:-158}"
 metrics="${JUICEFS_MIGRATION_METRICS:-127.0.0.1:9568}"
+max_ingress_base_bytes="${JUICEFS_MIGRATION_MAX_INGRESS_BASE_BYTES:-67108864}"
 categories=(podcasts audiobooks books music movies tv)
+active_sync_pid=''
+migration_unit=''
+
+stop_active_sync() {
+  if [[ -n "${active_sync_pid}" ]] && kill -0 "${active_sync_pid}" 2>/dev/null; then
+    kill -TERM "${active_sync_pid}" 2>/dev/null || true
+    wait "${active_sync_pid}" 2>/dev/null || true
+  fi
+}
+
+trap 'stop_active_sync; exit 130' INT
+trap 'stop_active_sync; exit 143' TERM
 
 usage() {
   cat <<'EOF'
-Usage: run-juicefs-media-migration.sh [--dry-run] [CATEGORY ...]
+Usage: run-juicefs-media-migration.sh [--dry-run] [--delete-dst] [--reset-checkpoint] [CATEGORY ...]
 
 Categories: podcasts audiobooks books music movies tv
 
@@ -25,6 +38,12 @@ Required root-only files under /run/juicefs-media-migration:
   rsa-passphrase   JuiceFS encrypted RSA-key passphrase
 
 The source is never deleted. Downloads are not an accepted category.
+--delete-dst removes only destination entries that are absent from the source;
+always review a --dry-run --delete-dst pass before executing it.
+The migration must run in an IPAccounting-enabled systemd service. It stops if
+inbound traffic exceeds 64 MiB plus a conservative allowance for upload ACKs.
+Use --reset-checkpoint only after stopping source writers when a prior run
+recorded stale size or modification-time data.
 EOF
 }
 
@@ -34,11 +53,19 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 dry_run=false
+delete_dst=false
+reset_checkpoint=false
 requested=()
 while (($#)); do
   case "$1" in
     --dry-run)
       dry_run=true
+      ;;
+    --delete-dst)
+      delete_dst=true
+      ;;
+    --reset-checkpoint)
+      reset_checkpoint=true
       ;;
     -h | --help)
       usage
@@ -66,8 +93,22 @@ esac
 case "${bwlimit}" in
   '' | *[!0-9]*) printf '%s\n' 'Bandwidth limit must be a positive integer.' >&2; exit 2 ;;
 esac
-if ((threads < 1 || threads > 16 || bwlimit < 1)); then
+case "${max_ingress_base_bytes}" in
+  '' | *[!0-9]*) printf '%s\n' 'Base ingress budget must be a positive integer.' >&2; exit 2 ;;
+esac
+if ((threads < 1 || threads > 16 || bwlimit < 1 || max_ingress_base_bytes < 1)); then
   printf '%s\n' 'Refusing unsafe thread count or bandwidth limit.' >&2
+  exit 2
+fi
+if [[ ! "${metrics}" =~ ^127\.0\.0\.1:[0-9]{2,5}$ ]]; then
+  printf 'Migration metrics must listen only on IPv4 loopback: %s\n' "${metrics}" >&2
+  exit 2
+fi
+
+migration_unit="$(basename "$(cut -d: -f3 /proc/self/cgroup)")"
+if [[ "${migration_unit}" != *.service ]] ||
+  [[ "$(systemctl show "${migration_unit}" --property=IPAccounting --value 2>/dev/null)" != yes ]]; then
+  printf '%s\n' 'Run the migration in a systemd service with IPAccounting=yes.' >&2
   exit 2
 fi
 
@@ -135,7 +176,6 @@ sync_args=(
   --perms
   --links
   --update
-  --check-new
   --check-change
   --max-failure=0
   --metrics="${metrics}"
@@ -143,9 +183,92 @@ sync_args=(
 if [[ "${dry_run}" == true ]]; then
   sync_args+=(--dry)
 fi
+if [[ "${delete_dst}" == true ]]; then
+  sync_args+=(--delete-dst)
+fi
+if [[ "${reset_checkpoint}" == true ]]; then
+  sync_args+=(--checkpoint-force-reset)
+fi
 
-printf 'JuiceFS media migration starting: categories=%s threads=%s bwlimit=%sMbps dry_run=%s\n' \
-  "${categories[*]}" "${threads}" "${bwlimit}" "${dry_run}"
+printf 'JuiceFS media migration starting: categories=%s threads=%s bwlimit=%sMbps dry_run=%s delete_dst=%s reset_checkpoint=%s\n' \
+  "${categories[*]}" "${threads}" "${bwlimit}" "${dry_run}" "${delete_dst}" "${reset_checkpoint}"
+
+run_guarded_sync() {
+  local source="$1"
+  local destination="$2"
+  local metrics_url="http://${metrics}/metrics"
+  local metrics_body copied_bytes ingress_bytes ingress_delta allowed_ingress
+  local metrics_failures=0
+  local peak_ingress_bytes=0
+  local initial_ingress_bytes
+  local started_at="${SECONDS}"
+  local rc=0
+
+  initial_ingress_bytes="$(systemctl show "${migration_unit}" --property=IPIngressBytes --value)"
+  if [[ ! "${initial_ingress_bytes}" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' 'ABORTING: systemd did not provide an initial IP ingress counter.' >&2
+    return 71
+  fi
+
+  "${juicefs_bin}" sync "${sync_args[@]}" "${source}" "${destination}" &
+  active_sync_pid=$!
+
+  while kill -0 "${active_sync_pid}" 2>/dev/null; do
+    if metrics_body="$(curl --silent --show-error --max-time 2 "${metrics_url}" 2>/dev/null)"; then
+      metrics_failures=0
+      copied_bytes="$({
+        printf '%s\n' "${metrics_body}"
+      } | awk '
+        /^juicefs_sync_copied_bytes\{/ { total += $NF }
+        END { printf "%.0f", total + 0 }
+      ')"
+      ingress_bytes="$(systemctl show "${migration_unit}" --property=IPIngressBytes --value)"
+      if [[ ! "${ingress_bytes}" =~ ^[0-9]+$ ]]; then
+        printf '%s\n' 'ABORTING: systemd stopped reporting IP ingress.' >&2
+        kill -TERM "${active_sync_pid}" 2>/dev/null || true
+        wait "${active_sync_pid}" 2>/dev/null || true
+        active_sync_pid=''
+        return 71
+      fi
+      ingress_delta=$((ingress_bytes - initial_ingress_bytes))
+      if ((ingress_delta > peak_ingress_bytes)); then
+        peak_ingress_bytes="${ingress_delta}"
+      fi
+      # The cgroup counter includes TCP ACKs and small PostgreSQL responses.
+      # Five percent of copied bytes is deliberately more than healthy upload
+      # traffic needs, but tiny compared with the 128x encrypted-read failure.
+      allowed_ingress=$((max_ingress_base_bytes + copied_bytes / 20))
+      if ((ingress_delta > allowed_ingress)); then
+        printf 'ABORTING: inbound migration traffic reached %s bytes; dynamic budget is %s bytes.\n' \
+          "${ingress_delta}" "${allowed_ingress}" >&2
+        kill -TERM "${active_sync_pid}" 2>/dev/null || true
+        wait "${active_sync_pid}" 2>/dev/null || true
+        active_sync_pid=''
+        return 70
+      fi
+    else
+      metrics_failures=$((metrics_failures + 1))
+      if ((SECONDS - started_at >= 30 && metrics_failures >= 5)); then
+        printf '%s\n' 'ABORTING: the JuiceFS egress guard cannot read its metrics endpoint.' >&2
+        kill -TERM "${active_sync_pid}" 2>/dev/null || true
+        wait "${active_sync_pid}" 2>/dev/null || true
+        active_sync_pid=''
+        return 71
+      fi
+    fi
+    sleep 2
+  done
+
+  if wait "${active_sync_pid}"; then
+    rc=0
+  else
+    rc=$?
+  fi
+  active_sync_pid=''
+  printf 'Egress guard: peak inbound traffic=%s bytes; fixed budget=%s bytes plus 5%% of copied bytes.\n' \
+    "${peak_ingress_bytes}" "${max_ingress_base_bytes}"
+  return "${rc}"
+}
 
 for category in "${categories[@]}"; do
   source="${source_root}/${category}"
@@ -155,8 +278,7 @@ for category in "${categories[@]}"; do
   fi
 
   printf 'Starting category %s at %s\n' "${category}" "$(date --iso-8601=seconds)"
-  "${juicefs_bin}" sync "${sync_args[@]}" \
-    "${source}/" "jfs://media/${category}/"
+  run_guarded_sync "${source}/" "jfs://media/${category}/"
   printf 'Completed category %s at %s\n' "${category}" "$(date --iso-8601=seconds)"
 done
 

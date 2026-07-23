@@ -21,12 +21,27 @@ Backblaze's SSE-B2 remains a second, server-side layer. File names and other
 metadata live in PostgreSQL and its metadata exports, not as normal B2 object
 names. B2 contains implementation chunks and must never be edited, renamed, or
 restored with the Backblaze file browser.
+The bucket remains private with SSE-B2 enabled and Object Lock disabled. Its
+lifecycle keeps current objects and deletes hidden/previous object versions one
+day after they are superseded; it never age-expires current JuiceFS chunks.
 
 The three namespace-local `media-library-juicefs` claims deliberately refer to
 the same filesystem. `volumeHandle` remains unique per PV, while the shared
 credential and filesystem name allow the CSI driver to share one mount pod per
 node. Consumers use category `subPath` mounts and retain the established
 application paths.
+
+Production consumers mount the JuiceFS claim with
+`mountPropagation: HostToContainer` so CSI mount recovery can propagate a
+replacement FUSE mount into an existing container. The downloads stack mounts
+the Pi-local `media-downloads` NFS claim over `/media/downloads`; this nested
+mount is the boundary that prevents torrent writes and seeding reads from
+reaching B2. qBittorrent receives the parent JuiceFS mount read-only. Radarr,
+Sonarr, and Lidarr receive it read-write because imports copy into the cloud
+library. All read-only consumers retain read-only mounts.
+The JuiceFS root contains an intentionally empty `downloads` directory solely
+as the nested mountpoint. It must never hold files: in every production
+consumer, the Pi-local NFS claim hides it before the application starts.
 
 Every eligible node must expose `/dev/fuse` and apply
 `infrastructure/hosts/common/99-home-server-juicefs.conf`. Run
@@ -93,8 +108,8 @@ Inspect a mount without exposing credentials:
 
 ```bash
 pod="$(ssh beelink 'sudo k3s kubectl -n kube-system get pod -l app.kubernetes.io/name=juicefs-mount -o jsonpath={.items[0].metadata.name}')"
-ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- juicefs status \"\${META_URL}\""
-ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- juicefs stats -l 1 \"\${MOUNT_POINT}\""
+ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- sh -c 'juicefs status \"\${metaurl}\"'"
+ssh beelink "sudo k3s kubectl -n kube-system exec ${pod} -- sh -c 'juicefs stats -l 1 -c 1 \"\$(findmnt -rn -t fuse.juicefs -o TARGET | head -n 1)\"'"
 ```
 
 Do not print the Secret, the PostgreSQL URL with its password, the RSA key, or
@@ -163,6 +178,14 @@ copy of all three:
 - RSA passphrase;
 - SOPS age identity and this recovery manual.
 
+This deployment's recovery material is also stored in the operator Mac's login
+Keychain under the `home-server/juicefs-media/` service prefix. The entries for
+the SOPS age identity, RSA private key, RSA passphrase, B2 key ID, and B2
+application key were verified against the live values by SHA-256 fingerprint.
+Do not use `security find-generic-password -w` in a recorded terminal or paste
+its output into a ticket; recover it only into a root-owned memory-backed
+directory for a drill or incident.
+
 Never rotate the RSA key by generating a replacement for an existing volume.
 The original key is required to decrypt existing chunks. Test the external copy
 by decrypting it into a temporary memory-backed directory, using it to load a
@@ -214,7 +237,8 @@ Shrinking below current usage is forbidden. Category quotas are not enabled.
 
 Initial and final copy operations include only `movies`, `tv`, `music`,
 `books`, `audiobooks`, and `podcasts`. Every command is category-scoped,
-resumable, and byte-checks new objects. `downloads` is always excluded.
+resumable, and checks that source files did not change while being copied.
+`downloads` is always excluded.
 
 The initial background copy runs directly on the Pi host instead of as a Pod.
 This is intentional: a migration Pod is itself eligible for eviction on the
@@ -225,19 +249,60 @@ tmpfs path `/run/juicefs-media-migration`, then run:
 
 ```bash
 sudo systemd-run --unit=juicefs-media-migration \
-  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=3G \
+  --property=CPUWeight=20 --property=IOWeight=20 --property=MemoryMax=5G \
+  --property=IPAccounting=yes \
   /usr/local/sbin/run-juicefs-media-migration.sh
 sudo journalctl -fu juicefs-media-migration
 ```
 
+The 5 GiB service limit includes source-file page cache charged to the cgroup;
+it is not an expected 5 GiB JuiceFS heap. During the initial copy the process
+RSS remained near 215 MiB while the kernel reclaimed the larger file cache.
+
 `scripts/run-juicefs-media-migration.sh` accepts only the six organized
 categories, defaults to four transfer threads and 158 Mbps (60% of the measured
 encrypted B2 upload rate), preserves directories, permissions, and symlinks,
-and checks every new or changed file. It never accepts `downloads`, never
-deletes from the source, keeps resumable checkpoints in the root-only runtime
-directory, and refuses credentials supplied in command arguments. A failed or
-interrupted category is resumed by running the same script with that category
-name. Remove the runtime credential directory after the copy finishes.
+and rejects files that change during transfer. It never accepts `downloads`,
+never deletes from the source, and refuses credentials supplied in command
+arguments.
+
+Do not add JuiceFS sync's `--check-new` or `--check-all` options to this direct
+`jfs://` migration. With client-side encryption in JuiceFS 1.4.0, a ranged
+checksum read decrypts the entire 4 MiB object, while sync reads checksum data
+in 32 KiB pieces. That can turn one logical byte verification into roughly 128
+bytes downloaded from B2. The migration wrapper therefore leaves remote byte
+verification disabled and requires systemd IP accounting. It independently
+aborts when total inbound traffic exceeds 64 MiB plus five percent of copied
+bytes. The allowance covers TCP acknowledgements and PostgreSQL responses but
+is tiny compared with the prior 128x read amplification. If either systemd's
+counter or the loopback sync metrics cannot be read, the migration fails closed.
+
+Verify payload integrity after migration through the normal CSI/FUSE mount,
+where full-block caching is enabled. Hash a deterministic sample from each
+category with no more than 1 GiB of total source data. Record
+`juicefs_object_request_data_bytes{method="GET"}` immediately before and after.
+Allow at most the sampled bytes plus 32 MiB per independently opened sample
+file for block alignment, prefetch, and read-ahead. This remains a small,
+bounded multiplier and would still fail closed against the former 128x ranged
+checksum amplification. Do not run an exhaustive remote checksum until its
+expected B2 download volume and available free-egress allowance have been
+reviewed. The 2026-07-23 migration sampled 479,927,621 bytes across five files,
+matched every source hash, and recorded 618,870,475 B2 GET bytes (1.29x), below
+the resulting 640 MiB ceiling.
+JuiceFS writes a hidden `.juicefs-sync-checkpoint.*.json` file in each
+destination category; it contains paths and transfer state, not credentials.
+A failed or interrupted category is resumed by running the same script with
+that category name. Remove successful categories' current checkpoint files
+after final verification; their small superseded versions remain recoverable in
+seven-day JuiceFS trash. Remove the root-only runtime credential directory after
+the copy finishes.
+
+If `--check-change` reports a file that changed before writers were quiesced,
+stop those writers and rerun only that category with
+`--reset-checkpoint CATEGORY`. This uses JuiceFS's checkpoint reset flag to
+rescan current source metadata while retaining already completed destination
+files. Do not delete checkpoint files by hand, and never reset a checkpoint
+while the source is still changing.
 
 Before cutover, compare source and destination file counts, logical bytes,
 ownership, directory modes, symlinks, and a checksum sample per category.
@@ -248,8 +313,8 @@ For final cutover:
 
 1. Pause automatic grabs and Flux reconciliation for the affected bundles.
 2. Scale every library writer and reader down.
-3. Run a dry-run destination-delete sync separately for each category and
-   review every proposed removal.
+3. Run `--dry-run --delete-dst` separately for each category and review every
+   proposed removal, then rerun with `--delete-dst` only after the review.
 4. Run final incremental sync, then repeat counts, bytes, permission, and
    changed-file checks.
 5. Reconcile the PVC switch and validate each application before resuming
