@@ -1,17 +1,18 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: blocky
   namespace: network-services
   labels:
     app.kubernetes.io/name: blocky
 spec:
-  replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: blocky
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       labels:
@@ -20,8 +21,9 @@ spec:
       automountServiceAccountToken: false
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      nodeSelector:
-        kubernetes.io/hostname: raspberrypi
+      # LAN DNS is infrastructure-critical and must remain available when an
+      # unrelated workload puts a node under resource pressure.
+      priorityClassName: system-cluster-critical
       terminationGracePeriodSeconds: 15
       securityContext:
         runAsNonRoot: true
@@ -31,6 +33,38 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: render-node-config
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          imagePullPolicy: IfNotPresent
+          command: [sh, -ec]
+          args:
+            - |-
+              cni_ip="$(ip -4 -o address show dev cni0 | awk 'NR == 1 {sub(/\/.*/, "", $4); print $4}')"
+              test -n "$HOST_IP"
+              test -n "$cni_ip"
+              sed \
+                -e "s/__HOST_IP__/$HOST_IP/g" \
+                -e "s/__CNI_IP__/$cni_ip/g" \
+                /app/config-template/config.yml > /app/config/config.yml
+          env:
+            - name: HOST_IP
+              valueFrom:
+                fieldRef: {fieldPath: status.hostIP}
+          resources:
+            requests: {cpu: 5m, memory: 8Mi, ephemeral-storage: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi, ephemeral-storage: 32Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 100
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config-template, mountPath: /app/config-template, readOnly: true}
+            - {name: rendered-config, mountPath: /app/config}
+            - {name: cache, mountPath: /var/cache/blocky}
       containers:
         - name: blocky
           image: ghcr.io/0xerr0r/blocky:v0.33.0@sha256:96c4ee1d4abee3e81475796403ffde0dfd0c53a6e263e2c35c867ba5563535d4
@@ -43,26 +77,26 @@ spec:
             - {name: dns-udp, containerPort: 53, protocol: UDP}
             - {name: http-metrics, containerPort: 4000, protocol: TCP}
           startupProbe:
-            exec:
-              command: [/app/blocky, healthcheck]
+            tcpSocket:
+              port: dns-tcp
             periodSeconds: 2
             timeoutSeconds: 2
             failureThreshold: 30
           readinessProbe:
-            exec:
-              command: [/app/blocky, healthcheck]
+            tcpSocket:
+              port: dns-tcp
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
           livenessProbe:
-            exec:
-              command: [/app/blocky, healthcheck]
+            tcpSocket:
+              port: dns-tcp
             periodSeconds: 30
             timeoutSeconds: 3
             failureThreshold: 3
           resources:
-            requests: {cpu: 25m, memory: 64Mi}
-            limits: {cpu: 250m, memory: 256Mi}
+            requests: {cpu: 25m, memory: 64Mi, ephemeral-storage: 32Mi}
+            limits: {cpu: 250m, memory: 256Mi, ephemeral-storage: 256Mi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -70,13 +104,13 @@ spec:
               drop: [ALL]
               add: [NET_BIND_SERVICE]
           volumeMounts:
-            - {name: config, mountPath: /app/config, readOnly: true}
+            - {name: rendered-config, mountPath: /app/config, readOnly: true}
             - {name: cache, mountPath: /var/cache/blocky}
       volumes:
-        - name: config
+        - name: config-template
           configMap:
             name: blocky-config
             defaultMode: 0444
+        - {name: rendered-config, emptyDir: {sizeLimit: 1Mi}}
         - name: cache
-          persistentVolumeClaim:
-            claimName: blocky-cache
+          emptyDir: {sizeLimit: 256Mi}

@@ -40,7 +40,7 @@ copy and verify the affected service.
 | API authentication | Authentik OIDC configured for Headlamp; API reachable only through the LAN/server |
 | Disabled K3s packages | Bundled Traefik, ServiceLB, and local-storage |
 | Ingress | Flux-managed Traefik DaemonSet on host ports 80/443 plus MetalLB VIP `192.168.1.240` |
-| DNS | Blocky on the Pi host network at `192.168.1.2:53` |
+| DNS | Blocky DaemonSet on both host networks at `192.168.1.2:53` and `192.168.1.3:53` |
 | DHCP | Kea on the Beelink host network and `enp1s0`, pool `192.168.1.10-192.168.1.239` |
 | Shared organized media | JuiceFS with authoritative encrypted payloads in Backblaze B2 and persistent node caches |
 | Active downloads | Pi NFS at `192.168.1.2`, exported only from `/home/reza/media/downloads` |
@@ -56,7 +56,7 @@ The two nodes are schedulable workers as well as their special roles:
 | `raspberrypi` | `192.168.1.2`, arm64 | K3s agent, NFS server, LAN/broadcast protocols, router-forwarded WireGuard | arm64, NVMe, Longhorn default disk |
 
 Both are currently untainted. A Beelink outage removes DHCP and the Kubernetes
-control plane. A Pi outage removes DNS, NFS, WireGuard, SMB, and the physical
+control plane. A Pi outage removes NFS, WireGuard, SMB, and the physical
 data behind every NFS volume. The design is not highly available even when a
 pod can be rescheduled.
 
@@ -133,7 +133,6 @@ They share Gluetun's network namespace and must be treated as one upgrade unit.
 
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
-| `network-services/blocky` | Preserves the established resolver address `192.168.1.2` | Pi host network and reproducible Longhorn list cache |
 | `network-services/samba` | SMB/NetBIOS LAN broadcast behavior | Host network and writable JuiceFS library |
 | `network-services/syncthing` | LAN discovery and stable direct-sync ports | Host network, Longhorn config, Pi-local NFS data |
 | `network-services/wg-easy` | Router forwards UDP 1234 to the Pi; exact unsafe sysctls are allowed only there | Host port 1234 and Longhorn config |
@@ -175,6 +174,7 @@ are grouped with the Calibre-Web module.
 
 | Component | Placement behavior |
 | --- | --- |
+| Blocky | Host-network DaemonSet on every Linux node; each node serves its own LAN address and keeps an independent disposable denylist cache |
 | Traefik | DaemonSet on every node, host ports 80/443 |
 | Prometheus node exporter | Privileged host-observer DaemonSet in `kube-system` on every node |
 | MetalLB speaker | Host-network DaemonSet on every Linux node |

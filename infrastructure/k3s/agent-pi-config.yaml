@@ -4,6 +4,8 @@ server: https://192.168.1.3:6443
 token-file: /etc/rancher/k3s/node-token
 node-name: raspberrypi
 node-ip: 192.168.1.2
+# The Pi host uses independent public resolvers; LAN clients use Blocky.
+resolv-conf: /etc/resolv.conf
 kubelet-arg:
   # wg-easy needs these two network-namespace sysctls. Allow only the exact
   # names so the pod can declare them without a privileged init container.
@@ -13,6 +15,10 @@ kubelet-arg:
   # longer consumes the Pi: image storage at 15%, node storage at 10%, and
   # the standard memory and inode guards.
   - eviction-hard=memory.available<100Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%,imagefs.inodesFree<5%
+  # K3s otherwise asks kubelet to reclaim another 10% after crossing a disk
+  # threshold, which kept this node tainted until 25% was free. The in-pod
+  # download guard acts much earlier; 1% is sufficient eviction hysteresis.
+  - eviction-minimum-reclaim=nodefs.available=1%,imagefs.available=1%
 node-label:
   - homelab.rezan.dev/cpu-arch=arm64
   - homelab.rezan.dev/storage=nvme

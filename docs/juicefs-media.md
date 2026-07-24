@@ -256,10 +256,11 @@ raise it:
 1. Review expected B2 cost and the alert thresholds.
 2. Run `juicefs config META_URL --capacity NEW_GIB` once from a controlled
    client using secret environment injection.
-3. Update `format-options`, all static PV advertised capacities, dashboard
-   descriptions, and 75/85/95 percent alert expressions in the same Git
-   change. The existing bound static PVC requests remain at their immutable
-   2 TiB minimum; they do not constrain `df` or the JuiceFS quota.
+3. Update `format-options`, dashboard descriptions, and 75/85/95 percent alert
+   expressions in the same Git change. Keep the existing static PV capacities
+   and bound PVC requests at their immutable 2 TiB nominal value. Increasing
+   that binding metadata makes kubelet attempt an unsupported FUSE filesystem
+   expansion; it does not change `df` or the JuiceFS quota.
    `format-options` documents bootstrap intent but does not change an already
    formatted volume by itself.
 4. Reconcile and verify `juicefs status` reports the new limit.

@@ -103,11 +103,13 @@ specialUseDomains:
 
 ports:
   dns:
-    - :53
-  # Bind management and metrics to the Pi's cluster-only CNI gateway. There
+    # The DaemonSet renders each node's LAN address into this template. A
+    # specific address avoids colliding with systemd-resolved's loopback stub.
+    - __HOST_IP__:53
+  # Bind management and metrics to each node's cluster-only CNI gateway. There
   # is deliberately no LAN or HTTPRoute exposure for Blocky's control API.
   http:
-    - 10.42.1.1:4000
+    - __CNI_IP__:4000
 
 log:
   level: info

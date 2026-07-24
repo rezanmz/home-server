@@ -240,12 +240,13 @@ in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
 ## DNS and DHCP
 
-Blocky provides DNS and filtering from the Pi at `192.168.1.2` on TCP/UDP 53.
-Kea provides DHCPv4 from the Beelink at `192.168.1.3` on UDP 67. This preserves
-the resolver address already configured on clients while separating the two
-failure domains. Kea serves `192.168.1.10-192.168.1.239`, advertises router
-`192.168.1.1` and DNS `192.168.1.2`, and issues one-hour leases. There is no
-DHCPv6 server.
+Blocky is a host-network DaemonSet and provides DNS and filtering from both the
+Pi (`192.168.1.2`) and Beelink (`192.168.1.3`) on TCP/UDP 53. Kea provides
+DHCPv4 from the Beelink on UDP 67. Kea serves `192.168.1.10-192.168.1.239`,
+advertises router `192.168.1.1` and both DNS addresses, and issues one-hour
+leases. There is no DHCPv6 server. A single node failure therefore does not
+remove LAN DNS, although a Beelink failure still removes DHCP and the control
+plane.
 
 Desired configuration lives in `apps/blocky/config.yml` and
 `apps/kea/kea-dhcp4.conf`. Blocky's split-horizon mappings must be changed in
@@ -270,8 +271,9 @@ Do not stack these all-in-one lists by default. Overlap consumes memory and
 makes it unclear which source caused a false positive. If a legitimate domain
 is blocked, add the smallest exact entry to an `ads` allowlist in
 `apps/blocky/config.yml` rather than weakening the policy for every client.
-Blocky automatically refreshes the source every four hours and keeps the last
-downloaded copy on its cache PVC.
+Blocky automatically refreshes the source every four hours and keeps an
+independent pod-local copy on each node. This is reproducible cache data, not
+Longhorn or backup data. Losing one pod does not remove the other pod's cache.
 
 The previous dnsmasq lease-name integration is intentionally absent: ordinary
 dynamic DHCP client hostnames are not synthesized into local DNS. Application
@@ -281,7 +283,8 @@ use their own configured time sources. Do not restore UDP 123 merely to match
 the old listener inventory.
 
 There is no Blocky administration route or LAN-facing HTTP API. Its management
-and metrics endpoint binds only to the Pi CNI gateway at `10.42.1.1:4000`.
+and metrics endpoints bind only to the node CNI gateways at
+`10.42.0.1:4000` and `10.42.1.1:4000`.
 Kea exposes a Unix control socket shared only with the exporter, whose metrics
 bind to the Beelink CNI gateway at `10.42.0.1:9547`. The `DNS and DHCP` Grafana
 dashboard shows availability, query results, denylist state, DHCP traffic, and
@@ -292,8 +295,8 @@ pool usage. Warning and critical alerts are `BlockyUnavailable`,
 Check workload state and storage from the Beelink:
 
 ```bash
-ssh beelink 'sudo k3s kubectl -n network-services get deployments,pods,pvc -o wide'
-ssh beelink 'sudo k3s kubectl -n network-services logs deployment/blocky --tail=100'
+ssh beelink 'sudo k3s kubectl -n network-services get daemonsets,deployments,pods,pvc -o wide'
+ssh beelink 'sudo k3s kubectl -n network-services logs daemonset/blocky --all-pods --tail=100'
 ssh beelink 'sudo k3s kubectl -n network-services logs deployment/kea-dhcp4 -c kea-dhcp4 --tail=100'
 ssh beelink 'sudo k3s kubectl -n network-services logs deployment/kea-dhcp4 -c kea-exporter --tail=100'
 ssh beelink 'sudo k3s kubectl -n network-services get endpoints,endpointslice | grep -E "blocky|kea"'
@@ -306,31 +309,35 @@ and the application hostname should return the MetalLB VIP.
 
 ```bash
 dig +short @192.168.1.2 github.com A
+dig +short @192.168.1.3 github.com A
 dig +short @192.168.1.2 homepage.reza.network A
+dig +short @192.168.1.3 homepage.reza.network A
 dig +short @192.168.1.2 securepubads.g.doubleclick.net A
+dig +short @192.168.1.3 securepubads.g.doubleclick.net A
 ```
 
-Check host listeners independently; DNS must be on the Pi and DHCP must be on
-the Beelink. Blocky's control port and the exporter must bind only to their CNI
-gateway addresses, not `0.0.0.0` or the LAN address.
+Check host listeners independently; DNS must be on both nodes and DHCP only on
+the Beelink. Blocky's control ports and the exporter must bind only to their
+CNI gateway addresses, not `0.0.0.0` or the LAN address.
 
 ```bash
 ssh pi 'sudo ss -lntup | grep -E "(:53|:4000)\\b"'
-ssh beelink 'sudo ss -lntup | grep -E "(:67|:9547)\\b"'
+ssh beelink 'sudo ss -lntup | grep -E "(:53|:4000|:67|:9547)\\b"'
 ssh beelink 'curl -fsS http://10.42.0.1:9547/metrics | grep -E "^kea_dhcp4_addresses_(assigned|total)"'
 ssh pi 'curl -fsS http://10.42.1.1:4000/metrics | grep -E "^blocky_(build_info|query_total|denylist_cache_entries)"'
+ssh beelink 'curl -fsS http://10.42.0.1:4000/metrics | grep -E "^blocky_(build_info|query_total|denylist_cache_entries)"'
 ```
 
 The durable Kea lease database is `/var/lib/kea/kea-leases4.csv` inside the
 `kea-dhcp4` container and is backed by `network-services/kea-leases`. It is in
 the default Longhorn recurring-job group and must have a recent B2 backup.
-Blocky's list cache is `network-services/blocky-cache`; it uses
-`longhorn-observability` because it is reproducible and deliberately excluded
-from B2.
+Blocky's list caches are independent bounded `emptyDir` volumes. They are
+reproducible and deliberately excluded from Longhorn and B2.
 
-If DNS fails, check the Pi node, Blocky pod, TCP/UDP 53 listeners, upstream
-reachability to `8.8.8.8` and `8.8.4.4`, list-cache mount, and Blocky logs. A
-Blocky outage affects new DNS lookups immediately. If DHCP fails, existing
+If DNS fails, check both nodes, both Blocky pods, TCP/UDP 53 listeners,
+upstream reachability to `8.8.8.8` and `8.8.4.4`, pod-local list caches, and
+Blocky logs. If both Blocky instances fail, new DNS lookups are affected
+immediately. If DHCP fails, existing
 clients normally keep their current address until renewal, while new clients
 may fail immediately; check the Beelink, UDP 67, `enp1s0`, the lease PVC,
 control socket, and Kea logs. The ping-check hook can decline an address that is
@@ -436,23 +443,26 @@ systemctl is-active network-watchdog.timer   # expected: inactive
 ```
 
 The cluster nodes themselves use `1.1.1.1` and `9.9.9.9` as independent host
-resolvers. They must not use Blocky: after an eviction or reboot, a node may
-need DNS to pull the Blocky or Longhorn image required to restore DNS. Kea and
-WireGuard still advertise `192.168.1.2` to LAN/VPN clients, so ordinary client
-queries continue through Blocky and its filtering policy. Verify both sides:
+resolvers. K3s explicitly passes those resolver files to kubelet, so CoreDNS
+cannot retain an old Blocky address in a long-lived pod sandbox. The nodes must
+not use Blocky: after an eviction or reboot, a node may need DNS to pull the
+Blocky or Longhorn image required to restore DNS. Kea advertises both Blocky
+addresses to LAN clients. Verify every path:
 
 ```bash
 ssh pi 'cat /etc/resolv.conf; getent ahostsv4 ghcr.io'
 ssh beelink 'resolvectl status enp1s0; getent ahostsv4 ghcr.io'
 dig +short @192.168.1.2 github.com A
+dig +short @192.168.1.3 github.com A
 ```
 
-If Blocky is unavailable while the Pi reports `DiskPressure=True`, first pause
-all qBittorrent torrents, restore the repository-defined migration kubelet
-threshold, restart `k3s-agent`, and wait for `DiskPressure=False`. Do not delete
-media or Longhorn replicas merely to make DNS start. A completed old Blocky Pod
-can retain host port 53 after a pressure eviction; delete that exact completed
-Pod only after its replacement is scheduled.
+If the Pi reports `DiskPressure=True`, the downloads storage guard should
+already have stopped every torrent at 200 GiB or 20% free. Confirm the guard
+log, keep torrents stopped, and recover verified completed payloads before
+restarting anything. Do not delete organized media or Longhorn replicas merely
+to make disk space. Blocky is a critical DaemonSet with explicit
+ephemeral-storage requests, but the guard is the primary protection against
+kubelet eviction.
 
 ### Pi unattended security updates
 
@@ -1622,6 +1632,20 @@ own imported torrents normally; the 14-day qBittorrent ceiling also bounds
 manual or otherwise unowned torrents. Review this policy in qBittorrent under
 **Settings > BitTorrent > Seeding Limits** after restoring its configuration
 volume.
+
+Full-file preallocation is enabled in the same backed-up qBittorrent settings.
+The `downloads-storage-guard` container is the hard safety boundary: every 60
+seconds it verifies that `/media/downloads` is NFS, checks free bytes and
+percentage, and stops every torrent when either free space is below 200 GiB or
+free space is below 20%. It never resumes torrents automatically and never
+deletes payloads. After a stop, verify Arr import and the authoritative JuiceFS
+library before deleting through qBittorrent or manually resuming work.
+
+```bash
+sudo k3s kubectl -n media logs deployment/downloads -c downloads-storage-guard --tail=100
+sudo k3s kubectl -n media exec deployment/downloads -c qbittorrent -- \
+  sh -ec 'curl -fsS http://127.0.0.1:8080/api/v2/app/preferences | grep -o '"'"'"preallocate_all":[^,}]*'"'"''
+```
 
 ## Node resource pressure
 

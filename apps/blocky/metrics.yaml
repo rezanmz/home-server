@@ -19,7 +19,7 @@ metadata:
     # managed EndpointSlice below for a future discovery-role migration.
     endpointslice.kubernetes.io/skip-mirror: "true"
 subsets:
-  - addresses: [{ip: 10.42.1.1}]
+  - addresses: [{ip: 10.42.0.1}, {ip: 10.42.1.1}]
     ports: [{name: http-metrics, port: 4000, protocol: TCP}]
 ---
 apiVersion: discovery.k8s.io/v1
@@ -34,6 +34,8 @@ addressType: IPv4
 ports:
   - {name: http-metrics, port: 4000, protocol: TCP}
 endpoints:
+  - addresses: [10.42.0.1]
+    conditions: {ready: true}
   - addresses: [10.42.1.1]
     conditions: {ready: true}
 ---
@@ -70,7 +72,7 @@ spec:
           labels: {severity: critical, cluster: home-server}
           annotations:
             summary: LAN DNS is unavailable
-            description: Prometheus cannot scrape Blocky on the Raspberry Pi. Clients using 192.168.1.2 may be unable to resolve names.
+            description: Prometheus cannot scrape either Blocky instance. LAN clients may be unable to resolve names.
             runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#dns-and-dhcp
         - alert: BlockyQueryErrors
           expr: rate(blocky_error_total[5m]) > 0.05

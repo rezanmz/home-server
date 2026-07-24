@@ -12,7 +12,10 @@ kind: PersistentVolume
 metadata:
   name: juicefs-media-media
 spec:
-  capacity: {storage: 10Ti}
+  # Static CSI capacity is only Kubernetes binding metadata. Keep it at the
+  # original bound size so kubelet does not attempt an unsupported FUSE
+  # NodeExpandVolume operation. JuiceFS enforces the real 10 TiB quota.
+  capacity: {storage: 2Ti}
   accessModes: [ReadWriteMany]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: juicefs-media
@@ -38,8 +41,8 @@ spec:
   storageClassName: juicefs-media
   volumeName: juicefs-media-media
   resources:
-    # This bound static claim's request is an immutable minimum. JuiceFS's
-    # actual quota and the PV's advertised capacity are 10 TiB.
+    # This bound static claim's request is an immutable nominal size. JuiceFS
+    # independently reports and enforces the real 10 TiB filesystem quota.
     requests: {storage: 2Ti}
 ---
 apiVersion: v1
@@ -47,7 +50,9 @@ kind: PersistentVolume
 metadata:
   name: juicefs-media-apps
 spec:
-  capacity: {storage: 10Ti}
+  # See juicefs-media-media: the JuiceFS quota, not this binding value,
+  # controls usable capacity.
+  capacity: {storage: 2Ti}
   accessModes: [ReadWriteMany]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: juicefs-media
@@ -73,8 +78,8 @@ spec:
   storageClassName: juicefs-media
   volumeName: juicefs-media-apps
   resources:
-    # This bound static claim's request is an immutable minimum. JuiceFS's
-    # actual quota and the PV's advertised capacity are 10 TiB.
+    # This bound static claim's request is an immutable nominal size. JuiceFS
+    # independently reports and enforces the real 10 TiB filesystem quota.
     requests: {storage: 2Ti}
 ---
 apiVersion: v1
@@ -82,7 +87,9 @@ kind: PersistentVolume
 metadata:
   name: juicefs-media-network-services
 spec:
-  capacity: {storage: 10Ti}
+  # See juicefs-media-media: the JuiceFS quota, not this binding value,
+  # controls usable capacity.
+  capacity: {storage: 2Ti}
   accessModes: [ReadWriteMany]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: juicefs-media
@@ -108,6 +115,6 @@ spec:
   storageClassName: juicefs-media
   volumeName: juicefs-media-network-services
   resources:
-    # This bound static claim's request is an immutable minimum. JuiceFS's
-    # actual quota and the PV's advertised capacity are 10 TiB.
+    # This bound static claim's request is an immutable nominal size. JuiceFS
+    # independently reports and enforces the real 10 TiB filesystem quota.
     requests: {storage: 2Ti}

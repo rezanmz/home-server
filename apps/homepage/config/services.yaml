@@ -171,7 +171,7 @@
 - Infrastructure:
     - Blocky DNS:
         icon: mdi-dns
-        description: Filtering DNS on the Pi
+        description: Filtering DNS on both cluster nodes
         namespace: network-services
         app: blocky
     - Kea DHCP:
