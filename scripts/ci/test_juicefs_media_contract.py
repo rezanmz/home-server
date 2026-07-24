@@ -103,21 +103,47 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             containers["qbittorrent"]["resources"]["limits"]["memory"],
             "3Gi",
         )
-        self.assertEqual(qb_mounts["media-library"]["mountPath"], "/media")
-        self.assertTrue(qb_mounts["media-library"]["readOnly"])
-        self.assertEqual(qb_mounts["media-library"]["mountPropagation"], "HostToContainer")
+        self.assertNotIn("media-library", qb_mounts)
         self.assertEqual(qb_mounts["media-downloads"]["mountPath"], "/media/downloads")
         self.assertFalse(qb_mounts["media-downloads"].get("readOnly", False))
+        for probe_name in ("startupProbe", "readinessProbe", "livenessProbe"):
+            probe_command = " ".join(
+                containers["qbittorrent"][probe_name]["exec"]["command"]
+            )
+            self.assertIn("stat -f -c %T /media/downloads", probe_command)
+            self.assertIn("= nfs", probe_command)
 
-        for importer_name in ("radarr", "sonarr", "lidarr"):
+        importer_contract = {
+            "radarr": ("/media/movies", "movies"),
+            "sonarr": ("/media/tv", "tv"),
+            "lidarr": ("/media/music", "music"),
+        }
+        for importer_name, (library_path, library_subpath) in importer_contract.items():
             mounts = {
                 item["name"]: item
                 for item in containers[importer_name]["volumeMounts"]
             }
             self.assertFalse(mounts["media-library"].get("readOnly", False))
-            self.assertEqual(mounts["media-library"]["mountPath"], "/media")
+            self.assertEqual(mounts["media-library"]["mountPath"], library_path)
+            self.assertEqual(mounts["media-library"]["subPath"], library_subpath)
             self.assertEqual(mounts["media-library"]["mountPropagation"], "HostToContainer")
             self.assertEqual(mounts["media-downloads"]["mountPath"], "/media/downloads")
+            self.assertFalse(
+                mounts["media-downloads"]["mountPath"].startswith(
+                    mounts["media-library"]["mountPath"] + "/"
+                )
+            )
+
+        init_containers = {item["name"]: item for item in spec["initContainers"]}
+        storage_check = init_containers["validate-download-storage"]
+        storage_check_command = " ".join(storage_check["command"])
+        self.assertIn("stat -f -c %T /downloads", storage_check_command)
+        self.assertIn('!= nfs', storage_check_command)
+        self.assertIn('.storage-contract-', storage_check_command)
+        self.assertEqual(
+            named(storage_check["volumeMounts"], "media-downloads")["mountPath"],
+            "/downloads",
+        )
 
         for downloader_name in ("slskd", "soularr", "shelfmark"):
             mount_names = {

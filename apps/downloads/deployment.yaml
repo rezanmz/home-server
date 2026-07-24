@@ -86,6 +86,32 @@ spec:
             limits: {cpu: 50m, memory: 32Mi}
           volumeMounts:
             - {name: media-downloads, mountPath: /downloads}
+        - name: validate-download-storage
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          command:
+            - sh
+            - -ec
+            - |
+              filesystem_type="$(stat -f -c %T /downloads)"
+              if [ "$filesystem_type" != nfs ]; then
+                echo "Refusing to start: /downloads is $filesystem_type, expected nfs" >&2
+                exit 1
+              fi
+              probe="/downloads/.storage-contract-${HOSTNAME}"
+              trap 'rm -f "$probe"' EXIT
+              : > "$probe"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          volumeMounts:
+            - {name: media-downloads, mountPath: /downloads}
         # Native sidecar: every application container below shares this network
         # namespace, preserving the old Docker `network_mode: container:gluetun`
         # topology and a single Proton WireGuard session.
@@ -157,19 +183,28 @@ spec:
             - {name: qbittorrent, containerPort: 8080, protocol: TCP}
           startupProbe:
             exec:
-              command: [curl, -fsS, http://127.0.0.1:8080/]
+              command:
+                - sh
+                - -ec
+                - 'test "$(stat -f -c %T /media/downloads)" = nfs && curl -fsS http://127.0.0.1:8080/'
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 12
           readinessProbe:
             exec:
-              command: [curl, -fsS, http://127.0.0.1:8080/]
+              command:
+                - sh
+                - -ec
+                - 'test "$(stat -f -c %T /media/downloads)" = nfs && curl -fsS http://127.0.0.1:8080/'
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 6
           livenessProbe:
             exec:
-              command: [curl, -fsS, http://127.0.0.1:8080/]
+              command:
+                - sh
+                - -ec
+                - 'test "$(stat -f -c %T /media/downloads)" = nfs && curl -fsS http://127.0.0.1:8080/'
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
@@ -182,12 +217,8 @@ spec:
             allowPrivilegeEscalation: false
           volumeMounts:
             - {name: qbittorrent-config, mountPath: /config}
-            - name: media-library
-              mountPath: /media
-              readOnly: true
-              mountPropagation: HostToContainer
-            # Keep active torrents entirely on the Pi. This nested NFS mount
-            # hides the empty JuiceFS downloads directory from qBittorrent.
+            # Do not mount JuiceFS in this container. A propagated FUSE remount
+            # can cover a nested NFS mount and make torrents write to B2 or fail.
             - {name: media-downloads, mountPath: /media/downloads}
         - name: flaresolverr
           image: flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
@@ -276,7 +307,8 @@ spec:
           volumeMounts:
             - {name: radarr-config, mountPath: /config}
             - name: media-library
-              mountPath: /media
+              mountPath: /media/movies
+              subPath: movies
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: sonarr
@@ -307,7 +339,8 @@ spec:
           volumeMounts:
             - {name: sonarr-config, mountPath: /config}
             - name: media-library
-              mountPath: /media
+              mountPath: /media/tv
+              subPath: tv
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: lidarr
@@ -338,7 +371,8 @@ spec:
           volumeMounts:
             - {name: lidarr-config, mountPath: /config}
             - name: media-library
-              mountPath: /media
+              mountPath: /media/music
+              subPath: music
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: slskd
