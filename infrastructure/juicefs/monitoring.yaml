@@ -110,19 +110,19 @@ spec:
             summary: JuiceFS has asynchronously staged write blocks
             description: Writeback is intentionally disabled; staged blocks need investigation.
         - alert: MediaDownloadsSpaceLow
-          expr: home_server_media_downloads_filesystem_available_bytes < 80530636800
-          for: 15m
+          expr: home_server_media_downloads_filesystem_available_bytes < 241591910400
+          for: 5m
           labels: {severity: warning}
           annotations:
-            summary: Pi-local download storage has less than 75 GiB free
-            description: Active torrents and K3s share the Pi filesystem. Pause new grabs and inspect the Media Storage dashboard.
+            summary: Pi-local download storage has less than 225 GiB free
+            description: Active torrents and K3s share the Pi filesystem. Review growth before the 200 GiB automatic stop threshold is reached.
         - alert: MediaDownloadsSpaceCritical
-          expr: home_server_media_downloads_filesystem_available_bytes < 42949672960
-          for: 5m
+          expr: home_server_media_downloads_filesystem_available_bytes < 214748364800
+          for: 2m
           labels: {severity: critical}
           annotations:
-            summary: Pi-local download storage has less than 40 GiB free
-            description: Pause qBittorrent immediately; K3s eviction and DNS/storage disruption are imminent.
+            summary: Pi-local download storage has less than 200 GiB free
+            description: The in-pod storage guard should stop every torrent. Investigate before manually resuming downloads.
         - alert: JuiceFSAbnormalB2ReadGrowth
           expr: sum(increase(juicefs_object_request_data_bytes{vol_name="media",method="GET"}[30m])) > 26843545600
           for: 5m

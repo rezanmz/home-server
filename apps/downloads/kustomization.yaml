@@ -8,3 +8,8 @@ resources:
   - service.yaml
   - networkpolicy.yaml
   - route.yaml
+configMapGenerator:
+  - name: downloads-storage-guard
+    namespace: media
+    files:
+      - storage-guard.sh

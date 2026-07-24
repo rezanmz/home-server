@@ -220,6 +220,46 @@ spec:
             # Do not mount JuiceFS in this container. A propagated FUSE remount
             # can cover a nested NFS mount and make torrents write to B2 or fail.
             - {name: media-downloads, mountPath: /media/downloads}
+        - name: downloads-storage-guard
+          image: linuxserver/qbittorrent:5.2.3@sha256:b024436f8ca665d16d9a997d26fd27fdf867ee5566ba09f32764e7b2976d3e02
+          imagePullPolicy: IfNotPresent
+          command: [sh, /opt/storage-guard/storage-guard.sh]
+          env:
+            - {name: CHECK_INTERVAL_SECONDS, value: "60"}
+            - {name: MIN_FREE_BYTES, value: "214748364800"}
+            - {name: MIN_FREE_PERCENT, value: "20"}
+          readinessProbe:
+            exec:
+              command: [sh, -ec, "find /tmp/guard-heartbeat -mmin -3 -print -quit | grep -q ."]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: [sh, -ec, "find /tmp/guard-heartbeat -mmin -3 -print -quit | grep -q ."]
+            initialDelaySeconds: 90
+            periodSeconds: 60
+            timeoutSeconds: 3
+            failureThreshold: 2
+          resources:
+            # Do not set a container-local ephemeral-storage limit here. Kubelet
+            # treats it as the aggregate pod ceiling when the legacy sibling
+            # containers have no matching limits, which can evict all 17
+            # containers for a few dozen MiB of ordinary logs.
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: storage-guard, mountPath: /opt/storage-guard, readOnly: true}
+            - {name: storage-guard-state, mountPath: /tmp}
+            - {name: media-downloads, mountPath: /media/downloads}
         - name: flaresolverr
           image: flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
           imagePullPolicy: IfNotPresent
@@ -615,6 +655,11 @@ spec:
           persistentVolumeClaim: {claimName: media-library-juicefs}
         - name: media-downloads
           persistentVolumeClaim: {claimName: media-downloads}
+        - name: storage-guard
+          configMap:
+            name: downloads-storage-guard
+            defaultMode: 0555
+        - {name: storage-guard-state, emptyDir: {sizeLimit: 1Mi}}
         - name: qb-access-config
           configMap: {name: qbittorrent-access-proxy}
         - name: pr-access-config

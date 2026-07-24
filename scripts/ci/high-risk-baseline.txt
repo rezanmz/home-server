@@ -18,6 +18,7 @@ access-proxy-boundary|v1/ConfigMap|media|sonarr-access-proxy|data/sha256/4ef9319
 access-proxy-boundary|v1/ConfigMap|monitoring|grafana-access-proxy|data/sha256/4db29e6b7de30c467ff9baaa4d31f8897e37e43486b17787fb9aa2122a65694f
 access-proxy-boundary|v1/ConfigMap|monitoring|headlamp-access-proxy|data/sha256/6624020b5e14dec81f49a62c7fea34313e6ab670a33df38a59b520335ffb0e5b
 access-proxy-boundary|v1/ConfigMap|network-services|syncthing-access-proxy-kchm4kb2hk|data/sha256/8512bd9fee0a65638c8a90cb4635bebe18cac10e69c07d3b4e93c1254ca88b8d
+added-capability|apps/v1/DaemonSet|network-services|blocky|container/blocky/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/CHOWN
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/DAC_OVERRIDE
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETGID
@@ -31,7 +32,6 @@ added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/SETGI
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/SETUID
 added-capability|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state/CHOWN
 added-capability|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state/FOWNER
-added-capability|apps/v1/Deployment|network-services|blocky|container/blocky/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_RAW
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories/CHOWN
@@ -77,8 +77,8 @@ helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|long
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/5bcfe477512c9ee9662f861cf276d644ae600b59444811a5296f4895381a19db
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/dbc0436675279f674af7c3fbc31cd7ab5854f99e3ab3493c749e2b44395ec1d4
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/020fb185bc357ae641f2543bbb5699dd1b1ed375a2c69a663ec32161fa4b9ed9
+host-network|apps/v1/DaemonSet|network-services|blocky|pod-spec
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
-host-network|apps/v1/Deployment|network-services|blocky|pod-spec
 host-network|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec
 host-network|apps/v1/Deployment|network-services|samba|pod-spec
 host-network|apps/v1/Deployment|network-services|syncthing|pod-spec

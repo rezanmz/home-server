@@ -12,17 +12,15 @@ spec:
     order: 10
     group: Infrastructure
     icon: mdi-dns
-    description: Filtering DNS on the Pi
+    description: Filtering DNS on both cluster nodes
     link: false
   placement:
-    mode: raspberrypi
-    manifest: apps/blocky/deployment.yaml
-    reason: Preserves the established LAN resolver address and host-network binding.
+    mode: every-node
+    reason: A host-network DaemonSet keeps LAN DNS available when either cluster node is unavailable.
   data:
-    class: longhorn-observability
-    protection: excluded-observability
-    manifests: [apps/blocky/pvc.yaml]
-    note: The denylist cache is reproducible and deliberately excluded from off-site backups.
+    class: stateless
+    protection: not-applicable
+    note: Each node keeps only a bounded, reproducible, pod-local denylist cache.
   observability:
     mode: metrics
     manifests:

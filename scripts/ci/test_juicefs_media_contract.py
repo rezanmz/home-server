@@ -113,6 +113,23 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             self.assertIn("stat -f -c %T /media/downloads", probe_command)
             self.assertIn("= nfs", probe_command)
 
+        guard = containers["downloads-storage-guard"]
+        guard_env = {item["name"]: item["value"] for item in guard["env"]}
+        self.assertEqual(guard_env["CHECK_INTERVAL_SECONDS"], "60")
+        self.assertEqual(guard_env["MIN_FREE_BYTES"], "214748364800")
+        self.assertEqual(guard_env["MIN_FREE_PERCENT"], "20")
+        guard_mounts = {item["name"]: item for item in guard["volumeMounts"]}
+        self.assertEqual(
+            guard_mounts["media-downloads"]["mountPath"], "/media/downloads"
+        )
+        self.assertTrue(guard_mounts["storage-guard"]["readOnly"])
+        guard_script = (REPO_ROOT / "apps/downloads/storage-guard.sh").read_text()
+        self.assertIn("stat -f -c %T", guard_script)
+        self.assertIn("/api/v2/torrents/stop", guard_script)
+        self.assertIn("hashes=all", guard_script)
+        self.assertNotIn("/api/v2/torrents/start", guard_script)
+        self.assertNotIn("/api/v2/torrents/delete", guard_script)
+
         importer_contract = {
             "radarr": ("/media/movies", "movies"),
             "sonarr": ("/media/tv", "tv"),
@@ -207,7 +224,7 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertEqual(len(media_exports), 1)
         self.assertTrue(media_exports[0].startswith("/home/reza/media/downloads "))
 
-    def test_juicefs_capacity_contract_is_ten_tib(self) -> None:
+    def test_juicefs_quota_is_decoupled_from_static_binding_capacity(self) -> None:
         resources = documents("infrastructure/juicefs/storage.yaml")
         media_pvs = [
             item
@@ -217,10 +234,11 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         ]
         self.assertEqual(len(media_pvs), 3)
         for pv in media_pvs:
-            self.assertEqual(pv["spec"]["capacity"]["storage"], "10Ti")
+            self.assertEqual(pv["spec"]["capacity"]["storage"], "2Ti")
 
-        # Bound static PVC requests cannot be resized. They remain minimums;
-        # the JuiceFS metadata quota and PV capacities advertise the real size.
+        # Bound static PVC requests cannot be resized. They remain nominal;
+        # the JuiceFS metadata quota is the actual enforced size. Static PVs
+        # retain their original nominal capacity to avoid FUSE expansion calls.
         media_pvcs = [
             item
             for item in resources
@@ -248,6 +266,50 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertNotIn("imagefs.available<5%", agent_config)
         self.assertIn("nodefs.available<10%", agent_config)
         self.assertIn("imagefs.available<15%", agent_config)
+
+    def test_dns_has_independent_node_failure_domains(self) -> None:
+        blocky = next(
+            doc
+            for doc in documents("apps/blocky/deployment.yaml")
+            if doc.get("kind") == "DaemonSet"
+            and doc.get("metadata", {}).get("name") == "blocky"
+        )
+        spec = pod_spec(blocky)
+        self.assertTrue(spec["hostNetwork"])
+        self.assertNotIn("nodeSelector", spec)
+        self.assertEqual(spec["priorityClassName"], "system-cluster-critical")
+        cache = named(spec["volumes"], "cache")
+        self.assertEqual(cache["emptyDir"]["sizeLimit"], "256Mi")
+        render_command = " ".join(
+            named(spec["initContainers"], "render-node-config")["args"]
+        )
+        self.assertIn("status.hostIP", str(spec["initContainers"]))
+        self.assertIn("cni0", render_command)
+
+        config = (REPO_ROOT / "apps/blocky/config.yml").read_text()
+        self.assertIn("__HOST_IP__:53", config)
+        self.assertIn("__CNI_IP__:4000", config)
+        self.assertNotIn("- :53", config)
+
+        endpoints = next(
+            doc
+            for doc in documents("apps/blocky/metrics.yaml")
+            if doc.get("kind") == "Endpoints"
+        )
+        self.assertEqual(
+            {item["ip"] for item in endpoints["subsets"][0]["addresses"]},
+            {"10.42.0.1", "10.42.1.1"},
+        )
+
+        kea_config = (REPO_ROOT / "apps/kea/kea-dhcp4.conf").read_text()
+        self.assertIn(
+            '"domain-name-servers", "data": "192.168.1.2, 192.168.1.3"',
+            kea_config,
+        )
+        server_config = (REPO_ROOT / "infrastructure/k3s/server-config.yaml").read_text()
+        agent_config = (REPO_ROOT / "infrastructure/k3s/agent-pi-config.yaml").read_text()
+        self.assertIn("resolv-conf: /run/systemd/resolve/resolv.conf", server_config)
+        self.assertIn("resolv-conf: /etc/resolv.conf", agent_config)
 
     def test_read_only_consumers_cannot_write_the_cloud_library(self) -> None:
         consumers = (

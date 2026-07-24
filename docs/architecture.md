@@ -156,17 +156,17 @@ the Pi for those routes; it must never be broadened to the cluster-wide
 `10.42.0.0/16`. The high-risk-policy check records every such exception so a
 new or wider pod-CIDR allow-list requires explicit review.
 
-Blocky uses the Pi host network and keeps DNS on `192.168.1.2:53`, preserving
-the resolver address already used by LAN clients, WireGuard, the nodes, and
-CoreDNS. Its HTTP control and Prometheus endpoint binds only to the Pi's CNI
-gateway (`10.42.1.1:4000`); there is no LAN listener, UI route, or public
-control surface. Filtering uses the HaGeZi Multi PRO wildcard list as a single
-balanced all-in-one source. The downloaded denylist cache is a reproducible
-Longhorn volume excluded from B2 backups.
+Blocky is a host-network DaemonSet on both nodes and serves DNS from
+`192.168.1.2:53` and `192.168.1.3:53`. Its HTTP control and Prometheus endpoints
+bind only to the corresponding CNI gateways (`10.42.1.1:4000` and
+`10.42.0.1:4000`); there is no LAN listener, UI route, or public control
+surface. Filtering uses the HaGeZi Multi PRO wildcard list as a single balanced
+all-in-one source. Each node has a reproducible pod-local denylist cache
+excluded from Longhorn and B2 backups.
 
 Kea DHCP uses the Beelink host network and physical `enp1s0` interface because
 ISC's official Kea image is amd64-only. It serves the same
-`192.168.1.10-192.168.1.239` pool with router `.1`, DNS `.2`, one-hour leases,
+`192.168.1.10-192.168.1.239` pool with router `.1`, DNS `.2` and `.3`, one-hour leases,
 and an authoritative response. The open-source ping-check hook probes an
 address before offering it, protecting the cutover from clients whose old
 Pi-hole leases are not in Kea's new memfile database. The lease database is a
@@ -211,9 +211,9 @@ WireGuard access, global discovery, and relays remain available, but Syncthing
 must not silently create a new Internet-facing router mapping.
 
 Blocky's split-horizon mappings point HTTP hostnames at the Traefik VIP
-`192.168.1.240`, so application pod placement is independent of DNS. DNS, SMB,
-NFS, and WireGuard continue to use `192.168.1.2`; DHCP replies come from Kea at
-`192.168.1.3` while advertising `.2` as the resolver. Jellyfin advertises its
+`192.168.1.240`, so application pod placement is independent of DNS. SMB, NFS,
+and WireGuard continue to use `192.168.1.2`; DHCP replies come from Kea at
+`192.168.1.3` while advertising both nodes as resolvers. Jellyfin advertises its
 Traefik HTTPS hostname; its host network is retained only for LAN discovery and
 DLNA multicast.
 
