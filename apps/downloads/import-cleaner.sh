@@ -99,11 +99,18 @@ fetch_history() {
   api_version=$2
   api_key=$3
   destination=$4
+  hash=$5
+  uppercase_hash="$(printf '%s' "$hash" | tr '[:lower:]' '[:upper:]')"
 
-  if ! curl -fsS -H "X-Api-Key: $api_key" \
-    "$url/api/$api_version/history?page=1&pageSize=10000&sortKey=date&sortDirection=descending" \
+  if ! curl -fsS --get -H "X-Api-Key: $api_key" \
+    --data-urlencode "downloadId=$uppercase_hash" \
+    --data-urlencode 'page=1' \
+    --data-urlencode 'pageSize=2000' \
+    --data-urlencode 'sortKey=date' \
+    --data-urlencode 'sortDirection=descending' \
+    "$url/api/$api_version/history" \
     -o "$destination"; then
-    log "history fetch failed url=$url api=$api_version"
+    log "history fetch failed url=$url api=$api_version hash=$hash"
     return 1
   fi
 }
@@ -257,9 +264,21 @@ candidate_is_safe() {
 
   unique_download_payload_exists "$hash" || return 1
   case "$category" in
-    tv-sonarr) current_sonarr_files_exist "$hash" ;;
-    radarr) current_radarr_files_exist "$hash" ;;
-    music) current_lidarr_files_exist "$hash" ;;
+    tv-sonarr)
+      fetch_history "$sonarr_url" v3 "$sonarr_key" \
+        "$state_dir/sonarr-history.json" "$hash" &&
+        current_sonarr_files_exist "$hash"
+      ;;
+    radarr)
+      fetch_history "$radarr_url" v3 "$radarr_key" \
+        "$state_dir/radarr-history.json" "$hash" &&
+        current_radarr_files_exist "$hash"
+      ;;
+    music)
+      fetch_history "$lidarr_url" v1 "$lidarr_key" \
+        "$state_dir/lidarr-history.json" "$hash" &&
+        current_lidarr_files_exist "$hash"
+      ;;
     *) return 1 ;;
   esac
 }
@@ -353,13 +372,6 @@ run_cycle() {
     log "qBittorrent inventory fetch failed"
     return 1
   fi
-  fetch_history "$sonarr_url" v3 "$sonarr_key" \
-    "$state_dir/sonarr-history.json" || return
-  fetch_history "$radarr_url" v3 "$radarr_key" \
-    "$state_dir/radarr-history.json" || return
-  fetch_history "$lidarr_url" v1 "$lidarr_key" \
-    "$state_dir/lidarr-history.json" || return
-
   jq -r '
     .[] |
     select(

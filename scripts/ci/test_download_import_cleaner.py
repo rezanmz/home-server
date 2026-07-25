@@ -24,6 +24,7 @@ class ApiState:
         self.arr_removal_enabled = False
         self.sonarr_history_status = 200
         self.delete_requests: list[dict[str, list[str]]] = []
+        self.history_queries: list[dict[str, list[str]]] = []
 
         self.downloads = root / "downloads"
         self.tv = root / "tv"
@@ -114,6 +115,9 @@ class MockApiHandler(BaseHTTPRequestHandler):
                 ]
             )
         elif path == "/sonarr/api/v3/history":
+            self.state.history_queries.append(
+                urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            )
             self.send_json(
                 self.state.sonarr_history(),
                 self.state.sonarr_history_status,
@@ -222,6 +226,10 @@ class ImportCleanerTest(unittest.TestCase):
             [{"hashes": [TORRENT_HASH], "deleteFiles": ["true"]}],
         )
         self.assertIn("deleted verified import", result.stdout)
+        self.assertEqual(
+            self.api_state.history_queries[0]["downloadId"],
+            [TORRENT_HASH.upper()],
+        )
 
     def test_missing_current_library_file_fails_closed(self) -> None:
         self.api_state.episode_file.unlink()
@@ -248,7 +256,7 @@ class ImportCleanerTest(unittest.TestCase):
             (self.api_state.state / f"confirm-{TORRENT_HASH}").exists()
         )
         self.assertIn("history fetch failed", result.stdout)
-        self.assertIn("cycle failed", result.stdout)
+        self.assertNotIn("cycle failed", result.stdout)
 
 
 if __name__ == "__main__":
