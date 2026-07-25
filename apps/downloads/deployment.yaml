@@ -716,7 +716,7 @@ spec:
           configMap:
             name: downloads-import-cleaner
             defaultMode: 0555
-        - {name: import-cleaner-state, emptyDir: {sizeLimit: 16Mi}}
+        - {name: import-cleaner-state, emptyDir: {sizeLimit: 128Mi}}
         - name: qb-access-config
           configMap: {name: qbittorrent-access-proxy}
         - name: pr-access-config

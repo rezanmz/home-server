@@ -331,6 +331,11 @@ confirm_or_delete() {
 }
 
 run_cycle() {
+  # History snapshots are overwritten, while per-torrent API responses use
+  # hash-specific names. Remove the latter before every pass so long-running
+  # pods cannot accumulate state for torrents that no longer exist.
+  rm -f "$state_dir"/qbittorrent-files-*.json "$state_dir"/recheck-*.json
+
   require_storage_contract || {
     log "storage contract failed; deletion skipped"
     return

@@ -172,6 +172,13 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertIn("/api/v2/torrents/delete", cleaner_script)
         self.assertNotIn("/api/v2/torrents/start", cleaner_script)
         self.assertNotIn("/api/v2/torrents/resume", cleaner_script)
+        self.assertIn(
+            'rm -f "$state_dir"/qbittorrent-files-*.json', cleaner_script
+        )
+        self.assertEqual(
+            volumes["import-cleaner-state"]["emptyDir"]["sizeLimit"],
+            "128Mi",
+        )
 
         importer_contract = {
             "radarr": ("/media/movies", "movies"),
