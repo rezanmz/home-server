@@ -354,6 +354,12 @@ confirm_or_delete() {
 }
 
 run_cycle() {
+  # Keep the health signal fresh while a pass is doing remote API and
+  # filesystem work. The separate ready marker continues to mean that a full
+  # safety pass succeeded and is the only signal consumed by the storage
+  # guard.
+  touch "$heartbeat"
+
   # History snapshots are overwritten, while per-torrent API responses use
   # hash-specific names. Remove the latter before every pass so long-running
   # pods cannot accumulate state for torrents that no longer exist.
@@ -389,10 +395,15 @@ run_cycle() {
 }
 
 mkdir -p "$state_dir"
+# The cleaner can start before the Arr applications in this multi-container
+# pod. Mark the process itself alive immediately and throughout dependency
+# discovery; import safety remains gated by the distinct ready marker.
+touch "$heartbeat"
 until curl -fsS "$qbittorrent_url/api/v2/app/version" >/dev/null &&
   curl -fsS -H "X-Api-Key: $sonarr_key" "$sonarr_url/ping" >/dev/null &&
   curl -fsS -H "X-Api-Key: $radarr_key" "$radarr_url/ping" >/dev/null &&
   curl -fsS -H "X-Api-Key: $lidarr_key" "$lidarr_url/ping" >/dev/null; do
+  touch "$heartbeat"
   sleep 2
 done
 

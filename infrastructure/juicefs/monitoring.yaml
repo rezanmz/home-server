@@ -69,11 +69,28 @@ spec:
             summary: JuiceFS PostgreSQL metadata database is unavailable
             description: PostgreSQL is required to interpret every object in the media bucket.
         - alert: JuiceFSObjectStoreErrors
-          expr: sum(increase(juicefs_object_request_errors{vol_name="media"}[10m])) > 0
+          # JuiceFS retries occasional object-store failures transparently. A
+          # single retried request is not an outage, so require both a useful
+          # sample size and a material error ratio before paging the operator.
+          expr: |
+            (
+              sum(increase(juicefs_object_request_errors{vol_name="media"}[15m])) >= 5
+            )
+            and
+            (
+              sum(increase(juicefs_object_request_errors{vol_name="media"}[15m]))
+              /
+              clamp_min(
+                sum(increase(juicefs_object_request_durations_histogram_seconds_count{vol_name="media"}[15m])),
+                1
+              )
+              > 0.01
+            )
+          for: 5m
           labels: {severity: warning}
           annotations:
-            summary: JuiceFS is receiving B2 object-store errors
-            description: JuiceFS reported {{ $value | printf "%.0f" }} failed object operations in ten minutes.
+            summary: JuiceFS is receiving persistent B2 object-store errors
+            description: JuiceFS reported {{ $value | printf "%.0f" }} failed object operations in fifteen minutes and an error ratio above 1% for five minutes.
         - alert: JuiceFSMetadataBackupStale
           expr: absent(juicefs_last_successful_backup{vol_name="media"}) or time() - max(juicefs_last_successful_backup{vol_name="media"}) > 10800
           for: 2h
