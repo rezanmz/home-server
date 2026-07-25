@@ -13,3 +13,7 @@ configMapGenerator:
     namespace: media
     files:
       - storage-guard.sh
+  - name: downloads-import-cleaner
+    namespace: media
+    files:
+      - import-cleaner.sh
