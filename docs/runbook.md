@@ -1634,16 +1634,28 @@ disabled. The global seeding-time limit is one minute and its action is
 **Stop torrent**; qBittorrent must never delete the torrent or payload when the
 share limit is reached. Every managed torrent inherits the global limits.
 
-Radarr, Sonarr, and Lidarr have completed-download handling and **Remove**
-enabled. The resulting ownership boundary is intentional: qBittorrent stops a
-completed torrent but retains its local payload, the owning Arr application
-copies and records the media on the synchronous JuiceFS/B2 library, and only a
-successful completed-download import permits that Arr application to remove
-the torrent and local download payload. An incomplete or failed import remains
-stopped and available for review. Manual, uncategorized, book, and otherwise
-unowned torrents are also stopped but are never deleted automatically. Review
-this policy in qBittorrent under **Settings > BitTorrent > Seeding Limits** and
-the Arr applications under **Settings > Download Clients > Completed Download
+Radarr, Sonarr, and Lidarr have completed-download handling enabled but
+**Remove** disabled. Arr's built-in remover trusts historical import state and
+can delete the last download copy when a formerly imported library file has
+since disappeared. The `downloads-import-cleaner` sidecar is therefore the
+only component authorized to call qBittorrent's destructive delete endpoint.
+It reads API keys from the three backed-up Arr configuration volumes; no API
+keys or application settings live in the infrastructure manifests.
+
+The cleaner accepts only stopped, complete `tv-sonarr`, `radarr`, and `music`
+torrents with unique payload paths on the Pi NFS volume. It requires an exact
+successful Arr import-history event, verifies every affected current Arr
+record points to a non-empty file on the read-only JuiceFS mount, and repeats
+the complete check in two consecutive 60-second passes. Lidarr additionally
+requires every audio file in the torrent to have a matching track-import
+event. Immediately before deletion it rechecks both qBittorrent state and the
+current library. Incomplete imports, missing current library files, duplicate
+payload paths, manual downloads, books, and uncategorized torrents fail closed
+and remain stopped for review.
+
+Review the one-minute stop-only policy in qBittorrent under **Settings >
+BitTorrent > Seeding Limits** and verify **Remove** remains disabled in the Arr
+applications under **Settings > Download Clients > Completed Download
 Handling** after restoring their configuration volumes.
 
 Full-file preallocation is enabled in the same backed-up qBittorrent settings.
@@ -1656,6 +1668,7 @@ library before deleting through qBittorrent or manually resuming work.
 
 ```bash
 sudo k3s kubectl -n media logs deployment/downloads -c downloads-storage-guard --tail=100
+sudo k3s kubectl -n media logs deployment/downloads -c downloads-import-cleaner --tail=100
 sudo k3s kubectl -n media exec deployment/downloads -c qbittorrent -- \
   sh -ec 'curl -fsS http://127.0.0.1:8080/api/v2/app/preferences | grep -o '"'"'"preallocate_all":[^,}]*'"'"''
 ```

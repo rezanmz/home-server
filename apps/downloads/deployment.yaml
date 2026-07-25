@@ -260,6 +260,58 @@ spec:
             - {name: storage-guard, mountPath: /opt/storage-guard, readOnly: true}
             - {name: storage-guard-state, mountPath: /tmp}
             - {name: media-downloads, mountPath: /media/downloads}
+        - name: downloads-import-cleaner
+          image: linuxserver/qbittorrent:5.2.3@sha256:b024436f8ca665d16d9a997d26fd27fdf867ee5566ba09f32764e7b2976d3e02
+          imagePullPolicy: IfNotPresent
+          command: [sh, /opt/import-cleaner/import-cleaner.sh]
+          env:
+            - {name: CHECK_INTERVAL_SECONDS, value: "60"}
+            - {name: CONFIRMATIONS_REQUIRED, value: "2"}
+            - {name: DELETE_ENABLED, value: "true"}
+          readinessProbe:
+            exec: {command: [sh, -ec, "find /state/import-cleaner-heartbeat -mmin -3 -print -quit | grep -q ."]}
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec: {command: [sh, -ec, "find /state/import-cleaner-heartbeat -mmin -3 -print -quit | grep -q ."]}
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 3
+            failureThreshold: 2
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: import-cleaner, mountPath: /opt/import-cleaner, readOnly: true}
+            - {name: import-cleaner-state, mountPath: /state}
+            - {name: sonarr-config, mountPath: /arr-config/sonarr, readOnly: true}
+            - {name: radarr-config, mountPath: /arr-config/radarr, readOnly: true}
+            - {name: lidarr-config, mountPath: /arr-config/lidarr, readOnly: true}
+            - {name: media-downloads, mountPath: /media/downloads, readOnly: true}
+            - name: media-library
+              mountPath: /media/tv
+              subPath: tv
+              readOnly: true
+              mountPropagation: HostToContainer
+            - name: media-library
+              mountPath: /media/movies
+              subPath: movies
+              readOnly: true
+              mountPropagation: HostToContainer
+            - name: media-library
+              mountPath: /media/music
+              subPath: music
+              readOnly: true
+              mountPropagation: HostToContainer
         - name: flaresolverr
           image: flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
           imagePullPolicy: IfNotPresent
@@ -660,6 +712,11 @@ spec:
             name: downloads-storage-guard
             defaultMode: 0555
         - {name: storage-guard-state, emptyDir: {sizeLimit: 1Mi}}
+        - name: import-cleaner
+          configMap:
+            name: downloads-import-cleaner
+            defaultMode: 0555
+        - {name: import-cleaner-state, emptyDir: {sizeLimit: 16Mi}}
         - name: qb-access-config
           configMap: {name: qbittorrent-access-proxy}
         - name: pr-access-config

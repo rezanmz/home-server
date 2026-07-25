@@ -130,6 +130,49 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertNotIn("/api/v2/torrents/start", guard_script)
         self.assertNotIn("/api/v2/torrents/delete", guard_script)
 
+        cleaner = containers["downloads-import-cleaner"]
+        cleaner_env = {item["name"]: item["value"] for item in cleaner["env"]}
+        self.assertEqual(cleaner_env["CHECK_INTERVAL_SECONDS"], "60")
+        self.assertEqual(cleaner_env["CONFIRMATIONS_REQUIRED"], "2")
+        self.assertEqual(cleaner_env["DELETE_ENABLED"], "true")
+        cleaner_mounts = {
+            item["mountPath"]: item for item in cleaner["volumeMounts"]
+        }
+        for read_only_path in (
+            "/opt/import-cleaner",
+            "/arr-config/sonarr",
+            "/arr-config/radarr",
+            "/arr-config/lidarr",
+            "/media/downloads",
+            "/media/tv",
+            "/media/movies",
+            "/media/music",
+        ):
+            self.assertTrue(cleaner_mounts[read_only_path]["readOnly"])
+        for library_path, subpath in (
+            ("/media/tv", "tv"),
+            ("/media/movies", "movies"),
+            ("/media/music", "music"),
+        ):
+            self.assertEqual(cleaner_mounts[library_path]["subPath"], subpath)
+            self.assertEqual(
+                cleaner_mounts[library_path]["mountPropagation"],
+                "HostToContainer",
+            )
+
+        cleaner_script = (
+            REPO_ROOT / "apps/downloads/import-cleaner.sh"
+        ).read_text()
+        self.assertIn('.state=="stoppedUP"', cleaner_script)
+        self.assertIn('.eventType=="downloadFolderImported"', cleaner_script)
+        self.assertIn('.eventType=="trackFileImported"', cleaner_script)
+        self.assertIn("all_lidarr_audio_was_imported", cleaner_script)
+        self.assertIn("CONFIRMATIONS_REQUIRED", cleaner_script)
+        self.assertIn("second library check rejected", cleaner_script)
+        self.assertIn("/api/v2/torrents/delete", cleaner_script)
+        self.assertNotIn("/api/v2/torrents/start", cleaner_script)
+        self.assertNotIn("/api/v2/torrents/resume", cleaner_script)
+
         importer_contract = {
             "radarr": ("/media/movies", "movies"),
             "sonarr": ("/media/tv", "tv"),
