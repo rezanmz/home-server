@@ -187,6 +187,12 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertIn('rm -f "$state_dir"/confirm-*', cleaner_script)
         self.assertIn('touch "$ready"', cleaner_script)
         self.assertIn('rm -f "$ready"', cleaner_script)
+        startup_heartbeat = cleaner_script.index(
+            'touch "$heartbeat"', cleaner_script.index('mkdir -p "$state_dir"')
+        )
+        self.assertLess(
+            startup_heartbeat, cleaner_script.index("until curl")
+        )
         self.assertIn('downloadId=$uppercase_hash', cleaner_script)
         self.assertIn("pageSize=2000", cleaner_script)
         self.assertEqual(
@@ -462,6 +468,13 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             "JuiceFSAbnormalB2ReadGrowth",
         ):
             self.assertIn('vol_name="media"', rules[alert_name])
+        object_store_expr = rules["JuiceFSObjectStoreErrors"]
+        self.assertIn(">= 5", object_store_expr)
+        self.assertIn("> 0.01", object_store_expr)
+        self.assertIn(
+            "juicefs_object_request_durations_histogram_seconds_count",
+            object_store_expr,
+        )
         self.assertIn("absent(", rules["JuiceFSMetadataBackupStale"])
         for alert_name in (
             "JuiceFSCapacity75Percent",
