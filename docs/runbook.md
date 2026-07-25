@@ -1629,16 +1629,22 @@ tunnel and firewall are healthy. Do not bypass the sidecar with an ordinary
 pod-level egress route.
 
 qBittorrent's operational share policy lives in its backed-up application
-volume rather than in the infrastructure manifests. Public-tracker torrents
-seed for at most 20,160 minutes (14 days), after which qBittorrent removes both
-the torrent and its local content. The ratio limit is disabled: combining a
-short ratio target with the destructive action could remove a fast torrent
-before an Arr application's completed-download handler imports it. Radarr,
-Sonarr, and Lidarr have completed-download handling enabled and remove their
-own imported torrents normally; the 14-day qBittorrent ceiling also bounds
-manual or otherwise unowned torrents. Review this policy in qBittorrent under
-**Settings > BitTorrent > Seeding Limits** after restoring its configuration
-volume.
+volume rather than in the infrastructure manifests. The global ratio limit is
+disabled. The global seeding-time limit is one minute and its action is
+**Stop torrent**; qBittorrent must never delete the torrent or payload when the
+share limit is reached. Every managed torrent inherits the global limits.
+
+Radarr, Sonarr, and Lidarr have completed-download handling and **Remove**
+enabled. The resulting ownership boundary is intentional: qBittorrent stops a
+completed torrent but retains its local payload, the owning Arr application
+copies and records the media on the synchronous JuiceFS/B2 library, and only a
+successful completed-download import permits that Arr application to remove
+the torrent and local download payload. An incomplete or failed import remains
+stopped and available for review. Manual, uncategorized, book, and otherwise
+unowned torrents are also stopped but are never deleted automatically. Review
+this policy in qBittorrent under **Settings > BitTorrent > Seeding Limits** and
+the Arr applications under **Settings > Download Clients > Completed Download
+Handling** after restoring their configuration volumes.
 
 Full-file preallocation is enabled in the same backed-up qBittorrent settings.
 The `downloads-storage-guard` container is the hard safety boundary: every 60
