@@ -116,18 +116,27 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         guard = containers["downloads-storage-guard"]
         guard_env = {item["name"]: item["value"] for item in guard["env"]}
         self.assertEqual(guard_env["CHECK_INTERVAL_SECONDS"], "60")
-        self.assertEqual(guard_env["MIN_FREE_BYTES"], "214748364800")
-        self.assertEqual(guard_env["MIN_FREE_PERCENT"], "20")
+        self.assertEqual(guard_env["MIN_FREE_BYTES"], "107374182400")
+        self.assertEqual(guard_env["MIN_FREE_PERCENT"], "10")
+        self.assertEqual(guard_env["RESUME_FREE_BYTES"], "214748364800")
+        self.assertEqual(guard_env["RESUME_FREE_PERCENT"], "20")
         guard_mounts = {item["name"]: item for item in guard["volumeMounts"]}
         self.assertEqual(
             guard_mounts["media-downloads"]["mountPath"], "/media/downloads"
         )
         self.assertTrue(guard_mounts["storage-guard"]["readOnly"])
+        self.assertEqual(
+            guard_mounts["import-cleaner-state"]["mountPath"],
+            "/import-cleaner-state",
+        )
+        self.assertTrue(guard_mounts["import-cleaner-state"]["readOnly"])
         guard_script = (REPO_ROOT / "apps/downloads/storage-guard.sh").read_text()
         self.assertIn("stat -f -c %T", guard_script)
         self.assertIn("/api/v2/torrents/stop", guard_script)
-        self.assertIn("hashes=all", guard_script)
-        self.assertNotIn("/api/v2/torrents/start", guard_script)
+        self.assertIn("/api/v2/torrents/addTags", guard_script)
+        self.assertIn("/api/v2/torrents/start", guard_script)
+        self.assertIn("/api/v2/torrents/removeTags", guard_script)
+        self.assertNotIn("hashes=all", guard_script)
         self.assertNotIn("/api/v2/torrents/delete", guard_script)
 
         cleaner = containers["downloads-import-cleaner"]
@@ -176,11 +185,17 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
             'rm -f "$state_dir"/qbittorrent-files-*.json', cleaner_script
         )
         self.assertIn('rm -f "$state_dir"/confirm-*', cleaner_script)
+        self.assertIn('touch "$ready"', cleaner_script)
+        self.assertIn('rm -f "$ready"', cleaner_script)
         self.assertIn('downloadId=$uppercase_hash', cleaner_script)
         self.assertIn("pageSize=2000", cleaner_script)
         self.assertEqual(
             volumes["import-cleaner-state"]["emptyDir"]["sizeLimit"],
             "128Mi",
+        )
+        self.assertEqual(
+            volumes["storage-guard-state"]["emptyDir"]["sizeLimit"],
+            "8Mi",
         )
 
         importer_contract = {
