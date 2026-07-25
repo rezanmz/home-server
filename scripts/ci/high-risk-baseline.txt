@@ -144,7 +144,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vikunja|
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|juicefs-postgresql|spec/sha256/36716bbe1bac7ce647ee26d35af967c2201f94932647d5bc8aa4d1b9733ab0a7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|kube-system|observability-node-exporter|spec/sha256/37f053596d712e401b7faf79f7d085250ee55ff0a7a846017d84ea06e0e31885
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|spec/sha256/2d4344f4b1c91c64c784bf14c9e172b0bf08717181145edb8ad11a72a3f1876b
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|spec/sha256/70d51b00bd08647df389aab3fd7ce04c3ecf8eccbbb0c9c23da4a6e0110dd2a1
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|spec/sha256/67ba0f809134cd806cf0229cca8d7d6b99fecfde40972c4121bfce36d6c979ef
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/5d2a81a0dfbf63e5944a87f5dd4560040d36e53e5c691096a79632488248fb9c

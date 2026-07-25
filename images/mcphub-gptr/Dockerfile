@@ -49,6 +49,9 @@ ARG JELLYSEERR_MCP_RICH_VERSION=14.3.4
 ARG JELLYSEERR_MCP_SDK_VERSION=1.28.1
 ARG MCP_ARR_VERSION=1.6.5
 ARG NAVIDROME_MCP_VERSION=2.1.0
+ARG AUDIOBOOKSHELF_MCP_VERSION=1.0.1
+ARG AUDIOBOOKSHELF_MCP_AGENT_UTILITIES_VERSION=1.0.2
+ARG AUDIOBOOKSHELF_MCP_DOTENV_VERSION=1.2.2
 ARG ACTUAL_MCP_REVISION=24925803dff2dfb697cb6e53c06662ee66c94f01
 ARG ACTUAL_API_VERSION=26.7.0
 ARG ACTUAL_MCP_HONO_VERSION=4.12.31
@@ -62,10 +65,10 @@ ARG ACTUAL_MCP_ADM_ZIP_VERSION=0.6.0
 ARG ACTUAL_MCP_BETTER_SQLITE_VERSION=12.11.1
 
 LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
-      org.opencontainers.image.description="MCPHub plus pinned personal-assistant, media, home, and read-only operations MCP packages" \
+      org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="1.0.24-assistant-suite-4" \
+      org.opencontainers.image.version="1.0.24-assistant-suite-5" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -86,7 +89,10 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # private virtual environment so MCPHub can launch it as a stdio child process.
 # The Node packages are the reference MCP filesystem server and reviewed,
 # published integrations for Vikunja, read-only Gmail, Google Calendar, the
-# Arr suite, Navidrome, and Actual Budget. The Jellyseerr server is installed
+# Arr suite, Navidrome, and Actual Budget. The released Audiobookshelf MCP
+# package is installed into an isolated Python environment; MCPHub owns its
+# service URL, credential, tool allow-list, and all other operational settings.
+# The Jellyseerr server is installed
 # from a reviewed upstream revision because it has no package release. Actual
 # MCP is installed from a reviewed upstream revision and
 # its lockfile because its official Actual API dependency includes a native
@@ -168,6 +174,12 @@ RUN apt-get update \
          "python-dotenv==${JELLYSEERR_MCP_DOTENV_VERSION}" \
          "rich==${JELLYSEERR_MCP_RICH_VERSION}" \
          "mcp==${JELLYSEERR_MCP_SDK_VERSION}" \
+    && uv venv --python /usr/local/bin/python3 /opt/audiobookshelf-mcp/.venv \
+    && uv pip install \
+         --python /opt/audiobookshelf-mcp/.venv/bin/python \
+         "audiobookshelf-mcp[mcp]==${AUDIOBOOKSHELF_MCP_VERSION}" \
+         "agent-utilities[mcp]==${AUDIOBOOKSHELF_MCP_AGENT_UTILITIES_VERSION}" \
+         "python-dotenv==${AUDIOBOOKSHELF_MCP_DOTENV_VERSION}" \
     && /opt/vision-guard/.venv/bin/python \
          /opt/vision-guard/bin/test_vision_guard.py \
     && rm /opt/vision-guard/bin/test_vision_guard.py \
@@ -187,6 +199,8 @@ RUN apt-get update \
     && command -v kubernetes-mcp-server \
     && command -v github-mcp-server \
     && /opt/jellyseerr-mcp/.venv/bin/python -c 'import sys; sys.path.insert(0, "/opt/jellyseerr-mcp"); from jellyseerr_mcp.server import mcp' \
+    && /opt/audiobookshelf-mcp/.venv/bin/python -c 'from audiobookshelf_mcp.mcp_server import get_mcp_instance; server, _, _ = get_mcp_instance(); assert server is not None' \
+    && test -x /opt/audiobookshelf-mcp/.venv/bin/audiobookshelf-mcp \
     && test -x /usr/bin/gcloud-mcp \
     && /opt/google-cloud-sdk/bin/gcloud --version \
     && chmod 0755 /opt/vision-guard/bin/gcloud /usr/local/bin/start-gcloud-mcp /usr/local/bin/jellyseerr-mcp \

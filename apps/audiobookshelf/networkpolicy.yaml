@@ -15,6 +15,19 @@ spec:
               kubernetes.io/metadata.name: traefik
       ports:
         - {port: 13378, protocol: TCP}
+    # The reviewed Audiobookshelf MCP server is launched as a local MCPHub
+    # child. It reaches only the native API; MCPHub groups and the dedicated
+    # Audiobookshelf service account constrain the client-visible operations.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcphub
+              app.kubernetes.io/component: application
+      ports:
+        - {port: 13378, protocol: TCP}
   egress:
     - to:
         - namespaceSelector:
