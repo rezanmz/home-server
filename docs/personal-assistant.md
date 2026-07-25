@@ -18,6 +18,7 @@ Hermes Agent ----> MCPHub
                 |-- Jellyseerr MCP -> media search and reviewed requests
                 |-- mcp-arr -> Radarr/Sonarr/Prowlarr reads + Lidarr music actions
                 |-- Navidrome MCP -> library reads and playlist actions
+                |-- Audiobookshelf MCP -> podcast feeds, subscriptions, and downloads
                 |-- Grafana MCP -> dashboards, metrics, logs, and alerts, read only
                 |-- Kubernetes MCP -> cluster diagnostics, read only
                 |-- GitHub MCP -> personal repository context, read only
@@ -165,6 +166,17 @@ the settings path. Browser traffic uses Authentik
 forward authentication, while `/rest/*` and the internal MCP endpoint strip
 external identity headers and use native credentials.
 
+Audiobookshelf uses the published `audiobookshelf-mcp` package in verbose-tool
+mode. Its dedicated Audiobookshelf administrator account can access only the
+Podcasts library, has item deletion disabled, and exists because Audiobookshelf
+requires an administrator to create podcast subscriptions. MCPHub exposes only
+library discovery, RSS feed inspection, subscription creation, new-episode
+checks, download-queue inspection, and episode downloads. Bulk OPML import,
+queue clearing, episode removal/update/matching, and every author, series,
+email, notification, or library mutation tool stay outside all groups. The
+Audiobookshelf URL, token, and tool allow-list are application state in MCPHub;
+the repository owns only the pinned executable and network boundary.
+
 Operations tools are read-only at more than one layer. Grafana's official MCP
 server starts with `--disable-write` and a Viewer service-account token. The
 official Kubernetes MCP server starts with `--read-only` and a dedicated
@@ -243,9 +255,10 @@ Use separate MCPHub groups for different risk levels:
   document-reading providers.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, note creation in Inbox or Daily, reviewed Home Assistant control,
-  Jellyseerr requests, Lidarr music acquisition, and Navidrome playlist/rating
-  operations. It may also expose stateless `mcp-v8` execution for bounded
-  calculations and transformations.
+  Jellyseerr requests, Lidarr music acquisition, Navidrome playlist/rating
+  operations, and explicitly requested Audiobookshelf podcast subscriptions or
+  episode downloads. It may also expose stateless `mcp-v8` execution for
+  bounded calculations and transformations.
 - Calendar deletion and destructive filesystem tools stay out of both groups.
   Vikunja task deletion is the single reviewed exception in action-capable
   groups and requires explicit confirmation immediately before the call.

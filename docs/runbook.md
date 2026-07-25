@@ -1355,6 +1355,12 @@ boundaries are:
 - Navidrome: allow library/history/playlist reads; add playlist, star, and
   rating mutations to action groups. Exclude library deletion and local
   playback control.
+- Audiobookshelf: run the pinned Python package in verbose mode and allow only
+  `get_libraries`, `get_podcast_feed`, `create_podcast`, `check_new_episodes`,
+  `get_episode_downloads`, and `download_episodes`. Its dedicated admin account
+  is restricted to the Podcasts library and has delete permission disabled.
+  Keep bulk OPML import, queue clearing, episode removal/update/matching, and
+  all non-podcast mutation tools outside every group.
 
 Health checks:
 
@@ -1363,6 +1369,7 @@ sudo k3s kubectl -n media get deployment/downloads deployment/navidrome pods ser
 sudo k3s kubectl -n media logs deploy/downloads -c lidarr --tail=150
 sudo k3s kubectl -n media logs deploy/navidrome -c navidrome --tail=150
 sudo k3s kubectl -n media logs deploy/navidrome -c policy-proxy --tail=100
+sudo k3s kubectl -n apps logs deploy/mcphub -c mcphub --tail=150 | grep -i audiobookshelf
 sudo k3s kubectl -n media exec deploy/downloads -c lidarr -- \
   sh -lc 'test -w /media/music && curl -fsS http://127.0.0.1:8686/ping'
 ```

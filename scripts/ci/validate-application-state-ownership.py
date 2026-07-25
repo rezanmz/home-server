@@ -84,6 +84,7 @@ def main() -> int:
         "@cocal/google-calendar-mcp@",
         "mcp-arr-server@",
         "navidrome-mcp@",
+        "audiobookshelf-mcp[mcp]==",
         "https://github.com/aserper/jellyseerr-mcp.git",
         "https://github.com/grafana/mcp-grafana.git",
         "https://github.com/containers/kubernetes-mcp-server.git",
