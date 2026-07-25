@@ -18,6 +18,7 @@ readonly radarr_config_path="${RADARR_CONFIG_PATH:-/arr-config/radarr}"
 readonly lidarr_config_path="${LIDARR_CONFIG_PATH:-/arr-config/lidarr}"
 readonly state_dir="${STATE_PATH:-/state}"
 readonly heartbeat="$state_dir/import-cleaner-heartbeat"
+readonly ready="$state_dir/import-cleaner-ready"
 
 log() {
   printf '%s import-cleaner %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
@@ -396,10 +397,15 @@ until curl -fsS "$qbittorrent_url/api/v2/app/version" >/dev/null &&
 done
 
 while true; do
-  if ! run_cycle; then
+  if run_cycle; then
+    # The storage guard may resume only work it previously stopped after a
+    # recent successful storage, ownership-policy, and API inventory check.
+    touch "$ready"
+  else
     # A failed pass breaks the required consecutive-confirmation chain. Never
     # carry a prior positive result across an API, policy, or storage failure.
     rm -f "$state_dir"/confirm-*
+    rm -f "$ready"
     log "cycle failed; deletion skipped"
   fi
   touch "$heartbeat"

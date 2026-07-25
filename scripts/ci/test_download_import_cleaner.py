@@ -230,6 +230,9 @@ class ImportCleanerTest(unittest.TestCase):
             self.api_state.history_queries[0]["downloadId"],
             [TORRENT_HASH.upper()],
         )
+        self.assertTrue(
+            (self.api_state.state / "import-cleaner-ready").exists()
+        )
 
     def test_missing_current_library_file_fails_closed(self) -> None:
         self.api_state.episode_file.unlink()
@@ -239,6 +242,9 @@ class ImportCleanerTest(unittest.TestCase):
         self.assertFalse(
             (self.api_state.state / f"confirm-{TORRENT_HASH}").exists()
         )
+        self.assertTrue(
+            (self.api_state.state / "import-cleaner-ready").exists()
+        )
 
     def test_arr_builtin_removal_must_be_disabled(self) -> None:
         self.api_state.arr_removal_enabled = True
@@ -246,6 +252,9 @@ class ImportCleanerTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.api_state.delete_requests, [])
         self.assertIn("ownership policy failed", result.stdout)
+        self.assertFalse(
+            (self.api_state.state / "import-cleaner-ready").exists()
+        )
 
     def test_failed_history_fetch_breaks_confirmation_chain(self) -> None:
         self.api_state.sonarr_history_status = 500
