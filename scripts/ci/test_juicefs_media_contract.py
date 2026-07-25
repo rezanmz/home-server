@@ -175,6 +175,7 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         self.assertIn(
             'rm -f "$state_dir"/qbittorrent-files-*.json', cleaner_script
         )
+        self.assertIn('rm -f "$state_dir"/confirm-*', cleaner_script)
         self.assertEqual(
             volumes["import-cleaner-state"]["emptyDir"]["sizeLimit"],
             "128Mi",

@@ -22,6 +22,7 @@ class ApiState:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.arr_removal_enabled = False
+        self.sonarr_history_status = 200
         self.delete_requests: list[dict[str, list[str]]] = []
 
         self.downloads = root / "downloads"
@@ -113,7 +114,10 @@ class MockApiHandler(BaseHTTPRequestHandler):
                 ]
             )
         elif path == "/sonarr/api/v3/history":
-            self.send_json(self.state.sonarr_history())
+            self.send_json(
+                self.state.sonarr_history(),
+                self.state.sonarr_history_status,
+            )
         elif path in ("/radarr/api/v3/history", "/lidarr/api/v1/history"):
             self.send_json({"records": []})
         elif path == "/sonarr/api/v3/episode/1":
@@ -234,6 +238,17 @@ class ImportCleanerTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.api_state.delete_requests, [])
         self.assertIn("ownership policy failed", result.stdout)
+
+    def test_failed_history_fetch_breaks_confirmation_chain(self) -> None:
+        self.api_state.sonarr_history_status = 500
+        result = self.run_cleaner()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.api_state.delete_requests, [])
+        self.assertFalse(
+            (self.api_state.state / f"confirm-{TORRENT_HASH}").exists()
+        )
+        self.assertIn("history fetch failed", result.stdout)
+        self.assertIn("cycle failed", result.stdout)
 
 
 if __name__ == "__main__":

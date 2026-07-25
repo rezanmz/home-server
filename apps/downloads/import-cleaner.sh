@@ -100,9 +100,12 @@ fetch_history() {
   api_key=$3
   destination=$4
 
-  curl -fsS -H "X-Api-Key: $api_key" \
+  if ! curl -fsS -H "X-Api-Key: $api_key" \
     "$url/api/$api_version/history?page=1&pageSize=10000&sortKey=date&sortDirection=descending" \
-    -o "$destination"
+    -o "$destination"; then
+    log "history fetch failed url=$url api=$api_version"
+    return 1
+  fi
 }
 
 current_sonarr_files_exist() {
@@ -338,15 +341,18 @@ run_cycle() {
 
   require_storage_contract || {
     log "storage contract failed; deletion skipped"
-    return
+    return 1
   }
   safe_ownership_policy || {
     log "ownership policy failed; Arr removal must be disabled and qBittorrent must use the one-minute stop-only limit"
-    return
+    return 1
   }
 
-  curl -fsS "$qbittorrent_url/api/v2/torrents/info" \
-    -o "$state_dir/qbittorrent.json" || return
+  if ! curl -fsS "$qbittorrent_url/api/v2/torrents/info" \
+    -o "$state_dir/qbittorrent.json"; then
+    log "qBittorrent inventory fetch failed"
+    return 1
+  fi
   fetch_history "$sonarr_url" v3 "$sonarr_key" \
     "$state_dir/sonarr-history.json" || return
   fetch_history "$radarr_url" v3 "$radarr_key" \
@@ -379,6 +385,9 @@ done
 
 while true; do
   if ! run_cycle; then
+    # A failed pass breaks the required consecutive-confirmation chain. Never
+    # carry a prior positive result across an API, policy, or storage failure.
+    rm -f "$state_dir"/confirm-*
     log "cycle failed; deletion skipped"
   fi
   touch "$heartbeat"
