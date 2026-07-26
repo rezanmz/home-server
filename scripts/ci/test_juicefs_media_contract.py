@@ -469,12 +469,22 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         ):
             self.assertIn('vol_name="media"', rules[alert_name])
         object_store_expr = rules["JuiceFSObjectStoreErrors"]
-        self.assertIn(">= 5", object_store_expr)
+        self.assertIn("sum by (instance, pod)", object_store_expr)
+        self.assertIn("[2m]", object_store_expr)
+        self.assertIn(">= 2", object_store_expr)
         self.assertIn("> 0.01", object_store_expr)
         self.assertIn(
             "juicefs_object_request_durations_histogram_seconds_count",
             object_store_expr,
         )
+        object_store_rule = next(
+            item
+            for group in rule["spec"]["groups"]
+            for item in group["rules"]
+            if item["alert"] == "JuiceFSObjectStoreErrors"
+        )
+        self.assertEqual(object_store_rule["for"], "5m")
+        self.assertIn("$labels.pod", object_store_rule["annotations"]["summary"])
         self.assertIn("absent(", rules["JuiceFSMetadataBackupStale"])
         for alert_name in (
             "JuiceFSCapacity75Percent",

@@ -3,6 +3,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: duplicati-config
   namespace: network-services
+  labels:
+    # This frozen recovery volume has independent final snapshots/backups. Do
+    # not attach it every night or create new snapshots of unchanged data.
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn

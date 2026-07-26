@@ -74,6 +74,14 @@ are desired. Duplicati is the deliberate example: its directory retains
 recovery manifests, while its active Kustomization contains only the config
 PVC.
 
+A deliberately retained, frozen Longhorn PVC must not silently inherit the
+default nightly backup job. Preserve a named final off-site backup, then label
+the PVC with both `recurring-job.longhorn.io/source=enabled` and
+`recurring-job-group.longhorn.io/default=disabled`. This makes the opt-out
+explicit and prevents Longhorn from repeatedly attaching an unused volume and
+creating snapshots of unchanged data. Do not apply this to active or
+intermittently active claims such as `calibre-web-ingest`.
+
 Before a change, establish all three facts:
 
 ```bash

@@ -69,28 +69,37 @@ spec:
             summary: JuiceFS PostgreSQL metadata database is unavailable
             description: PostgreSQL is required to interpret every object in the media bucket.
         - alert: JuiceFSObjectStoreErrors
-          # JuiceFS retries occasional object-store failures transparently. A
-          # single retried request is not an outage, so require both a useful
-          # sample size and a material error ratio before paging the operator.
+          # The counter includes request attempts that JuiceFS retries
+          # successfully. Use a short lookback and a longer `for` so a burst
+          # which immediately recovers cannot remain truthy merely because it
+          # is still inside a long rolling window. Evaluate each mount
+          # independently so one busy client cannot hide another unhealthy one.
           expr: |
             (
-              sum(increase(juicefs_object_request_errors{vol_name="media"}[15m])) >= 5
-            )
-            and
-            (
-              sum(increase(juicefs_object_request_errors{vol_name="media"}[15m]))
+              sum by (instance, pod) (
+                increase(juicefs_object_request_errors{vol_name="media"}[2m])
+              )
               /
               clamp_min(
-                sum(increase(juicefs_object_request_durations_histogram_seconds_count{vol_name="media"}[15m])),
+                sum by (instance, pod) (
+                  increase(juicefs_object_request_durations_histogram_seconds_count{vol_name="media"}[2m])
+                ),
                 1
               )
               > 0.01
             )
+            and
+            (
+              sum by (instance, pod) (
+                increase(juicefs_object_request_errors{vol_name="media"}[2m])
+              )
+              >= 2
+            )
           for: 5m
           labels: {severity: warning}
           annotations:
-            summary: JuiceFS is receiving persistent B2 object-store errors
-            description: JuiceFS reported {{ $value | printf "%.0f" }} failed object operations in fifteen minutes and an error ratio above 1% for five minutes.
+            summary: JuiceFS mount {{ $labels.pod }} has sustained B2 request failures
+            description: The B2 request error ratio for {{ $labels.instance }} has remained above 1% with continuing failures for five minutes (current ratio {{ $value | humanizePercentage }}).
         - alert: JuiceFSMetadataBackupStale
           expr: absent(juicefs_last_successful_backup{vol_name="media"}) or time() - max(juicefs_last_successful_backup{vol_name="media"}) > 10800
           for: 2h
