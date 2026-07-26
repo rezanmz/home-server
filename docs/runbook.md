@@ -368,6 +368,13 @@ either record a new retention decision or remove the PVC/PV/Longhorn volume
 through the identity-checked storage procedure; do not let an unlabeled orphan
 persist. Deleting the local volume must not delete the retained B2 Backup.
 
+The 2026-07-26 review retained the frozen local copy for another manual
+rollback option but removed it from the default recurring-job group. The PVC
+has `recurring-job.longhorn.io/source=enabled` and
+`recurring-job-group.longhorn.io/default=disabled`; its named final B2 backup
+remains the off-node recovery point. Re-enable recurring backups only if the
+Pi-hole archive is intentionally brought back into writable service.
+
 ### ISC Stork
 
 Stork is available at `https://stork.reza.network/` only from the LAN or
