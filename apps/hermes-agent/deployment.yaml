@@ -28,6 +28,47 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: wait-for-mcphub-tools
+          # Use Hermes's own MCP client and its application-owned config from
+          # the data volume. This avoids duplicating MCP URLs, credentials, or
+          # expected server names in infrastructure code.
+          image: docker.io/nousresearch/hermes-agent:v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+          imagePullPolicy: IfNotPresent
+          command: [/bin/sh, -ec]
+          args:
+            - |-
+              previous_count=""
+              while true; do
+                if output="$(timeout 45 /opt/hermes/bin/hermes mcp test mcphub 2>&1)"; then
+                  count="$(printf '%s\n' "$output" | sed -n 's/.*Tools discovered: \([0-9][0-9]*\).*/\1/p' | tail -n 1)"
+                  if [ -n "$count" ] && [ "$count" -gt 0 ]; then
+                    if [ "$count" = "$previous_count" ]; then
+                      echo "MCPHub tool registry is ready with $count tools."
+                      exit 0
+                    fi
+                    echo "MCPHub reports $count tools; waiting for one stable recheck."
+                    previous_count="$count"
+                  fi
+                else
+                  echo "MCPHub is not ready; retrying."
+                  previous_count=""
+                fi
+                sleep 5
+              done
+          resources:
+            requests: {cpu: 25m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10000
+            runAsGroup: 10000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: data, mountPath: /opt/data}
+            - {name: tmp, mountPath: /tmp}
       containers:
         - name: hermes-agent
           # Official release v2026.7.20 (Hermes Agent v0.19.0), pinned to

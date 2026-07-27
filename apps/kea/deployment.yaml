@@ -177,19 +177,38 @@ spec:
             - {name: stork-agent, containerPort: 8080, protocol: TCP}
           startupProbe:
             exec:
-              command: [sh, -ec, "test -s /var/lib/stork-agent/certs/cert.pem && test -r /var/lib/kea/kea-leases4.csv && pgrep -x stork-agent >/dev/null"]
+              command:
+                - sh
+                - -ec
+                - >-
+                  test -s /var/lib/stork-agent/certs/cert.pem &&
+                  test -r /var/lib/kea/kea-leases4.csv &&
+                  pgrep -x stork-agent >/dev/null &&
+                  awk '$2 == "01002A0A:1F90" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp
             periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 120
+            failureThreshold: 60
           readinessProbe:
             exec:
-              command: [sh, -ec, "test -s /var/lib/stork-agent/certs/cert.pem && test -r /var/lib/kea/kea-leases4.csv && pgrep -x stork-agent >/dev/null"]
+              command:
+                - sh
+                - -ec
+                - >-
+                  test -s /var/lib/stork-agent/certs/cert.pem &&
+                  test -r /var/lib/kea/kea-leases4.csv &&
+                  pgrep -x stork-agent >/dev/null &&
+                  awk '$2 == "01002A0A:1F90" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
           livenessProbe:
             exec:
-              command: [sh, -ec, "pgrep -x stork-agent >/dev/null"]
+              command:
+                - sh
+                - -ec
+                - >-
+                  pgrep -x stork-agent >/dev/null &&
+                  awk '$2 == "01002A0A:1F90" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp
             periodSeconds: 30
             timeoutSeconds: 3
             failureThreshold: 3
