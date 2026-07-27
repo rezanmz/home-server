@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - flux-system
   - ../../infrastructure/namespaces
+  - ../../infrastructure/coredns
   - ../../infrastructure/snapshot-controller
   - ../../infrastructure/longhorn
   - ../../infrastructure/juicefs

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  reza-network.server: |-
+    # Workloads use the public HTTPS names as their canonical OIDC issuers.
+    # Resolve those names through Blocky's service-catalog-generated split DNS
+    # instead of sending pod queries to public DNS and relying on WAN hairpin.
+    reza.network:53 {
+        errors
+        cache 30
+        forward . 192.168.1.2 192.168.1.3 {
+            policy sequential
+            max_fails 1
+            expire 10s
+            health_check 2s
+        }
+    }
