@@ -50,6 +50,18 @@ spec:
         - {port: 8989, protocol: TCP}
         - {port: 9696, protocol: TCP}
     - from:
+        # Cleanuparr inspects qBittorrent payload metadata and tells the Arr
+        # applications to reject malicious releases. Its UI is not exposed.
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cleanuparr
+              app.kubernetes.io/component: download-safety
+      ports:
+        - {port: 7878, protocol: TCP}
+        - {port: 8080, protocol: TCP}
+        - {port: 8686, protocol: TCP}
+        - {port: 8989, protocol: TCP}
+    - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
