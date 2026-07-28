@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cleanuparr
+  namespace: media
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cleanuparr
+      app.kubernetes.io/component: download-safety
+  policyTypes: [Ingress, Egress]
+  # Cleanuparr is intentionally internal-only. Administration is available by
+  # an authenticated kubectl port-forward, not through a public HTTPRoute.
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: media-vpn
+      ports:
+        - {port: 7878, protocol: TCP}
+        - {port: 8080, protocol: TCP}
+        - {port: 8686, protocol: TCP}
+        - {port: 8989, protocol: TCP}
+    # The maintained Cleanuparr blocklists are fetched over HTTPS. Keep all
+    # private destinations closed; access to the Arr stack is granted above.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - {port: 443, protocol: TCP}

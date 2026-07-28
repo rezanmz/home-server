@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: CatalogExclusion
+metadata:
+  name: cleanuparr
+spec:
+  reason: Internal download-safety controller with no browser-facing service or external hostname.

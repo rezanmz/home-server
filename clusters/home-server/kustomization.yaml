@@ -29,6 +29,7 @@ resources:
   - ../../apps/calibre-web
   - ../../apps/cloudflare-ddns
   - ../../apps/downloads
+  - ../../apps/cleanuparr
   - ../../apps/prowlarr
   - ../../apps/radarr
   - ../../apps/sonarr
