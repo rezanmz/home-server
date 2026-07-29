@@ -118,6 +118,11 @@ spec:
       image:
         tag: v2.19.1
         sha: sha256:85108987d044b18a098126732f98602df408888c0f7d456241f5abefb9744bc1
+      # Backup coverage must distinguish active Longhorn claims from frozen
+      # rollback volumes that explicitly opt out of the nightly job. Expose
+      # only that one PVC label rather than the full, high-cardinality set.
+      metricLabelsAllowlist:
+        - persistentvolumeclaims=[recurring-job-group.longhorn.io/default]
       resources:
         requests: {cpu: 50m, memory: 128Mi}
         limits: {cpu: 500m, memory: 384Mi}
