@@ -176,7 +176,7 @@ validate_release_reference \
   "${cert_manager_release}" OCIRepository flux-system cert-manager
 cert_manager_chart="$(pull_oci_chart \
   "${cert_manager_source}" \
-  9c2c6fabf3cf8fe14dacb016f37c819b66bc2c79e8b7acde4573d45ec141fb97)"
+  c27101f3f3e2349fb4a9e704316105bf7b52ad73b8c8257d3498ef7f2f6a4adc)"
 render_release \
   "${cert_manager_release}" \
   "${cert_manager_chart}"
@@ -230,7 +230,7 @@ validate_release_reference \
   "${observability_release}" OCIRepository flux-system kube-prometheus-stack
 observability_chart="$(pull_oci_chart \
   "${observability_source}" \
-  153c69faae66a313dc07ed36f77741fd17cc7da86d3d7790b34bf4d4902fe7f4)"
+  05eae98df0ff6c21877a26a4400780e4bbff248bc3b88694ef8d08b273ed6815)"
 render_release "${observability_release}" "${observability_chart}"
 
 : >"${expected_releases}"

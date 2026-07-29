@@ -1,0 +1,56 @@
+name: Build MCPHub image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - codex/**
+    paths:
+      - .github/workflows/build-mcphub-image.yml
+      - images/mcphub-gptr/**
+      - scripts/build-mcphub-gptr-image.sh
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install multi-architecture emulation
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Configure Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker-container
+
+      - name: Authenticate to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build, test, attest, and push MCPHub
+        env:
+          MCPHUB_IMAGE_NAMESPACE: ghcr.io/${{ github.repository_owner }}
+          MCPHUB_BUILDX_BUILDER: ${{ steps.buildx.outputs.name }}
+        run: scripts/build-mcphub-gptr-image.sh

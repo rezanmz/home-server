@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: audiobookshelf
-          image: ghcr.io/advplyr/audiobookshelf:2.35.0@sha256:89276ff2e0b3d2f07dd334b641f27a34ab7f02e1047c60b7b8a30126cb0813a5
+          image: ghcr.io/advplyr/audiobookshelf:2.36.0@sha256:180acad33d69c99ed208676465d8edcb268fa46967735579a7810859885b1a8e
           imagePullPolicy: IfNotPresent
           env:
             - {name: TZ, value: America/Toronto}
