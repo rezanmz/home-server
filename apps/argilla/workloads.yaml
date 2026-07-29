@@ -337,6 +337,10 @@ spec:
         app.kubernetes.io/component: redis
     spec:
       automountServiceAccountToken: false
+      # Give Redis enough time to finish its normal SIGTERM persistence path.
+      # This cannot protect against a power loss, but it keeps planned rollouts
+      # and node maintenance from leaving persistence work half-finished.
+      terminationGracePeriodSeconds: 60
       securityContext:
         fsGroup: 999
         fsGroupChangePolicy: OnRootMismatch
@@ -346,10 +350,30 @@ spec:
         - name: redis
           image: redis:8.8.1@sha256:c88d347edef6249a6d2293f926f1eeb48bd40c57cbcd02c07f52e7f1fd2cb46b
           imagePullPolicy: IfNotPresent
-          args: [redis-server, --appendonly, "yes"]
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            # Redis 8.4+ can safely discard a small malformed AOF tail after an
+            # unclean shutdown. Keep the limit deliberately narrow so damage in
+            # the middle of the AOF still fails closed for manual inspection.
+            - --aof-load-corrupt-tail-max-size
+            - "4096"
+            # Keep a recent atomic RDB fallback in addition to the AOF. Argilla
+            # uses Redis for background jobs, not authoritative dataset data.
+            - --save
+            - "60 1"
           ports:
             - name: redis
               containerPort: 6379
+          startupProbe:
+            exec:
+              command: [sh, -c, "redis-cli ping | grep -q PONG"]
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 36
           readinessProbe:
             exec:
               command: [sh, -c, "redis-cli ping | grep -q PONG"]
