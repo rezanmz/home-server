@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: samba
-          image: ghcr.io/servercontainers/samba:a3.23.4-s4.22.8-r0@sha256:fca5af0dc11d5bdaa45107648b0e4e558ffbd48dbb635c13039ce8336f542d59
+          image: ghcr.io/servercontainers/samba:a3.24.1-s4.23.8-r0@sha256:9c629b0b9261ba04289275479f67f6bdaadd6ed18e90631e1ed451749ea69d18
           imagePullPolicy: IfNotPresent
           env:
             - name: MODEL
