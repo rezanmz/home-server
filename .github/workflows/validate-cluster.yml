@@ -99,6 +99,7 @@ jobs:
         run: |
           actionlint
           scripts/ci/validate-shell.sh
+          FLUX_VERIFY_ONLY=true scripts/bootstrap-flux.sh
           python3 -m py_compile scripts/*.py
           python3 -m py_compile scripts/ci/*.py
           python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'

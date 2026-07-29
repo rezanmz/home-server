@@ -2,7 +2,10 @@
 set -euo pipefail
 
 host="${1:-beelink}"
-flux_version="${FLUX_VERSION:-v2.9.3}"
+# renovate: datasource=github-releases depName=fluxcd/flux2 versioning=semver
+supported_flux_version="v2.9.3"
+flux_version="${FLUX_VERSION:-${supported_flux_version}}"
+verify_only="${FLUX_VERIFY_ONLY:-false}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sync_manifest="${repo_root}/clusters/home-server/flux-system/gotk-sync.yaml"
 install_sha256="aa0bd71dbc4bed916b9cafa850c4618f341c74c580832c613dca04a067ee7281"
@@ -10,7 +13,7 @@ install_manifest="$(mktemp)"
 pinned_install_manifest="$(mktemp)"
 trap 'rm -f -- "${install_manifest}" "${pinned_install_manifest}"' EXIT
 
-if [[ "${flux_version}" != "v2.9.3" ]]; then
+if [[ "${flux_version}" != "${supported_flux_version}" ]]; then
   printf 'Unsupported FLUX_VERSION %s; review the install checksum and all controller digests first.\n' \
     "${flux_version}" >&2
   exit 1
@@ -78,6 +81,16 @@ if [[ -n "${tag_only_controllers}" ]]; then
   printf 'Refusing to apply Flux manifest with tag-only controller images:\n%s\n' \
     "${tag_only_controllers}" >&2
   exit 1
+fi
+
+if [[ "${verify_only}" == "true" ]]; then
+  printf 'Verified Flux %s install checksum and %d controller image pins.\n' \
+    "${flux_version}" "${#flux_images[@]}"
+  exit 0
+fi
+if [[ "${verify_only}" != "false" ]]; then
+  printf 'FLUX_VERIFY_ONLY must be true or false, got %s.\n' "${verify_only}" >&2
+  exit 2
 fi
 
 ssh "${host}" sudo k3s kubectl apply -f - < "${pinned_install_manifest}"
