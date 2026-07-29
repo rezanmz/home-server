@@ -13,9 +13,23 @@ spec:
     - name: home-server.backup-recording
       interval: 30s
       rules:
-        # Join Longhorn's backup timestamp to kube-state-metrics so only PVCs
-        # using the backed-up default Longhorn StorageClass are included.
-        # The intentionally reproducible longhorn-observability PVCs are not.
+        # Build one authoritative eligibility set. Frozen rollback PVCs keep
+        # their last off-site recovery point but explicitly disable the default
+        # recurring job, so they must not age into a false backup incident.
+        - record: home_server_longhorn_backup_eligible_pvc_info
+          expr: |
+            max by (namespace, persistentvolumeclaim) (
+              kube_persistentvolumeclaim_info{storageclass="longhorn"}
+            )
+            unless on (namespace, persistentvolumeclaim)
+            max by (namespace, persistentvolumeclaim) (
+              kube_persistentvolumeclaim_labels{
+                label_recurring_job_group_longhorn_io_default="disabled"
+              }
+            )
+        # Join Longhorn's backup timestamp to that eligibility inventory. The
+        # intentionally reproducible longhorn-observability PVCs use a separate
+        # StorageClass and the frozen rollback PVCs are excluded above.
         - record: home_server_longhorn_backup_age_seconds
           expr: |
             (
@@ -28,20 +42,14 @@ spec:
             and on (pvc_namespace, pvc)
             label_replace(
               label_replace(
-                max by (namespace, persistentvolumeclaim) (
-                  kube_persistentvolumeclaim_info{storageclass="longhorn"}
-                ),
+                home_server_longhorn_backup_eligible_pvc_info,
                 "pvc_namespace", "$1", "namespace", "(.*)"
               ),
               "pvc", "$1", "persistentvolumeclaim", "(.*)"
             )
         - record: home_server_longhorn_backup_eligible_pvcs
           expr: |
-            count(
-              max by (namespace, persistentvolumeclaim) (
-                kube_persistentvolumeclaim_info{storageclass="longhorn"}
-              )
-            )
+            count(home_server_longhorn_backup_eligible_pvc_info)
         - record: home_server_longhorn_backup_covered_pvcs
           expr: |
             count(
@@ -49,9 +57,7 @@ spec:
               and on (pvc_namespace, pvc)
               label_replace(
                 label_replace(
-                  max by (namespace, persistentvolumeclaim) (
-                    kube_persistentvolumeclaim_info{storageclass="longhorn"}
-                  ),
+                  home_server_longhorn_backup_eligible_pvc_info,
                   "pvc_namespace", "$1", "namespace", "(.*)"
                 ),
                 "pvc", "$1", "persistentvolumeclaim", "(.*)"
