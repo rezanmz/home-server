@@ -2,25 +2,25 @@
 set -euo pipefail
 
 host="${1:-beelink}"
-flux_version="${FLUX_VERSION:-v2.9.1}"
+flux_version="${FLUX_VERSION:-v2.9.3}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sync_manifest="${repo_root}/clusters/home-server/flux-system/gotk-sync.yaml"
-install_sha256="4ec5e767a8c259bfa78668aa649df9cce7f60ff7a3c034a514bdb159a05e5e80"
+install_sha256="aa0bd71dbc4bed916b9cafa850c4618f341c74c580832c613dca04a067ee7281"
 install_manifest="$(mktemp)"
 pinned_install_manifest="$(mktemp)"
 trap 'rm -f -- "${install_manifest}" "${pinned_install_manifest}"' EXIT
 
-if [[ "${flux_version}" != "v2.9.1" ]]; then
+if [[ "${flux_version}" != "v2.9.3" ]]; then
   printf 'Unsupported FLUX_VERSION %s; review the install checksum and all controller digests first.\n' \
     "${flux_version}" >&2
   exit 1
 fi
 
 flux_images=(
-  "helm-controller=ghcr.io/fluxcd/helm-controller:v1.6.2@sha256:e17ab0e5885d80cebb9890663f85d59cd3866adebfc09a4d8bd2d512ef980bc4"
+  "helm-controller=ghcr.io/fluxcd/helm-controller:v1.6.3@sha256:16ada99456385100698a5d7adf90aba8a2089d987ab541c9566b6d7b0e897038"
   "image-automation-controller=ghcr.io/fluxcd/image-automation-controller:v1.2.3@sha256:81128adfd127601530d3dffc1deaf7c9eeec5b9aa555b3ab80cab37fa5d909a4"
   "image-reflector-controller=ghcr.io/fluxcd/image-reflector-controller:v1.2.3@sha256:a47e09e024a9ff2ea4f3878a1b90c2850134cfdc8b292ec52268dbc1e57e1a4c"
-  "kustomize-controller=ghcr.io/fluxcd/kustomize-controller:v1.9.3@sha256:0203eb80743814f67bebb5f0b22c7db620bc461cc0b23732e0367a38fce04e4c"
+  "kustomize-controller=ghcr.io/fluxcd/kustomize-controller:v1.9.4@sha256:2b8bec54ffb6caf421bd2a6c005d27f567d5dd4db7feb55794fb51fcabd69b8f"
   "notification-controller=ghcr.io/fluxcd/notification-controller:v1.9.2@sha256:9ce503e7bcb8493fafe2aaef0c2ac4396df4f6890256acf9cd444a2dcd2a69ed"
   "source-controller=ghcr.io/fluxcd/source-controller:v1.9.3@sha256:ff8f3c92f1bcb433e858c948040c3a3393fe73f5dd72048a4502bfaf0a4c26cd"
   "source-watcher=ghcr.io/fluxcd/source-watcher:v2.2.2@sha256:1d59f752ecf520d1dc56ca413749dfab507497dd363639b6fbaf5036850e05c7"
