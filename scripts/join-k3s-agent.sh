@@ -3,6 +3,7 @@ set -euo pipefail
 
 server_host="${1:-beelink}"
 agent_host="${2:-pi}"
+# renovate: datasource=github-releases depName=k3s-io/k3s versioning=loose
 k3s_version="${K3S_VERSION:-v1.36.2+k3s1}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${repo_root}/infrastructure/k3s/agent-pi-config.yaml"

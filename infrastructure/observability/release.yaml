@@ -98,18 +98,18 @@ spec:
         releaseNamespace: true
       automountServiceAccountToken: true
       image:
-        tag: v0.92.1
-        sha: 7d9247d2351480fc74587e24681578f815f387bafb2ee7b86a852a94c4cd3774
+        tag: v0.93.0
+        sha: a001ed10a3823bbf2410ea347796d0e35ff8decd24fb98acbe7ab9e98d431c39
       prometheusConfigReloader:
         image:
-          tag: v0.92.1
-          sha: 74550ba3e8bf93f47bc574231090d340ae9c01d25cd11ff74799e65f9fdb9a48
+          tag: v0.93.0
+          sha: 0ccb22ca9f3f6fd9f76ce95585d18bd2e363d421c534dde710be4bd13caa551d
         resources:
           requests: {cpu: 10m, memory: 32Mi}
           limits: {cpu: 200m, memory: 128Mi}
       thanosImage:
-        tag: v0.42.0
-        sha: cc1975aaeb64a744dc11319892345f4822f72860f0efcff030111fe08328bfa4
+        tag: v0.42.2
+        sha: 6249f7aaadd3695df637fb2eb4cb9a9955611eee691c3970892fe9c0dc3f2db6
       resources:
         requests: {cpu: 50m, memory: 128Mi}
         limits: {cpu: 500m, memory: 384Mi}
@@ -118,6 +118,11 @@ spec:
       image:
         tag: v2.19.1
         sha: sha256:85108987d044b18a098126732f98602df408888c0f7d456241f5abefb9744bc1
+      # Backup coverage must distinguish active Longhorn claims from frozen
+      # rollback volumes that explicitly opt out of the nightly job. Expose
+      # only that one PVC label rather than the full, high-cardinality set.
+      metricLabelsAllowlist:
+        - persistentvolumeclaims=[recurring-job-group.longhorn.io/default]
       resources:
         requests: {cpu: 50m, memory: 128Mi}
         limits: {cpu: 500m, memory: 384Mi}
@@ -255,8 +260,8 @@ spec:
 
     grafana:
       image:
-        tag: 13.1.0
-        sha: 121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63
+        tag: 13.1.1
+        sha: 7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b
       testFramework:
         enabled: false
       admin:
@@ -314,8 +319,8 @@ spec:
         automountServiceAccountToken: true
       sidecar:
         image:
-          tag: 2.8.1
-          sha: abb55b2165c60e8f97e473862c7a3123df6f67d44f592949577c29b8fb2df9d6
+          tag: 2.10.0
+          sha: 21b9fe7bb29d65caf2445ccbf96ff6eda5e589a92bd8f5188f957fe75b551d72
         resources:
           requests: {cpu: 10m, memory: 32Mi}
           limits: {cpu: 200m, memory: 128Mi}

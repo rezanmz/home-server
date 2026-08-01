@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: speedtest-tracker
-          image: lscr.io/linuxserver/speedtest-tracker:1.14.3@sha256:226b39816ccb9bf6d07fa9735d8beed656699db4669209e92f7494f15ab3f113
+          image: lscr.io/linuxserver/speedtest-tracker:1.14.6@sha256:1647a57e0c125eac6c3a5256c499aa8f580fa7d27d0842376277cdf93e137018
           imagePullPolicy: IfNotPresent
           env:
             - name: PUID

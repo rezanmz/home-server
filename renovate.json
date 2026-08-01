@@ -11,6 +11,13 @@
   "updateNotScheduled": false,
   "rebaseWhen": "conflicted",
   "draftPR": true,
+  "prConcurrentLimit": 4,
+  "prHourlyLimit": 2,
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": false,
+    "vulnerabilityFixStrategy": "lowest"
+  },
   "kubernetes": {
     "managerFilePatterns": [
       "/^(?:apps|clusters|infrastructure)/.+\\.ya?ml$/"
@@ -34,15 +41,53 @@
       "datasourceTemplate": "docker",
       "depNameTemplate": "juicedata/mount",
       "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Track reviewed package-version arguments inside custom image Dockerfiles.",
+      "managerFilePatterns": [
+        "/^images/.+/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) packageName=(?<packageName>\\S+) versioning=(?<versioning>\\S+)\\nARG [A-Z0-9_]+_VERSION=(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Keep custom-image build scripts aligned with their reviewed upstream base version.",
+      "managerFilePatterns": [
+        "/^scripts/build-mcphub-gptr-image\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+) versioning=(?<versioning>\\S+)\\nreadonly MCPHUB_VERSION=\\\"(?<currentValue>[^\\\"]+)\\\""
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Surface reviewed Flux and K3s bootstrap releases without bypassing checksum guards.",
+      "managerFilePatterns": [
+        "/^scripts/(?:bootstrap-flux|bootstrap-k3s-server|install-k3s|join-k3s-agent)\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+) versioning=(?<versioning>\\S+)\\nsupported_flux_version=\\\"(?<currentValue>[^\\\"]+)\\\"",
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+) versioning=(?<versioning>\\S+)\\nk3s_version=\\\"\\$\\{(?:K3S_VERSION|3):-(?<currentValue>[^}]+)\\}\\\""
+      ]
     }
   ],
   "packageRules": [
     {
-      "description": "All LinuxServer.io images use non-SemVer compound tag formats. Apply loose versioning, exclude nightly/development builds, and exclude stale Ubuntu-era tags (e.g. '14.3.9.xxx...ubuntu20.04.1-ls166') which sort higher than real app-version tags under loose versioning.",
+      "description": "LinuxServer.io images use non-SemVer compound tags. Apply loose versioning and reject prerelease, nightly, and stale Ubuntu-era tags.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/linuxserver\//"],
       "versioning": "loose",
-      "allowedVersions": "!/ubuntu|nightly/"
+      "allowedVersions": "!/ubuntu|nightly|develop|testing|alpha|beta|rc/"
+    },
+    {
+      "description": "Radarr and Lidarr are intentionally ahead of stable; allow reviewed digest refreshes but do not advance or downgrade their develop channels automatically.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/radarr", "linuxserver/lidarr"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false
     },
     {
       "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Loose versioning prevents misidentification.",
@@ -57,9 +102,10 @@
       "versioning": "loose"
     },
     {
-      "description": "pgvector uses channel tags like 'pg16' — not version numbers. Disable updates entirely to prevent bogus PRs.",
+      "description": "pgvector uses major-channel tags like pg16. Keep the channel fixed while still allowing security-relevant digest refreshes.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["pgvector/pgvector"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
       "enabled": false
     },
     {
@@ -83,11 +129,83 @@
       "allowedVersions": "/-full$/"
     },
     {
-      "description": "Group all non-major Docker updates into a single PR to reduce noise.",
+      "description": "Let non-security Docker releases age before opening a PR.",
       "matchDatasources": ["docker"],
-      "matchUpdateTypes": ["minor", "patch", "digest"],
-      "groupName": "Docker non-major updates",
-      "minimumReleaseAge": "1 day"
+      "matchUpdateTypes": ["minor", "patch"],
+      "minimumReleaseAge": "3 days",
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "prCreation": "not-pending",
+      "internalChecksFilter": "strict"
+    },
+    {
+      "description": "Digest rebuilds age briefly but are not mixed with feature-version updates.",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["digest"],
+      "groupName": "Docker digest refreshes",
+      "minimumReleaseAge": "1 day",
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "prCreation": "not-pending",
+      "internalChecksFilter": "strict"
+    },
+    {
+      "description": "The download automation containers share one pod and one rollback unit.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "qmcgaw/gluetun",
+        "linuxserver/qbittorrent",
+        "flaresolverr/flaresolverr",
+        "linuxserver/prowlarr",
+        "linuxserver/radarr",
+        "linuxserver/sonarr",
+        "linuxserver/lidarr",
+        "slskd/slskd",
+        "mrusse08/soularr",
+        "ghcr.io/calibrain/shelfmark"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Download automation updates"
+    },
+    {
+      "description": "Keep the tightly integrated Open WebUI, search, and agent images reviewable as one AI batch.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "ghcr.io/open-webui/open-webui",
+        "ghcr.io/searxng/searxng",
+        "apache/tika",
+        "nousresearch/hermes-agent",
+        "rezanmz/mcphub-gptr",
+        "rezanmz/llamacloud-mcp",
+        "rezanmz/mcp-v8"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "AI and MCP image updates"
+    },
+    {
+      "description": "Highlight DNS, DHCP, VPN, and public-record updates for isolated live validation.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "ghcr.io/0xerr0r/blocky",
+        "favonia/cloudflare-ddns",
+        "docker.cloudsmith.io/isc/docker/kea-dhcp4",
+        "ghcr.io/wg-easy/wg-easy"
+      ],
+      "labels": ["network-critical"],
+      "prPriority": 20
+    },
+    {
+      "description": "Highlight databases, synchronization, and file-serving updates for independent backup and rollback review.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "postgres",
+        "docker.io/library/postgres",
+        "redis",
+        "docker.elastic.co/elasticsearch/elasticsearch",
+        "pgvector/pgvector",
+        "lscr.io/linuxserver/syncthing",
+        "ghcr.io/servercontainers/samba"
+      ],
+      "labels": ["stateful"],
+      "prPriority": 10
     },
     {
       "description": "Major Docker updates always get individual PRs for manual review.",

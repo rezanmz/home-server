@@ -3,6 +3,7 @@ set -euo pipefail
 
 host="${1:-}"
 role="${2:-}"
+# renovate: datasource=github-releases depName=k3s-io/k3s versioning=loose
 k3s_version="${3:-v1.36.2+k3s1}"
 ssh_options=(
   -o BatchMode=yes

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.25
-ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.25@sha256:a7189b9b96253e46b602afbe97795de95aa4c1bdebc24c9ef0c6cf5ecf021bfd
+ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.26@sha256:efdbfa3990d5a27d0611ba509db30bcdda196dc14ee2fe7d5f1706cae636ef37
 ARG GCLOUD_IMAGE=gcr.io/google.com/cloudsdktool/google-cloud-cli:571.0.0-slim@sha256:61cdaee8f89a2500c8e93fac2499d98a5b7692fcc3d7d69abbef48200477cb71
 ARG GO_IMAGE=golang:1.26.5-bookworm@sha256:1ecb7edf62a0408027bd5729dfd6b1b8766e578e8df93995b225dfd0944eb651
 
@@ -10,10 +10,11 @@ ARG GRAFANA_MCP_REVISION=fac7c8a312c6f6aee8330de72182dcf45bf4ae26
 ARG KUBERNETES_MCP_REVISION=56d6dfe9a1b994faca27fa3310cb54e3d3bc42ed
 ARG GITHUB_MCP_REVISION=7629b6e7337e1fc4b11a0ca5fdea4af4edd21f6e
 
-# Build the official upstream operations servers from their signed release
-# revisions. Static binaries keep the final MCPHub image small and allow the
-# same Dockerfile to produce amd64 and arm64 images without downloading an
-# architecture-specific release asset at build time.
+# Build the upstream operations servers from reviewed exact revisions. Some
+# are signed releases; others remain intentionally pinned to reviewed commits
+# for tool-surface compatibility. Static binaries keep the final MCPHub image
+# small and allow the same Dockerfile to produce amd64 and arm64 images without
+# downloading architecture-specific release assets at build time.
 RUN git clone --filter=blob:none https://github.com/grafana/mcp-grafana.git /src/mcp-grafana \
     && git -C /src/mcp-grafana checkout --detach "${GRAFANA_MCP_REVISION}" \
     && test "$(git -C /src/mcp-grafana rev-parse HEAD)" = "${GRAFANA_MCP_REVISION}" \
@@ -33,42 +34,70 @@ RUN git clone --filter=blob:none https://github.com/grafana/mcp-grafana.git /src
 
 FROM ${MCPHUB_IMAGE}
 
+ARG MCPHUB_VERSION
 ARG GPTR_MCP_REVISION=63884773685b1f12c7f0d9e283b3d71a5b9b5fda
+# renovate: datasource=pypi packageName=gpt-researcher versioning=pep440
 ARG GPT_RESEARCHER_VERSION=0.16.0
+# renovate: datasource=pypi packageName=fastmcp versioning=pep440
 ARG FASTMCP_VERSION=2.14.7
+# renovate: datasource=npm packageName=@modelcontextprotocol/server-filesystem versioning=semver
 ARG FILESYSTEM_MCP_VERSION=2026.7.10
+# renovate: datasource=npm packageName=@eargollo/vikunja-mcp versioning=semver
 ARG VIKUNJA_MCP_VERSION=1.2.0
+# renovate: datasource=npm packageName=@klodr/gmail-mcp versioning=semver
 ARG GMAIL_MCP_VERSION=1.3.1
+# renovate: datasource=npm packageName=@cocal/google-calendar-mcp versioning=semver
 ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
+# renovate: datasource=npm packageName=@google-cloud/gcloud-mcp versioning=semver
 ARG GCLOUD_MCP_VERSION=0.5.3
+# renovate: datasource=pypi packageName=pypdf versioning=pep440
 ARG PYPDF_VERSION=6.1.1
 ARG JELLYSEERR_MCP_REVISION=fccf5689d64ad3ac6fc69dff8d4cb5ccf625a29a
+# renovate: datasource=pypi packageName=httpx versioning=pep440
 ARG JELLYSEERR_MCP_HTTPX_VERSION=0.28.1
+# renovate: datasource=pypi packageName=python-dotenv versioning=pep440
 ARG JELLYSEERR_MCP_DOTENV_VERSION=1.2.2
+# renovate: datasource=pypi packageName=rich versioning=pep440
 ARG JELLYSEERR_MCP_RICH_VERSION=14.3.4
+# renovate: datasource=pypi packageName=mcp versioning=pep440
 ARG JELLYSEERR_MCP_SDK_VERSION=1.28.1
+# renovate: datasource=npm packageName=mcp-arr-server versioning=semver
 ARG MCP_ARR_VERSION=1.6.5
+# renovate: datasource=npm packageName=navidrome-mcp versioning=semver
 ARG NAVIDROME_MCP_VERSION=2.1.0
+# renovate: datasource=pypi packageName=audiobookshelf-mcp versioning=pep440
 ARG AUDIOBOOKSHELF_MCP_VERSION=1.0.1
+# renovate: datasource=pypi packageName=agent-utilities versioning=pep440
 ARG AUDIOBOOKSHELF_MCP_AGENT_UTILITIES_VERSION=1.0.2
+# renovate: datasource=pypi packageName=python-dotenv versioning=pep440
 ARG AUDIOBOOKSHELF_MCP_DOTENV_VERSION=1.2.2
 ARG ACTUAL_MCP_REVISION=24925803dff2dfb697cb6e53c06662ee66c94f01
+# renovate: datasource=npm packageName=@actual-app/api versioning=semver
 ARG ACTUAL_API_VERSION=26.7.0
+# renovate: datasource=npm packageName=hono versioning=semver
 ARG ACTUAL_MCP_HONO_VERSION=4.12.31
+# renovate: datasource=npm packageName=@hono/node-server versioning=semver
 ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.0.11
+# renovate: datasource=npm packageName=fast-uri versioning=semver
 ARG ACTUAL_MCP_FAST_URI_VERSION=3.1.4
+# renovate: datasource=npm packageName=body-parser versioning=semver
 ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
+# renovate: datasource=npm packageName=qs versioning=semver
 ARG ACTUAL_MCP_QS_VERSION=6.15.3
+# renovate: datasource=npm packageName=brace-expansion versioning=semver
 ARG ACTUAL_MCP_BRACE_EXPANSION_VERSION=2.1.2
+# renovate: datasource=npm packageName=ua-parser-js versioning=semver
 ARG ACTUAL_MCP_UA_PARSER_VERSION=2.0.10
+# renovate: datasource=npm packageName=adm-zip versioning=semver
 ARG ACTUAL_MCP_ADM_ZIP_VERSION=0.6.0
+# renovate: datasource=npm packageName=better-sqlite3 versioning=semver
 ARG ACTUAL_MCP_BETTER_SQLITE_VERSION=12.11.1
 
 LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="1.0.24-assistant-suite-5" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-6" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
