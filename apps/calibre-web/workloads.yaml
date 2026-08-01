@@ -23,6 +23,9 @@ spec:
             - {name: PUID, value: "1000"}
             - {name: PGID, value: "1000"}
             - {name: TZ, value: America/Toronto}
+            # Shelfmark writes to this workload's Longhorn RWX/NFS ingest PVC
+            # from another node, where inotify events are not propagated.
+            - {name: CWA_WATCH_MODE, value: poll}
           ports:
             - {name: http, containerPort: 8083}
           startupProbe:
