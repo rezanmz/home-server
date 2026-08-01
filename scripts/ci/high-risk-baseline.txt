@@ -13,7 +13,7 @@ access-proxy-boundary|v1/ConfigMap|media|lidarr-access-proxy|data/sha256/b8a7693
 access-proxy-boundary|v1/ConfigMap|media|prowlarr-access-proxy|data/sha256/40c89068b8f9145fe4cbcfe7547b65b8a1b269f3435f1ab12b0fffc5329bb6a7
 access-proxy-boundary|v1/ConfigMap|media|qbittorrent-access-proxy|data/sha256/bd19213ab6c2385a576d596b5a7d8ae1971b171d693d6419ff4a1981f047bfb3
 access-proxy-boundary|v1/ConfigMap|media|radarr-access-proxy|data/sha256/a7d22dd9b3dac6608f9f738634d490d6baca4d2b4f2ae6322f3140f4b2600abf
-access-proxy-boundary|v1/ConfigMap|media|shelfmark-access-proxy|data/sha256/077d00e32d663a951590461f021f5e37bab5db09bc161efb6524c94b9cbda5bd
+access-proxy-boundary|v1/ConfigMap|media|shelfmark-access-proxy|data/sha256/13e3c13fe00a3b87131dbc35513b247de506dc915eed6431b436dd8ee330ce5c
 access-proxy-boundary|v1/ConfigMap|media|sonarr-access-proxy|data/sha256/4ef931967e6a9ad696b2b2792e56e310a2c28631196d5404263756a745e29e24
 access-proxy-boundary|v1/ConfigMap|monitoring|grafana-access-proxy|data/sha256/4db29e6b7de30c467ff9baaa4d31f8897e37e43486b17787fb9aa2122a65694f
 access-proxy-boundary|v1/ConfigMap|monitoring|headlamp-access-proxy|data/sha256/6624020b5e14dec81f49a62c7fea34313e6ab670a33df38a59b520335ffb0e5b
