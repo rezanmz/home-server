@@ -15,7 +15,7 @@ Hermes Agent ----> MCPHub
                 |-- Google Calendar MCP -> personal calendar, read/write
                 |-- Actual Budget MCP -> primary budget, read only
                 |-- Home Assistant native MCP -> exposed home entities
-                |-- Jellyseerr MCP -> media search and reviewed requests
+                |-- Seerr MCP -> media search and reviewed requests
                 |-- mcp-arr -> Radarr/Sonarr/Prowlarr reads + Lidarr music actions
                 |-- Navidrome MCP -> library reads and playlist actions
                 |-- Audiobookshelf MCP -> podcast feeds, subscriptions, and downloads
@@ -147,10 +147,11 @@ explicit request for consequential changes such as locks, security devices, or
 appliances.
 
 Media automation deliberately separates discovery from mutation. The reviewed
-`aserper/jellyseerr-mcp` package supplies health, search, request lookup, and
-media requests; its generic `raw_request` escape hatch is excluded from every
-group. The published `mcp-arr-server` package provides Radarr, Sonarr, Prowlarr,
-and Lidarr APIs. Read groups may inspect health, queues, calendars, libraries,
+upstream `aserper/jellyseerr-mcp` compatibility package supplies health, search,
+request lookup, and media requests; its generic `raw_request` escape hatch is
+excluded from every group. The published `mcp-arr-server` package provides
+Radarr, Sonarr, Prowlarr, and Lidarr APIs. Read groups may inspect health,
+queues, calendars, libraries,
 profiles, and indexers. Action-capable groups add only the chosen music
 acquisition tools for Lidarr; they do not gain arbitrary Radarr/Sonarr deletion
 or queue mutation. The MCP server reaches the raw cluster Services, while the
@@ -255,7 +256,7 @@ Use separate MCPHub groups for different risk levels:
   document-reading providers.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, note creation in Inbox or Daily, reviewed Home Assistant control,
-  Jellyseerr requests, Lidarr music acquisition, Navidrome playlist/rating
+  Seerr requests, Lidarr music acquisition, Navidrome playlist/rating
   operations, and explicitly requested Audiobookshelf podcast subscriptions or
   episode downloads. It may also expose stateless `mcp-v8` execution for
   bounded calculations and transformations.

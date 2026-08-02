@@ -5,8 +5,8 @@
 # baseline change for review. Format: rule|apiVersion/kind|namespace|name|location
 access-proxy-boundary|v1/ConfigMap|apps|actual-budget-access-proxy|data/sha256/de270f692ba8df0b624fe522d8b9a6d56eec66077a2c80254b8bd9d48be483d5
 access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-dcbm4m6mt8|data/sha256/c11e4beb17f2e12b3ac2c6dbd48f279d78ef66fe12c3fab85b76b903f5927240
-access-proxy-boundary|v1/ConfigMap|apps|jellyseerr-access-proxy|data/sha256/9904042157d0308934dfbe9f85c4e30f3bf9cce098885a59febc67879abcbdd5
 access-proxy-boundary|v1/ConfigMap|apps|mcphub-access-proxy|data/sha256/c02a93be7038899d154bccf2a7b51ef07b039ef73b0bb8bbab2956ae75bf2792
+access-proxy-boundary|v1/ConfigMap|apps|seerr-access-proxy|data/sha256/9904042157d0308934dfbe9f85c4e30f3bf9cce098885a59febc67879abcbdd5
 access-proxy-boundary|v1/ConfigMap|apps|speedtest-tracker-access-proxy|data/sha256/170041eb9f12f7150f8aecea1cd523715b7466d515977ad8925b62868965dc96
 access-proxy-boundary|v1/ConfigMap|media|jellyfin-access-proxy|data/sha256/6a10b2fb7cf7d55f4599c6e2cf22c801d425fa4a62a63c1972a3dd5fc2e1be72
 access-proxy-boundary|v1/ConfigMap|media|lidarr-access-proxy|data/sha256/b8a7693c1d874f865134e2d5b94ed27ba6052f4e6484231eb335b6c5a4b420c5
@@ -136,7 +136,6 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|default-
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|spec/sha256/cf7bf4ce905bf1fe21e27abd62689d3fbbe459bc633d36bef88277c28acca83a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/5d84ba9e6d1e07cdd6757c49791625e3580e7a72ffdd9a1df508e4d3ad9a52fe
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/4da37748da3b59a44c468b4124d4a2353b2cc7381d04d0f4ac3343832835e644
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|spec/sha256/5b591bf03cfc218f687e0db623c80288d4592e801fe9c052860fd3fcf3c5634e
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcp-v8|spec/sha256/32f934c59f12825edd076b4f9137756d9088ec197f4efe3afe6f96e9a4f0eb51
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/37abc13945951611dc511d657e61ec658c4c29371de0f1182349f0e1b1179ac3
@@ -145,6 +144,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|omnifin-
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|omnifin-web|spec/sha256/a64eb097067c708c09f609019a8f0dc3922dd426ae69e086c2e3471cc324fdeb
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|seerr|spec/sha256/cb7e4f119e169cf5de3b02de4802bb8c38ca9be2d421b2387ffe0e5aa6b5339b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|spec/sha256/9e8889aa30075eb5715602faa8bc6ef3b41957d1d88c3e674f58780d916919e1
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|tika|spec/sha256/75787649c5cc65abdb9d4b53762cfbb17b685080007a1cf68a2fa7c4ef003d03
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vikunja|spec/sha256/dcc1255377ad4ce12e740741d3c11f91f2cad9f13b4fb38143c442985a33fb7e
@@ -155,9 +155,9 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobo
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|spec/sha256/67ba0f809134cd806cf0229cca8d7d6b99fecfde40972c4121bfce36d6c979ef
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|cleanuparr|spec/sha256/da501384db1f870fe09a8b3a48471d9eb6c1d77889535da1982483ae073c452f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/9071e5bfd96f23b5813a38c782c6b382a0311bce68afaf4bc6215312bcd3fc7a
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/11f52a44e0e69b7d8308e5e724bed6bb187dfee4a282be390605703a8f4a6981
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-storage-exporter|spec/sha256/3f8b7ab4c2f08673fef8ab841b8c28bb2ffcaef6986c6f7dc279539e64a063ab
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/71c9b459eaf8a0bfdf4304efde20eadd8803433bd3d612af0bbb318b845accf3
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/eecb02a99d36d69f8adc6ac40244707823ae40703845aea4171e9ce6bfb8258a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|navidrome|spec/sha256/879d46cf7d6a8e1d3e153328dc52d9a713dff616f7ba36b97f986987c54d2fc9
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
@@ -197,10 +197,10 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|hermes-agent|spec/sha256/bf4b001f2e7c56ac3e3f56c19edf191df1fdbfc9f71a1e8195fd6af80cf7c345
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|home-assistant|spec/sha256/b966a90e721983a97270c782f22ffc95dd88d943d934df1e58a51ad0829172b1
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|homepage|spec/sha256/a87d2f602eb818e71492cea2b879bbd48a0e50f090da6d358a0a5cd78fc030a9
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|jellyseerr|spec/sha256/25e156ee08b67968746420ed5860b8d8053767266c01c92f39a67731edeb107a
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c6cb8bde71d6bed19e47c796e5c2d0adc5148549b033e8bf847cf705a18d59e
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|omnifin|spec/sha256/54c152839478d53c4ca30858c62322fa3b2553ed0b15332183bd53193fd54ede
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|seerr|spec/sha256/112f10a64f1c8768448bdc696a37ed3e8966fd68cd2ead449451fe373dfc4bab
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|speedtest-tracker|spec/sha256/fc47882c3b744cf189b7032b9ed5dc7016568744b09b03eb05d5eed48004a0f0
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vikunja|spec/sha256/06933edc112128e2e973f97a896466c99e3225179ef0c77ac226b94fba1dd7cc
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|audiobookshelf|spec/sha256/9be2497d352f2f4fa032722a81ec64ff535be8738805732e80d2926d6dae99d7
@@ -228,8 +228,8 @@ snapshot-class-boundary|snapshot.storage.k8s.io/v1/VolumeSnapshotClass|default|l
 traefik-backend-boundary|traefik.io/v1alpha1/ServersTransport|network-services|syncthing-mtls|spec/sha256/3b07d7bfc8ecfec929b80df38b75c449c6850a2147b17d926d3f953288395931
 traefik-backend-boundary|traefik.io/v1alpha1/TraefikService|network-services|syncthing-mtls|spec/sha256/9d4f3306034153efabc38b20c244162eea73d5bdf33f0aaaee467657a665eea6
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|egress/0/all-destinations
-universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|egress/0/all-destinations
+universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|seerr|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|egress/0/all-destinations
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec.verify/url/https://github.com/kubernetes-csi/external-snapshotter.git/ref/tag=<immutable-selector>,commit=<immutable-commit>

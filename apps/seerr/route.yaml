@@ -1,14 +1,14 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: jellyseerr
+  name: seerr
   namespace: apps
 spec:
   parentRefs:
     - name: home
       namespace: traefik
   hostnames:
-    - jellyseerr.reza.network
+    - seerr.reza.network
   rules:
     - filters:
         - type: ExtensionRef
@@ -22,5 +22,5 @@ spec:
             kind: Middleware
             name: lan-vpn-only
       backendRefs:
-        - name: jellyseerr
+        - name: seerr
           port: 5055

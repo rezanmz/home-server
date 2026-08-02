@@ -23,14 +23,14 @@ spec:
         - {port: 18989, protocol: TCP}
         - {port: 19696, protocol: TCP}
     - from:
-        # Jellyseerr calls the raw Radarr and Sonarr APIs. Other browser-facing
+        # Seerr calls the raw Radarr and Sonarr APIs. Other browser-facing
         # UIs must continue through their access proxy and Traefik boundary.
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: apps
           podSelector:
             matchLabels:
-              app.kubernetes.io/name: jellyseerr
+              app.kubernetes.io/name: seerr
       ports:
         - {port: 7878, protocol: TCP}
         - {port: 8989, protocol: TCP}

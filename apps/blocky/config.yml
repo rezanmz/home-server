@@ -27,7 +27,6 @@ customDNS:
     homeassistant.reza.network: 192.168.1.240
     homepage.reza.network: 192.168.1.240
     jellyfin.reza.network: 192.168.1.240
-    jellyseerr.reza.network: 192.168.1.240
     library.reza.network: 192.168.1.240
     lidarr.reza.network: 192.168.1.240
     mcphub.reza.network: 192.168.1.240
@@ -36,6 +35,7 @@ customDNS:
     prowlarr.reza.network: 192.168.1.240
     qbittorrent.reza.network: 192.168.1.240
     radarr.reza.network: 192.168.1.240
+    seerr.reza.network: 192.168.1.240
     shelfmark.reza.network: 192.168.1.240
     slskd.reza.network: 192.168.1.240
     sonarr.reza.network: 192.168.1.240

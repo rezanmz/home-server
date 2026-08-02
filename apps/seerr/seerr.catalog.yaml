@@ -2,20 +2,20 @@
 apiVersion: catalog.reza.network/v1alpha1
 kind: Service
 metadata:
-  name: jellyseerr
+  name: seerr
 spec:
-  name: Jellyseerr
+  name: Seerr
   workload:
     namespace: apps
-    app: jellyseerr
+    app: seerr
   homepage:
     order: 20
     group: Media
-    icon: jellyseerr.png
+    icon: seerr.png
     description: Media requests
   web:
-    hostname: jellyseerr.reza.network
-    route: apps/jellyseerr/route.yaml
+    hostname: seerr.reza.network
+    route: apps/seerr/route.yaml
     visibility: private
     accessMiddleware: lan-vpn-only
     dns:
@@ -23,12 +23,12 @@ spec:
       splitHorizon: true
     auth:
       mode: native
-      reason: Jellyseerr uses its supported Jellyfin/local login; native OIDC is not available.
+      reason: Seerr uses its supported Jellyfin/local login; native OIDC is not available.
   placement:
     mode: floating
   data:
     class: longhorn
     protection: longhorn-b2
-    manifests: [apps/jellyseerr/pvc.yaml]
+    manifests: [apps/seerr/pvc.yaml]
   observability:
     mode: kubernetes
