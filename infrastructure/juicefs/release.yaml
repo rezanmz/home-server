@@ -27,7 +27,7 @@ spec:
       repository: docker.io/juicedata/juicefs-csi-driver
       tag: v0.32.0@sha256:856e1c20175331428515b957fbfe3a3aba2ccce3d375d0eddc099cf416d95899
     defaultMountImage:
-      ce: docker.io/juicedata/mount:ce-v1.4.0@sha256:5b2f5f9e0ac5fb694a7711fddfebc4a4d3c9e2f872dbc4d776f61e412178e35c
+      ce: docker.io/juicedata/mount:ce-v1.4.1@sha256:ab99388a397fe52575fdeb84a9e017c3c594a6b07d63966cd4805bbf6f172673
     sidecars:
       livenessProbeImage:
         repository: registry.k8s.io/sig-storage/livenessprobe
@@ -78,7 +78,7 @@ spec:
         - pvcSelector:
             matchLabels:
               storage.reza.network/juicefs-media: "true"
-          ceMountImage: docker.io/juicedata/mount:ce-v1.4.0@sha256:5b2f5f9e0ac5fb694a7711fddfebc4a4d3c9e2f872dbc4d776f61e412178e35c
+          ceMountImage: docker.io/juicedata/mount:ce-v1.4.1@sha256:ab99388a397fe52575fdeb84a9e017c3c594a6b07d63966cd4805bbf6f172673
           labels:
             observability.reza.network/scrape: juicefs-client
           resources:
