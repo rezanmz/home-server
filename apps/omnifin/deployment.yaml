@@ -32,6 +32,32 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Kubernetes mounts a fresh Longhorn filesystem as root. Omnifin
+        # deliberately refuses a database directory not owned by its runtime
+        # identity, so make that one ownership transition before startup.
+        - name: prepare-data-directory
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          command:
+            - sh
+            - -ec
+            - |
+              chmod 0700 /data
+              chown 65532:65532 /data
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, FOWNER]
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          volumeMounts:
+            - {name: data, mountPath: /data}
       containers:
         - name: gateway
           image: ghcr.io/rezanmz/omnifin:v0.5.2@sha256:74a9c315a4e0fa78cda9421237618d5f3c5a7847233ddf644f790bcabfbbce42
