@@ -4,6 +4,20 @@ metadata:
   name: coredns-custom
   namespace: kube-system
 data:
+  backblaze-b2-ipv4.server: |-
+    # The LAN advertises local IPv6 prefixes but has no routed IPv6 default
+    # path. Longhorn once selected this endpoint's AAAA record and failed a
+    # backup with "network is unreachable". Suppress only this endpoint's
+    # AAAA response while continuing to resolve its changing A records
+    # through the node's independent public resolvers.
+    s3.ca-east-006.backblazeb2.com:53 {
+        errors
+        cache 30
+        template IN AAAA {
+            rcode NOERROR
+        }
+        forward . /etc/resolv.conf
+    }
   reza-network.server: |-
     # Workloads use the public HTTPS names as their canonical OIDC issuers.
     # Resolve those names through Blocky's service-catalog-generated split DNS
