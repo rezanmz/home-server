@@ -273,14 +273,13 @@ been tested. OIDC configuration and connector credentials are operational
 application state encrypted in SQLite; do not duplicate them as Deployment
 environment variables or reconcile them from Git.
 
-Omnifin v0.6.0 has no conflict-resolution flow that can merge a new OIDC
-identity into the local user created by Jellyfin administrator bootstrap. The
-bootstrapped administrator therefore continues to sign in with Jellyfin. A new
-OIDC identity may pair only with a different, not-yet-linked Jellyfin account;
-attempting to pair it with the existing `admin` identity is rejected by design.
-Treat the enabled Authentik provider as the path for new identities, not as an
-in-place migration of the bootstrapped administrator, until Omnifin adds an
-explicit, proof-backed account-linking flow.
+Omnifin v0.7.0 supports creating the first administrator with Authentik from
+the recovery-bound `/recovery` flow on a fresh database. That OIDC administrator
+can configure the installation before explicitly pairing a Jellyfin identity,
+but media access remains denied until pairing succeeds. This bootstrap is not
+an in-place migration path for a database that already has an administrator:
+ordinary OIDC sign-in never creates administrator authority, and recovery
+bootstrap is refused once the first-administrator invariant has been satisfied.
 
 The gateway may connect only to the reviewed internal media APIs. Prefer these
 addresses when adding connectors and explicitly approve the private-network
@@ -295,7 +294,7 @@ destination in Omnifin:
 | Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
 | qBittorrent | `http://qbittorrent.media.svc.cluster.local:8080` |
 
-Validate and enable one connector at a time. Omnifin v0.6.0 describes these as
+Validate and enable one connector at a time. Omnifin v0.7.0 describes these as
 pre-release integrations, so exercise one representative read and a harmless
 mutation before relying on each capability. The `omnifin-data` PVC inherits the
 nightly Longhorn B2 backup policy. Before an Omnifin upgrade or recovery drill,
