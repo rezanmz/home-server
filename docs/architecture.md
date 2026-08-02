@@ -124,7 +124,7 @@ Vikunja API tokens, Google OAuth material, MCP groups, or enabled-tool
 selections.
 
 The same boundary also contains the official Home Assistant remote MCP, a
-reviewed Jellyseerr adapter, the published multi-Arr and Navidrome adapters,
+reviewed Seerr adapter, the published multi-Arr and Navidrome adapters,
 official read-only Grafana, Kubernetes, and GitHub servers, and a stateless
 `mcp-v8` JavaScript evaluator for bounded calculations. Git pins the
 executables and establishes network/RBAC ceilings. MCPHub's backed-up database

@@ -86,7 +86,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: jellyseerr
+              app.kubernetes.io/name: seerr
       ports:
         - {port: 5055, protocol: TCP}
     - to:

@@ -199,7 +199,7 @@ class ServiceCatalogTests(unittest.TestCase):
             [
                 "Omnifin",
                 "Jellyfin",
-                "Jellyseerr",
+                "Seerr",
                 "Navidrome",
                 "Audiobookshelf",
                 "Calibre-Web",
@@ -222,6 +222,25 @@ class ServiceCatalogTests(unittest.TestCase):
             groups["Operations"],
             ["Grafana", "Headlamp", "ISC Stork", "Syncthing", "WireGuard"],
         )
+
+    def test_seerr_identity_has_no_retired_jellyseerr_integration(self) -> None:
+        seerr = next(
+            service
+            for service in service_catalog.services(self.catalog)
+            if service["id"] == "seerr"
+        )
+        self.assertEqual(seerr["name"], "Seerr")
+        self.assertEqual(seerr["path"], "apps/seerr")
+        self.assertEqual(seerr["workload"]["app"], "seerr")
+        self.assertEqual(seerr["web"]["hostname"], "seerr.reza.network")
+        self.assertFalse((REPO_ROOT / "apps" / "jellyseerr").exists())
+
+        for path in (
+            REPO_ROOT / "apps" / "homepage" / "config" / "services.yaml",
+            REPO_ROOT / "apps" / "cloudflare-ddns" / "kustomization.yaml",
+            REPO_ROOT / "apps" / "blocky" / "config.yml",
+        ):
+            self.assertNotIn("jellyseerr", path.read_text().lower())
 
     def test_unknown_nested_field_is_rejected(self) -> None:
         catalog = copy.deepcopy(self.catalog)

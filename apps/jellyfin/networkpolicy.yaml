@@ -17,7 +17,7 @@ spec:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: apps}
           podSelector:
-            matchLabels: {app.kubernetes.io/name: jellyseerr}
+            matchLabels: {app.kubernetes.io/name: seerr}
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: apps}
           podSelector:

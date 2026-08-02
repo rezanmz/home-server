@@ -45,12 +45,12 @@
         description: Movies and television
         namespace: media
         app: jellyfin
-    - Jellyseerr:
-        icon: jellyseerr.png
-        href: https://jellyseerr.reza.network/
+    - Seerr:
+        icon: seerr.png
+        href: https://seerr.reza.network/
         description: Media requests
         namespace: apps
-        app: jellyseerr
+        app: seerr
     - Navidrome:
         icon: navidrome.png
         href: https://music.reza.network/

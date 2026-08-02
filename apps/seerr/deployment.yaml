@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: jellyseerr
+  name: seerr
   namespace: apps
   labels:
-    app.kubernetes.io/name: jellyseerr
+    app.kubernetes.io/name: seerr
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/name: jellyseerr
+      app.kubernetes.io/name: seerr
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: jellyseerr
+        app.kubernetes.io/name: seerr
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -27,7 +27,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: jellyseerr
+        - name: seerr
           image: ghcr.io/seerr-team/seerr:v3.4.1@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1
           imagePullPolicy: IfNotPresent
           env:
@@ -105,9 +105,9 @@ spec:
       volumes:
         - name: config
           persistentVolumeClaim:
-            claimName: jellyseerr-config
+            claimName: seerr-config
         - name: access-proxy-config
           configMap:
-            name: jellyseerr-access-proxy
+            name: seerr-access-proxy
         - {name: nginx-tmp, emptyDir: {}}
         - {name: nginx-cache, emptyDir: {}}

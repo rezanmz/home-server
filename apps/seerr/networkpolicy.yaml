@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: jellyseerr
+  name: seerr
   namespace: apps
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: jellyseerr
+      app.kubernetes.io/name: seerr
   policyTypes:
     - Ingress
     - Egress
@@ -34,6 +34,6 @@ spec:
       ports:
         - port: 5055
           protocol: TCP
-  # Jellyseerr connects to the user-configured Jellyfin and *arr endpoints.
+  # Seerr connects to the user-configured Jellyfin and *arr endpoints.
   egress:
     - {}

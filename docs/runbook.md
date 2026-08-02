@@ -289,7 +289,7 @@ destination in Omnifin:
 | Connector | Internal URL |
 | --- | --- |
 | Jellyfin | `http://jellyfin.media.svc.cluster.local:8096` |
-| Seerr/Jellyseerr | `http://jellyseerr-api.apps.svc.cluster.local:5055` |
+| Seerr | `http://seerr-api.apps.svc.cluster.local:5055` |
 | Radarr | `http://radarr.media.svc.cluster.local:7878` |
 | Sonarr | `http://sonarr.media.svc.cluster.local:8989` |
 | Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
@@ -1424,7 +1424,7 @@ Configure Lidarr in its UI or API-backed application state, not in Git:
 MCPHub owns all media MCP registrations and credentials. Recommended server
 boundaries are:
 
-- Jellyseerr: allow `ping`, search, request lookup, and (only in action groups)
+- Seerr: allow `ping`, search, request lookup, and (only in action groups)
   media requests. Never expose `raw_request`.
 - mcp-arr: allow health/library/queue/calendar/profile reads. Add only reviewed
   Lidarr artist/album acquisition operations to action groups. Exclude arbitrary
