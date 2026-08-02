@@ -23,6 +23,8 @@ added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/CHO
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/DAC_OVERRIDE
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETGID
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETUID
+added-capability|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory/CHOWN
+added-capability|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory/FOWNER
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/CHOWN
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/DAC_OVERRIDE
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/NET_ADMIN
@@ -39,10 +41,12 @@ added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/N
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_RAW
 explicit-root-group|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-group|apps/v1/Deployment|apps|home-assistant|container/home-assistant
+explicit-root-group|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory
 explicit-root-group|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
 explicit-root-group|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 explicit-root-user|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-user|apps/v1/Deployment|apps|home-assistant|container/home-assistant
+explicit-root-user|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory
 explicit-root-user|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
 explicit-root-user|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec/sha256/39862bedcf4ef916bdcd6ff920a8397bfdbcfbc2d0e6b3bd59a6f21ad5c9433e

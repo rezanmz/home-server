@@ -54,6 +54,17 @@ class OmnifinContractTests(unittest.TestCase):
         self.assertFalse(pod["automountServiceAccountToken"])
         self.assertEqual(pod["securityContext"]["runAsUser"], 65532)
 
+        prepare = named(pod["initContainers"], "prepare-data-directory")
+        self.assertFalse(prepare["securityContext"]["runAsNonRoot"])
+        self.assertEqual(prepare["securityContext"]["runAsUser"], 0)
+        self.assertEqual(
+            prepare["securityContext"]["capabilities"]["add"],
+            ["CHOWN", "FOWNER"],
+        )
+        prepare_command = " ".join(prepare["command"])
+        self.assertIn("chmod 0700 /data", prepare_command)
+        self.assertIn("chown 65532:65532 /data", prepare_command)
+
         gateway = named(pod["containers"], "gateway")
         self.assertEqual(gateway["image"], IMAGE)
         self.assertTrue(gateway["securityContext"]["readOnlyRootFilesystem"])
