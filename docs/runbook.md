@@ -652,13 +652,15 @@ sudo k3s kubectl -n longhorn-system get recurringjobs.longhorn.io
 sudo k3s kubectl -n longhorn-system get backups.longhorn.io,backupvolumes.longhorn.io
 ```
 
-The target must report `AVAILABLE=true`. `b2-nightly` runs at 06:17 UTC, retains
-14 logical backups per volume, processes one volume at a time, and requests a
-full backup after every seven completed incremental backups. Normal backup jobs
-skip unchanged data, so that full interval is count-based rather than a strict
-weekly calendar. Longhorn may temporarily attach an otherwise detached volume
-at backup time. A second Longhorn replica or a local snapshot on either node is
-not an off-site backup.
+The target must report `AVAILABLE=true`. `b2-nightly` runs at 06:17 Toronto
+local time, retains 14 logical backups per volume, processes one volume at a
+time, and requests a full backup after every seven completed incremental
+backups. Longhorn generates a Kubernetes CronJob without `spec.timeZone`, so
+Kubernetes interprets the schedule in the kube-controller-manager's local
+timezone. Normal backup jobs skip unchanged data, so that full interval is
+count-based rather than a strict weekly calendar. Longhorn may temporarily
+attach an otherwise detached volume at backup time. A second Longhorn replica
+or a local snapshot on either node is not an off-site backup.
 
 The B2 bucket must stay private with default SSE-B2 encryption enabled. Do not
 enable Object Lock or add a bucket lifecycle expiry rule: Longhorn must control

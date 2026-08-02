@@ -4,8 +4,9 @@ metadata:
   name: b2-nightly
   namespace: longhorn-system
 spec:
-  # Longhorn schedules in UTC. This is 02:17 Toronto during daylight time and
-  # 01:17 during standard time, away from the other routine cluster work.
+  # Longhorn creates a Kubernetes CronJob without spec.timeZone, so this is
+  # interpreted in the kube-controller-manager's America/Toronto timezone.
+  # It runs at 06:17 local time, away from the other routine cluster work.
   cron: "17 6 * * *"
   task: backup
   groups:

@@ -276,10 +276,12 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              # PostgreSQL repeatedly reached the former 256 MiB limit and
+              # was OOM-killed, briefly making Authentik return HTTP 500.
+              memory: 256Mi
             limits:
               cpu: 250m
-              memory: 256Mi
+              memory: 512Mi
           startupProbe:
             exec:
               command:

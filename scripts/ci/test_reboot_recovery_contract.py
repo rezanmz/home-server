@@ -12,6 +12,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CLUSTER_KUSTOMIZATION = REPO_ROOT / "clusters" / "home-server" / "kustomization.yaml"
 COREDNS_SPLIT_DNS = REPO_ROOT / "infrastructure" / "coredns" / "split-dns.yaml"
+AUTHENTIK_WORKLOADS = REPO_ROOT / "apps" / "authentik" / "workloads.yaml"
 HERMES_DEPLOYMENT = REPO_ROOT / "apps" / "hermes-agent" / "deployment.yaml"
 KEA_DEPLOYMENT = REPO_ROOT / "apps" / "kea" / "deployment.yaml"
 
@@ -44,6 +45,27 @@ class RebootRecoveryContractTests(unittest.TestCase):
         self.assertIn("reza.network:53", corefile)
         self.assertIn("forward . 192.168.1.2 192.168.1.3", corefile)
         self.assertNotIn("65.95.92.124", corefile)
+
+    def test_longhorn_b2_endpoint_cannot_select_unrouted_ipv6(self) -> None:
+        config = load_object(COREDNS_SPLIT_DNS, "ConfigMap", "coredns-custom")
+        corefile = config["data"]["backblaze-b2-ipv4.server"]
+
+        self.assertIn("s3.ca-east-006.backblazeb2.com:53", corefile)
+        self.assertIn("template IN AAAA", corefile)
+        self.assertIn("rcode NOERROR", corefile)
+        self.assertIn("forward . /etc/resolv.conf", corefile)
+        self.assertNotIn("104.153.236.", corefile)
+
+    def test_authentik_postgresql_has_oom_headroom(self) -> None:
+        stateful_set = load_object(
+            AUTHENTIK_WORKLOADS, "StatefulSet", "authentik-postgresql"
+        )
+        postgresql = named(
+            stateful_set["spec"]["template"]["spec"]["containers"], "postgresql"
+        )
+
+        self.assertEqual(postgresql["resources"]["requests"]["memory"], "256Mi")
+        self.assertEqual(postgresql["resources"]["limits"]["memory"], "512Mi")
 
     def test_hermes_waits_for_a_stable_nonempty_mcp_registry(self) -> None:
         deployment = load_object(HERMES_DEPLOYMENT, "Deployment", "hermes-agent")
