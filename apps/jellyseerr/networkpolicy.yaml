@@ -26,6 +26,14 @@ spec:
       ports:
         - port: 5055
           protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: omnifin
+              app.kubernetes.io/component: gateway
+      ports:
+        - port: 5055
+          protocol: TCP
   # Jellyseerr connects to the user-configured Jellyfin and *arr endpoints.
   egress:
     - {}

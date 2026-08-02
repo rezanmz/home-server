@@ -226,6 +226,7 @@
           "minItems": 1,
           "items": {"$ref": "#/$defs/redirectUri"}
         },
+        "providerLogout": {"$ref": "#/$defs/providerLogout"},
         "secret": {
           "oneOf": [
             {"$ref": "#/$defs/secretRef"},
@@ -247,6 +248,15 @@
           }
         }
       ]
+    },
+    "providerLogout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "url"],
+      "properties": {
+        "method": {"enum": ["backchannel", "frontchannel"]},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"}
+      }
     },
     "redirectUri": {
       "type": "object",

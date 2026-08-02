@@ -183,6 +183,9 @@ Before implementing authentication for a new user-facing service:
    Authentik. Use authorization code flow with PKCE where the application
    supports it; do not enable implicit, password, device, or client-credential
    grants unless the application actually requires them.
+   When the relying application implements provider-initiated logout, declare
+   its exact `client.providerLogout` method and URL in the service catalog.
+   Prefer back-channel logout over a browser iframe when both are supported.
 3. Use a public client with authorization code plus PKCE when the application
    implements PKCE and does not need a client secret. Otherwise, keep the OIDC
    client secret in SOPS-encrypted Secrets. Send only the minimum required

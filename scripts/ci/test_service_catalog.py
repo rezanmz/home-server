@@ -36,7 +36,7 @@ class ServiceCatalogTests(unittest.TestCase):
     def test_catalog_is_decentralized_and_versioned(self) -> None:
         self.assertFalse((REPO_ROOT / "catalog" / "services.yaml").exists())
         entries = service_catalog.services(self.catalog)
-        self.assertEqual(len(entries), 38)
+        self.assertEqual(len(entries), 39)
         sources = [entry["_source"] for entry in entries]
         self.assertEqual(len(sources), len(set(sources)))
         self.assertTrue(all(source.endswith(".catalog.yaml") for source in sources))
@@ -80,6 +80,7 @@ class ServiceCatalogTests(unittest.TestCase):
                 "headlamp.yaml",
                 "hermes-agent.yaml",
                 "mcphub.yaml",
+                "omnifin.yaml",
                 "open-webui.yaml",
                 "stork.yaml",
                 "vikunja.yaml",
@@ -98,6 +99,11 @@ class ServiceCatalogTests(unittest.TestCase):
             data["audiobookshelf.yaml"],
         )
         self.assertIn("mode: forward_single", data["forward-auth.yaml"])
+        self.assertIn(
+            'logout_uri: "https://omnifin.reza.network/api/auth/oidc/backchannel/oidc-authentik"',
+            data["omnifin.yaml"],
+        )
+        self.assertIn("logout_method: backchannel", data["omnifin.yaml"])
 
     def test_forward_auth_blueprint_has_one_authoritative_outpost(self) -> None:
         document = service_catalog.load_single_document(
@@ -145,6 +151,7 @@ class ServiceCatalogTests(unittest.TestCase):
                 "AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_MCPHUB_CLIENT_SECRET",
+                "AUTHENTIK_OIDC_OMNIFIN_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_VIKUNJA_CLIENT_SECRET",
             ],
@@ -189,7 +196,14 @@ class ServiceCatalogTests(unittest.TestCase):
         self.assertEqual(groups["Productivity"], ["Vikunja"])
         self.assertEqual(
             groups["Media"],
-            ["Jellyfin", "Jellyseerr", "Navidrome", "Audiobookshelf", "Calibre-Web"],
+            [
+                "Omnifin",
+                "Jellyfin",
+                "Jellyseerr",
+                "Navidrome",
+                "Audiobookshelf",
+                "Calibre-Web",
+            ],
         )
         self.assertEqual(
             groups["Downloads & Automation"],
@@ -241,6 +255,24 @@ class ServiceCatalogTests(unittest.TestCase):
         service_catalog.validate_catalog_structure(catalog, errors)
         self.assertTrue(
             any("must be an exact https URL on chat.reza.network" in error for error in errors)
+        )
+
+    def test_cross_host_provider_logout_is_rejected(self) -> None:
+        catalog = copy.deepcopy(self.catalog)
+        service = next(
+            item for item in catalog["services"] if item["id"] == "omnifin"
+        )
+        service["web"]["auth"]["client"]["providerLogout"]["url"] = (
+            "https://evil.example/backchannel"
+        )
+        errors: list[str] = []
+        service_catalog.validate_catalog_structure(catalog, errors)
+        self.assertTrue(
+            any(
+                "providerLogout.url must be an exact https URL on omnifin.reza.network"
+                in error
+                for error in errors
+            )
         )
 
     def test_cross_host_authentik_launch_url_is_rejected(self) -> None:
