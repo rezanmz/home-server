@@ -155,6 +155,19 @@ class OmnifinContractTests(unittest.TestCase):
                     peer.get("ipBlock", {}).get("cidr"), "0.0.0.0/0"
                 )
 
+        jellyfin_rules = [
+            rule
+            for rule in gateway_policy["spec"]["egress"]
+            if rule.get("ports") == [{"port": 8096, "protocol": "TCP"}]
+        ]
+        self.assertEqual(len(jellyfin_rules), 1)
+        jellyfin_cidrs = {
+            peer["ipBlock"]["cidr"]
+            for peer in jellyfin_rules[0]["to"]
+            if "ipBlock" in peer
+        }
+        self.assertEqual(jellyfin_cidrs, {"192.168.1.2/32", "192.168.1.3/32"})
+
 
 if __name__ == "__main__":
     unittest.main()
