@@ -116,7 +116,7 @@ spec:
         # namespace, preserving the old Docker `network_mode: container:gluetun`
         # topology and a single Proton WireGuard session.
         - name: gluetun
-          image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
+          image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
           imagePullPolicy: IfNotPresent
           restartPolicy: Always
           env:
@@ -546,7 +546,7 @@ spec:
             - {name: soularr-data, mountPath: /data}
             - {name: media-downloads, mountPath: /downloads}
         - name: shelfmark
-          image: ghcr.io/calibrain/shelfmark:v1.3.4@sha256:056f02e28d446b128d91fa10451c7cc376392f7383bbb841deec49838a419d53
+          image: ghcr.io/calibrain/shelfmark:v1.3.5@sha256:bd314405a9ca1eb176d1618c38f19948a1feb18ec4190a7665d3096163eab0a4
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
