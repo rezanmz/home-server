@@ -238,6 +238,62 @@ payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
 metadata recovery is required to interpret those chunks. They are not included
 in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
+### Omnifin first run, OIDC, and recovery
+
+Omnifin is internet-accessible at `omnifin.reza.network`. Its public web process
+is stateless; the private gateway exclusively owns SQLite, connector
+credentials, sessions, authorization, and audit records. Never route the
+`omnifin-gateway` Service or copy connector credentials into the web Deployment.
+The two workloads use the same release digest and may float independently
+between the amd64 Beelink and arm64 Pi.
+
+A fresh database has no administrator. Open `/recovery` directly, obtain the
+`recovery-secret` from `apps/omnifin/secrets.sops.yaml`, and use Jellyfin Quick
+Connect or a Jellyfin administrator password to establish the first Omnifin
+administrator. The recovery route is deliberately hidden, rate-limited, and
+requires both the deployment secret and current Jellyfin administrator proof.
+Do not expose or store the recovered plaintext secret in a shell history,
+ticket, note, or application manifest.
+
+Authentik is registered from the service catalog with exact callback,
+post-logout, and back-channel logout URLs. In **Account & access → Identity
+providers**, create the application-owned provider with:
+
+- slug `authentik`, which produces provider ID `oidc-authentik`;
+- issuer `https://auth.reza.network/application/o/omnifin/`;
+- approved endpoint origin `https://auth.reza.network`;
+- client ID `omnifin`, `client_secret_basic`, RS256, and scopes `openid email
+  profile offline_access`; and
+- the provider-side client secret from
+  `apps/authentik/oidc-client-secrets.sops.yaml`.
+
+Save it disabled, run Omnifin's discovery validation, and only then enable it.
+Keep just-in-time users at the viewer role until a narrow claim mapping has
+been tested. OIDC configuration and connector credentials are operational
+application state encrypted in SQLite; do not duplicate them as Deployment
+environment variables or reconcile them from Git.
+
+The gateway may connect only to the reviewed internal media APIs. Prefer these
+addresses when adding connectors and explicitly approve the private-network
+destination in Omnifin:
+
+| Connector | Internal URL |
+| --- | --- |
+| Jellyfin | `http://jellyfin.media.svc.cluster.local:8096` |
+| Seerr/Jellyseerr | `http://jellyseerr-api.apps.svc.cluster.local:5055` |
+| Radarr | `http://radarr.media.svc.cluster.local:7878` |
+| Sonarr | `http://sonarr.media.svc.cluster.local:8989` |
+| Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
+| qBittorrent | `http://qbittorrent.media.svc.cluster.local:8080` |
+
+Validate and enable one connector at a time. Omnifin v0.5.2 describes these as
+pre-release integrations, so exercise one representative read and a harmless
+mutation before relying on each capability. The `omnifin-data` PVC inherits the
+nightly Longhorn B2 backup policy. Before an Omnifin upgrade or recovery drill,
+also create and verify an application-native online SQLite backup using the
+exact deployed image; retain its manifest and image digest, while keeping the
+matching encryption and recovery secrets separately protected.
+
 ## DNS and DHCP
 
 Blocky is a host-network DaemonSet and provides DNS and filtering from both the

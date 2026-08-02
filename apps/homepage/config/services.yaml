@@ -33,6 +33,12 @@
         namespace: apps
         app: vikunja
 - Media:
+    - Omnifin:
+        icon: mdi-movie-cog-outline
+        href: https://omnifin.reza.network/
+        description: Unified media control plane
+        namespace: apps
+        app: omnifin
     - Jellyfin:
         icon: jellyfin.png
         href: https://jellyfin.reza.network/

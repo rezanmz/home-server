@@ -424,6 +424,14 @@ def authentik_oidc_blueprint(service: dict[str, Any], auth: dict[str, Any]) -> s
                 f"          redirect_uri_type: {redirect['type']}",
             ]
         )
+    provider_logout = client.get("providerLogout")
+    if isinstance(provider_logout, dict):
+        lines.extend(
+            [
+                f"      logout_uri: {yaml_string(str(provider_logout['url']))}",
+                f"      logout_method: {provider_logout['method']}",
+            ]
+        )
     lines.append("      property_mappings:")
     for scope in client["scopes"]:
         managed = MANAGED_SCOPE_MAPPINGS[scope]
@@ -1227,6 +1235,7 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                                 "grantTypes",
                                 "id",
                                 "pkce",
+                                "providerLogout",
                                 "redirectUris",
                                 "scopes",
                                 "secret",
@@ -1324,6 +1333,40 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                                             f"{redirect_label}.url must be an exact "
                                             f"https URL on {hostname}"
                                         )
+
+                        provider_logout = client.get("providerLogout")
+                        if provider_logout is not None:
+                            logout_label = f"{label}.web.auth.client.providerLogout"
+                            if not isinstance(provider_logout, dict):
+                                errors.append(f"{logout_label} must be a mapping")
+                            else:
+                                reject_unknown(
+                                    provider_logout,
+                                    {"method", "url"},
+                                    logout_label,
+                                    errors,
+                                )
+                                if provider_logout.get("method") not in {
+                                    "backchannel",
+                                    "frontchannel",
+                                }:
+                                    errors.append(
+                                        f"{logout_label}.method must be backchannel "
+                                        "or frontchannel"
+                                    )
+                                logout_url = require_nonempty_string(
+                                    provider_logout.get("url"),
+                                    f"{logout_label}.url",
+                                    errors,
+                                )
+                                if logout_url is not None and (
+                                    hostname is None
+                                    or not is_same_host_https_url(logout_url, hostname)
+                                ):
+                                    errors.append(
+                                        f"{logout_label}.url must be an exact "
+                                        f"https URL on {hostname}"
+                                    )
 
                         if client_type == "confidential":
                             if client.get("pkce") is not None:

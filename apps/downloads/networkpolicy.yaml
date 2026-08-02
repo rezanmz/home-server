@@ -23,8 +23,8 @@ spec:
         - {port: 18989, protocol: TCP}
         - {port: 19696, protocol: TCP}
     - from:
-        # Jellyseerr is the only separate workload that calls the raw Arr
-        # APIs. Every other UI must use its access proxy through Traefik.
+        # Jellyseerr calls the raw Radarr and Sonarr APIs. Other browser-facing
+        # UIs must continue through their access proxy and Traefik boundary.
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: apps
@@ -61,6 +61,21 @@ spec:
         - {port: 8080, protocol: TCP}
         - {port: 8686, protocol: TCP}
         - {port: 8989, protocol: TCP}
+    - from:
+        # Omnifin keeps connector credentials in its private gateway and uses
+        # these raw APIs to provide one authenticated media control surface.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: omnifin
+              app.kubernetes.io/component: gateway
+      ports:
+        - {port: 7878, protocol: TCP}
+        - {port: 8080, protocol: TCP}
+        - {port: 8989, protocol: TCP}
+        - {port: 9696, protocol: TCP}
     - from:
         - namespaceSelector:
             matchLabels:

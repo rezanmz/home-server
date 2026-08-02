@@ -22,6 +22,12 @@ spec:
             matchLabels: {kubernetes.io/metadata.name: apps}
           podSelector:
             matchLabels: {app.kubernetes.io/name: home-assistant}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: apps}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: omnifin
+              app.kubernetes.io/component: gateway
       ports:
         - {port: 8096, protocol: TCP}
   egress:

@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: omnifin
+spec:
+  name: Omnifin
+  workload:
+    namespace: apps
+    app: omnifin
+  homepage:
+    order: 5
+    group: Media
+    icon: mdi-movie-cog-outline
+    description: Unified media control plane
+  web:
+    hostname: omnifin.reza.network
+    route: apps/omnifin/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: Omnifin OIDC
+      application:
+        slug: omnifin
+        launchUrl: https://omnifin.reza.network/
+      client:
+        type: confidential
+        id: omnifin
+        grantTypes: [authorization_code, refresh_token]
+        scopes: [openid, email, profile, offline_access]
+        redirectUris:
+          - type: authorization
+            url: https://omnifin.reza.network/api/auth/oidc/callback/oidc-authentik
+          - type: logout
+            url: https://omnifin.reza.network/login?loggedOut=1
+        providerLogout:
+          method: backchannel
+          url: https://omnifin.reza.network/api/auth/oidc/backchannel/oidc-authentik
+        secret:
+          managedBy: application-state
+          reason: Omnifin encrypts its OIDC client secret in the backed-up SQLite database and audits provider changes.
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/omnifin/pvc.yaml]
+    note: SQLite and encrypted operational configuration are protected by Longhorn; recovery material remains in a separate SOPS Secret.
+  observability:
+    mode: kubernetes

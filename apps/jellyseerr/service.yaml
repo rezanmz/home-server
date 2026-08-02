@@ -14,3 +14,18 @@ spec:
       port: 5055
       targetPort: access-http
       protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyseerr-api
+  namespace: apps
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: jellyseerr
+  ports:
+    - name: http
+      port: 5055
+      targetPort: http
+      protocol: TCP

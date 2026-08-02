@@ -132,11 +132,13 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|default-
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|spec/sha256/cf7bf4ce905bf1fe21e27abd62689d3fbbe459bc633d36bef88277c28acca83a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/5d84ba9e6d1e07cdd6757c49791625e3580e7a72ffdd9a1df508e4d3ad9a52fe
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/f7228b2eb8074a96ddf64edf7d2f753a41b6e19ef89c983950b158a8234ba695
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|jellyseerr|spec/sha256/4da37748da3b59a44c468b4124d4a2353b2cc7381d04d0f4ac3343832835e644
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|spec/sha256/5b591bf03cfc218f687e0db623c80288d4592e801fe9c052860fd3fcf3c5634e
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcp-v8|spec/sha256/32f934c59f12825edd076b4f9137756d9088ec197f4efe3afe6f96e9a4f0eb51
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/37abc13945951611dc511d657e61ec658c4c29371de0f1182349f0e1b1179ac3
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|omnifin-gateway|spec/sha256/8d2dcb3ad523d1c44d5a3590a27074f3343c973c2b9bbc0bfc274a2d36f09e62
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|omnifin-web|spec/sha256/a64eb097067c708c09f609019a8f0dc3922dd426ae69e086c2e3471cc324fdeb
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|spec/sha256/9e8889aa30075eb5715602faa8bc6ef3b41957d1d88c3e674f58780d916919e1
@@ -149,9 +151,9 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|audiobo
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|spec/sha256/67ba0f809134cd806cf0229cca8d7d6b99fecfde40972c4121bfce36d6c979ef
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|cleanuparr|spec/sha256/da501384db1f870fe09a8b3a48471d9eb6c1d77889535da1982483ae073c452f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/5d2a81a0dfbf63e5944a87f5dd4560040d36e53e5c691096a79632488248fb9c
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|spec/sha256/9071e5bfd96f23b5813a38c782c6b382a0311bce68afaf4bc6215312bcd3fc7a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-storage-exporter|spec/sha256/3f8b7ab4c2f08673fef8ab841b8c28bb2ffcaef6986c6f7dc279539e64a063ab
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/1e762e793923b7d235e55096fcd60463552f739ac207f19a28e3455444b0dc81
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/71c9b459eaf8a0bfdf4304efde20eadd8803433bd3d612af0bbb318b845accf3
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|navidrome|spec/sha256/879d46cf7d6a8e1d3e153328dc52d9a713dff616f7ba36b97f986987c54d2fc9
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
@@ -193,6 +195,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|home-assistant|spec/s
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|homepage|spec/sha256/a87d2f602eb818e71492cea2b879bbd48a0e50f090da6d358a0a5cd78fc030a9
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|jellyseerr|spec/sha256/25e156ee08b67968746420ed5860b8d8053767266c01c92f39a67731edeb107a
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c6cb8bde71d6bed19e47c796e5c2d0adc5148549b033e8bf847cf705a18d59e
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|omnifin|spec/sha256/54c152839478d53c4ca30858c62322fa3b2553ed0b15332183bd53193fd54ede
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|speedtest-tracker|spec/sha256/fc47882c3b744cf189b7032b9ed5dc7016568744b09b03eb05d5eed48004a0f0
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vikunja|spec/sha256/06933edc112128e2e973f97a896466c99e3225179ef0c77ac226b94fba1dd7cc

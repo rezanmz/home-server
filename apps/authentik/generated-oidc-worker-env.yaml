@@ -36,6 +36,11 @@ spec:
                 secretKeyRef:
                   name: authentik-oidc-client-secrets
                   key: AUTHENTIK_OIDC_MCPHUB_CLIENT_SECRET
+            - name: AUTHENTIK_OIDC_OMNIFIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-oidc-client-secrets
+                  key: AUTHENTIK_OIDC_OMNIFIN_CLIENT_SECRET
             - name: AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
