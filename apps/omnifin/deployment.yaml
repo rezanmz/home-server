@@ -34,16 +34,21 @@ spec:
           type: RuntimeDefault
       initContainers:
         # Kubernetes mounts a fresh Longhorn filesystem as root. Omnifin
-        # deliberately refuses a database directory not owned by its runtime
-        # identity, so make that one ownership transition before startup.
+        # deliberately refuses data or backup directories that do not belong
+        # exclusively to its runtime identity. Kubelet fsGroup handling may
+        # widen an existing directory to 0770 during a remount, so normalize
+        # both paths before every gateway start.
         - name: prepare-data-directory
           image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
           command:
             - sh
             - -ec
             - |
-              chmod 0700 /data
+              mkdir -p /data/backups
+              chown 65532:65532 /data/backups
+              chmod 0700 /data/backups
               chown 65532:65532 /data
+              chmod 0700 /data
           securityContext:
             runAsNonRoot: false
             runAsUser: 0
@@ -66,6 +71,7 @@ spec:
             - gateway
           env:
             - {name: NODE_ENV, value: production}
+            - {name: OMNIFIN_BACKUP_DIRECTORY, value: /data/backups}
             - {name: OMNIFIN_BASE_URL, value: https://omnifin.reza.network}
             - {name: OMNIFIN_DATABASE_URL, value: /data/omnifin.db}
             - {name: OMNIFIN_ENCRYPTION_KEY_FILE, value: /run/secrets/omnifin_encryption_key}

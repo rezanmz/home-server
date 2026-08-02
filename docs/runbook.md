@@ -301,7 +301,10 @@ mutation before relying on each capability. The `omnifin-data` PVC inherits the
 nightly Longhorn B2 backup policy. Before an Omnifin upgrade or recovery drill,
 also create and verify an application-native online SQLite backup using the
 exact deployed image; retain its manifest and image digest, while keeping the
-matching encryption and recovery secrets separately protected.
+matching encryption and recovery secrets separately protected. The gateway
+init container restores `/data/backups` to owner `65532:65532` and mode `0700`
+after every volume mount because Omnifin correctly refuses a backup directory
+whose permissions were widened by Kubernetes `fsGroup` handling.
 
 ## DNS and DHCP
 

@@ -62,6 +62,9 @@ class OmnifinContractTests(unittest.TestCase):
             ["CHOWN", "FOWNER"],
         )
         prepare_command = " ".join(prepare["command"])
+        self.assertIn("mkdir -p /data/backups", prepare_command)
+        self.assertIn("chmod 0700 /data/backups", prepare_command)
+        self.assertIn("chown 65532:65532 /data/backups", prepare_command)
         self.assertIn("chmod 0700 /data", prepare_command)
         self.assertIn("chown 65532:65532 /data", prepare_command)
 
@@ -71,6 +74,9 @@ class OmnifinContractTests(unittest.TestCase):
         environment = {item["name"]: item for item in gateway["env"]}
         self.assertEqual(
             environment["OMNIFIN_DATABASE_URL"]["value"], "/data/omnifin.db"
+        )
+        self.assertEqual(
+            environment["OMNIFIN_BACKUP_DIRECTORY"]["value"], "/data/backups"
         )
         self.assertEqual(
             environment["OMNIFIN_JELLYFIN_URL"]["value"],
