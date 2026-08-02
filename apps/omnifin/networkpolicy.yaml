@@ -96,6 +96,14 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: jellyfin
+        # Jellyfin uses hostNetwork for DLNA/discovery. After Service DNAT its
+        # endpoint is a node address rather than a pod-CIDR address, so retain
+        # the selector above for ordinary pods and permit only the two cluster
+        # nodes on Jellyfin's API port for the host-network deployment.
+        - ipBlock:
+            cidr: 192.168.1.2/32
+        - ipBlock:
+            cidr: 192.168.1.3/32
       ports:
         - {port: 8096, protocol: TCP}
     - to:
