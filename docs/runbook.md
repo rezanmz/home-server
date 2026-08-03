@@ -273,8 +273,10 @@ been tested. OIDC configuration and connector credentials are operational
 application state encrypted in SQLite; do not duplicate them as Deployment
 environment variables or reconcile them from Git.
 
-Omnifin v0.7.2 supports creating the first administrator with Authentik from
-the recovery-bound `/recovery` flow on a fresh database. That OIDC administrator
+The deployed Omnifin edge candidate at source revision
+`42b5ea974ffacb6302d8143af4c61fa9b2498dee` supports creating the first
+administrator with Authentik from the recovery-bound `/recovery` flow on a
+fresh database. That OIDC administrator
 can configure the installation before explicitly pairing a Jellyfin identity,
 but media access remains denied until pairing succeeds. This bootstrap is not
 an in-place migration path for a database that already has an administrator:
@@ -294,7 +296,7 @@ destination in Omnifin:
 | Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
 | qBittorrent | `http://qbittorrent.media.svc.cluster.local:8080` |
 
-Validate and enable one connector at a time. Omnifin v0.7.2 describes these as
+Validate and enable one connector at a time. Omnifin describes these as
 pre-release integrations, so exercise one representative read and a harmless
 mutation before relying on each capability. The `omnifin-data` PVC inherits the
 nightly Longhorn B2 backup policy. Before an Omnifin upgrade or recovery drill,
@@ -304,6 +306,11 @@ matching encryption and recovery secrets separately protected. The gateway
 init container restores `/data/backups` to owner `65532:65532` and mode `0700`
 after every volume mount because Omnifin correctly refuses a backup directory
 whose permissions were widened by Kubernetes `fsGroup` handling.
+
+The edge revision adds a forward-only SQLite migration for playback asset
+handles. A rollback to v0.7.2 must therefore restore the verified pre-upgrade
+database backup as well as the v0.7.2 image; do not merely change the image tag
+while retaining a database opened by the edge gateway.
 
 ## DNS and DHCP
 
