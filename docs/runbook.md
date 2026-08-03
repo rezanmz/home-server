@@ -273,7 +273,7 @@ been tested. OIDC configuration and connector credentials are operational
 application state encrypted in SQLite; do not duplicate them as Deployment
 environment variables or reconcile them from Git.
 
-Omnifin v0.7.1 supports creating the first administrator with Authentik from
+Omnifin v0.7.2 supports creating the first administrator with Authentik from
 the recovery-bound `/recovery` flow on a fresh database. That OIDC administrator
 can configure the installation before explicitly pairing a Jellyfin identity,
 but media access remains denied until pairing succeeds. This bootstrap is not
@@ -294,7 +294,7 @@ destination in Omnifin:
 | Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
 | qBittorrent | `http://qbittorrent.media.svc.cluster.local:8080` |
 
-Validate and enable one connector at a time. Omnifin v0.7.1 describes these as
+Validate and enable one connector at a time. Omnifin v0.7.2 describes these as
 pre-release integrations, so exercise one representative read and a harmless
 mutation before relying on each capability. The `omnifin-data` PVC inherits the
 nightly Longhorn B2 backup policy. Before an Omnifin upgrade or recovery drill,
