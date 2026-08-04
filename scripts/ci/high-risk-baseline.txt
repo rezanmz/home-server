@@ -105,7 +105,6 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|navidr
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|blocky|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing-backup|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-ingress-source|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|ingress/2/peer/0/cidr/0.0.0.0/0/except/none
@@ -174,7 +173,6 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-servi
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-bootstrap|spec/sha256/3800b09fd5e247e4a19cba6c5716bd168634c20f376853f12e73b182e3a8d439
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-postgresql|spec/sha256/66fe0dcf5000cd2ba61fd8f39b4f94408677ec943bffc51eec284bc155b4329f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-server|spec/sha256/a997716dea3375a30ecace792fa45a4e945f677d2652415fb56d7edea5d42638
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing-backup|spec/sha256/af5bd5897ec66892e349d663809663efdb9943fdf73b2e3a9d2b0a263f31e575
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|spec/sha256/6c606f36a460642f5640b93207d022255ba138f047acb473cc4a8290afb7968b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|spec/sha256/99f89f695d3a2c52a8771f0802b302040c0a349151e7c8f60440bc6287f648e2
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec.ipAllowList.sourceRange/10.42.1.0/24
@@ -224,7 +222,6 @@ service-account-token-mounted|apps/v1/Deployment|apps|homepage|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|headlamp|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|loggifly|pod-spec
 shared-process-namespace|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec
-snapshot-class-boundary|snapshot.storage.k8s.io/v1/VolumeSnapshotClass|default|longhorn-snapshot|spec/sha256/fde4367c4491a1fd762b17470f5038ad14d54c1875f70914507585214cbb1cc4
 traefik-backend-boundary|traefik.io/v1alpha1/ServersTransport|network-services|syncthing-mtls|spec/sha256/3b07d7bfc8ecfec929b80df38b75c449c6850a2147b17d926d3f953288395931
 traefik-backend-boundary|traefik.io/v1alpha1/TraefikService|network-services|syncthing-mtls|spec/sha256/9d4f3306034153efabc38b20c244162eea73d5bdf33f0aaaee467657a665eea6
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|egress/0/all-destinations
