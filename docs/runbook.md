@@ -274,7 +274,7 @@ application state encrypted in SQLite; do not duplicate them as Deployment
 environment variables or reconcile them from Git.
 
 The deployed Omnifin edge candidate at source revision
-`42b5ea974ffacb6302d8143af4c61fa9b2498dee` supports creating the first
+`a7ba6268213215b7a09b41f459af34e0172faa86` supports creating the first
 administrator with Authentik from the recovery-bound `/recovery` flow on a
 fresh database. That OIDC administrator
 can configure the installation before explicitly pairing a Jellyfin identity,
