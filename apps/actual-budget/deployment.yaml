@@ -52,7 +52,9 @@ spec:
             - name: ACTUAL_OPENID_ENFORCE
               value: "true"
             - name: ACTUAL_TOKEN_EXPIRATION
-              value: openid-provider
+              # Actual does not refresh OIDC tokens and can strand its
+              # local-first client when the provider-backed session expires.
+              value: never
             - name: ACTUAL_USER_CREATION_MODE
               value: login
             - name: ACTUAL_OPENID_SERVER_HOSTNAME
