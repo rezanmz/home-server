@@ -121,7 +121,10 @@ spec:
               memory: 192Mi
             limits:
               cpu: 250m
-              memory: 384Mi
+              # The worker was OOM-killed once (2026-08-05, exit code 137)
+              # while indexing under its old 384Mi limit. Keep the limit
+              # bounded but leave headroom for background job spikes.
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
