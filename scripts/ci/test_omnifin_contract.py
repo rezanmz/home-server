@@ -11,8 +11,8 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGE = (
-    "ghcr.io/rezanmz/omnifin:edge@"
-    "sha256:fbe0fedcc49600405cc21ce4fc757468b30fef947c97506fc83aad896a5948e1"
+    "ghcr.io/rezanmz/omnifin:0.11.0@"
+    "sha256:5914c9de76ff6edeb604d46fd0dd24cb54df984573ea9fd72afa2ae5bcb55833"
 )
 
 
