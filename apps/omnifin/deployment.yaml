@@ -102,6 +102,7 @@ spec:
             - {name: OMNIFIN_BASE_URL, value: https://omnifin.reza.network}
             - {name: OMNIFIN_DATABASE_URL, value: /data/omnifin.db}
             - {name: OMNIFIN_ENCRYPTION_KEY_FILE, value: /run/secrets/omnifin_encryption_key}
+            - {name: OMNIFIN_GATEWAY_HEALTH_URL, value: http://127.0.0.1:4000/healthz}
             - {name: OMNIFIN_HOST, value: 0.0.0.0}
             - {name: OMNIFIN_INSECURE_LOOPBACK_PREVIEW, value: "false"}
             - {name: OMNIFIN_IMAGE_REF, value: ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11}
@@ -112,6 +113,7 @@ spec:
             - {name: OMNIFIN_LOG_LEVEL, value: info}
             - {name: OMNIFIN_PORT, value: "4000"}
             - {name: OMNIFIN_RECOVERY_SECRET_FILE, value: /run/secrets/omnifin_recovery_secret}
+            - {name: OMNIFIN_GATEWAY_READY_URL, value: http://127.0.0.1:4000/readyz}
             - {name: OMNIFIN_SECURE_COOKIES, value: "true"}
             - {name: OMNIFIN_TRUST_PROXY_HOPS, value: "1"}
           ports:

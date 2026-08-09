@@ -321,8 +321,9 @@ can run with the gateway online and verify its `0600` database files without
 widening them.
 
 After the rollout, retain evidence from the gateway's v0.13.1 `doctor`,
-`health`, and `flight-check` commands, plus successful HTTPS `/healthz` and
-`/readyz` responses. Confirm the CronJob's latest retained backup completed,
+`health`, and `flight-check` commands; `doctor` validates the local gateway
+endpoints `http://127.0.0.1:4000/healthz` and
+`http://127.0.0.1:4000/readyz`. Confirm the CronJob's latest retained backup completed,
 verify that backup, and record its digest and manifest. Then validate the
 Jellyfin, Seerr, Radarr, Sonarr, Prowlarr, and qBittorrent connector checks
 individually, including one harmless read and mutation where supported.
