@@ -24,6 +24,7 @@ added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/DAC
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETGID
 added-capability|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent/SETUID
 added-capability|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory/CHOWN
+added-capability|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory/DAC_OVERRIDE
 added-capability|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory/FOWNER
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/CHOWN
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/DAC_OVERRIDE
