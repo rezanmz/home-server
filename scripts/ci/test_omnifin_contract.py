@@ -87,6 +87,14 @@ class OmnifinContractTests(unittest.TestCase):
             environment["OMNIFIN_ENCRYPTION_KEY_FILE"]["value"],
             "/run/secrets/omnifin_encryption_key",
         )
+        self.assertEqual(
+            environment["OMNIFIN_GATEWAY_HEALTH_URL"]["value"],
+            "http://127.0.0.1:4000/healthz",
+        )
+        self.assertEqual(
+            environment["OMNIFIN_GATEWAY_READY_URL"]["value"],
+            "http://127.0.0.1:4000/readyz",
+        )
         self.assertEqual(environment["OMNIFIN_IMAGE_REF"]["value"], IMAGE)
         self.assertEqual(
             environment["OMNIFIN_RECOVERY_SECRET_FILE"]["value"],
