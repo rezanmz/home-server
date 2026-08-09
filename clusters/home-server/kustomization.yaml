@@ -13,6 +13,7 @@ resources:
   - ../../infrastructure/cert-manager
   - ../../infrastructure/observability
   - ../../infrastructure/nfs-media
+  - ../../infrastructure/dri-device-plugin
   - ../../apps/homepage
   - ../../apps/home-assistant
   - ../../apps/actual-budget

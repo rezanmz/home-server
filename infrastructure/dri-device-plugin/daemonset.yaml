@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dri-device-plugin
+  namespace: media
+  labels:
+    app.kubernetes.io/name: dri-device-plugin
+    app.kubernetes.io/component: device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dri-device-plugin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dri-device-plugin
+        app.kubernetes.io/component: device-plugin
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        homelab.rezan.dev/gpu: amd
+      containers:
+        - name: generic-device-plugin
+          image: squat/generic-device-plugin@sha256:dc192e164c69b03f156765793a1be62ca437709ae477b27ca7d8f3dcf5021576
+          imagePullPolicy: IfNotPresent
+          args:
+            - --device
+            - |
+              name: dri-render
+              groups:
+                - paths:
+                    - path: /dev/dri/renderD128
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dri
+              mountPath: /dev/dri
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: Directory
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
