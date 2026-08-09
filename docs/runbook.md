@@ -238,14 +238,14 @@ payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
 metadata recovery is required to interpret those chunks. They are not included
 in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
-### Omnifin first run, OIDC, and recovery
+### Omnifin first run, OIDC, recovery, and v0.13.1 upgrades
 
 Omnifin is internet-accessible at `omnifin.reza.network`. Its public web process
 is stateless; the private gateway exclusively owns SQLite, connector
 credentials, sessions, authorization, and audit records. Never route the
 `omnifin-gateway` Service or copy connector credentials into the web Deployment.
-The two workloads use the same release digest and may float independently
-between the amd64 Beelink and arm64 Pi.
+Both workloads are pinned to the immutable v0.13.1 release
+`ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11`.
 
 A fresh database has no administrator. Open `/recovery` directly, obtain the
 `recovery-secret` from `apps/omnifin/secrets.sops.yaml`, and use Jellyfin Quick
@@ -271,17 +271,11 @@ Save it disabled, run Omnifin's discovery validation, and only then enable it.
 Keep just-in-time users at the viewer role until a narrow claim mapping has
 been tested. OIDC configuration and connector credentials are operational
 application state encrypted in SQLite; do not duplicate them as Deployment
-environment variables or reconcile them from Git.
-
-The deployed Omnifin edge candidate at source revision
-`a7ba6268213215b7a09b41f459af34e0172faa86` supports creating the first
-administrator with Authentik from the recovery-bound `/recovery` flow on a
-fresh database. That OIDC administrator
-can configure the installation before explicitly pairing a Jellyfin identity,
-but media access remains denied until pairing succeeds. This bootstrap is not
-an in-place migration path for a database that already has an administrator:
-ordinary OIDC sign-in never creates administrator authority, and recovery
-bootstrap is refused once the first-administrator invariant has been satisfied.
+environment variables or reconcile them from Git. On a fresh database,
+Authentik may create the first administrator through the recovery-bound
+`/recovery` flow, but ordinary OIDC sign-in never creates administrator
+authority and recovery bootstrap is refused once that invariant is satisfied.
+Media access remains denied until the Jellyfin identity is explicitly paired.
 
 The gateway may connect only to the reviewed internal media APIs. Prefer these
 addresses when adding connectors and explicitly approve the private-network
@@ -296,21 +290,42 @@ destination in Omnifin:
 | Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
 | qBittorrent | `http://qbittorrent.media.svc.cluster.local:8080` |
 
-Validate and enable one connector at a time. Omnifin describes these as
-pre-release integrations, so exercise one representative read and a harmless
-mutation before relying on each capability. The `omnifin-data` PVC inherits the
-nightly Longhorn B2 backup policy. Before an Omnifin upgrade or recovery drill,
-also create and verify an application-native online SQLite backup using the
-exact deployed image; retain its manifest and image digest, while keeping the
-matching encryption and recovery secrets separately protected. The gateway
-init container restores `/data/backups` to owner `65532:65532` and mode `0700`
-after every volume mount because Omnifin correctly refuses a backup directory
-whose permissions were widened by Kubernetes `fsGroup` handling.
+Validate and enable one connector at a time. Exercise one representative read
+and a harmless mutation before relying on each capability. The `omnifin-data`
+PVC inherits the nightly Longhorn B2 backup policy, but that is not a substitute
+for an application backup. This existing v0.12 deployment's gateway recreates
+SQLite/WAL/SHM files with legacy `0660` group permissions, while the v0.13
+maintenance command requires `0600`. Therefore, make this particular pre-v0.13
+recovery backup with both web and gateway stopped—not live/online—then run its
+verification and retain the result, backup manifest, and exact image digest.
+Keep the matching encryption and recovery secrets separately protected. Do not
+start the upgrade until the backup can be read and verified; a rollback must
+restore that verified pre-upgrade database backup and the previous immutable
+image together, never just change the image while retaining a database opened
+by the new gateway.
 
-The edge revision adds a forward-only SQLite migration for playback asset
-handles. A rollback to v0.7.2 must therefore restore the verified pre-upgrade
-database backup as well as the v0.7.2 image; do not merely change the image tag
-while retaining a database opened by the edge gateway.
+The daily `omnifin-maintenance` CronJob runs at 03:17 UTC with
+`maintenance backup-retained --retain 14`. It requires the gateway on the same
+node because `omnifin-data` is RWO, forbids overlap, and writes retained,
+application-native backups locally under `/data/backups`. The data-mounting
+gateway and maintenance pod intentionally omit pod-level `fsGroup` and
+`fsGroupChangePolicy` to prevent recursive Longhorn permission widening. The
+maintenance pod has no public network path, recovery-secret or other credential
+mount, service-account token, init container, or egress. Its required affinity
+to a running v0.13 gateway lets it rely on the gateway init's `DAC_OVERRIDE`,
+`CHOWN`, and `FOWNER` capabilities only for exact private-path repairs: `/data`
+is `65532:65532`/`0700` and the database, WAL, and SHM files are private. The
+gateway's Secret projections are `0444` and mounted only in that gateway
+container. After v0.13's init repair is deployed, the daily maintenance CronJob
+can run with the gateway online and verify its `0600` database files without
+widening them.
+
+After the rollout, retain evidence from the gateway's v0.13.1 `doctor`,
+`health`, and `flight-check` commands, plus successful HTTPS `/healthz` and
+`/readyz` responses. Confirm the CronJob's latest retained backup completed,
+verify that backup, and record its digest and manifest. Then validate the
+Jellyfin, Seerr, Radarr, Sonarr, Prowlarr, and qBittorrent connector checks
+individually, including one harmless read and mutation where supported.
 
 ## DNS and DHCP
 

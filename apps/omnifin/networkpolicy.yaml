@@ -118,3 +118,15 @@ spec:
         - {port: 8080, protocol: TCP}
         - {port: 8989, protocol: TCP}
         - {port: 9696, protocol: TCP}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: omnifin-maintenance
+  namespace: apps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: maintenance
+  policyTypes: [Egress]
+  egress: []
