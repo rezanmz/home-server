@@ -116,7 +116,7 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
-| `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri`, host network, Longhorn config, and read-only JuiceFS library |
+| `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri/renderD128` via the device plugin, host network, Longhorn config, and read-only JuiceFS library |
 | `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, writable JuiceFS audiobooks/podcasts, read-only JuiceFS books, and Authentik OIDC |
 | `media/navidrome` | Keeps music scanning and streaming on the main compute node | Longhorn application state and read-only JuiceFS music |
 | `apps/home-assistant` | Keeps third-party integration code and selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; approved LAN integrations require protocol-scoped network policy |
@@ -191,6 +191,12 @@ are grouped with the Calibre-Web module.
 | Metrics Server | K3s-packaged floating singleton |
 | CoreDNS | K3s-packaged singleton; see the live-drift section below |
 | K3s API server, scheduler, controller manager, SQLite | Beelink host processes |
+
+Jellyfin hardware transcoding depends on the `media/dri-device-plugin` DaemonSet
+being available on the GPU-labeled Beelink. The plugin advertises one
+`devic.es/dri-render` resource for `/dev/dri/renderD128`; Jellyfin requests that
+resource and does not receive the broader `/dev/dri` host path. If the plugin is
+unavailable, the Jellyfin pod cannot be scheduled.
 
 A new eligible node automatically receives the Traefik, MetalLB speaker,
 Longhorn manager/CSI, and applicable Longhorn engine-image DaemonSet pods.

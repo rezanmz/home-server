@@ -87,8 +87,9 @@ host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec
 host-network|apps/v1/Deployment|network-services|samba|pod-spec
 host-network|apps/v1/Deployment|network-services|syncthing|pod-spec
+host-path|apps/v1/DaemonSet|media|dri-device-plugin|volume/device-plugin/path//var/lib/kubelet/device-plugins
+host-path|apps/v1/DaemonSet|media|dri-device-plugin|volume/dri/path//dev/dri
 host-path|apps/v1/Deployment|media|downloads|volume/dev-net-tun/path//dev/net/tun
-host-path|apps/v1/Deployment|media|jellyfin|volume/dri/path//dev/dri
 host-port|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/wireguard/host-1234
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -187,6 +188,7 @@ pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|network-services|syncthing-
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|network-services|wg-easy-lan-only|spec.ipAllowList.sourceRange/10.42.1.0/24
 pod-sysctl|apps/v1/Deployment|network-services|wg-easy|net.ipv4.conf.all.src_valid_mark/value/1
 pod-sysctl|apps/v1/Deployment|network-services|wg-easy|net.ipv4.ip_forward/value/1
+privileged-container|apps/v1/DaemonSet|media|dri-device-plugin|container/generic-device-plugin
 privileged-namespace|v1/Namespace|default|longhorn-system|pod-security-enforce
 privileged-namespace|v1/Namespace|default|media|pod-security-enforce
 privileged-namespace|v1/Namespace|default|metallb-system|pod-security-enforce
