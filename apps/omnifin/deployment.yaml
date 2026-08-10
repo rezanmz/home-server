@@ -92,7 +92,7 @@ spec:
             - {name: data, mountPath: /data}
       containers:
         - name: gateway
-          image: ghcr.io/rezanmz/omnifin@sha256:a8d9d96d8d6c402f92f31c9d6dd9304f013dabda42ae3520a63e036d016dc18e
+          image: ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11
           imagePullPolicy: IfNotPresent
           args:
             - gateway
@@ -105,7 +105,7 @@ spec:
             - {name: OMNIFIN_GATEWAY_HEALTH_URL, value: http://127.0.0.1:4000/healthz}
             - {name: OMNIFIN_HOST, value: 0.0.0.0}
             - {name: OMNIFIN_INSECURE_LOOPBACK_PREVIEW, value: "false"}
-            - {name: OMNIFIN_IMAGE_REF, value: ghcr.io/rezanmz/omnifin@sha256:a8d9d96d8d6c402f92f31c9d6dd9304f013dabda42ae3520a63e036d016dc18e}
+            - {name: OMNIFIN_IMAGE_REF, value: ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11}
             # The direct cluster path is isolated by NetworkPolicy and avoids
             # sending service credentials through Jellyfin's browser proxy.
             - {name: OMNIFIN_JELLYFIN_INSECURE_HTTP_APPROVED, value: "true"}
@@ -206,7 +206,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/rezanmz/omnifin@sha256:a8d9d96d8d6c402f92f31c9d6dd9304f013dabda42ae3520a63e036d016dc18e
+          image: ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11
           imagePullPolicy: IfNotPresent
           args:
             - web

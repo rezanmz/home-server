@@ -238,15 +238,14 @@ payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
 metadata recovery is required to interpret those chunks. They are not included
 in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
-### Omnifin first run, OIDC, recovery, and 0.13.1-edge.265.1 upgrades
+### Omnifin first run, OIDC, recovery, and v0.13.1 upgrades
 
 Omnifin is internet-accessible at `omnifin.reza.network`. Its public web process
 is stateless; the private gateway exclusively owns SQLite, connector
 credentials, sessions, authorization, and audit records. Never route the
 `omnifin-gateway` Service or copy connector credentials into the web Deployment.
-Both workloads are pinned to the immutable Omnifin edge build `0.13.1-edge.265.1`
-(revision `6df2b5bd5aa4ee1a3b88983485c52130f861203c`),
-`ghcr.io/rezanmz/omnifin@sha256:a8d9d96d8d6c402f92f31c9d6dd9304f013dabda42ae3520a63e036d016dc18e`.
+Both workloads are pinned to the immutable v0.13.1 release
+`ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11`.
 
 A fresh database has no administrator. Open `/recovery` directly, obtain the
 `recovery-secret` from `apps/omnifin/secrets.sops.yaml`, and use Jellyfin Quick
@@ -321,7 +320,7 @@ container. After v0.13's init repair is deployed, the daily maintenance CronJob
 can run with the gateway online and verify its `0600` database files without
 widening them.
 
-After the rollout, retain evidence from the gateway's `0.13.1-edge.265.1` `doctor`,
+After the rollout, retain evidence from the gateway's v0.13.1 `doctor`,
 `health`, and `flight-check` commands; `doctor` validates the local gateway
 endpoints `http://127.0.0.1:4000/healthz` and
 `http://127.0.0.1:4000/readyz`. Confirm the CronJob's latest retained backup completed,
