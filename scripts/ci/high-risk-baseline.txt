@@ -130,7 +130,6 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec/sha256
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|lan-vpn-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|navidrome-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
-middleware-boundary|traefik.io/v1alpha1/Middleware|media|sabnzbd-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|slskd-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|soularr-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
@@ -228,7 +227,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|navidrome|spec/sha25
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|prowlarr|spec/sha256/b45a1bb03c081043f0e8bc74a2b9949674ada63fe8243aa29eb8dd373bbb346d
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|qbittorrent|spec/sha256/32ce418d04d71d76a48bff45337ea661345231b4bb884e47cd95ad126d64a948
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|radarr|spec/sha256/657408efebab064eab2d7ce8659e26329b749985f76da939822d740debe059a6
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|sabnzbd|spec/sha256/3dba5a997d695d65cb75398c6d5b188102f993da93c5e7d7dc3d065faaa3655d
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|sabnzbd|spec/sha256/a0ced8a32b752c74e41e5138cdcf727f1a18ef4dbb108069fab01013ec808c11
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|shelfmark|spec/sha256/1ccafcf99e09f35d35ee79930a739655cbf90902df499a6af1141662386107a6
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|slskd|spec/sha256/a06a6ac4af98a6fe51f3aab6c1d4b2c377b6f46e8139cacf2e592f5efc2f1838
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|sonarr|spec/sha256/3cf356d1d8a89de253764c39db9d9049474a79c86769f6f760189d381be7389a

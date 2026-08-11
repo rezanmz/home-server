@@ -22,13 +22,8 @@ spec:
       cloudflare: false
       splitHorizon: true
     auth:
-      mode: forward-auth
-      profile: authentik-forward-single-v1
-      blueprintName: SABnzbd proxy authentication
-      application:
-        slug: sabnzbd
-        launchUrl: https://sabnzbd.reza.network/
-      middleware: sabnzbd-authentik
+      mode: native
+      reason: SABnzbd uses its native application authentication behind the LAN/WireGuard boundary.
   placement:
     mode: floating
     manifest: apps/sabnzbd/deployment.yaml

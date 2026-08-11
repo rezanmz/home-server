@@ -309,68 +309,31 @@ class SabnzbdContractTests(unittest.TestCase):
         )
         self.assertEqual(policy["spec"]["egress"], [{}])
 
-    def test_route_keeps_authentik_outpost_and_protected_backend_separate(self) -> None:
-        middleware = resource(
-            "apps/sabnzbd/route.yaml", "Middleware", "sabnzbd-authentik"
+    def test_route_has_no_forward_auth_and_one_protected_backend(self) -> None:
+        route_documents = documents("apps/sabnzbd/route.yaml")
+        self.assertEqual(len(route_documents), 1)
+        self.assertFalse(
+            any(document.get("kind") == "Middleware" for document in route_documents)
         )
-        self.assertEqual(
-            middleware["spec"]["forwardAuth"]["address"],
-            "http://authentik.apps.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik",
-        )
-        self.assertTrue(middleware["spec"]["forwardAuth"]["trustForwardHeader"])
-        self.assertEqual(
-            middleware["spec"]["forwardAuth"]["authResponseHeaders"],
-            [
-                "X-authentik-username",
-                "X-authentik-groups",
-                "X-authentik-entitlements",
-                "X-authentik-email",
-                "X-authentik-name",
-                "X-authentik-uid",
-                "X-authentik-jwt",
-                "X-authentik-meta-jwks",
-                "X-authentik-meta-outpost",
-                "X-authentik-meta-provider",
-                "X-authentik-meta-app",
-                "X-authentik-meta-version",
-            ],
-        )
-
         route = resource("apps/sabnzbd/route.yaml", "HTTPRoute", "sabnzbd")
         self.assertEqual(
             route["spec"]["parentRefs"], [{"name": "home", "namespace": "traefik"}]
         )
         self.assertEqual(route["spec"]["hostnames"], ["sabnzbd.reza.network"])
-        self.assertEqual(len(route["spec"]["rules"]), 2)
-        outpost, protected = route["spec"]["rules"]
-        self.assertEqual(
-            outpost["matches"],
-            [{"path": {"type": "PathPrefix", "value": "/outpost.goauthentik.io"}}],
-        )
-        self.assertEqual(
-            [
-                item["extensionRef"]["name"]
-                for item in outpost["filters"]
-                if item["type"] == "ExtensionRef"
-            ],
-            ["custom-errors", "lan-vpn-only"],
-        )
-        self.assertEqual(
-            outpost["backendRefs"],
-            [{"name": "authentik", "namespace": "apps", "port": 9000}],
-        )
-        self.assertNotIn("sabnzbd-authentik", str(outpost["filters"]))
+        self.assertEqual(len(route["spec"]["rules"]), 1)
+        protected = route["spec"]["rules"][0]
+        self.assertNotIn("outpost.goauthentik.io", str(route))
         self.assertEqual(
             [
                 item["extensionRef"]["name"]
                 for item in protected["filters"]
                 if item["type"] == "ExtensionRef"
             ],
-            ["custom-errors", "lan-vpn-only", "sabnzbd-authentik"],
+            ["custom-errors", "lan-vpn-only"],
         )
         self.assertEqual(protected["backendRefs"], [{"name": "sabnzbd-access", "port": 80}])
 
-    def test_catalog_is_private_split_horizon_forward_auth_without_public_dns(self) -> None:
+    def test_catalog_is_private_split_horizon_native_auth_without_public_dns(self) -> None:
         catalog = resource(
             "apps/sabnzbd/sabnzbd.catalog.yaml", "Service", "sabnzbd"
         )
@@ -384,14 +347,8 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertEqual(
             spec["web"]["auth"],
             {
-                "mode": "forward-auth",
-                "profile": "authentik-forward-single-v1",
-                "blueprintName": "SABnzbd proxy authentication",
-                "application": {
-                    "slug": "sabnzbd",
-                    "launchUrl": "https://sabnzbd.reza.network/",
-                },
-                "middleware": "sabnzbd-authentik",
+                "mode": "native",
+                "reason": "SABnzbd uses its native application authentication behind the LAN/WireGuard boundary.",
             },
         )
 
