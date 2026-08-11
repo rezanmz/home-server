@@ -18,6 +18,10 @@ GLUETUN_IMAGE = (
     "qmcgaw/gluetun:v3.41.3@"
     "sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027"
 )
+BUSYBOX_IMAGE = (
+    "busybox:1.38.0@"
+    "sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d"
+)
 
 
 def documents(relative_path: str) -> list[dict]:
@@ -94,7 +98,10 @@ class SabnzbdContractTests(unittest.TestCase):
             "apps/sabnzbd/deployment.yaml", "Deployment", "sabnzbd-vpn"
         )
         pod = deployment["spec"]["template"]["spec"]
-        self.assertEqual(len(pod["initContainers"]), 1)
+        self.assertEqual(
+            [container["name"] for container in pod["initContainers"]],
+            ["gluetun", "prepare-sabnzbd-run"],
+        )
         gluetun = pod["initContainers"][0]
         self.assertEqual(gluetun["name"], "gluetun")
         self.assertEqual(gluetun["image"], GLUETUN_IMAGE)
@@ -128,6 +135,29 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertEqual(
             {mount["name"]: mount["mountPath"] for mount in gluetun["volumeMounts"]},
             {"dev-net-tun": "/dev/net/tun", "gluetun-state": "/gluetun"},
+        )
+        prepare_run = pod["initContainers"][1]
+        self.assertEqual(prepare_run["image"], BUSYBOX_IMAGE)
+        self.assertEqual(prepare_run["command"], ["chown", "1000:1000", "/run"])
+        self.assertEqual(
+            prepare_run["securityContext"],
+            {
+                "allowPrivilegeEscalation": False,
+                "readOnlyRootFilesystem": True,
+                "runAsUser": 0,
+                "runAsGroup": 0,
+                "capabilities": {"drop": ["ALL"], "add": ["CHOWN"]},
+            },
+        )
+        self.assertEqual(
+            prepare_run["resources"],
+            {
+                "requests": {"cpu": "5m", "memory": "8Mi"},
+                "limits": {"cpu": "50m", "memory": "32Mi"},
+            },
+        )
+        self.assertEqual(
+            prepare_run["volumeMounts"], [{"name": "run", "mountPath": "/run"}]
         )
 
     def test_service_and_network_policy_are_internal_and_scoped(self) -> None:

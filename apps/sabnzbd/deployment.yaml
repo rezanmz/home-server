@@ -76,6 +76,22 @@ spec:
           volumeMounts:
             - {name: dev-net-tun, mountPath: /dev/net/tun}
             - {name: gluetun-state, mountPath: /gluetun}
+        - name: prepare-sabnzbd-run
+          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          command: [chown, "1000:1000", /run]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN]
+          resources:
+            requests: {cpu: 5m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          volumeMounts:
+            - {name: run, mountPath: /run}
       containers:
         - name: sabnzbd
           image: lscr.io/linuxserver/sabnzbd:5.1.0-ls266@sha256:341b91c31403e46aff0ac640d9889092649f168a5f1edb8bb26d61abee62643a

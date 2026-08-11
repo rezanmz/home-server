@@ -42,6 +42,7 @@ added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/NET
 added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/NET_RAW
 added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/SETGID
 added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/SETUID
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/prepare-sabnzbd-run/CHOWN
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_RAW
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories/CHOWN
@@ -51,11 +52,13 @@ explicit-root-group|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-group|apps/v1/Deployment|apps|home-assistant|container/home-assistant
 explicit-root-group|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory
 explicit-root-group|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
+explicit-root-group|apps/v1/Deployment|media|sabnzbd-vpn|init-container/prepare-sabnzbd-run
 explicit-root-group|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 explicit-root-user|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-user|apps/v1/Deployment|apps|home-assistant|container/home-assistant
 explicit-root-user|apps/v1/Deployment|apps|omnifin-gateway|init-container/prepare-data-directory
 explicit-root-user|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
+explicit-root-user|apps/v1/Deployment|media|sabnzbd-vpn|init-container/prepare-sabnzbd-run
 explicit-root-user|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec/sha256/39862bedcf4ef916bdcd6ff920a8397bfdbcfbc2d0e6b3bd59a6f21ad5c9433e
 external-source-boundary|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec/sha256/ec39ed3f8b3be6b9508be7c0e55284e3deb2783ca80348711796ed6e5e04749d
