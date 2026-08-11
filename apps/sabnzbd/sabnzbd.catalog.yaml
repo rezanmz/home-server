@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: sabnzbd
+spec:
+  name: SABnzbd
+  workload:
+    namespace: media
+    app: sabnzbd-vpn
+  homepage:
+    enabled: false
+    reason: No HTTPRoute or public proxy is configured for SABnzbd yet.
+  placement:
+    mode: floating
+    manifest: apps/sabnzbd/deployment.yaml
+    reason: Its singleton pod owns a dedicated Gluetun network namespace and Proton WireGuard session.
+  data:
+    class: mixed
+    protection: longhorn-b2
+    manifests:
+      - apps/sabnzbd/pvc.yaml
+      - infrastructure/nfs-media/media.yaml
+    note: Longhorn protects SABnzbd and Gluetun state; downloaded NFS media remains reproducible acquisition data.
+  observability:
+    mode: kubernetes
