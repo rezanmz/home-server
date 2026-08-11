@@ -63,18 +63,31 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertEqual(sabnzbd["image"], SABNZBD_IMAGE)
         self.assertEqual(
             {entry["name"]: entry["value"] for entry in sabnzbd["env"]},
-            {"PUID": "1000", "PGID": "1000", "TZ": "America/Toronto"},
+            {
+                "PUID": "1000",
+                "PGID": "1000",
+                "LSIO_NON_ROOT_USER": "1",
+                "TZ": "America/Toronto",
+            },
         )
-        self.assertFalse(sabnzbd["securityContext"]["allowPrivilegeEscalation"])
-        self.assertEqual(sabnzbd["securityContext"]["capabilities"]["drop"], ["ALL"])
+        security_context = sabnzbd["securityContext"]
+        self.assertFalse(security_context["allowPrivilegeEscalation"])
+        self.assertTrue(security_context["runAsNonRoot"])
+        self.assertEqual(security_context["runAsUser"], 1000)
+        self.assertEqual(security_context["runAsGroup"], 1000)
+        self.assertEqual(security_context["capabilities"]["drop"], ["ALL"])
+        self.assertNotIn("add", security_context["capabilities"])
         mounts = {mount["name"]: mount["mountPath"] for mount in sabnzbd["volumeMounts"]}
         self.assertEqual(mounts["sabnzbd-config"], "/config")
         self.assertEqual(mounts["media-downloads"], "/media/downloads")
+        self.assertEqual(mounts["run"], "/run")
         self.assertNotIn("media-library", mounts)
         self.assertEqual(
             {volume["name"] for volume in pod["volumes"]},
-            {"dev-net-tun", "sabnzbd-config", "gluetun-state", "media-downloads", "tmp"},
+            {"dev-net-tun", "sabnzbd-config", "gluetun-state", "media-downloads", "tmp", "run"},
         )
+        volumes = {volume["name"]: volume for volume in pod["volumes"]}
+        self.assertEqual(volumes["run"]["emptyDir"], {})
 
     def test_gluetun_uses_runtime_secret_and_no_lan_bypass(self) -> None:
         deployment = resource(
@@ -86,6 +99,18 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertEqual(gluetun["name"], "gluetun")
         self.assertEqual(gluetun["image"], GLUETUN_IMAGE)
         self.assertEqual(gluetun["restartPolicy"], "Always")
+        self.assertEqual(
+            gluetun["securityContext"]["capabilities"]["add"],
+            [
+                "CHOWN",
+                "DAC_OVERRIDE",
+                "NET_ADMIN",
+                "NET_BIND_SERVICE",
+                "NET_RAW",
+                "SETGID",
+                "SETUID",
+            ],
+        )
         env = {entry["name"]: entry for entry in gluetun["env"]}
         self.assertEqual(env["VPN_SERVICE_PROVIDER"]["value"], "protonvpn")
         self.assertEqual(env["VPN_TYPE"]["value"], "wireguard")

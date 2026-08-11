@@ -83,6 +83,7 @@ spec:
           env:
             - {name: PUID, value: "1000"}
             - {name: PGID, value: "1000"}
+            - {name: LSIO_NON_ROOT_USER, value: "1"}
             - {name: TZ, value: America/Toronto}
           ports:
             - {name: sabnzbd, containerPort: 8080, protocol: TCP}
@@ -106,11 +107,15 @@ spec:
             limits: {cpu: "2", memory: 4Gi}
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: sabnzbd-config, mountPath: /config}
             - {name: media-downloads, mountPath: /media/downloads}
             - {name: tmp, mountPath: /tmp}
+            - {name: run, mountPath: /run}
       volumes:
         - name: dev-net-tun
           hostPath: {path: /dev/net/tun, type: CharDevice}
@@ -121,4 +126,6 @@ spec:
         - name: media-downloads
           persistentVolumeClaim: {claimName: media-downloads}
         - name: tmp
+          emptyDir: {}
+        - name: run
           emptyDir: {}
