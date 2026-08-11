@@ -3,5 +3,7 @@ kind: Kustomization
 resources:
   - pvc.yaml
   - deployment.yaml
+  - access-proxy.yaml
+  - route.yaml
   - service.yaml
   - networkpolicy.yaml

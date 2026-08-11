@@ -207,9 +207,10 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["Downloads & Automation"],
-            [
-                "qBittorrent",
-                "Prowlarr",
+             [
+                 "qBittorrent",
+                "SABnzbd",
+                 "Prowlarr",
                 "Radarr",
                 "Sonarr",
                 "Lidarr",
