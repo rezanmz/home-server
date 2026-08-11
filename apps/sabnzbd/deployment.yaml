@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sabnzbd-vpn
+  namespace: media
+  labels:
+    app.kubernetes.io/name: sabnzbd-vpn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sabnzbd-vpn
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sabnzbd-vpn
+        home-server.reza.network/internal-client: "true"
+    spec:
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: gluetun
+          image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          env:
+            - {name: VPN_SERVICE_PROVIDER, value: protonvpn}
+            - {name: VPN_TYPE, value: wireguard}
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sabnzbd-vpn
+                  key: wireguard-private-key
+            - {name: PORT_FORWARD_ONLY, value: "off"}
+            - {name: VPN_PORT_FORWARDING, value: "off"}
+            - {name: TZ, value: America/Toronto}
+            - {name: DNS_UPSTREAM_RESOLVER_TYPE, value: doh}
+            - {name: DNS_UPSTREAM_RESOLVERS, value: "cloudflare,google"}
+            - {name: FIREWALL_INPUT_PORTS, value: "8080"}
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "10.42.0.0/16,10.43.0.0/16"
+          startupProbe:
+            exec:
+              command: [wget, -qO-, http://127.0.0.1:8000/v1/vpn/status]
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            exec:
+              command: [wget, -qO-, http://127.0.0.1:8000/v1/vpn/status]
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, DAC_OVERRIDE, NET_ADMIN, NET_BIND_SERVICE, NET_RAW, SETGID, SETUID]
+          volumeMounts:
+            - {name: dev-net-tun, mountPath: /dev/net/tun}
+            - {name: gluetun-state, mountPath: /gluetun}
+      containers:
+        - name: sabnzbd
+          image: lscr.io/linuxserver/sabnzbd:5.1.0-ls266@sha256:341b91c31403e46aff0ac640d9889092649f168a5f1edb8bb26d61abee62643a
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PUID, value: "1000"}
+            - {name: PGID, value: "1000"}
+            - {name: TZ, value: America/Toronto}
+          ports:
+            - {name: sabnzbd, containerPort: 8080, protocol: TCP}
+          startupProbe:
+            tcpSocket: {port: sabnzbd}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket: {port: sabnzbd}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket: {port: sabnzbd}
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 4Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: sabnzbd-config, mountPath: /config}
+            - {name: media-downloads, mountPath: /media/downloads}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: dev-net-tun
+          hostPath: {path: /dev/net/tun, type: CharDevice}
+        - name: sabnzbd-config
+          persistentVolumeClaim: {claimName: sabnzbd-config}
+        - name: gluetun-state
+          persistentVolumeClaim: {claimName: sabnzbd-gluetun-state}
+        - name: media-downloads
+          persistentVolumeClaim: {claimName: media-downloads}
+        - name: tmp
+          emptyDir: {}
