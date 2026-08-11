@@ -238,14 +238,14 @@ payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
 metadata recovery is required to interpret those chunks. They are not included
 in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
-### Omnifin first run, OIDC, recovery, and v0.13.1 upgrades
+### Omnifin first run, OIDC, recovery, and upgrades
 
 Omnifin is internet-accessible at `omnifin.reza.network`. Its public web process
 is stateless; the private gateway exclusively owns SQLite, connector
 credentials, sessions, authorization, and audit records. Never route the
 `omnifin-gateway` Service or copy connector credentials into the web Deployment.
-Both workloads are pinned to the immutable v0.13.1 release
-`ghcr.io/rezanmz/omnifin@sha256:deae382a5c09560322eb5146764393bd0155c314087768426b757ca0c6fbff11`.
+Both workloads are pinned to the immutable v0.16.0 release
+`ghcr.io/rezanmz/omnifin@sha256:8018eb13bea4032f05517991626928100d778789418ccaaca6400cf3069fee76`.
 
 A fresh database has no administrator. Open `/recovery` directly, obtain the
 `recovery-secret` from `apps/omnifin/secrets.sops.yaml`, and use Jellyfin Quick
@@ -293,16 +293,13 @@ destination in Omnifin:
 Validate and enable one connector at a time. Exercise one representative read
 and a harmless mutation before relying on each capability. The `omnifin-data`
 PVC inherits the nightly Longhorn B2 backup policy, but that is not a substitute
-for an application backup. This existing v0.12 deployment's gateway recreates
-SQLite/WAL/SHM files with legacy `0660` group permissions, while the v0.13
-maintenance command requires `0600`. Therefore, make this particular pre-v0.13
-recovery backup with both web and gateway stopped—not live/online—then run its
-verification and retain the result, backup manifest, and exact image digest.
-Keep the matching encryption and recovery secrets separately protected. Do not
-start the upgrade until the backup can be read and verified; a rollback must
-restore that verified pre-upgrade database backup and the previous immutable
-image together, never just change the image while retaining a database opened
-by the new gateway.
+for an application backup. Before an upgrade, trigger and verify a retained
+application-native backup; retain its result, backup
+manifest, and exact image digest. Keep the matching encryption and recovery
+secrets separately protected. Do not start the upgrade until the backup can be
+read and verified; a rollback must restore that verified pre-upgrade database
+backup and the previous immutable image together, never just change the image
+while retaining a database opened by the new gateway.
 
 The daily `omnifin-maintenance` CronJob runs at 03:17 UTC with
 `maintenance backup-retained --retain 14`. It requires the gateway on the same
@@ -312,16 +309,15 @@ gateway and maintenance pod intentionally omit pod-level `fsGroup` and
 `fsGroupChangePolicy` to prevent recursive Longhorn permission widening. The
 maintenance pod has no public network path, recovery-secret or other credential
 mount, service-account token, init container, or egress. Its required affinity
-to a running v0.13 gateway lets it rely on the gateway init's `DAC_OVERRIDE`,
-`CHOWN`, and `FOWNER` capabilities only for exact private-path repairs: `/data`
-is `65532:65532`/`0700` and the database, WAL, and SHM files are private. The
+to a running gateway lets it rely on the gateway init's `DAC_OVERRIDE`, `CHOWN`,
+and `FOWNER` capabilities only for exact private-path repairs: `/data` is
+`65532:65532`/`0700` and the database, WAL, and SHM files are private. The
 gateway's Secret projections are `0444` and mounted only in that gateway
-container. After v0.13's init repair is deployed, the daily maintenance CronJob
-can run with the gateway online and verify its `0600` database files without
-widening them.
+container. The gateway init repair lets the daily maintenance CronJob run with
+the gateway online and verify its `0600` database files without widening them.
 
-After the rollout, retain evidence from the gateway's v0.13.1 `doctor`,
-`health`, and `flight-check` commands; `doctor` validates the local gateway
+After the rollout, retain evidence from the current image's `doctor`, `health`,
+and `flight-check` commands; `doctor` validates the local gateway
 endpoints `http://127.0.0.1:4000/healthz` and
 `http://127.0.0.1:4000/readyz`. Confirm the CronJob's latest retained backup completed,
 verify that backup, and record its digest and manifest. Then validate the
