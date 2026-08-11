@@ -35,6 +35,13 @@ added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/SETGI
 added-capability|apps/v1/Deployment|media|downloads|init-container/gluetun/SETUID
 added-capability|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state/CHOWN
 added-capability|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state/FOWNER
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/CHOWN
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/DAC_OVERRIDE
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/NET_ADMIN
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/NET_BIND_SERVICE
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/NET_RAW
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/SETGID
+added-capability|apps/v1/Deployment|media|sabnzbd-vpn|init-container/gluetun/SETUID
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_BIND_SERVICE
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhcp4/NET_RAW
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories/CHOWN
@@ -90,6 +97,7 @@ host-network|apps/v1/Deployment|network-services|syncthing|pod-spec
 host-path|apps/v1/DaemonSet|media|dri-device-plugin|volume/device-plugin/path//var/lib/kubelet/device-plugins
 host-path|apps/v1/DaemonSet|media|dri-device-plugin|volume/dri/path//dev/dri
 host-path|apps/v1/Deployment|media|downloads|volume/dev-net-tun/path//dev/net/tun
+host-path|apps/v1/Deployment|media|sabnzbd-vpn|volume/dev-net-tun/path//dev/net/tun
 host-port|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/wireguard/host-1234
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -107,7 +115,6 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|navidr
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|blocky|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing-backup|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-ingress-source|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|ingress/2/peer/0/cidr/0.0.0.0/0/except/none
@@ -161,6 +168,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfi
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-storage-exporter|spec/sha256/3f8b7ab4c2f08673fef8ab841b8c28bb2ffcaef6986c6f7dc279539e64a063ab
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/eecb02a99d36d69f8adc6ac40244707823ae40703845aea4171e9ce6bfb8258a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|navidrome|spec/sha256/879d46cf7d6a8e1d3e153328dc52d9a713dff616f7ba36b97f986987c54d2fc9
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|sabnzbd-vpn|spec/sha256/0636ce5f56ed728d87a28b11e9ea8b6f1a66343e4ba38461d6bbbc7b3dc3cdef
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|spec/sha256/205cfdf9d6a5ddd33e48f1fc6948b41348941475a62a0a351a429dc6091fd157
@@ -176,7 +184,6 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-servi
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-bootstrap|spec/sha256/3800b09fd5e247e4a19cba6c5716bd168634c20f376853f12e73b182e3a8d439
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-postgresql|spec/sha256/66fe0dcf5000cd2ba61fd8f39b4f94408677ec943bffc51eec284bc155b4329f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-server|spec/sha256/a997716dea3375a30ecace792fa45a4e945f677d2652415fb56d7edea5d42638
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing-backup|spec/sha256/af5bd5897ec66892e349d663809663efdb9943fdf73b2e3a9d2b0a263f31e575
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|spec/sha256/6c606f36a460642f5640b93207d022255ba138f047acb473cc4a8290afb7968b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|spec/sha256/99f89f695d3a2c52a8771f0802b302040c0a349151e7c8f60440bc6287f648e2
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec.ipAllowList.sourceRange/10.42.1.0/24
@@ -227,7 +234,6 @@ service-account-token-mounted|apps/v1/Deployment|apps|homepage|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|headlamp|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|loggifly|pod-spec
 shared-process-namespace|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec
-snapshot-class-boundary|snapshot.storage.k8s.io/v1/VolumeSnapshotClass|default|longhorn-snapshot|spec/sha256/fde4367c4491a1fd762b17470f5038ad14d54c1875f70914507585214cbb1cc4
 traefik-backend-boundary|traefik.io/v1alpha1/ServersTransport|network-services|syncthing-mtls|spec/sha256/3b07d7bfc8ecfec929b80df38b75c449c6850a2147b17d926d3f953288395931
 traefik-backend-boundary|traefik.io/v1alpha1/TraefikService|network-services|syncthing-mtls|spec/sha256/9d4f3306034153efabc38b20c244162eea73d5bdf33f0aaaee467657a665eea6
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|egress/0/all-destinations
@@ -235,6 +241,7 @@ universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-appl
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|seerr|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|egress/0/all-destinations
+universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|sabnzbd-vpn|egress/0/all-destinations
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec.verify/url/https://github.com/kubernetes-csi/external-snapshotter.git/ref/tag=<immutable-selector>,commit=<immutable-commit>
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec.verify/url/https://github.com/rezanmz/home-server.git/ref/branch=main
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|gateway-api|spec.verify/url/https://github.com/kubernetes-sigs/gateway-api.git/ref/tag=<immutable-selector>,commit=<immutable-commit>
