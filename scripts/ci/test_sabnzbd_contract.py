@@ -22,6 +22,10 @@ BUSYBOX_IMAGE = (
     "busybox:1.38.0@"
     "sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d"
 )
+NGINX_IMAGE = (
+    "nginx:1.31.3-alpine@"
+    "sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752"
+)
 
 
 def documents(relative_path: str) -> list[dict]:
@@ -88,7 +92,17 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertNotIn("media-library", mounts)
         self.assertEqual(
             {volume["name"] for volume in pod["volumes"]},
-            {"dev-net-tun", "sabnzbd-config", "gluetun-state", "media-downloads", "tmp", "run"},
+            {
+                "dev-net-tun",
+                "sabnzbd-config",
+                "gluetun-state",
+                "media-downloads",
+                "tmp",
+                "run",
+                "sabnzbd-access-config",
+                "sabnzbd-nginx-tmp",
+                "sabnzbd-nginx-cache",
+            },
         )
         volumes = {volume["name"]: volume for volume in pod["volumes"]}
         self.assertEqual(volumes["run"]["emptyDir"], {})
@@ -123,7 +137,7 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertEqual(env["VPN_TYPE"]["value"], "wireguard")
         self.assertEqual(env["PORT_FORWARD_ONLY"]["value"], "off")
         self.assertEqual(env["VPN_PORT_FORWARDING"]["value"], "off")
-        self.assertEqual(env["FIREWALL_INPUT_PORTS"]["value"], "8080")
+        self.assertEqual(env["FIREWALL_INPUT_PORTS"]["value"], "8080,18081")
         self.assertEqual(
             env["FIREWALL_OUTBOUND_SUBNETS"]["value"], "10.42.0.0/16,10.43.0.0/16"
         )
@@ -160,19 +174,105 @@ class SabnzbdContractTests(unittest.TestCase):
             prepare_run["volumeMounts"], [{"name": "run", "mountPath": "/run"}]
         )
 
+    def test_access_proxy_is_hardened_and_only_has_dedicated_writable_paths(self) -> None:
+        deployment = resource(
+            "apps/sabnzbd/deployment.yaml", "Deployment", "sabnzbd-vpn"
+        )
+        pod = deployment["spec"]["template"]["spec"]
+        proxy = next(
+            container
+            for container in pod["containers"]
+            if container["name"] == "sabnzbd-access-proxy"
+        )
+        self.assertEqual(proxy["image"], NGINX_IMAGE)
+        self.assertEqual(proxy["ports"], [{"name": "sab-access", "containerPort": 18081, "protocol": "TCP"}])
+        self.assertEqual(
+            proxy["readinessProbe"],
+            {
+                "exec": {"command": ["sh", "-c", "kill -0 1"]},
+                "periodSeconds": 10,
+                "timeoutSeconds": 3,
+            },
+        )
+        self.assertEqual(
+            proxy["livenessProbe"],
+            {
+                "exec": {"command": ["sh", "-c", "kill -0 1"]},
+                "periodSeconds": 30,
+                "timeoutSeconds": 3,
+            },
+        )
+        self.assertEqual(
+            proxy["resources"],
+            {
+                "requests": {"cpu": "10m", "memory": "16Mi"},
+                "limits": {"cpu": "100m", "memory": "64Mi"},
+            },
+        )
+        self.assertEqual(
+            proxy["securityContext"],
+            {
+                "runAsNonRoot": True,
+                "runAsUser": 101,
+                "runAsGroup": 101,
+                "allowPrivilegeEscalation": False,
+                "readOnlyRootFilesystem": True,
+                "capabilities": {"drop": ["ALL"]},
+            },
+        )
+        self.assertEqual(
+            proxy["volumeMounts"],
+            [
+                {"name": "sabnzbd-access-config", "mountPath": "/etc/nginx", "readOnly": True},
+                {"name": "sabnzbd-nginx-tmp", "mountPath": "/tmp"},
+                {"name": "sabnzbd-nginx-cache", "mountPath": "/var/cache/nginx"},
+            ],
+        )
+        volumes = {volume["name"]: volume for volume in pod["volumes"]}
+        self.assertEqual(volumes["sabnzbd-nginx-tmp"], {"name": "sabnzbd-nginx-tmp", "emptyDir": {}})
+        self.assertEqual(volumes["sabnzbd-nginx-cache"], {"name": "sabnzbd-nginx-cache", "emptyDir": {}})
+
+        config = resource(
+            "apps/sabnzbd/access-proxy.yaml", "ConfigMap", "sabnzbd-access-proxy"
+        )
+        nginx = config["data"]["nginx.conf"]
+        self.assertIn("pid /tmp/nginx.pid;", nginx)
+        self.assertIn("listen 18081;", nginx)
+        self.assertIn("proxy_pass http://127.0.0.1:8080;", nginx)
+        self.assertIn("allow 192.168.1.0/24;", nginx)
+        self.assertIn("allow 10.8.0.0/24;", nginx)
+        self.assertIn("allow 10.42.1.0/24;", nginx)
+        self.assertIn("deny all;", nginx)
+
     def test_service_and_network_policy_are_internal_and_scoped(self) -> None:
         service = resource("apps/sabnzbd/service.yaml", "Service", "sabnzbd")
         self.assertEqual(service["spec"]["type"], "ClusterIP")
         self.assertEqual(
             service["spec"]["selector"], {"app.kubernetes.io/name": "sabnzbd-vpn"}
         )
-        self.assertEqual(service["spec"]["ports"], [{"name": "http", "port": 8080, "targetPort": "sabnzbd"}])
+        self.assertEqual(
+            service["spec"]["ports"],
+            [{"name": "http", "port": 8080, "targetPort": "sabnzbd"}],
+        )
+
+        access_service = resource(
+            "apps/sabnzbd/service.yaml", "Service", "sabnzbd-access"
+        )
+        self.assertEqual(access_service["spec"]["type"], "ClusterIP")
+        self.assertEqual(
+            access_service["spec"]["selector"],
+            {"app.kubernetes.io/name": "sabnzbd-vpn"},
+        )
+        self.assertEqual(
+            access_service["spec"]["ports"],
+            [{"name": "http", "port": 80, "targetPort": "sab-access"}],
+        )
 
         policy = resource(
             "apps/sabnzbd/networkpolicy.yaml", "NetworkPolicy", "sabnzbd-vpn"
         )
         self.assertEqual(policy["spec"]["policyTypes"], ["Ingress", "Egress"])
-        self.assertEqual(len(policy["spec"]["ingress"]), 1)
+        self.assertEqual(len(policy["spec"]["ingress"]), 2)
         self.assertEqual(
             policy["spec"]["ingress"][0]["from"],
             [{"podSelector": {"matchLabels": {"app.kubernetes.io/name": "media-vpn"}}}],
@@ -181,7 +281,126 @@ class SabnzbdContractTests(unittest.TestCase):
             policy["spec"]["ingress"][0]["ports"],
             [{"port": 8080, "protocol": "TCP"}],
         )
+        self.assertEqual(
+            policy["spec"]["ingress"][1],
+            {
+                "from": [
+                    {
+                        "namespaceSelector": {
+                            "matchLabels": {
+                                "kubernetes.io/metadata.name": "traefik"
+                            }
+                        },
+                        "podSelector": {
+                            "matchLabels": {"app.kubernetes.io/name": "traefik"}
+                        },
+                    }
+                ],
+                "ports": [{"port": 18081, "protocol": "TCP"}],
+            },
+        )
+        self.assertNotIn(
+            {"port": 18081, "protocol": "TCP"},
+            policy["spec"]["ingress"][0]["ports"],
+        )
+        self.assertNotIn(
+            {"port": 8080, "protocol": "TCP"},
+            policy["spec"]["ingress"][1]["ports"],
+        )
         self.assertEqual(policy["spec"]["egress"], [{}])
+
+    def test_route_keeps_authentik_outpost_and_protected_backend_separate(self) -> None:
+        middleware = resource(
+            "apps/sabnzbd/route.yaml", "Middleware", "sabnzbd-authentik"
+        )
+        self.assertEqual(
+            middleware["spec"]["forwardAuth"]["address"],
+            "http://authentik.apps.svc.cluster.local:9000/outpost.goauthentik.io/auth/traefik",
+        )
+        self.assertTrue(middleware["spec"]["forwardAuth"]["trustForwardHeader"])
+        self.assertEqual(
+            middleware["spec"]["forwardAuth"]["authResponseHeaders"],
+            [
+                "X-authentik-username",
+                "X-authentik-groups",
+                "X-authentik-entitlements",
+                "X-authentik-email",
+                "X-authentik-name",
+                "X-authentik-uid",
+                "X-authentik-jwt",
+                "X-authentik-meta-jwks",
+                "X-authentik-meta-outpost",
+                "X-authentik-meta-provider",
+                "X-authentik-meta-app",
+                "X-authentik-meta-version",
+            ],
+        )
+
+        route = resource("apps/sabnzbd/route.yaml", "HTTPRoute", "sabnzbd")
+        self.assertEqual(
+            route["spec"]["parentRefs"], [{"name": "home", "namespace": "traefik"}]
+        )
+        self.assertEqual(route["spec"]["hostnames"], ["sabnzbd.reza.network"])
+        self.assertEqual(len(route["spec"]["rules"]), 2)
+        outpost, protected = route["spec"]["rules"]
+        self.assertEqual(
+            outpost["matches"],
+            [{"path": {"type": "PathPrefix", "value": "/outpost.goauthentik.io"}}],
+        )
+        self.assertEqual(
+            [
+                item["extensionRef"]["name"]
+                for item in outpost["filters"]
+                if item["type"] == "ExtensionRef"
+            ],
+            ["custom-errors", "lan-vpn-only"],
+        )
+        self.assertEqual(
+            outpost["backendRefs"],
+            [{"name": "authentik", "namespace": "apps", "port": 9000}],
+        )
+        self.assertNotIn("sabnzbd-authentik", str(outpost["filters"]))
+        self.assertEqual(
+            [
+                item["extensionRef"]["name"]
+                for item in protected["filters"]
+                if item["type"] == "ExtensionRef"
+            ],
+            ["custom-errors", "lan-vpn-only", "sabnzbd-authentik"],
+        )
+        self.assertEqual(protected["backendRefs"], [{"name": "sabnzbd-access", "port": 80}])
+
+    def test_catalog_is_private_split_horizon_forward_auth_without_public_dns(self) -> None:
+        catalog = resource(
+            "apps/sabnzbd/sabnzbd.catalog.yaml", "Service", "sabnzbd"
+        )
+        spec = catalog["spec"]
+        self.assertEqual(spec["web"]["hostname"], "sabnzbd.reza.network")
+        self.assertEqual(spec["web"]["visibility"], "private")
+        self.assertEqual(spec["web"]["accessMiddleware"], "lan-vpn-only")
+        self.assertEqual(
+            spec["web"]["dns"], {"cloudflare": False, "splitHorizon": True}
+        )
+        self.assertEqual(
+            spec["web"]["auth"],
+            {
+                "mode": "forward-auth",
+                "profile": "authentik-forward-single-v1",
+                "blueprintName": "SABnzbd proxy authentication",
+                "application": {
+                    "slug": "sabnzbd",
+                    "launchUrl": "https://sabnzbd.reza.network/",
+                },
+                "middleware": "sabnzbd-authentik",
+            },
+        )
+
+        blocky = (REPO_ROOT / "apps/blocky/config.yml").read_text()
+        self.assertIn("sabnzbd.reza.network: 192.168.1.240", blocky)
+        cloudflare = (
+            REPO_ROOT / "apps/cloudflare-ddns/kustomization.yaml"
+        ).read_text()
+        self.assertNotIn("sabnzbd.reza.network", cloudflare)
 
 
 if __name__ == "__main__":

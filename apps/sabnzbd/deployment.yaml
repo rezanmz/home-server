@@ -50,7 +50,7 @@ spec:
             - {name: TZ, value: America/Toronto}
             - {name: DNS_UPSTREAM_RESOLVER_TYPE, value: doh}
             - {name: DNS_UPSTREAM_RESOLVERS, value: "cloudflare,google"}
-            - {name: FIREWALL_INPUT_PORTS, value: "8080"}
+            - {name: FIREWALL_INPUT_PORTS, value: "8080,18081"}
             - name: FIREWALL_OUTBOUND_SUBNETS
               value: "10.42.0.0/16,10.43.0.0/16"
           startupProbe:
@@ -132,6 +132,34 @@ spec:
             - {name: media-downloads, mountPath: /media/downloads}
             - {name: tmp, mountPath: /tmp}
             - {name: run, mountPath: /run}
+        - name: sabnzbd-access-proxy
+          image: nginx:1.31.3-alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752
+          imagePullPolicy: IfNotPresent
+          command: [nginx, -g, "daemon off;"]
+          ports:
+            - {name: sab-access, containerPort: 18081, protocol: TCP}
+          readinessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec: {command: [sh, -c, "kill -0 1"]}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: sabnzbd-access-config, mountPath: /etc/nginx, readOnly: true}
+            - {name: sabnzbd-nginx-tmp, mountPath: /tmp}
+            - {name: sabnzbd-nginx-cache, mountPath: /var/cache/nginx}
       volumes:
         - name: dev-net-tun
           hostPath: {path: /dev/net/tun, type: CharDevice}
@@ -145,3 +173,7 @@ spec:
           emptyDir: {}
         - name: run
           emptyDir: {}
+        - name: sabnzbd-access-config
+          configMap: {name: sabnzbd-access-proxy}
+        - {name: sabnzbd-nginx-tmp, emptyDir: {}}
+        - {name: sabnzbd-nginx-cache, emptyDir: {}}

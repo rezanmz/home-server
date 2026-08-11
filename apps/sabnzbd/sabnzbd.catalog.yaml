@@ -9,8 +9,26 @@ spec:
     namespace: media
     app: sabnzbd-vpn
   homepage:
-    enabled: false
-    reason: No HTTPRoute or public proxy is configured for SABnzbd yet.
+    order: 15
+    group: Downloads & Automation
+    icon: sabnzbd.png
+    description: Usenet downloads
+  web:
+    hostname: sabnzbd.reza.network
+    route: apps/sabnzbd/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: false
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v1
+      blueprintName: SABnzbd proxy authentication
+      application:
+        slug: sabnzbd
+        launchUrl: https://sabnzbd.reza.network/
+      middleware: sabnzbd-authentik
   placement:
     mode: floating
     manifest: apps/sabnzbd/deployment.yaml

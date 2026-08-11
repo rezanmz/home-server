@@ -76,6 +76,12 @@
         description: VPN-routed downloads
         namespace: media
         app: media-vpn
+    - SABnzbd:
+        icon: sabnzbd.png
+        href: https://sabnzbd.reza.network/
+        description: Usenet downloads
+        namespace: media
+        app: sabnzbd-vpn
     - Prowlarr:
         icon: prowlarr.png
         href: https://prowlarr.reza.network/

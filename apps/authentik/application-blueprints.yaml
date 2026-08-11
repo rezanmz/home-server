@@ -139,6 +139,22 @@ data:
           provider: !KeyOf navidrome-provider
           meta_launch_url: "https://music.reza.network/"
       - model: authentik_providers_proxy.proxyprovider
+        id: sabnzbd-provider
+        identifiers:
+          name: "Provider for SABnzbd"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://sabnzbd.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: sabnzbd
+        attrs:
+          name: "SABnzbd"
+          provider: !KeyOf sabnzbd-provider
+          meta_launch_url: "https://sabnzbd.reza.network/"
+      - model: authentik_providers_proxy.proxyprovider
         id: slskd-provider
         identifiers:
           name: "Provider for slskd"
@@ -177,6 +193,7 @@ data:
           providers:
             - !KeyOf homepage-provider
             - !KeyOf navidrome-provider
+            - !KeyOf sabnzbd-provider
             - !KeyOf slskd-provider
             - !KeyOf soularr-provider
   grafana.yaml: |

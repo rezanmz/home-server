@@ -15,6 +15,15 @@ spec:
               app.kubernetes.io/name: media-vpn
       ports:
         - {port: 8080, protocol: TCP}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - {port: 18081, protocol: TCP}
   egress:
     # Gluetun owns the VPN routes, firewall and kill switch for this pod.
     - {}
