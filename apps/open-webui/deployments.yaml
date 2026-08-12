@@ -135,8 +135,11 @@ spec:
               value: tika
             - name: TIKA_SERVER_URL
               value: http://tika:9998
+            # Every authenticated Open WebUI user may invoke every provider model.
+            # Upstream provider availability, credit, privacy, and API-mode constraints
+            # remain authoritative and are returned directly to the caller.
             - name: BYPASS_MODEL_ACCESS_CONTROL
-              value: "False"
+              value: "True"
             - name: WEBUI_URL
               value: https://chat.reza.network
             - name: CORS_ALLOW_ORIGIN
