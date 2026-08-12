@@ -50,7 +50,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: prepare-soulseek-state
-          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command:
             - sh
             - -ec
@@ -72,7 +72,7 @@ spec:
             - {name: slskd-state, mountPath: /slskd-state}
             - {name: soularr-data, mountPath: /soularr-data}
         - name: prepare-soulseek-downloads
-          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command: [sh, -ec, "mkdir -p /downloads/slskd/complete /downloads/slskd/incomplete"]
           securityContext:
             runAsNonRoot: true
@@ -87,7 +87,7 @@ spec:
           volumeMounts:
             - {name: media-downloads, mountPath: /downloads}
         - name: validate-download-storage
-          image: busybox:1.38.0@sha256:fd8d9aa63ba2f0982b5304e1ee8d3b90a210bc1ffb5314d980eb6962f1a9715d
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command:
             - sh
             - -ec
@@ -172,7 +172,7 @@ spec:
             - {name: gluetun-config, mountPath: /gluetun}
       containers:
         - name: qbittorrent
-          image: linuxserver/qbittorrent:5.2.3@sha256:b024436f8ca665d16d9a997d26fd27fdf867ee5566ba09f32764e7b2976d3e02
+          image: linuxserver/qbittorrent:5.2.3_v2.0.14-ls471@sha256:6816d2b144b1eb97665f886e41e18a14d026ba78c9d0953fc68a1211ea819433
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
@@ -221,7 +221,7 @@ spec:
             # can cover a nested NFS mount and make torrents write to B2 or fail.
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-storage-guard
-          image: linuxserver/qbittorrent:5.2.3@sha256:b024436f8ca665d16d9a997d26fd27fdf867ee5566ba09f32764e7b2976d3e02
+          image: linuxserver/qbittorrent:5.2.3_v2.0.14-ls471@sha256:6816d2b144b1eb97665f886e41e18a14d026ba78c9d0953fc68a1211ea819433
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/storage-guard/storage-guard.sh]
           env:
@@ -264,7 +264,7 @@ spec:
             - {name: import-cleaner-state, mountPath: /import-cleaner-state, readOnly: true}
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-import-cleaner
-          image: linuxserver/qbittorrent:5.2.3@sha256:b024436f8ca665d16d9a997d26fd27fdf867ee5566ba09f32764e7b2976d3e02
+          image: linuxserver/qbittorrent:5.2.3_v2.0.14-ls471@sha256:6816d2b144b1eb97665f886e41e18a14d026ba78c9d0953fc68a1211ea819433
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/import-cleaner/import-cleaner.sh]
           env:
@@ -345,7 +345,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: prowlarr
-          image: linuxserver/prowlarr:2.5.2.5491-ls155@sha256:2f3d31307beba3ba2dd226d191f5f5c14ee3b4d8b49277c64683f5ed97083179
+          image: linuxserver/prowlarr:2.5.2.5491-ls156@sha256:1295cff29d10b486c0d8324d1559a552140a5932bf8b3d87e398654414f63f92
           imagePullPolicy: IfNotPresent
           env: &linuxserver-env
             - {name: PUID, value: "1000"}
@@ -375,7 +375,7 @@ spec:
           volumeMounts:
             - {name: prowlarr-config, mountPath: /config}
         - name: radarr
-          image: linuxserver/radarr:6.4.0-develop@sha256:0a001aa6d45ea3ad1efaadae8593838a74e5431f33b71e74bf695ddb702791fb
+          image: linuxserver/radarr:6.3.0.10514-ls313@sha256:a45b5ab0f850f39edb4cc9c95bbd967b52ddc3d4574a4dfb45561177db6c88f4
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -407,7 +407,7 @@ spec:
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: sonarr
-          image: linuxserver/sonarr:4.0.19.2979-ls320@sha256:24acea2956a0ccb11f103877d9f4f8576600fb34bff34820ed749c2256dab89f
+          image: linuxserver/sonarr:4.0.19.2979-ls321@sha256:373159ba768e23a3a1c497d9f2b936addf8fd5b1fdce7dd6a14080ac928bfda0
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -439,7 +439,7 @@ spec:
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: lidarr
-          image: linuxserver/lidarr:3.1.3-develop@sha256:8a0536cfb61a7b6759f689e3fa553e90b8ee5ecc761b19885578a33282692d91
+          image: linuxserver/lidarr:3.1.0.4875-ls39@sha256:2e4cdc7c8d5fa36915f446a29976ee01d3f9cc9722b8530a09121c76fbabef55
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:

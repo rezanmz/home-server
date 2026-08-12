@@ -33,7 +33,7 @@ spec:
           # Use Hermes's own MCP client and its application-owned config from
           # the data volume. This avoids duplicating MCP URLs, credentials, or
           # expected server names in infrastructure code.
-          image: docker.io/nousresearch/hermes-agent:v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+          image: docker.io/nousresearch/hermes-agent:v2026.8.3@sha256:16788311e2fa3035456bdc1bafb8ec2b1777db64ebf020af9bb7eb73c3712c9e
           imagePullPolicy: IfNotPresent
           command: [/bin/sh, -ec]
           args:
@@ -71,9 +71,8 @@ spec:
             - {name: tmp, mountPath: /tmp}
       containers:
         - name: hermes-agent
-          # Official release v2026.7.20 (Hermes Agent v0.19.0), pinned to
-          # upstream revision 3ef6bbd201263d354fd83ec55b3c306ded2eb72a.
-          image: docker.io/nousresearch/hermes-agent:v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+          # Official release v2026.8.3, pinned to its immutable image digest.
+          image: docker.io/nousresearch/hermes-agent:v2026.8.3@sha256:16788311e2fa3035456bdc1bafb8ec2b1777db64ebf020af9bb7eb73c3712c9e
           imagePullPolicy: IfNotPresent
           args: [gateway, run]
           env:

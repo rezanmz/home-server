@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: cleanuparr
-          image: ghcr.io/cleanuparr/cleanuparr:2.10.2@sha256:98463b1116142887767cf90dde3375e7e43718aa623fe737677372023ffb7ebe
+          image: ghcr.io/cleanuparr/cleanuparr:2.10.5@sha256:c7cd53ad559a67147637de3d825f66ef6e6a5498490b73f49c6e4d72f13bed76
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
