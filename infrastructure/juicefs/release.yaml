@@ -25,7 +25,7 @@ spec:
   values:
     image:
       repository: docker.io/juicedata/juicefs-csi-driver
-      tag: v0.32.0@sha256:856e1c20175331428515b957fbfe3a3aba2ccce3d375d0eddc099cf416d95899
+      tag: v0.32.2@sha256:20039af430e23feefcff5b342d146a865d2ff88800b7db05a7eca7c72d4124c5
     defaultMountImage:
       ce: docker.io/juicedata/mount:ce-v1.4.1@sha256:ab99388a397fe52575fdeb84a9e017c3c594a6b07d63966cd4805bbf6f172673
     sidecars:

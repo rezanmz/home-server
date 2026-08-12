@@ -11,16 +11,18 @@ spec:
     name: traefik
     namespace: flux-system
   install:
+    crds: CreateReplace
     remediation:
       retries: 3
   upgrade:
+    crds: CreateReplace
     remediation:
       retries: 3
       strategy: rollback
   values:
     image:
-      digest: sha256:21a3d83696379bac6434bb32e1dde0aff0e84ef2abd053ed3db87d3f45e749b2
-    versionOverride: v3.7.6
+      digest: sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
+    versionOverride: v3.7.10
     deployment:
       kind: DaemonSet
     # Traefik binds host ports 80/443 on every node, so a surge pod cannot be

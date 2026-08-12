@@ -3,12 +3,12 @@ set -euo pipefail
 
 host="${1:-beelink}"
 # renovate: datasource=github-releases depName=fluxcd/flux2 versioning=semver
-supported_flux_version="v2.9.3"
+supported_flux_version="v2.9.4"
 flux_version="${FLUX_VERSION:-${supported_flux_version}}"
 verify_only="${FLUX_VERIFY_ONLY:-false}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sync_manifest="${repo_root}/clusters/home-server/flux-system/gotk-sync.yaml"
-install_sha256="aa0bd71dbc4bed916b9cafa850c4618f341c74c580832c613dca04a067ee7281"
+install_sha256="9eb86c5f9d606b2ac2cfe71223ab2f23faa2d59ccb21df4e08e5610e54d535f8"
 install_manifest="$(mktemp)"
 pinned_install_manifest="$(mktemp)"
 trap 'rm -f -- "${install_manifest}" "${pinned_install_manifest}"' EXIT
@@ -21,12 +21,12 @@ fi
 
 flux_images=(
   "helm-controller=ghcr.io/fluxcd/helm-controller:v1.6.3@sha256:16ada99456385100698a5d7adf90aba8a2089d987ab541c9566b6d7b0e897038"
-  "image-automation-controller=ghcr.io/fluxcd/image-automation-controller:v1.2.3@sha256:81128adfd127601530d3dffc1deaf7c9eeec5b9aa555b3ab80cab37fa5d909a4"
-  "image-reflector-controller=ghcr.io/fluxcd/image-reflector-controller:v1.2.3@sha256:a47e09e024a9ff2ea4f3878a1b90c2850134cfdc8b292ec52268dbc1e57e1a4c"
+  "image-automation-controller=ghcr.io/fluxcd/image-automation-controller:v1.2.4@sha256:0286cbba95a2606a006e370052cb642f4370cb42ceea8353b5cba922cf47770c"
+  "image-reflector-controller=ghcr.io/fluxcd/image-reflector-controller:v1.2.4@sha256:d63550296dc9a6c2b7c9246cb7ef6e52d7469d5b104cd329622301b46971e255"
   "kustomize-controller=ghcr.io/fluxcd/kustomize-controller:v1.9.4@sha256:2b8bec54ffb6caf421bd2a6c005d27f567d5dd4db7feb55794fb51fcabd69b8f"
-  "notification-controller=ghcr.io/fluxcd/notification-controller:v1.9.2@sha256:9ce503e7bcb8493fafe2aaef0c2ac4396df4f6890256acf9cd444a2dcd2a69ed"
-  "source-controller=ghcr.io/fluxcd/source-controller:v1.9.3@sha256:ff8f3c92f1bcb433e858c948040c3a3393fe73f5dd72048a4502bfaf0a4c26cd"
-  "source-watcher=ghcr.io/fluxcd/source-watcher:v2.2.2@sha256:1d59f752ecf520d1dc56ca413749dfab507497dd363639b6fbaf5036850e05c7"
+  "notification-controller=ghcr.io/fluxcd/notification-controller:v1.9.3@sha256:071c351a0fb163eeb6a2bb82f1e894f51b6b0734216d2e97d3d99c9ab9d710b9"
+  "source-controller=ghcr.io/fluxcd/source-controller:v1.9.4@sha256:8a8ed0a57b8b86f561d5a4309a69f65e62f0cebe4de8801593c5ff35a3bc3c23"
+  "source-watcher=ghcr.io/fluxcd/source-watcher:v2.2.3@sha256:40f35415a78f4514aea41cf4d6dd299d59bc646eb4a73365eac831c8ced2445a"
 )
 
 # The repository is public, so the in-cluster source needs no Git credential.
