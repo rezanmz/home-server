@@ -83,13 +83,6 @@
       "allowedVersions": "!/ubuntu|nightly|develop|testing|alpha|beta|rc/"
     },
     {
-      "description": "Radarr and Lidarr are intentionally ahead of stable; allow reviewed digest refreshes but do not advance or downgrade their develop channels automatically.",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["linuxserver/radarr", "linuxserver/lidarr"],
-      "matchUpdateTypes": ["major", "minor", "patch"],
-      "enabled": false
-    },
-    {
       "description": "servercontainers/samba uses a custom composite tag format (e.g. a3.23.4-s4.22.8-r0). Loose versioning prevents misidentification.",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["ghcr.io/servercontainers/samba"],

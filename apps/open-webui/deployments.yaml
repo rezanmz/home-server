@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: open-webui
-          image: ghcr.io/open-webui/open-webui:v0.10.2@sha256:9fcea9c6e32ab60b0498f3986c6cdf651ddbe61db48d2213a3d28048ddd673d4
+          image: ghcr.io/open-webui/open-webui:v0.11.0@sha256:72c0ba641ba75e7aa52655cb242570906ececd09b1140fb736483038a22b3228
           imagePullPolicy: IfNotPresent
           command:
             - bash
@@ -74,8 +74,7 @@ spec:
             # bad search result into a large burst of provider requests.
             - name: CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS
               value: "12"
-            # v0.10.2 treats unset aiohttp pool values and the total timeout as
-            # unlimited despite documenting bounded defaults.
+            # Keep outbound aiohttp connections and total request time bounded.
             - name: AIOHTTP_POOL_CONNECTIONS
               value: "20"
             - name: AIOHTTP_POOL_CONNECTIONS_PER_HOST
@@ -163,9 +162,7 @@ spec:
               value: "False"
             - name: ENABLE_PASSWORD_AUTH
               value: "False"
-            # v0.10.2 promotes the first OAuth-created account to administrator
-            # before applying role gates. Keep creation closed until a trusted
-            # administrator is restored or explicitly pre-provisioned.
+            # Prevent automatic administrator creation through OAuth signup.
             - name: ENABLE_OAUTH_SIGNUP
               value: "False"
             - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
@@ -368,7 +365,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: search-provider-proxy
-          image: ghcr.io/searxng/searxng:2026.7.26-b060c780d@sha256:d0aaeb14880e6e92bde1518fcc7261e995783367d63d95203383607bef9c6516
+          image: ghcr.io/searxng/searxng:2026.8.12-54613defc@sha256:37baac8380e1a31e022b8dda0c58dbd6ba0630e3fdaf2c522bda3d140f5ef111
           imagePullPolicy: IfNotPresent
           command: [python, /provider/search-provider-proxy.py]
           env:
@@ -423,7 +420,7 @@ spec:
             - name: provider-tmp
               mountPath: /tmp
         - name: searxng-free-engines
-          image: ghcr.io/searxng/searxng:2026.7.26-b060c780d@sha256:d0aaeb14880e6e92bde1518fcc7261e995783367d63d95203383607bef9c6516
+          image: ghcr.io/searxng/searxng:2026.8.12-54613defc@sha256:37baac8380e1a31e022b8dda0c58dbd6ba0630e3fdaf2c522bda3d140f5ef111
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
