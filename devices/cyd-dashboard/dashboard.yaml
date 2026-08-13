@@ -51,15 +51,18 @@ light:
     restore_mode: ALWAYS_ON
 
 font:
-  - file: gfonts://Roboto
+  - file: gfonts://Roboto+Condensed
     id: title_font
-    size: 28
-  - file: gfonts://Roboto
+    size: 30
+  - file: gfonts://Roboto+Condensed
     id: amount_font
-    size: 52
-  - file: gfonts://Roboto
+    size: 50
+  - file: gfonts://Roboto+Condensed
+    id: account_font
+    size: 20
+  - file: gfonts://Roboto+Mono
     id: detail_font
-    size: 16
+    size: 14
 
 globals:
   - id: net_worth_cents
@@ -105,8 +108,20 @@ display:
     rotation: 90
     update_interval: never
     lambda: |-
-      it.fill(Color::BLACK);
-      it.printf(16, 12, id(title_font), Color(0x00, 0xB8, 0xD4), "NET WORTH");
+      const Color background(0x08, 0x0D, 0x18);
+      const Color surface(0x10, 0x18, 0x2A);
+      const Color text(0xF3, 0xF7, 0xFF);
+      const Color muted(0x8B, 0x99, 0xAF);
+      const Color accent(0x43, 0xD9, 0xC3);
+      const Color warning(0xFF, 0xB8, 0x6C);
+      const Color negative(0xFF, 0x78, 0x8B);
+      const Color state_color = id(summary_stale) ? warning : accent;
+
+      it.fill(background);
+      it.filled_rectangle(0, 0, 320, 5, accent);
+      it.printf(16, 16, id(detail_font), muted, "PERSONAL FINANCE");
+      it.printf(236, 16, id(detail_font), state_color, id(summary_stale) ? "STALE" : "LIVE");
+      it.printf(16, 38, id(title_font), accent, "NET WORTH");
 
       const int64_t cents = id(net_worth_cents);
       const uint64_t absolute_cents = cents < 0 ? static_cast<uint64_t>(-(cents + 1)) + 1 : cents;
@@ -129,35 +144,37 @@ display:
         sizeof(amount) - cursor,
         ".%02llu",
         static_cast<unsigned long long>(absolute_cents % 100));
-      it.printf(16, 54, id(amount_font), cents < 0 ? Color(0xFF, 0x6B, 0x6B) : Color(0xF8, 0xF8, 0xF2), "%s", amount);
-
+      it.printf(16, 66, id(amount_font), cents < 0 ? negative : text, "%s", amount);
       if (!id(currency).empty()) {
-        it.printf(18, 110, id(detail_font), Color(0x9A, 0xA0, 0xA6), "%s", id(currency).c_str());
+        it.printf(18, 116, id(detail_font), muted, "%s", id(currency).c_str());
       }
+
+      it.filled_rectangle(16, 134, 288, 1, Color(0x25, 0x35, 0x4D));
+      it.filled_rectangle(12, 146, 4, 58, warning);
+      it.filled_rectangle(16, 146, 292, 58, surface);
+      it.printf(28, 152, id(detail_font), warning, "RECONCILIATION / OLDEST OPEN ACCOUNT");
       it.printf(
-        16,
-        132,
-        id(detail_font),
-        Color(0x9A, 0xA0, 0xA6),
-        "RECONCILE: %.20s",
-        id(oldest_reconciled_account_name).empty() ? "none" : id(oldest_reconciled_account_name).c_str());
+        28,
+        169,
+        id(account_font),
+        text,
+        "%.24s",
+        id(oldest_reconciled_account_name).empty() ? "Account unavailable" : id(oldest_reconciled_account_name).c_str());
       if (id(oldest_reconciled_on).empty()) {
-        it.printf(16, 154, id(detail_font), Color(0x9A, 0xA0, 0xA6), "OLDEST: none");
+        it.printf(28, 190, id(detail_font), muted, "NO RECONCILIATION RECORD");
       } else {
         it.printf(
-          16,
-          154,
+          28,
+          190,
           id(detail_font),
-          Color(0x9A, 0xA0, 0xA6),
-          "OLDEST: %s (%d days ago)",
+          muted,
+          "LAST RECONCILED %s / %d DAYS AGO",
           id(oldest_reconciled_on).c_str(),
           id(oldest_reconciled_days_ago));
       }
 
-      const char *state = id(summary_stale) ? "STALE" : "CURRENT";
-      const Color state_color = id(summary_stale) ? Color(0xFF, 0xB8, 0x6C) : Color(0x63, 0xD4, 0x71);
-      it.printf(16, 190, id(detail_font), state_color, "%s", state);
-      it.printf(16, 214, id(detail_font), Color(0x9A, 0xA0, 0xA6), "%s", id(status).c_str());
+      it.filled_circle(18, 222, 3, state_color);
+      it.printf(28, 214, id(detail_font), muted, "%s", id(status).c_str());
 
 script:
   - id: refresh_summary
@@ -201,6 +218,6 @@ script:
                         id(dashboard_display).update();
 
 interval:
-  - interval: 60s
+  - interval: 15s
     then:
       - script.execute: refresh_summary
