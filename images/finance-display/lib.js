@@ -12,6 +12,15 @@ function currencyCode(preferences) {
   return code && /^[A-Z]{3}$/.test(code) ? code : null;
 }
 
+function reconciliationTimestamp(lastReconciled) {
+  if (typeof lastReconciled !== 'string') return null;
+
+  const timestamp = /^\d+$/.test(lastReconciled)
+    ? Number(lastReconciled)
+    : Date.parse(lastReconciled);
+  return Number.isSafeInteger(timestamp) ? timestamp : null;
+}
+
 function reconciliationSummary(accounts, now) {
   const reconciled = accounts
     .filter(
@@ -21,12 +30,12 @@ function reconciliationSummary(accounts, now) {
         typeof account.last_reconciled === 'string',
     )
     .map((account) => {
-      const timestamp = Date.parse(account.last_reconciled);
-      return Number.isNaN(timestamp)
+      const timestamp = reconciliationTimestamp(account.last_reconciled);
+      return timestamp === null
         ? null
         : {
             accountName: account.name,
-            on: account.last_reconciled.slice(0, 10),
+            on: new Date(timestamp).toISOString().slice(0, 10),
             timestamp,
           };
     })

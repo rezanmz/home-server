@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SummaryCache, collectSummary } from '../lib.js';
 
-test('collectSummary sums open assets and debts but excludes closed accounts', async () => {
+test('collectSummary uses the oldest open ActualQL reconciliation timestamp', async () => {
   const balances = new Map([
     ['cash', 123_456],
     ['loan', -50_000],
@@ -22,8 +22,16 @@ test('collectSummary sums open assets and debts but excludes closed accounts', a
       reconciliationQuery = query;
       return {
         data: [
-          { name: 'Cash', closed: false, last_reconciled: '2026-08-12' },
-          { name: 'Loan', closed: false, last_reconciled: '2026-08-03' },
+          {
+            name: 'Cash',
+            closed: false,
+            last_reconciled: String(Date.parse('2026-08-12T00:00:00.000Z')),
+          },
+          {
+            name: 'Loan',
+            closed: false,
+            last_reconciled: String(Date.parse('2026-08-03T00:00:00.000Z')),
+          },
           { name: 'Closed', closed: true, last_reconciled: '2000-01-01' },
         ],
       };
