@@ -18,9 +18,13 @@ function fakeActual() {
     calls,
     init: async (configuration) => calls.push(['init', configuration]),
     downloadBudget: async (...arguments_) => calls.push(['downloadBudget', arguments_]),
-    getAccounts: async () => [{ id: 'cash', closed: false, last_reconciled: '2026-08-12' }],
+    getAccounts: async () => [{ id: 'cash', closed: false }],
     getPreferences: async () => ({ currency: 'CAD' }),
     getAccountBalance: async () => 12_345,
+    q: (table) => ({ select: (fields) => ({ table, fields }) }),
+    aqlQuery: async () => ({
+      data: [{ name: 'Cash', closed: false, last_reconciled: '2026-08-12' }],
+    }),
     shutdown: async () => calls.push(['shutdown']),
   };
 }
@@ -62,7 +66,7 @@ test('summary endpoint returns only the derived display payload', async (t) => {
   assert.equal(result.status, 200);
   assert.equal(result.body.netWorthCents, 12_345);
   assert.equal(result.body.currency, 'CAD');
-  assert.equal(result.body.lastReconciledOn, '2026-08-12');
+  assert.equal(result.body.oldestReconciledAccountName, 'Cash');
   assert.equal(result.body.oldestReconciledOn, '2026-08-12');
   assert.equal(result.body.oldestReconciledDaysAgo, 1);
   assert.match(result.body.asOf, /^\d{4}-\d{2}-\d{2}T/);

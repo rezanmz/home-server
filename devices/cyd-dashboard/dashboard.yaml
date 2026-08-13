@@ -74,7 +74,7 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
-  - id: last_reconciled_on
+  - id: oldest_reconciled_account_name
     type: std::string
     restore_value: no
     initial_value: '""'
@@ -139,8 +139,8 @@ display:
         132,
         id(detail_font),
         Color(0x9A, 0xA0, 0xA6),
-        "LAST RECONCILED: %s",
-        id(last_reconciled_on).empty() ? "none" : id(last_reconciled_on).c_str());
+        "RECONCILE: %.20s",
+        id(oldest_reconciled_account_name).empty() ? "none" : id(oldest_reconciled_account_name).c_str());
       if (id(oldest_reconciled_on).empty()) {
         it.printf(16, 154, id(detail_font), Color(0x9A, 0xA0, 0xA6), "OLDEST: none");
       } else {
@@ -182,7 +182,7 @@ script:
                           id(net_worth_cents) = root["netWorthCents"].as<int64_t>();
                           id(currency) = root["currency"].is<const char *>() ? root["currency"].as<const char *>() : "";
                           id(as_of) = root["asOf"].as<const char *>();
-                          id(last_reconciled_on) = root["lastReconciledOn"].is<const char *>() ? root["lastReconciledOn"].as<const char *>() : "";
+                          id(oldest_reconciled_account_name) = root["oldestReconciledAccountName"].is<const char *>() ? root["oldestReconciledAccountName"].as<const char *>() : "";
                           id(oldest_reconciled_on) = root["oldestReconciledOn"].is<const char *>() ? root["oldestReconciledOn"].as<const char *>() : "";
                           id(oldest_reconciled_days_ago) = root["oldestReconciledDaysAgo"].is<int>() ? root["oldestReconciledDaysAgo"].as<int>() : -1;
                           id(summary_stale) = root["stale"] | true;

@@ -14,20 +14,28 @@ function currencyCode(preferences) {
 
 function reconciliationSummary(accounts, now) {
   const reconciled = accounts
-    .filter((account) => !account.closed && typeof account.last_reconciled === 'string')
+    .filter(
+      (account) =>
+        !account.closed &&
+        typeof account.name === 'string' &&
+        typeof account.last_reconciled === 'string',
+    )
     .map((account) => {
       const timestamp = Date.parse(account.last_reconciled);
       return Number.isNaN(timestamp)
         ? null
-        : { on: account.last_reconciled.slice(0, 10), timestamp };
+        : {
+            accountName: account.name,
+            on: account.last_reconciled.slice(0, 10),
+            timestamp,
+          };
     })
     .filter(Boolean)
     .sort((left, right) => left.timestamp - right.timestamp);
   const oldest = reconciled[0];
-  const latest = reconciled.at(-1);
 
   return {
-    lastReconciledOn: latest?.on ?? null,
+    oldestReconciledAccountName: oldest?.accountName ?? null,
     oldestReconciledOn: oldest?.on ?? null,
     oldestReconciledDaysAgo: oldest
       ? Math.max(0, Math.floor((now.getTime() - oldest.timestamp) / 86_400_000))
@@ -36,9 +44,10 @@ function reconciliationSummary(accounts, now) {
 }
 
 export async function collectSummary(actual, now = () => new Date()) {
-  const [accounts, preferences] = await Promise.all([
+  const [accounts, preferences, reconciliationResult] = await Promise.all([
     actual.getAccounts(),
     actual.getPreferences(),
+    actual.aqlQuery(actual.q('accounts').select(['name', 'closed', 'last_reconciled'])),
   ]);
   const collectedAt = now();
   let netWorthCents = 0;
@@ -52,7 +61,7 @@ export async function collectSummary(actual, now = () => new Date()) {
   return {
     netWorthCents,
     currency: currencyCode(preferences),
-    ...reconciliationSummary(accounts, collectedAt),
+    ...reconciliationSummary(reconciliationResult.data, collectedAt),
     asOf: collectedAt.toISOString(),
   };
 }
