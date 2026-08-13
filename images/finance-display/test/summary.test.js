@@ -8,14 +8,26 @@ test('collectSummary sums open assets and debts but excludes closed accounts', a
     ['loan', -50_000],
     ['closed', 999_999],
   ]);
+  let reconciliationQuery;
   const actual = {
     getAccounts: async () => [
-      { id: 'cash', closed: false, last_reconciled: '2026-08-12' },
-      { id: 'loan', closed: false, last_reconciled: '2026-08-03' },
-      { id: 'closed', closed: true, last_reconciled: '2000-01-01' },
+      { id: 'cash', closed: false },
+      { id: 'loan', closed: false },
+      { id: 'closed', closed: true },
     ],
     getPreferences: async () => ({ currency: 'CAD' }),
     getAccountBalance: async (id) => balances.get(id),
+    q: (table) => ({ select: (fields) => ({ table, fields }) }),
+    aqlQuery: async (query) => {
+      reconciliationQuery = query;
+      return {
+        data: [
+          { name: 'Cash', closed: false, last_reconciled: '2026-08-12' },
+          { name: 'Loan', closed: false, last_reconciled: '2026-08-03' },
+          { name: 'Closed', closed: true, last_reconciled: '2000-01-01' },
+        ],
+      };
+    },
   };
 
   const summary = await collectSummary(actual, () => new Date('2026-08-13T12:00:00.000Z'));
@@ -23,10 +35,14 @@ test('collectSummary sums open assets and debts but excludes closed accounts', a
   assert.deepEqual(summary, {
     netWorthCents: 73_456,
     currency: 'CAD',
-    lastReconciledOn: '2026-08-12',
+    oldestReconciledAccountName: 'Loan',
     oldestReconciledOn: '2026-08-03',
     oldestReconciledDaysAgo: 10,
     asOf: '2026-08-13T12:00:00.000Z',
+  });
+  assert.deepEqual(reconciliationQuery, {
+    table: 'accounts',
+    fields: ['name', 'closed', 'last_reconciled'],
   });
 });
 test('collectSummary omits reconciliation freshness when no open account has a valid date', async () => {
@@ -38,6 +54,14 @@ test('collectSummary omits reconciliation freshness when no open account has a v
     ],
     getPreferences: async () => ({}),
     getAccountBalance: async () => 0,
+    q: () => ({ select: () => ({}) }),
+    aqlQuery: async () => ({
+      data: [
+        { name: 'Invalid', closed: false, last_reconciled: 'not-a-date' },
+        { name: 'Never', closed: false, last_reconciled: null },
+        { name: 'Closed', closed: true, last_reconciled: '2020-01-01' },
+      ],
+    }),
   };
 
   const summary = await collectSummary(actual, () => new Date('2026-08-13T12:00:00.000Z'));
@@ -45,7 +69,7 @@ test('collectSummary omits reconciliation freshness when no open account has a v
   assert.deepEqual(summary, {
     netWorthCents: 0,
     currency: null,
-    lastReconciledOn: null,
+    oldestReconciledAccountName: null,
     oldestReconciledOn: null,
     oldestReconciledDaysAgo: null,
     asOf: '2026-08-13T12:00:00.000Z',
