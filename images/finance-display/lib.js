@@ -1,4 +1,6 @@
 export const CENTS_PER_UNIT = 100;
+export const DISPLAY_CACHE_MS = 15_000;
+
 
 function currencyCode(preferences) {
   const value = preferences?.currency;
@@ -80,7 +82,7 @@ export class SummaryCache {
   #refresh;
   #retryAt = 0;
 
-  constructor({ load, now = () => Date.now(), cacheMs = 300_000, retryMs = 60_000 }) {
+  constructor({ load, now = () => Date.now(), cacheMs = DISPLAY_CACHE_MS, retryMs = 60_000 }) {
     this.load = load;
     this.now = now;
     this.cacheMs = cacheMs;

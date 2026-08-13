@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SummaryCache, collectSummary } from '../lib.js';
+import { DISPLAY_CACHE_MS, SummaryCache, collectSummary } from '../lib.js';
 
 test('collectSummary uses the oldest open ActualQL reconciliation timestamp', async () => {
   const balances = new Map([
@@ -144,4 +144,29 @@ test('SummaryCache coalesces simultaneous refreshes', async () => {
   await Promise.all([first, second]);
 
   assert.equal(calls, 1);
+});
+
+test('SummaryCache refreshes the display data every 15 seconds by default', async () => {
+  let now = Date.parse('2026-08-13T12:00:00.000Z');
+  let calls = 0;
+  const cache = new SummaryCache({
+    now: () => now,
+    load: async () => {
+      calls += 1;
+      return {
+        netWorthCents: calls,
+        currency: 'CAD',
+        asOf: new Date(now).toISOString(),
+      };
+    },
+  });
+
+  await cache.get();
+  now += DISPLAY_CACHE_MS - 1;
+  await cache.get();
+  assert.equal(calls, 1);
+
+  now += 1;
+  await cache.get();
+  assert.equal(calls, 2);
 });
