@@ -62,7 +62,7 @@ font:
     size: 20
   - file: gfonts://Roboto+Mono
     id: detail_font
-    size: 14
+    size: 13
 
 globals:
   - id: net_worth_cents
@@ -168,9 +168,17 @@ display:
           190,
           id(detail_font),
           muted,
-          "LAST RECONCILED %s / %d DAYS AGO",
-          id(oldest_reconciled_on).c_str(),
-          id(oldest_reconciled_days_ago));
+          "RECONCILED %s",
+          id(oldest_reconciled_on).c_str());
+        it.printf(
+          296,
+          190,
+          id(detail_font),
+          warning,
+          TextAlign::TOP_RIGHT,
+          "%d %s AGO",
+          id(oldest_reconciled_days_ago),
+          id(oldest_reconciled_days_ago) == 1 ? "DAY" : "DAYS");
       }
 
       it.filled_circle(18, 222, 3, state_color);
