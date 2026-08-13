@@ -17,6 +17,7 @@ resources:
   - ../../apps/homepage
   - ../../apps/home-assistant
   - ../../apps/actual-budget
+  - ../../apps/finance-display
   - ../../apps/authentik
   - ../../apps/seerr
   - ../../apps/omnifin

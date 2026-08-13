@@ -119,7 +119,6 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|navidr
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|blocky|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing-backup|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-ingress-source|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|ingress/2/peer/0/cidr/0.0.0.0/0/except/none
@@ -140,13 +139,14 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|lan-vpn-only
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|syncthing-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|wg-easy-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 mutable-git-ref|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec.ref/branch=main/url/https://github.com/rezanmz/home-server.git
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/d09d7d5931c2d3e7b3cfdb802996f04f93af6c9571dd92a4e750247fb4456a2c
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/202affe2d33fecf794cae4adc9adb1cb92542ddf481575b6e67985088a7cf781
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|argilla-datastores|spec/sha256/09dbe85fcd8006733310829a710029b2aa64ef332b2d2ef41a8f1b60b5d24941
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|spec/sha256/ba7d8303e306f01b3847f93fcfc8831d039f24f4ca848c49e36146bbd69be0c7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|spec/sha256/68e4643c3e7da8deded68ecaa30f6ad5ed0587c4f82f5d6f6e97ea12d59d6221
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-database|spec/sha256/ccdce8f21dda90152efd85ed6aa8d0e8a40ab16286651073bed741f830bf49a0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|finance-display|spec/sha256/9ca640c70e76d80cf22424dc9413ec77cc9a0701fa2cd07119717900d02b716a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|spec/sha256/cf7bf4ce905bf1fe21e27abd62689d3fbbe459bc633d36bef88277c28acca83a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/5d84ba9e6d1e07cdd6757c49791625e3580e7a72ffdd9a1df508e4d3ad9a52fe
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
@@ -189,7 +189,6 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-servi
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-bootstrap|spec/sha256/3800b09fd5e247e4a19cba6c5716bd168634c20f376853f12e73b182e3a8d439
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-postgresql|spec/sha256/66fe0dcf5000cd2ba61fd8f39b4f94408677ec943bffc51eec284bc155b4329f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|stork-server|spec/sha256/a997716dea3375a30ecace792fa45a4e945f677d2652415fb56d7edea5d42638
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing-backup|spec/sha256/af5bd5897ec66892e349d663809663efdb9943fdf73b2e3a9d2b0a263f31e575
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|spec/sha256/6c606f36a460642f5640b93207d022255ba138f047acb473cc4a8290afb7968b
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|spec/sha256/99f89f695d3a2c52a8771f0802b302040c0a349151e7c8f60440bc6287f648e2
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec.ipAllowList.sourceRange/10.42.1.0/24
@@ -210,6 +209,7 @@ privileged-namespace|v1/Namespace|default|traefik|pod-security-enforce
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-budget|spec/sha256/684ed87d74c289c7e268d472759cfc44852498dc9f3bff89a993b1d034778a3c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|argilla|spec/sha256/df649e03aea7a44ef10f397b125d269c1b543791f162e2817a7fd5f2bcdb83ca
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256/a68303017aa042969ba9eb139f6227fb3e3e67b477e1dd6c376c964d2808a6bb
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|finance-display|spec/sha256/187d9bf55d5b52fc3554b49ba17a807bf3699550146687d233ed3f030ad5c0c3
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|hermes-agent|spec/sha256/bf4b001f2e7c56ac3e3f56c19edf191df1fdbfc9f71a1e8195fd6af80cf7c345
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|home-assistant|spec/sha256/b966a90e721983a97270c782f22ffc95dd88d943d934df1e58a51ad0829172b1
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|homepage|spec/sha256/a87d2f602eb818e71492cea2b879bbd48a0e50f090da6d358a0a5cd78fc030a9
@@ -241,7 +241,6 @@ service-account-token-mounted|apps/v1/Deployment|apps|homepage|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|headlamp|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|loggifly|pod-spec
 shared-process-namespace|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec
-snapshot-class-boundary|snapshot.storage.k8s.io/v1/VolumeSnapshotClass|default|longhorn-snapshot|spec/sha256/fde4367c4491a1fd762b17470f5038ad14d54c1875f70914507585214cbb1cc4
 traefik-backend-boundary|traefik.io/v1alpha1/ServersTransport|network-services|syncthing-mtls|spec/sha256/3b07d7bfc8ecfec929b80df38b75c449c6850a2147b17d926d3f953288395931
 traefik-backend-boundary|traefik.io/v1alpha1/TraefikService|network-services|syncthing-mtls|spec/sha256/9d4f3306034153efabc38b20c244162eea73d5bdf33f0aaaee467657a665eea6
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|egress/0/all-destinations

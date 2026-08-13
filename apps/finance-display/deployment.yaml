@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finance-display
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: finance-display
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: finance-display
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: finance-display
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: finance-display
+          image: ghcr.io/rezanmz/finance-display:0.1.0@sha256:a9df9245cfe28d8624ae003c4c21509421eef31e1313dabd80561630a98695df
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ACTUAL_SERVER_URL
+              valueFrom:
+                secretKeyRef: {name: finance-display-secrets, key: actual-server-url}
+            - name: ACTUAL_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: finance-display-secrets, key: actual-password}
+            - name: ACTUAL_BUDGET_SYNC_ID
+              valueFrom:
+                secretKeyRef: {name: finance-display-secrets, key: actual-budget-sync-id}
+            - name: CYD_API_TOKEN
+              valueFrom:
+                secretKeyRef: {name: finance-display-secrets, key: cyd-api-token}
+            - name: ACTUAL_DATA_DIR
+              value: /var/lib/actual
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 25m, memory: 96Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: actual-data, mountPath: /var/lib/actual}
+      volumes:
+        - name: actual-data
+          emptyDir:
+            sizeLimit: 64Mi
