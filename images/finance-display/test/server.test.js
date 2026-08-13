@@ -18,7 +18,7 @@ function fakeActual() {
     calls,
     init: async (configuration) => calls.push(['init', configuration]),
     downloadBudget: async (...arguments_) => calls.push(['downloadBudget', arguments_]),
-    getAccounts: async () => [{ id: 'cash', closed: false }],
+    getAccounts: async () => [{ id: 'cash', closed: false, last_reconciled: '2026-08-12' }],
     getPreferences: async () => ({ currency: 'CAD' }),
     getAccountBalance: async () => 12_345,
     shutdown: async () => calls.push(['shutdown']),
@@ -46,7 +46,11 @@ test('summary endpoint requires the display bearer token', async (t) => {
 
 test('summary endpoint returns only the derived display payload', async (t) => {
   const api = fakeActual();
-  const server = createHttpServer({ api, environment: environment() });
+  const server = createHttpServer({
+    api,
+    environment: environment(),
+    now: () => new Date('2026-08-13T12:00:00.000Z'),
+  });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => server.close());
@@ -58,7 +62,9 @@ test('summary endpoint returns only the derived display payload', async (t) => {
   assert.equal(result.status, 200);
   assert.equal(result.body.netWorthCents, 12_345);
   assert.equal(result.body.currency, 'CAD');
-  assert.equal(result.body.stale, false);
+  assert.equal(result.body.lastReconciledOn, '2026-08-12');
+  assert.equal(result.body.oldestReconciledOn, '2026-08-12');
+  assert.equal(result.body.oldestReconciledDaysAgo, 1);
   assert.match(result.body.asOf, /^\d{4}-\d{2}-\d{2}T/);
   assert.deepEqual(api.calls, [
     ['init', {

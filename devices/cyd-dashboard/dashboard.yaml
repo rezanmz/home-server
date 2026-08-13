@@ -74,6 +74,18 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
+  - id: last_reconciled_on
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: oldest_reconciled_on
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: oldest_reconciled_days_ago
+    type: int
+    restore_value: no
+    initial_value: '-1'
   - id: summary_stale
     type: bool
     restore_value: no
@@ -94,22 +106,52 @@ display:
     update_interval: never
     lambda: |-
       it.fill(Color::BLACK);
-      it.printf(16, 18, id(title_font), Color(0x00, 0xB8, 0xD4), "NET WORTH");
+      it.printf(16, 12, id(title_font), Color(0x00, 0xB8, 0xD4), "NET WORTH");
 
       const int64_t cents = id(net_worth_cents);
       const uint64_t absolute_cents = cents < 0 ? static_cast<uint64_t>(-(cents + 1)) + 1 : cents;
+      char whole[24];
+      snprintf(whole, sizeof(whole), "%llu", static_cast<unsigned long long>(absolute_cents / 100));
       char amount[32];
+      size_t cursor = 0;
+      if (cents < 0) {
+        amount[cursor++] = '-';
+      }
+      const size_t whole_length = strlen(whole);
+      for (size_t index = 0; index < whole_length; index++) {
+        if (index > 0 && (whole_length - index) % 3 == 0) {
+          amount[cursor++] = ',';
+        }
+        amount[cursor++] = whole[index];
+      }
       snprintf(
-        amount,
-        sizeof(amount),
-        "%s%llu.%02llu",
-        cents < 0 ? "-" : "",
-        static_cast<unsigned long long>(absolute_cents / 100),
+        amount + cursor,
+        sizeof(amount) - cursor,
+        ".%02llu",
         static_cast<unsigned long long>(absolute_cents % 100));
-      it.printf(16, 78, id(amount_font), cents < 0 ? Color(0xFF, 0x6B, 0x6B) : Color(0xF8, 0xF8, 0xF2), "%s", amount);
+      it.printf(16, 54, id(amount_font), cents < 0 ? Color(0xFF, 0x6B, 0x6B) : Color(0xF8, 0xF8, 0xF2), "%s", amount);
 
       if (!id(currency).empty()) {
-        it.printf(18, 140, id(detail_font), Color(0x9A, 0xA0, 0xA6), "%s", id(currency).c_str());
+        it.printf(18, 110, id(detail_font), Color(0x9A, 0xA0, 0xA6), "%s", id(currency).c_str());
+      }
+      it.printf(
+        16,
+        132,
+        id(detail_font),
+        Color(0x9A, 0xA0, 0xA6),
+        "LAST RECONCILED: %s",
+        id(last_reconciled_on).empty() ? "none" : id(last_reconciled_on).c_str());
+      if (id(oldest_reconciled_on).empty()) {
+        it.printf(16, 154, id(detail_font), Color(0x9A, 0xA0, 0xA6), "OLDEST: none");
+      } else {
+        it.printf(
+          16,
+          154,
+          id(detail_font),
+          Color(0x9A, 0xA0, 0xA6),
+          "OLDEST: %s (%d days ago)",
+          id(oldest_reconciled_on).c_str(),
+          id(oldest_reconciled_days_ago));
       }
 
       const char *state = id(summary_stale) ? "STALE" : "CURRENT";
@@ -140,6 +182,9 @@ script:
                           id(net_worth_cents) = root["netWorthCents"].as<int64_t>();
                           id(currency) = root["currency"].is<const char *>() ? root["currency"].as<const char *>() : "";
                           id(as_of) = root["asOf"].as<const char *>();
+                          id(last_reconciled_on) = root["lastReconciledOn"].is<const char *>() ? root["lastReconciledOn"].as<const char *>() : "";
+                          id(oldest_reconciled_on) = root["oldestReconciledOn"].is<const char *>() ? root["oldestReconciledOn"].as<const char *>() : "";
+                          id(oldest_reconciled_days_ago) = root["oldestReconciledDaysAgo"].is<int>() ? root["oldestReconciledDaysAgo"].as<int>() : -1;
                           id(summary_stale) = root["stale"] | true;
                           id(status) = id(as_of).substr(0, 16) + " UTC";
                           return true;
