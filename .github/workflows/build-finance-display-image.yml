@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - codex/**
+      - omos/**
     paths:
       - .github/workflows/build-finance-display-image.yml
       - images/finance-display/**
