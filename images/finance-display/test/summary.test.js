@@ -10,9 +10,9 @@ test('collectSummary sums open assets and debts but excludes closed accounts', a
   ]);
   const actual = {
     getAccounts: async () => [
-      { id: 'cash', closed: false },
-      { id: 'loan', closed: false },
-      { id: 'closed', closed: true },
+      { id: 'cash', closed: false, last_reconciled: '2026-08-12' },
+      { id: 'loan', closed: false, last_reconciled: '2026-08-03' },
+      { id: 'closed', closed: true, last_reconciled: '2000-01-01' },
     ],
     getPreferences: async () => ({ currency: 'CAD' }),
     getAccountBalance: async (id) => balances.get(id),
@@ -23,9 +23,35 @@ test('collectSummary sums open assets and debts but excludes closed accounts', a
   assert.deepEqual(summary, {
     netWorthCents: 73_456,
     currency: 'CAD',
+    lastReconciledOn: '2026-08-12',
+    oldestReconciledOn: '2026-08-03',
+    oldestReconciledDaysAgo: 10,
     asOf: '2026-08-13T12:00:00.000Z',
   });
 });
+test('collectSummary omits reconciliation freshness when no open account has a valid date', async () => {
+  const actual = {
+    getAccounts: async () => [
+      { id: 'open-invalid', closed: false, last_reconciled: 'not-a-date' },
+      { id: 'open-never', closed: false, last_reconciled: null },
+      { id: 'closed', closed: true, last_reconciled: '2020-01-01' },
+    ],
+    getPreferences: async () => ({}),
+    getAccountBalance: async () => 0,
+  };
+
+  const summary = await collectSummary(actual, () => new Date('2026-08-13T12:00:00.000Z'));
+
+  assert.deepEqual(summary, {
+    netWorthCents: 0,
+    currency: null,
+    lastReconciledOn: null,
+    oldestReconciledOn: null,
+    oldestReconciledDaysAgo: null,
+    asOf: '2026-08-13T12:00:00.000Z',
+  });
+});
+
 
 test('SummaryCache serves a stale last-known value after refresh failure', async () => {
   let now = Date.parse('2026-08-13T12:00:00.000Z');

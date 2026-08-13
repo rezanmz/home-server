@@ -12,11 +12,35 @@ function currencyCode(preferences) {
   return code && /^[A-Z]{3}$/.test(code) ? code : null;
 }
 
+function reconciliationSummary(accounts, now) {
+  const reconciled = accounts
+    .filter((account) => !account.closed && typeof account.last_reconciled === 'string')
+    .map((account) => {
+      const timestamp = Date.parse(account.last_reconciled);
+      return Number.isNaN(timestamp)
+        ? null
+        : { on: account.last_reconciled.slice(0, 10), timestamp };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.timestamp - right.timestamp);
+  const oldest = reconciled[0];
+  const latest = reconciled.at(-1);
+
+  return {
+    lastReconciledOn: latest?.on ?? null,
+    oldestReconciledOn: oldest?.on ?? null,
+    oldestReconciledDaysAgo: oldest
+      ? Math.max(0, Math.floor((now.getTime() - oldest.timestamp) / 86_400_000))
+      : null,
+  };
+}
+
 export async function collectSummary(actual, now = () => new Date()) {
   const [accounts, preferences] = await Promise.all([
     actual.getAccounts(),
     actual.getPreferences(),
   ]);
+  const collectedAt = now();
   let netWorthCents = 0;
 
   for (const account of accounts) {
@@ -28,7 +52,8 @@ export async function collectSummary(actual, now = () => new Date()) {
   return {
     netWorthCents,
     currency: currencyCode(preferences),
-    asOf: now().toISOString(),
+    ...reconciliationSummary(accounts, collectedAt),
+    asOf: collectedAt.toISOString(),
   };
 }
 
