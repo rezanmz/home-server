@@ -21,6 +21,7 @@ customDNS:
     auth.reza.network: 192.168.1.240
     budget.reza.network: 192.168.1.240
     chat.reza.network: 192.168.1.240
+    finance-display.reza.network: 192.168.1.240
     grafana.reza.network: 192.168.1.240
     headlamp.reza.network: 192.168.1.240
     hermes.reza.network: 192.168.1.240

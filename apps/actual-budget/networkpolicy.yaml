@@ -18,13 +18,15 @@ spec:
       ports:
         - port: 15006
           protocol: TCP
-    # MCPHub runs the reviewed Actual API adapter as a local stdio child. Only
-    # that pod may reach Actual's internal application port directly.
+    # MCPHub and the finance display may reach Actual's internal, read-only API.
     - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: mcphub
               app.kubernetes.io/component: application
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: finance-display
       ports:
         - port: 5006
           protocol: TCP

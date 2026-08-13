@@ -15,10 +15,9 @@ spec:
       targetPort: access-http
       protocol: TCP
 ---
-# The public service deliberately terminates at the LAN/WireGuard allow-listing
-# proxy. MCPHub needs Actual's official headless API instead, so give it a
-# stable, separate DNS name that targets the application container directly.
-# NetworkPolicy still permits this destination only from the MCPHub pod.
+# The browser-facing Service deliberately terminates at the LAN/VPN proxy.
+# Headless readers use this internal Service to reach Actual's application
+# container directly; NetworkPolicy limits it to reviewed consumers.
 apiVersion: v1
 kind: Service
 metadata:

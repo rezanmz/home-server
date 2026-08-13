@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: finance-display
+spec:
+  name: Finance Display
+  workload:
+    namespace: apps
+    app: finance-display
+  homepage:
+    enabled: false
+    reason: This machine-to-machine endpoint has no browser user interface.
+  web:
+    hostname: finance-display.reza.network
+    route: apps/finance-display/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: A separate bearer token authenticates the dedicated CYD device.
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: kubernetes
