@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: upload-firmware
-          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:ed11e0edbe009a161a5079c2e58e7461ee13297e1e7df27745b822dc401e9034
+          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:863bd4c17ffd682a8fe2c3a1cccc667ba8a0fda9d3a86d7a31c4fccdcb584b28
           imagePullPolicy: IfNotPresent
           command: [sh, -ec]
           args:
@@ -48,7 +48,7 @@ spec:
             capabilities: {drop: [ALL]}
       containers:
         - name: complete
-          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:ed11e0edbe009a161a5079c2e58e7461ee13297e1e7df27745b822dc401e9034
+          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:863bd4c17ffd682a8fe2c3a1cccc667ba8a0fda9d3a86d7a31c4fccdcb584b28
           imagePullPolicy: IfNotPresent
           command: [sleep, infinity]
           resources:
