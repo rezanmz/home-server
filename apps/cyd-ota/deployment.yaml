@@ -37,8 +37,10 @@ spec:
               cp /inputs/dashboard.yaml /work/dashboard.yaml
               cp /inputs/secrets.yaml /work/secrets.yaml
               esphome compile /work/dashboard.yaml
-              esphome upload /work/dashboard.yaml --device 192.168.1.18
-              esphome upload /work/dashboard.yaml --device 192.168.1.21
+              upload_status=0
+              esphome upload /work/dashboard.yaml --device 192.168.1.18 || upload_status=$?
+              esphome upload /work/dashboard.yaml --device 192.168.1.21 || upload_status=$?
+              exit "$upload_status"
           env:
             - {name: HOME, value: /work}
             - {name: XDG_CACHE_HOME, value: /work/.cache}
