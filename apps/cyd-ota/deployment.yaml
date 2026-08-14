@@ -39,6 +39,10 @@ spec:
               esphome compile /work/dashboard.yaml
               esphome upload /work/dashboard.yaml --device 192.168.1.18
               esphome upload /work/dashboard.yaml --device 192.168.1.21
+          env:
+            - {name: HOME, value: /work}
+            - {name: XDG_CACHE_HOME, value: /work/.cache}
+            - {name: ESPHOME_ESP_IDF_PREFIX, value: /work/.cache/esphome/idf}
           volumeMounts:
             - {name: workspace, mountPath: /work}
             - {name: dashboard-config, mountPath: /inputs/dashboard.yaml, subPath: dashboard.yaml, readOnly: true}

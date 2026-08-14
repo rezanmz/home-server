@@ -1,4 +1,7 @@
 FROM ghcr.io/esphome/esphome:2026.7.4@sha256:e636269c6390c2124916510d45f55febb1d9ce41365f8445c9083ee41e43c92b
+ENV HOME=/opt/cyd-cache \
+    XDG_CACHE_HOME=/opt/cyd-cache/.cache \
+    ESPHOME_ESP_IDF_PREFIX=/opt/cyd-cache/.cache/esphome/idf
 
 WORKDIR /opt/cyd-cache
 COPY apps/cyd-ota/dashboard.yaml dashboard.yaml
