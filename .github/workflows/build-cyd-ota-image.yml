@@ -8,7 +8,6 @@ on:
       - omos/cyd-ota-updater
     paths:
       - .github/workflows/build-cyd-ota-image.yml
-      - apps/cyd-ota/dashboard.yaml
       - images/cyd-ota/**
       - scripts/build-cyd-ota-image.sh
 
