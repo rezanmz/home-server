@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - secrets.sops.yaml
+  - deployment.yaml
+  - networkpolicy.yaml
+configMapGenerator:
+  # Content hashing rewrites Deployment's ConfigMap reference. A dashboard
+  # change therefore creates a fresh pod and runs the private OTA init step.
+  - name: cyd-dashboard-firmware
+    namespace: apps
+    files:
+      - dashboard.yaml

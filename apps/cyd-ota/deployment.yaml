@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cyd-dashboard-ota
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: cyd-dashboard-ota
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cyd-dashboard-ota
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cyd-dashboard-ota
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: upload-firmware
+          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:863bd4c17ffd682a8fe2c3a1cccc667ba8a0fda9d3a86d7a31c4fccdcb584b28
+          imagePullPolicy: IfNotPresent
+          command: [sh, -ec]
+          args:
+            - |-
+              esphome compile /work/dashboard.yaml
+              esphome upload /work/dashboard.yaml --device 192.168.1.18
+              esphome upload /work/dashboard.yaml --device 192.168.1.21
+          volumeMounts:
+            - {name: dashboard-config, mountPath: /work/dashboard.yaml, subPath: dashboard.yaml, readOnly: true}
+            - {name: device-secrets, mountPath: /work/secrets.yaml, subPath: secrets.yaml, readOnly: true}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: "1", memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+      containers:
+        - name: complete
+          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:863bd4c17ffd682a8fe2c3a1cccc667ba8a0fda9d3a86d7a31c4fccdcb584b28
+          imagePullPolicy: IfNotPresent
+          command: [sleep, infinity]
+          resources:
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 25m, memory: 32Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+      volumes:
+        - name: dashboard-config
+          configMap:
+            name: cyd-dashboard-firmware
+        - name: device-secrets
+          secret:
+            secretName: cyd-dashboard-ota-secrets

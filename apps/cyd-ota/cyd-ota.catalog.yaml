@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: CatalogExclusion
+metadata:
+  name: cyd-dashboard-ota
+spec:
+  reason: Private one-shot firmware delivery controller; it has no user-facing service, persistent state, or dashboard link.

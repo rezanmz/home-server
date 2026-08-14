@@ -44,9 +44,9 @@ __pycache__/
 images/**/node_modules/
 images/**/dist/
 
-# Provisioned-device credentials and ESPHome build artifacts
-devices/cyd-dashboard/secrets.yaml
-devices/cyd-dashboard/.esphome/
+# CYD dashboard credentials and ESPHome build artifacts
+apps/cyd-ota/secrets.yaml
+apps/cyd-ota/.esphome/
 # Backup files
 *.bak
 *.backup

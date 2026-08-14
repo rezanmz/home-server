@@ -1,5 +1,15 @@
 [
   {
+    "hw-address": "b0:cb:d8:e7:21:80",
+    "ip-address": "192.168.1.18",
+    "hostname": "cyd-dashboard-1"
+  },
+  {
+    "hw-address": "b0:cb:d8:e7:1f:20",
+    "ip-address": "192.168.1.21",
+    "hostname": "cyd-dashboard-2"
+  },
+  {
     "hw-address": "b0:19:21:6f:00:a3",
     "ip-address": "192.168.1.23",
     "hostname": "bedroom-lamp-1"
