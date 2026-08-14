@@ -51,18 +51,34 @@ light:
     restore_mode: ALWAYS_ON
 
 font:
-  - file: gfonts://Roboto+Condensed
-    id: title_font
-    size: 30
-  - file: gfonts://Roboto+Condensed
+  - file:
+      type: gfonts
+      family: Audiowide
+      weight: 400
+    id: logo_font
+    size: 15
+    bpp: 2
+  - file:
+      type: gfonts
+      family: Quicksand
+      weight: 700
     id: amount_font
-    size: 50
-  - file: gfonts://Roboto+Condensed
+    size: 42
+    bpp: 2
+  - file:
+      type: gfonts
+      family: Quicksand
+      weight: 700
     id: account_font
-    size: 20
-  - file: gfonts://Roboto+Mono
+    size: 18
+    bpp: 2
+  - file:
+      type: gfonts
+      family: Space Mono
+      weight: 400
     id: detail_font
-    size: 13
+    size: 11
+    bpp: 2
 
 globals:
   - id: net_worth_cents
@@ -108,20 +124,80 @@ display:
     rotation: 90
     update_interval: never
     lambda: |-
-      const Color background(0x08, 0x0D, 0x18);
-      const Color surface(0x10, 0x18, 0x2A);
-      const Color text(0xF3, 0xF7, 0xFF);
-      const Color muted(0x8B, 0x99, 0xAF);
-      const Color accent(0x43, 0xD9, 0xC3);
-      const Color warning(0xFF, 0xB8, 0x6C);
-      const Color negative(0xFF, 0x78, 0x8B);
-      const Color state_color = id(summary_stale) ? warning : accent;
+      const Color night(0x07, 0x03, 0x1A);
+      const Color violet_sky(0x16, 0x07, 0x35);
+      const Color horizon(0x2A, 0x08, 0x4A);
+      const Color panel(0x12, 0x08, 0x2D);
+      const Color panel_inner(0x0D, 0x07, 0x24);
+      const Color text(0xFF, 0xF7, 0xFE);
+      const Color muted(0xB9, 0xA6, 0xD6);
+      const Color cyan(0x32, 0xF6, 0xE8);
+      const Color pink(0xFF, 0x4F, 0xC3);
+      const Color hot_pink(0xFF, 0x2E, 0x93);
+      const Color peach(0xFF, 0xA0, 0xC8);
+      const Color warning(0xFF, 0xCB, 0x66);
+      const Color negative(0xFF, 0x6B, 0x9D);
+      const Color state_color = id(summary_stale) ? warning : cyan;
 
-      it.fill(background);
-      it.filled_rectangle(0, 0, 320, 5, accent);
-      it.printf(16, 16, id(detail_font), muted, "PERSONAL FINANCE");
-      it.printf(236, 16, id(detail_font), state_color, id(summary_stale) ? "STALE" : "LIVE");
-      it.printf(16, 38, id(title_font), accent, "NET WORTH");
+      // Tiny rounded cards and pills without bringing in a widget framework.
+      auto fill_round_rect = [&](int x, int y, int width, int height, int radius, Color color) {
+        it.filled_rectangle(x + radius, y, width - (radius * 2), height, color);
+        it.filled_rectangle(x, y + radius, width, height - (radius * 2), color);
+        it.filled_circle(x + radius, y + radius, radius, color);
+        it.filled_circle(x + width - radius - 1, y + radius, radius, color);
+        it.filled_circle(x + radius, y + height - radius - 1, radius, color);
+        it.filled_circle(x + width - radius - 1, y + height - radius - 1, radius, color);
+      };
+
+      // Layered twilight sky.
+      it.fill(night);
+      it.filled_rectangle(0, 42, 320, 58, violet_sky);
+      it.filled_rectangle(0, 100, 320, 65, horizon);
+
+      // Stars and candy-colored sparkle crosses.
+      it.draw_pixel_at(36, 31, muted);
+      it.draw_pixel_at(87, 18, pink);
+      it.draw_pixel_at(121, 35, cyan);
+      it.draw_pixel_at(198, 23, muted);
+      it.draw_pixel_at(231, 41, peach);
+      it.line(51, 53, 51, 59, pink);
+      it.line(48, 56, 54, 56, pink);
+      it.line(213, 56, 213, 62, cyan);
+      it.line(210, 59, 216, 59, cyan);
+
+      // Striped synthwave sun, tucked behind the finance data.
+      it.filled_circle(268, 93, 40, Color(0x37, 0x08, 0x55));
+      it.filled_circle(268, 93, 34, peach);
+      it.filled_rectangle(238, 84, 60, 3, horizon);
+      it.filled_rectangle(235, 92, 66, 4, horizon);
+      it.filled_rectangle(238, 101, 60, 5, horizon);
+      it.filled_rectangle(245, 112, 46, 6, horizon);
+
+      // Perspective grid rising toward the neon horizon.
+      it.line(0, 166, 319, 166, hot_pink);
+      it.line(0, 176, 319, 176, Color(0x62, 0x20, 0x83));
+      it.line(0, 190, 319, 190, Color(0x62, 0x20, 0x83));
+      it.line(0, 210, 319, 210, Color(0x62, 0x20, 0x83));
+      it.line(0, 236, 319, 236, Color(0x62, 0x20, 0x83));
+      it.line(160, 165, -36, 239, Color(0x24, 0x7A, 0x86));
+      it.line(160, 165, 38, 239, Color(0x24, 0x7A, 0x86));
+      it.line(160, 165, 102, 239, Color(0x24, 0x7A, 0x86));
+      it.line(160, 165, 160, 239, Color(0x24, 0x7A, 0x86));
+      it.line(160, 165, 218, 239, Color(0x24, 0x7A, 0x86));
+      it.line(160, 165, 282, 239, Color(0x24, 0x7A, 0x86));
+      it.line(160, 165, 356, 239, Color(0x24, 0x7A, 0x86));
+
+      // Cute neon masthead and live/stale capsule.
+      it.filled_circle(14, 17, 3, pink);
+      it.line(14, 10, 14, 24, pink);
+      it.line(7, 17, 21, 17, pink);
+      it.printf(27, 9, id(logo_font), text, "NEON NEST");
+      fill_round_rect(251, 10, 56, 18, 8, state_color);
+      fill_round_rect(253, 12, 52, 14, 6, panel_inner);
+      it.filled_circle(262, 19, 2, state_color);
+      it.printf(299, 13, id(detail_font), state_color, TextAlign::TOP_RIGHT, id(summary_stale) ? "STALE" : "LIVE");
+
+      it.printf(17, 38, id(detail_font), cyan, "PERSONAL FINANCE // NET WORTH");
 
       const int64_t cents = id(net_worth_cents);
       const uint64_t absolute_cents = cents < 0 ? static_cast<uint64_t>(-(cents + 1)) + 1 : cents;
@@ -144,45 +220,54 @@ display:
         sizeof(amount) - cursor,
         ".%02llu",
         static_cast<unsigned long long>(absolute_cents % 100));
-      it.printf(16, 66, id(amount_font), cents < 0 ? negative : text, "%s", amount);
+      it.printf(16, 53, id(amount_font), cents < 0 ? negative : text, "%s", amount);
       if (!id(currency).empty()) {
-        it.printf(18, 116, id(detail_font), muted, "%s", id(currency).c_str());
+        fill_round_rect(18, 101, 44, 17, 7, pink);
+        fill_round_rect(20, 103, 40, 13, 5, panel_inner);
+        it.printf(52, 104, id(detail_font), pink, TextAlign::TOP_RIGHT, "%s", id(currency).c_str());
       }
 
-      it.filled_rectangle(16, 134, 288, 1, Color(0x25, 0x35, 0x4D));
-      it.filled_rectangle(12, 146, 4, 58, warning);
-      it.filled_rectangle(16, 146, 292, 58, surface);
-      it.printf(28, 152, id(detail_font), warning, "RECONCILIATION / OLDEST OPEN ACCOUNT");
+      // Glassy reconciliation card with a neon crescent accent.
+      fill_round_rect(11, 126, 298, 80, 10, pink);
+      fill_round_rect(13, 128, 294, 76, 8, panel);
+      fill_round_rect(17, 132, 286, 68, 6, panel_inner);
+      it.filled_circle(28, 144, 7, cyan);
+      it.filled_circle(31, 141, 7, panel_inner);
+      it.printf(43, 136, id(detail_font), pink, "OLDEST OPEN ACCOUNT");
       it.printf(
-        28,
-        169,
+        25,
+        153,
         id(account_font),
         text,
-        "%.24s",
+        "%.25s",
         id(oldest_reconciled_account_name).empty() ? "Account unavailable" : id(oldest_reconciled_account_name).c_str());
       if (id(oldest_reconciled_on).empty()) {
-        it.printf(28, 190, id(detail_font), muted, "NO RECONCILIATION RECORD");
+        it.printf(25, 181, id(detail_font), muted, "NO RECONCILIATION RECORD");
       } else {
         it.printf(
-          28,
-          190,
+          25,
+          181,
           id(detail_font),
           muted,
           "RECONCILED %s",
           id(oldest_reconciled_on).c_str());
+        fill_round_rect(223, 178, 72, 17, 7, state_color);
+        fill_round_rect(225, 180, 68, 13, 5, panel_inner);
         it.printf(
-          296,
-          190,
+          287,
+          181,
           id(detail_font),
-          warning,
+          state_color,
           TextAlign::TOP_RIGHT,
-          "%d %s AGO",
+          "%d %s",
           id(oldest_reconciled_days_ago),
           id(oldest_reconciled_days_ago) == 1 ? "DAY" : "DAYS");
       }
 
-      it.filled_circle(18, 222, 3, state_color);
-      it.printf(28, 214, id(detail_font), muted, "%s", id(status).c_str());
+      it.filled_circle(17, 221, 3, state_color);
+      it.circle(17, 221, 6, Color(0x67, 0x35, 0x80));
+      it.printf(29, 214, id(detail_font), muted, "%.35s", id(status).c_str());
+      it.printf(304, 214, id(detail_font), pink, TextAlign::TOP_RIGHT, "KEEP GLOWING");
 
 script:
   - id: refresh_summary
