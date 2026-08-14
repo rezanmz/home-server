@@ -10,9 +10,25 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress: []
   egress:
-    # OTA is the sole workload capability: two reserved CYD addresses over
-    # ESPHome's native authenticated OTA listener. The updater has no internet,
-    # cluster API, Actual, or DNS access.
+    # ESP-IDF resolves its pinned component manifest through Espressif's public
+    # registry during a credential-specific build. Registry addresses are CDN
+    # backed and cannot be represented as stable CIDRs; limit this exception to
+    # DNS and HTTPS. No public ingress or cluster API access is permitted.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports:
+        - {port: 443, protocol: TCP}
+    # Authenticated OTA is restricted to the two reserved CYD addresses.
     - to:
         - ipBlock: {cidr: 192.168.1.18/32}
         - ipBlock: {cidr: 192.168.1.21/32}
