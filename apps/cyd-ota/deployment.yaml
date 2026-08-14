@@ -33,12 +33,16 @@ spec:
           command: [sh, -ec]
           args:
             - |-
+              cp -a /opt/cyd-cache/. /work/
+              cp /inputs/dashboard.yaml /work/dashboard.yaml
+              cp /inputs/secrets.yaml /work/secrets.yaml
               esphome compile /work/dashboard.yaml
               esphome upload /work/dashboard.yaml --device 192.168.1.18
               esphome upload /work/dashboard.yaml --device 192.168.1.21
           volumeMounts:
-            - {name: dashboard-config, mountPath: /work/dashboard.yaml, subPath: dashboard.yaml, readOnly: true}
-            - {name: device-secrets, mountPath: /work/secrets.yaml, subPath: secrets.yaml, readOnly: true}
+            - {name: workspace, mountPath: /work}
+            - {name: dashboard-config, mountPath: /inputs/dashboard.yaml, subPath: dashboard.yaml, readOnly: true}
+            - {name: device-secrets, mountPath: /inputs/secrets.yaml, subPath: secrets.yaml, readOnly: true}
           resources:
             requests: {cpu: 100m, memory: 256Mi}
             limits: {cpu: "1", memory: 1Gi}
@@ -59,6 +63,8 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
       volumes:
+        - name: workspace
+          emptyDir: {}
         - name: dashboard-config
           configMap:
             name: cyd-dashboard-firmware
