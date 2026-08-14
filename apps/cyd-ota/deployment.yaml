@@ -28,17 +28,21 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: upload-firmware
-          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:863bd4c17ffd682a8fe2c3a1cccc667ba8a0fda9d3a86d7a31c4fccdcb584b28
+          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:abd9f2c25a9be4acf3b704a53039da6e585122cd5afbaceb3c41ac5f8e3d765c
           imagePullPolicy: IfNotPresent
           command: [sh, -ec]
           args:
             - |-
+              cp -a /opt/cyd-cache/. /work/
+              cp /inputs/dashboard.yaml /work/dashboard.yaml
+              cp /inputs/secrets.yaml /work/secrets.yaml
               esphome compile /work/dashboard.yaml
               esphome upload /work/dashboard.yaml --device 192.168.1.18
               esphome upload /work/dashboard.yaml --device 192.168.1.21
           volumeMounts:
-            - {name: dashboard-config, mountPath: /work/dashboard.yaml, subPath: dashboard.yaml, readOnly: true}
-            - {name: device-secrets, mountPath: /work/secrets.yaml, subPath: secrets.yaml, readOnly: true}
+            - {name: workspace, mountPath: /work}
+            - {name: dashboard-config, mountPath: /inputs/dashboard.yaml, subPath: dashboard.yaml, readOnly: true}
+            - {name: device-secrets, mountPath: /inputs/secrets.yaml, subPath: secrets.yaml, readOnly: true}
           resources:
             requests: {cpu: 100m, memory: 256Mi}
             limits: {cpu: "1", memory: 1Gi}
@@ -48,7 +52,7 @@ spec:
             capabilities: {drop: [ALL]}
       containers:
         - name: complete
-          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:863bd4c17ffd682a8fe2c3a1cccc667ba8a0fda9d3a86d7a31c4fccdcb584b28
+          image: ghcr.io/rezanmz/cyd-ota-updater@sha256:abd9f2c25a9be4acf3b704a53039da6e585122cd5afbaceb3c41ac5f8e3d765c
           imagePullPolicy: IfNotPresent
           command: [sleep, infinity]
           resources:
@@ -59,6 +63,8 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
       volumes:
+        - name: workspace
+          emptyDir: {}
         - name: dashboard-config
           configMap:
             name: cyd-dashboard-firmware
