@@ -33,7 +33,7 @@ spec:
           command: [sh, -ec]
           args:
             - |-
-              cp -a /opt/cyd-cache/. /work/
+              cp -r /opt/cyd-cache/. /work/
               cp /inputs/dashboard.yaml /work/dashboard.yaml
               cp /inputs/secrets.yaml /work/secrets.yaml
               esphome compile /work/dashboard.yaml
