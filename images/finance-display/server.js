@@ -16,6 +16,7 @@ const REQUIRED_ENVIRONMENT = [
   'CYD_API_TOKEN',
   'WEATHER_LATITUDE',
   'WEATHER_LONGITUDE',
+  'FOCUS_STATE_PATH',
 ];
 
 function requireEnvironment(environment) {
@@ -121,9 +122,13 @@ export function createHttpServer({
   environment = process.env,
   now = () => new Date(),
   fetchImplementation = fetch,
-  focusState = new FocusState({ now }),
+  focusState,
 } = {}) {
   requireEnvironment(environment);
+  const persistedFocusState = focusState || new FocusState({
+    now,
+    statePath: environment.FOCUS_STATE_PATH,
+  });
   const cache = new SummaryCache({ load: createSummaryLoader(api, environment, now) });
   const weatherCache = new WeatherCache({
     load: createWeatherLoader(environment, fetchImplementation),
@@ -154,9 +159,12 @@ export function createHttpServer({
           json(response, 400, { error: 'focusMode must be a boolean' });
           return;
         }
-        json(response, 200, focusState.set(body.focusMode));
+        json(response, 200, persistedFocusState.set(body.focusMode));
       } catch (error) {
-        json(response, error.status || 400, { error: error.message });
+        const status = error.status || 500;
+        json(response, status, {
+          error: error.status ? error.message : 'focus state unavailable',
+        });
       }
       return;
     }
@@ -187,7 +195,7 @@ export function createHttpServer({
           },
         ),
       ]);
-      json(response, 200, { ...summary, ...focusState.snapshot(), weather });
+      json(response, 200, { ...summary, ...persistedFocusState.snapshot(), weather });
     } catch (error) {
       console.error('Unable to refresh finance summary', error instanceof Error ? error.message : error);
       json(response, 503, { error: 'summary unavailable' });

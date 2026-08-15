@@ -1,3 +1,5 @@
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+
 export const CENTS_PER_UNIT = 100;
 export const DISPLAY_CACHE_MS = 15_000;
 export const WEATHER_CACHE_MS = 5 * 60_000;
@@ -236,18 +238,51 @@ export class WeatherCache {
 export class FocusState {
   #enabled = false;
   #updatedAt = null;
+  #statePath;
 
-  constructor({ now = () => new Date() } = {}) {
+  constructor({ now = () => new Date(), statePath } = {}) {
     this.now = now;
+    this.#statePath = statePath;
+    if (statePath) this.#restore();
+  }
+
+  #restore() {
+    let stored;
+    try {
+      stored = JSON.parse(readFileSync(this.#statePath, 'utf8'));
+    } catch (error) {
+      if (error?.code === 'ENOENT') return;
+      throw new Error(`unable to load Focus Mode state: ${error.message}`, { cause: error });
+    }
+
+    if (typeof stored?.focusMode !== 'boolean' || typeof stored.focusUpdatedAt !== 'string') {
+      throw new Error('Focus Mode state is invalid');
+    }
+    this.#enabled = stored.focusMode;
+    this.#updatedAt = stored.focusUpdatedAt;
+  }
+
+  #persist(snapshot) {
+    if (!this.#statePath) return;
+
+    const temporaryPath = `${this.#statePath}.next`;
+    writeFileSync(temporaryPath, JSON.stringify(snapshot), { encoding: 'utf8', mode: 0o600 });
+    renameSync(temporaryPath, this.#statePath);
   }
 
   set(enabled) {
     if (typeof enabled !== 'boolean') {
       throw new TypeError('focusMode must be a boolean');
     }
-    this.#enabled = enabled;
-    this.#updatedAt = this.now().toISOString();
-    return this.snapshot();
+
+    const snapshot = {
+      focusMode: enabled,
+      focusUpdatedAt: this.now().toISOString(),
+    };
+    this.#persist(snapshot);
+    this.#enabled = snapshot.focusMode;
+    this.#updatedAt = snapshot.focusUpdatedAt;
+    return snapshot;
   }
 
   snapshot() {

@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { once } from 'node:events';
 import test from 'node:test';
 import { createHttpServer } from '../server.js';
 
-function environment() {
+function environment(t) {
+  const stateDirectory = mkdtempSync(join(tmpdir(), 'finance-display-focus-'));
+  t.after(() => rmSync(stateDirectory, { force: true, recursive: true }));
   return {
     ACTUAL_SERVER_URL: 'http://actual.test:5006',
     ACTUAL_PASSWORD: 'actual-password',
@@ -11,6 +16,7 @@ function environment() {
     CYD_API_TOKEN: 'display-token',
     WEATHER_LATITUDE: '43.6532',
     WEATHER_LONGITUDE: '-79.3832',
+    FOCUS_STATE_PATH: join(stateDirectory, 'focus-state.json'),
   };
 }
 
@@ -59,7 +65,7 @@ test('summary endpoint requires the display bearer token', async (t) => {
   const api = fakeActual();
   const server = createHttpServer({
     api,
-    environment: environment(),
+    environment: environment(t),
     fetchImplementation: fakeWeather(),
   });
   server.listen(0, '127.0.0.1');
@@ -77,7 +83,7 @@ test('summary endpoint returns only the derived display payload', async (t) => {
   const api = fakeActual();
   const server = createHttpServer({
     api,
-    environment: environment(),
+    environment: environment(t),
     now: () => new Date('2026-08-13T12:00:00.000Z'),
     fetchImplementation: fakeWeather(),
   });
@@ -122,7 +128,7 @@ test('focus mode is an authenticated idempotent update shared with summary reade
   const api = fakeActual();
   const server = createHttpServer({
     api,
-    environment: environment(),
+    environment: environment(t),
     now: () => new Date('2026-08-13T12:00:00.000Z'),
     fetchImplementation: fakeWeather(),
   });
@@ -152,7 +158,7 @@ test('focus mode is an authenticated idempotent update shared with summary reade
 test('focus mode rejects missing authorization and non-boolean values', async (t) => {
   const server = createHttpServer({
     api: fakeActual(),
-    environment: environment(),
+    environment: environment(t),
     fetchImplementation: fakeWeather(),
   });
   server.listen(0, '127.0.0.1');

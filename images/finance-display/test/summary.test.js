@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
   DISPLAY_CACHE_MS,
@@ -214,12 +217,28 @@ test('WeatherCache keeps weather refreshes separate from fast display polling', 
   assert.equal(calls, 2);
 });
 
-test('FocusState stores the desired boolean and an update timestamp', () => {
-  const focus = new FocusState({ now: () => new Date('2026-08-13T12:00:00.000Z') });
-  assert.deepEqual(focus.snapshot(), { focusMode: false, focusUpdatedAt: null });
-  assert.deepEqual(focus.set(true), {
+test('FocusState persists the desired boolean across process replacement', (t) => {
+  const stateDirectory = mkdtempSync(join(tmpdir(), 'finance-display-focus-'));
+  const statePath = join(stateDirectory, 'focus-state.json');
+  t.after(() => rmSync(stateDirectory, { force: true, recursive: true }));
+
+  const first = new FocusState({
+    now: () => new Date('2026-08-13T12:00:00.000Z'),
+    statePath,
+  });
+  assert.deepEqual(first.snapshot(), { focusMode: false, focusUpdatedAt: null });
+  assert.deepEqual(first.set(true), {
     focusMode: true,
     focusUpdatedAt: '2026-08-13T12:00:00.000Z',
   });
-  assert.throws(() => focus.set('true'), /must be a boolean/);
+
+  const replacement = new FocusState({
+    now: () => new Date('2026-08-13T12:05:00.000Z'),
+    statePath,
+  });
+  assert.deepEqual(replacement.snapshot(), {
+    focusMode: true,
+    focusUpdatedAt: '2026-08-13T12:00:00.000Z',
+  });
+  assert.throws(() => replacement.set('true'), /must be a boolean/);
 });

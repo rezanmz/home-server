@@ -7,6 +7,8 @@ metadata:
     app.kubernetes.io/name: finance-display
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: finance-display
@@ -51,6 +53,8 @@ spec:
             - {name: WEATHER_LONGITUDE, value: "-79.3832"}
             - name: ACTUAL_DATA_DIR
               value: /var/lib/actual
+            - name: FOCUS_STATE_PATH
+              value: /var/lib/finance-display/focus-state.json
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 5
@@ -70,7 +74,11 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: actual-data, mountPath: /var/lib/actual}
+            - {name: focus-state, mountPath: /var/lib/finance-display}
       volumes:
         - name: actual-data
           emptyDir:
             sizeLimit: 64Mi
+        - name: focus-state
+          persistentVolumeClaim:
+            claimName: finance-display-state
