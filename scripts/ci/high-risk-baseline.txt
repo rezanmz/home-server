@@ -177,7 +177,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|jellyfi
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-storage-exporter|spec/sha256/3f8b7ab4c2f08673fef8ab841b8c28bb2ffcaef6986c6f7dc279539e64a063ab
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|spec/sha256/eecb02a99d36d69f8adc6ac40244707823ae40703845aea4171e9ce6bfb8258a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|navidrome|spec/sha256/879d46cf7d6a8e1d3e153328dc52d9a713dff616f7ba36b97f986987c54d2fc9
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|sabnzbd-vpn|spec/sha256/44c66e809493a660823a2da15132eb46a935441d8b5e02c8a12a60723c51615a
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|sabnzbd-vpn|spec/sha256/7435155e4d9d47f04de4d55f8e9cb5dfa2fff1acbfa909ce3b02d596c8721bca
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|spec/sha256/205cfdf9d6a5ddd33e48f1fc6948b41348941475a62a0a351a429dc6091fd157

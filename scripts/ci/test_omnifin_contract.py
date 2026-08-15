@@ -190,6 +190,29 @@ class OmnifinContractTests(unittest.TestCase):
             if "ipBlock" in peer
         }
         self.assertEqual(jellyfin_cidrs, {"192.168.1.2/32", "192.168.1.3/32"})
+        sabnzbd_rules = [
+            rule
+            for rule in gateway_policy["spec"]["egress"]
+            if rule.get("ports") == [{"port": 8080, "protocol": "TCP"}]
+            and rule.get("to", [{}])[0].get("podSelector", {}).get("matchLabels", {}).get(
+                "app.kubernetes.io/name"
+            )
+            == "sabnzbd-vpn"
+        ]
+        self.assertEqual(len(sabnzbd_rules), 1)
+        self.assertEqual(
+            sabnzbd_rules[0]["to"],
+            [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "media"}
+                    },
+                    "podSelector": {
+                        "matchLabels": {"app.kubernetes.io/name": "sabnzbd-vpn"}
+                    },
+                }
+            ],
+        )
 
     def test_daily_maintenance_is_local_and_hardened(self) -> None:
         cronjob = resource(
