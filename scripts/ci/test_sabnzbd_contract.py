@@ -272,7 +272,7 @@ class SabnzbdContractTests(unittest.TestCase):
             "apps/sabnzbd/networkpolicy.yaml", "NetworkPolicy", "sabnzbd-vpn"
         )
         self.assertEqual(policy["spec"]["policyTypes"], ["Ingress", "Egress"])
-        self.assertEqual(len(policy["spec"]["ingress"]), 2)
+        self.assertEqual(len(policy["spec"]["ingress"]), 3)
         self.assertEqual(
             policy["spec"]["ingress"][0]["from"],
             [{"podSelector": {"matchLabels": {"app.kubernetes.io/name": "media-vpn"}}}],
@@ -283,6 +283,25 @@ class SabnzbdContractTests(unittest.TestCase):
         )
         self.assertEqual(
             policy["spec"]["ingress"][1],
+            {
+                "from": [
+                    {
+                        "namespaceSelector": {
+                            "matchLabels": {"kubernetes.io/metadata.name": "apps"}
+                        },
+                        "podSelector": {
+                            "matchLabels": {
+                                "app.kubernetes.io/name": "omnifin",
+                                "app.kubernetes.io/component": "gateway",
+                            }
+                        },
+                    }
+                ],
+                "ports": [{"port": 8080, "protocol": "TCP"}],
+            },
+        )
+        self.assertEqual(
+            policy["spec"]["ingress"][2],
             {
                 "from": [
                     {
@@ -305,7 +324,7 @@ class SabnzbdContractTests(unittest.TestCase):
         )
         self.assertNotIn(
             {"port": 8080, "protocol": "TCP"},
-            policy["spec"]["ingress"][1]["ports"],
+            policy["spec"]["ingress"][2]["ports"],
         )
         self.assertEqual(policy["spec"]["egress"], [{}])
 

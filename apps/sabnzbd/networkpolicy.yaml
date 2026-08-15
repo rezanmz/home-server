@@ -15,6 +15,18 @@ spec:
               app.kubernetes.io/name: media-vpn
       ports:
         - {port: 8080, protocol: TCP}
+    # Omnifin owns the encrypted API key and is the only cross-namespace
+    # control-plane client allowed to call SABnzbd directly.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: omnifin
+              app.kubernetes.io/component: gateway
+      ports:
+        - {port: 8080, protocol: TCP}
     - from:
         - namespaceSelector:
             matchLabels:
