@@ -25,7 +25,8 @@ spec:
   placement:
     mode: floating
   data:
-    class: stateless
-    protection: not-applicable
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/finance-display/pvc.yaml]
   observability:
     mode: kubernetes

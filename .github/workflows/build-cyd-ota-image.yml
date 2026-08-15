@@ -5,9 +5,11 @@ on:
   push:
     branches:
       - main
-      - omos/cyd-ota-updater
+      - codex/**
+      - omos/**
     paths:
       - .github/workflows/build-cyd-ota-image.yml
+      - apps/cyd-ota/dashboard.yaml
       - images/cyd-ota/**
       - scripts/build-cyd-ota-image.sh
 

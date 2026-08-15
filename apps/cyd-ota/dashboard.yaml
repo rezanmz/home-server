@@ -36,8 +36,13 @@ http_request:
   verify_ssl: true
 
 spi:
-  clk_pin: GPIO14
-  mosi_pin: GPIO13
+  - id: display_spi
+    clk_pin: GPIO14
+    mosi_pin: GPIO13
+  - id: touch_spi
+    clk_pin: GPIO25
+    mosi_pin: GPIO32
+    miso_pin: GPIO39
 
 output:
   - platform: gpio
@@ -53,17 +58,17 @@ light:
 font:
   - file:
       type: gfonts
-      family: Audiowide
-      weight: 400
-    id: logo_font
-    size: 15
+      family: Quicksand
+      weight: 500
+    id: label_font
+    size: 12
     bpp: 2
   - file:
       type: gfonts
       family: Quicksand
       weight: 700
     id: amount_font
-    size: 42
+    size: 40
     bpp: 2
   - file:
       type: gfonts
@@ -74,10 +79,10 @@ font:
     bpp: 2
   - file:
       type: gfonts
-      family: Space Mono
-      weight: 400
-    id: detail_font
-    size: 11
+      family: Quicksand
+      weight: 700
+    id: button_font
+    size: 14
     bpp: 2
 
 globals:
@@ -86,10 +91,6 @@ globals:
     restore_value: no
     initial_value: '0'
   - id: currency
-    type: std::string
-    restore_value: no
-    initial_value: '""'
-  - id: as_of
     type: std::string
     restore_value: no
     initial_value: '""'
@@ -109,37 +110,69 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'true'
-  - id: status
+  - id: weather_available
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: weather_condition
     type: std::string
     restore_value: no
-    initial_value: '"Waiting for data"'
+    initial_value: '"unknown"'
+  - id: weather_label
+    type: std::string
+    restore_value: no
+    initial_value: '"WEATHER WAITING"'
+  - id: weather_is_day
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+  - id: weather_temperature_c
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: weather_stale
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+  - id: focus_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: focus_sync_pending
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: focus_sync_error
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 display:
   - platform: mipi_spi
     id: dashboard_display
     model: ILI9341
+    spi_id: display_spi
     cs_pin: GPIO15
     dc_pin: GPIO2
     reset_pin: GPIO4
     rotation: 90
     update_interval: never
     lambda: |-
-      const Color night(0x07, 0x03, 0x1A);
-      const Color violet_sky(0x16, 0x07, 0x35);
-      const Color horizon(0x2A, 0x08, 0x4A);
-      const Color panel(0x12, 0x08, 0x2D);
-      const Color panel_inner(0x0D, 0x07, 0x24);
-      const Color text(0xFF, 0xF7, 0xFE);
-      const Color muted(0xB9, 0xA6, 0xD6);
-      const Color cyan(0x32, 0xF6, 0xE8);
-      const Color pink(0xFF, 0x4F, 0xC3);
-      const Color hot_pink(0xFF, 0x2E, 0x93);
-      const Color peach(0xFF, 0xA0, 0xC8);
-      const Color warning(0xFF, 0xCB, 0x66);
-      const Color negative(0xFF, 0x6B, 0x9D);
+      const Color panel(0x10, 0x06, 0x27);
+      const Color panel_soft(0x18, 0x0A, 0x35);
+      const Color text(0xFF, 0xF8, 0xFE);
+      const Color muted(0xC7, 0xB4, 0xDD);
+      const Color cyan(0x35, 0xF4, 0xE7);
+      const Color pink(0xFF, 0x58, 0xC7);
+      const Color peach(0xFF, 0xA3, 0xC9);
+      const Color warning(0xFF, 0xCC, 0x70);
+      const Color negative(0xFF, 0x74, 0xA4);
+      const Color dim_cyan(0x0B, 0x53, 0x60);
+      const Color dim_pink(0x69, 0x18, 0x62);
+      const Color cloud_fill(0x76, 0x50, 0x9D);
+      const Color cloud_light(0xC8, 0xA8, 0xE8);
       const Color state_color = id(summary_stale) ? warning : cyan;
 
-      // Tiny rounded cards and pills without bringing in a widget framework.
       auto fill_round_rect = [&](int x, int y, int width, int height, int radius, Color color) {
         it.filled_rectangle(x + radius, y, width - (radius * 2), height, color);
         it.filled_rectangle(x, y + radius, width, height - (radius * 2), color);
@@ -149,55 +182,92 @@ display:
         it.filled_circle(x + width - radius - 1, y + height - radius - 1, radius, color);
       };
 
-      // Layered twilight sky.
-      it.fill(night);
-      it.filled_rectangle(0, 42, 320, 58, violet_sky);
-      it.filled_rectangle(0, 100, 320, 65, horizon);
+      auto mix_channel = [](uint8_t from, uint8_t to, float amount) -> uint8_t {
+        return static_cast<uint8_t>(from + ((static_cast<int>(to) - from) * amount));
+      };
 
-      // Stars and candy-colored sparkle crosses.
-      it.draw_pixel_at(36, 31, muted);
-      it.draw_pixel_at(87, 18, pink);
-      it.draw_pixel_at(121, 35, cyan);
-      it.draw_pixel_at(198, 23, muted);
-      it.draw_pixel_at(231, 41, peach);
-      it.line(51, 53, 51, 59, pink);
-      it.line(48, 56, 54, 56, pink);
-      it.line(213, 56, 213, 62, cyan);
-      it.line(210, 59, 216, 59, cyan);
+      // A continuous two-stage dusk gradient replaces the old visible color bands.
+      for (int y = 0; y < 240; y++) {
+        float amount;
+        uint8_t red;
+        uint8_t green;
+        uint8_t blue;
+        if (y < 132) {
+          amount = y / 132.0f;
+          red = mix_channel(0x05, 0x13, amount);
+          green = mix_channel(0x02, 0x04, amount);
+          blue = mix_channel(0x16, 0x2C, amount);
+        } else {
+          amount = (y - 132) / 108.0f;
+          red = mix_channel(0x13, 0x2B, amount);
+          green = mix_channel(0x04, 0x08, amount);
+          blue = mix_channel(0x2C, 0x47, amount);
+        }
+        it.filled_rectangle(0, y, 320, 1, Color(red, green, blue));
+      }
 
-      // Striped synthwave sun, tucked behind the finance data.
-      it.filled_circle(268, 93, 40, Color(0x37, 0x08, 0x55));
-      it.filled_circle(268, 93, 34, peach);
-      it.filled_rectangle(238, 84, 60, 3, horizon);
-      it.filled_rectangle(235, 92, 66, 4, horizon);
-      it.filled_rectangle(238, 101, 60, 5, horizon);
-      it.filled_rectangle(245, 112, 46, 6, horizon);
+      // Low-contrast haze and asymmetric neon edge bloom.
+      it.rectangle(0, 0, 320, 240, Color(0x42, 0x0D, 0x50));
+      it.rectangle(2, 2, 316, 236, Color(0x25, 0x0B, 0x43));
+      it.rectangle(4, 4, 312, 232, Color(0x12, 0x18, 0x3C));
+      it.line(5, 5, 112, 5, dim_cyan);
+      it.line(5, 6, 82, 6, Color(0x0A, 0x37, 0x48));
+      it.line(207, 234, 314, 234, dim_pink);
+      it.line(238, 233, 314, 233, Color(0x42, 0x0E, 0x50));
+      it.line(5, 6, 5, 98, Color(0x0B, 0x3C, 0x50));
+      it.line(314, 135, 314, 233, Color(0x4D, 0x10, 0x55));
 
-      // Perspective grid rising toward the neon horizon.
-      it.line(0, 166, 319, 166, hot_pink);
-      it.line(0, 176, 319, 176, Color(0x62, 0x20, 0x83));
-      it.line(0, 190, 319, 190, Color(0x62, 0x20, 0x83));
-      it.line(0, 210, 319, 210, Color(0x62, 0x20, 0x83));
-      it.line(0, 236, 319, 236, Color(0x62, 0x20, 0x83));
-      it.line(160, 165, -36, 239, Color(0x24, 0x7A, 0x86));
-      it.line(160, 165, 38, 239, Color(0x24, 0x7A, 0x86));
-      it.line(160, 165, 102, 239, Color(0x24, 0x7A, 0x86));
-      it.line(160, 165, 160, 239, Color(0x24, 0x7A, 0x86));
-      it.line(160, 165, 218, 239, Color(0x24, 0x7A, 0x86));
-      it.line(160, 165, 282, 239, Color(0x24, 0x7A, 0x86));
-      it.line(160, 165, 356, 239, Color(0x24, 0x7A, 0x86));
+      // Current conditions become the decorative sky element.
+      const int weather_x = 271;
+      const int weather_y = 53;
+      const std::string &condition = id(weather_condition);
+      if (!id(weather_available)) {
+        it.filled_circle(weather_x, weather_y, 27, Color(0x18, 0x0A, 0x37));
+        it.circle(weather_x, weather_y, 20, dim_pink);
+        it.line(weather_x - 7, weather_y, weather_x + 7, weather_y, muted);
+        it.line(weather_x, weather_y - 7, weather_x, weather_y + 7, muted);
+      } else if (condition == "clear" && id(weather_is_day)) {
+        it.filled_circle(weather_x, weather_y, 31, Color(0x32, 0x09, 0x4B));
+        it.filled_circle(weather_x, weather_y, 25, Color(0x6C, 0x1C, 0x66));
+        it.filled_circle(weather_x, weather_y, 19, peach);
+        it.circle(weather_x, weather_y, 21, pink);
+      } else if (condition == "clear") {
+        it.filled_circle(weather_x, weather_y, 29, Color(0x12, 0x15, 0x48));
+        it.filled_circle(weather_x, weather_y, 18, cyan);
+        it.filled_circle(weather_x + 7, weather_y - 6, 18, Color(0x13, 0x05, 0x2D));
+        it.draw_pixel_at(weather_x - 31, weather_y - 15, pink);
+        it.line(weather_x + 27, weather_y - 22, weather_x + 27, weather_y - 16, cyan);
+        it.line(weather_x + 24, weather_y - 19, weather_x + 30, weather_y - 19, cyan);
+      } else {
+        // Cloud halo shared by cloudy, rain, snow, fog, and storm states.
+        it.filled_circle(weather_x, weather_y, 31, Color(0x20, 0x0A, 0x42));
+        it.filled_circle(weather_x - 8, weather_y + 2, 16, dim_pink);
+        it.filled_circle(weather_x + 7, weather_y - 5, 19, dim_cyan);
+        it.filled_circle(weather_x - 9, weather_y, 12, cloud_fill);
+        it.filled_circle(weather_x + 5, weather_y - 6, 16, cloud_light);
+        it.filled_circle(weather_x + 18, weather_y + 1, 11, cloud_fill);
+        it.filled_rectangle(weather_x - 19, weather_y, 47, 13, cloud_fill);
 
-      // Cute neon masthead and live/stale capsule.
-      it.filled_circle(14, 17, 3, pink);
-      it.line(14, 10, 14, 24, pink);
-      it.line(7, 17, 21, 17, pink);
-      it.printf(27, 9, id(logo_font), text, "NEON NEST");
-      fill_round_rect(251, 10, 56, 18, 8, state_color);
-      fill_round_rect(253, 12, 52, 14, 6, panel_inner);
-      it.filled_circle(262, 19, 2, state_color);
-      it.printf(299, 13, id(detail_font), state_color, TextAlign::TOP_RIGHT, id(summary_stale) ? "STALE" : "LIVE");
+        if (condition == "rain") {
+          it.line(weather_x - 13, weather_y + 18, weather_x - 17, weather_y + 25, cyan);
+          it.line(weather_x, weather_y + 18, weather_x - 4, weather_y + 25, cyan);
+          it.line(weather_x + 13, weather_y + 18, weather_x + 9, weather_y + 25, pink);
+        } else if (condition == "snow") {
+          it.filled_circle(weather_x - 12, weather_y + 22, 2, cyan);
+          it.filled_circle(weather_x + 1, weather_y + 25, 2, text);
+          it.filled_circle(weather_x + 14, weather_y + 21, 2, pink);
+        } else if (condition == "storm") {
+          it.line(weather_x + 3, weather_y + 14, weather_x - 3, weather_y + 24, warning);
+          it.line(weather_x - 3, weather_y + 24, weather_x + 4, weather_y + 23, warning);
+          it.line(weather_x + 4, weather_y + 23, weather_x - 2, weather_y + 32, warning);
+        } else if (condition == "fog") {
+          it.line(weather_x - 24, weather_y + 19, weather_x + 24, weather_y + 19, cyan);
+          it.line(weather_x - 17, weather_y + 25, weather_x + 18, weather_y + 25, pink);
+        }
+      }
 
-      it.printf(17, 38, id(detail_font), cyan, "PERSONAL FINANCE // NET WORTH");
+      it.filled_circle(18, 20, 2, state_color);
+      it.printf(27, 12, id(label_font), muted, "NET WORTH");
 
       const int64_t cents = id(net_worth_cents);
       const uint64_t absolute_cents = cents < 0 ? static_cast<uint64_t>(-(cents + 1)) + 1 : cents;
@@ -205,14 +275,10 @@ display:
       snprintf(whole, sizeof(whole), "%llu", static_cast<unsigned long long>(absolute_cents / 100));
       char amount[32];
       size_t cursor = 0;
-      if (cents < 0) {
-        amount[cursor++] = '-';
-      }
+      if (cents < 0) amount[cursor++] = '-';
       const size_t whole_length = strlen(whole);
       for (size_t index = 0; index < whole_length; index++) {
-        if (index > 0 && (whole_length - index) % 3 == 0) {
-          amount[cursor++] = ',';
-        }
+        if (index > 0 && (whole_length - index) % 3 == 0) amount[cursor++] = ',';
         amount[cursor++] = whole[index];
       }
       snprintf(
@@ -220,43 +286,51 @@ display:
         sizeof(amount) - cursor,
         ".%02llu",
         static_cast<unsigned long long>(absolute_cents % 100));
-      it.printf(16, 53, id(amount_font), cents < 0 ? negative : text, "%s", amount);
+      it.printf(15, 32, id(amount_font), cents < 0 ? negative : text, "%s", amount);
+
       if (!id(currency).empty()) {
-        fill_round_rect(18, 101, 44, 17, 7, pink);
-        fill_round_rect(20, 103, 40, 13, 5, panel_inner);
-        it.printf(52, 104, id(detail_font), pink, TextAlign::TOP_RIGHT, "%s", id(currency).c_str());
+        fill_round_rect(17, 82, 45, 19, 8, dim_pink);
+        fill_round_rect(19, 84, 41, 15, 6, panel);
+        it.printf(52, 85, id(label_font), pink, TextAlign::TOP_RIGHT, "%s", id(currency).c_str());
+      }
+      if (id(weather_available)) {
+        it.printf(
+          304,
+          87,
+          id(label_font),
+          id(weather_stale) ? warning : muted,
+          TextAlign::TOP_RIGHT,
+          "%d C  %.18s  OPEN-METEO",
+          id(weather_temperature_c),
+          id(weather_label).c_str());
+      } else {
+        it.printf(304, 87, id(label_font), muted, TextAlign::TOP_RIGHT, "WEATHER WAITING");
       }
 
-      // Glassy reconciliation card with a neon crescent accent.
-      fill_round_rect(11, 126, 298, 80, 10, pink);
-      fill_round_rect(13, 128, 294, 76, 8, panel);
-      fill_round_rect(17, 132, 286, 68, 6, panel_inner);
-      it.filled_circle(28, 144, 7, cyan);
-      it.filled_circle(31, 141, 7, panel_inner);
-      it.printf(43, 136, id(detail_font), pink, "OLDEST OPEN ACCOUNT");
+      // Soft reconciliation card; there is no perspective grid behind it.
+      fill_round_rect(11, 110, 298, 82, 11, Color(0x4D, 0x13, 0x5A));
+      fill_round_rect(13, 112, 294, 78, 9, panel_soft);
+      fill_round_rect(17, 116, 286, 70, 7, panel);
+      it.filled_circle(27, 130, 7, dim_cyan);
+      it.filled_circle(27, 130, 4, cyan);
+      it.printf(42, 121, id(label_font), pink, "OLDEST OPEN ACCOUNT");
       it.printf(
-        25,
-        153,
+        24,
+        140,
         id(account_font),
         text,
         "%.25s",
         id(oldest_reconciled_account_name).empty() ? "Account unavailable" : id(oldest_reconciled_account_name).c_str());
       if (id(oldest_reconciled_on).empty()) {
-        it.printf(25, 181, id(detail_font), muted, "NO RECONCILIATION RECORD");
+        it.printf(24, 169, id(label_font), muted, "NO RECONCILIATION RECORD");
       } else {
-        it.printf(
-          25,
-          181,
-          id(detail_font),
-          muted,
-          "RECONCILED %s",
-          id(oldest_reconciled_on).c_str());
-        fill_round_rect(223, 178, 72, 17, 7, state_color);
-        fill_round_rect(225, 180, 68, 13, 5, panel_inner);
+        it.printf(24, 169, id(label_font), muted, "RECONCILED %s", id(oldest_reconciled_on).c_str());
+        fill_round_rect(227, 165, 68, 19, 8, id(summary_stale) ? warning : dim_cyan);
+        fill_round_rect(229, 167, 64, 15, 6, panel);
         it.printf(
           287,
-          181,
-          id(detail_font),
+          168,
+          id(label_font),
           state_color,
           TextAlign::TOP_RIGHT,
           "%d %s",
@@ -264,10 +338,69 @@ display:
           id(oldest_reconciled_days_ago) == 1 ? "DAY" : "DAYS");
       }
 
-      it.filled_circle(17, 221, 3, state_color);
-      it.circle(17, 221, 6, Color(0x67, 0x35, 0x80));
-      it.printf(29, 214, id(detail_font), muted, "%.35s", id(status).c_str());
-      it.printf(304, 214, id(detail_font), pink, TextAlign::TOP_RIGHT, "KEEP GLOWING");
+      // The full-width illuminated control is also a generous touch target.
+      const Color focus_glow = id(focus_mode) ? Color(0x73, 0x1B, 0x74) : Color(0x2A, 0x10, 0x45);
+      const Color focus_edge = id(focus_mode) ? pink : Color(0x55, 0x31, 0x70);
+      const Color focus_fill = id(focus_mode) ? Color(0x3A, 0x0D, 0x49) : panel;
+      fill_round_rect(11, 200, 298, 34, 12, focus_glow);
+      fill_round_rect(14, 203, 292, 28, 10, focus_edge);
+      fill_round_rect(16, 205, 288, 24, 8, focus_fill);
+      it.filled_circle(31, 217, id(focus_mode) ? 7 : 5, id(focus_mode) ? cyan : Color(0x66, 0x54, 0x7A));
+      if (id(focus_mode)) it.circle(31, 217, 9, dim_cyan);
+      it.printf(49, 207, id(button_font), id(focus_mode) ? text : muted, "FOCUS MODE");
+      it.printf(
+        288,
+        208,
+        id(button_font),
+        id(focus_mode) ? cyan : muted,
+        TextAlign::TOP_RIGHT,
+        id(focus_mode) ? "ON" : "OFF");
+      if (id(focus_sync_pending)) {
+        it.filled_circle(298, 217, 3, pink);
+      } else if (id(focus_sync_error)) {
+        it.line(295, 214, 301, 220, warning);
+        it.line(301, 214, 295, 220, warning);
+      }
+
+touchscreen:
+  - platform: xpt2046
+    id: dashboard_touch
+    display: dashboard_display
+    spi_id: touch_spi
+    cs_pin: GPIO33
+    interrupt_pin: GPIO36
+    update_interval: 50ms
+    threshold: 400
+    calibration:
+      x_min: 280
+      x_max: 3860
+      y_min: 340
+      y_max: 3860
+    transform:
+      swap_xy: true
+      mirror_x: true
+
+binary_sensor:
+  - platform: touchscreen
+    id: focus_button
+    touchscreen_id: dashboard_touch
+    internal: true
+    x_min: 10
+    x_max: 310
+    y_min: 198
+    y_max: 239
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: return !id(focus_sync_pending);
+            then:
+              - lambda: |-
+                  id(focus_mode) = !id(focus_mode);
+                  id(focus_sync_pending) = true;
+                  id(focus_sync_error) = false;
+                  id(dashboard_display).update();
+              - script.execute: publish_focus
 
 script:
   - id: refresh_summary
@@ -291,26 +424,84 @@ script:
                           }
                           id(net_worth_cents) = root["netWorthCents"].as<int64_t>();
                           id(currency) = root["currency"].is<const char *>() ? root["currency"].as<const char *>() : "";
-                          id(as_of) = root["asOf"].as<const char *>();
                           id(oldest_reconciled_account_name) = root["oldestReconciledAccountName"].is<const char *>() ? root["oldestReconciledAccountName"].as<const char *>() : "";
                           id(oldest_reconciled_on) = root["oldestReconciledOn"].is<const char *>() ? root["oldestReconciledOn"].as<const char *>() : "";
                           id(oldest_reconciled_days_ago) = root["oldestReconciledDaysAgo"].is<int>() ? root["oldestReconciledDaysAgo"].as<int>() : -1;
                           id(summary_stale) = root["stale"] | true;
-                          id(status) = id(as_of).substr(0, 16) + " UTC";
+
+                          if (!id(focus_sync_pending) && root["focusMode"].is<bool>()) {
+                            id(focus_mode) = root["focusMode"].as<bool>();
+                            id(focus_sync_error) = false;
+                          }
+
+                          if (root["weather"].is<JsonObject>()) {
+                            JsonObject weather = root["weather"].as<JsonObject>();
+                            if (
+                              weather["condition"].is<const char *>() &&
+                              weather["label"].is<const char *>() &&
+                              weather["isDay"].is<bool>() &&
+                              weather["temperatureC"].is<int>()) {
+                              id(weather_condition) = weather["condition"].as<const char *>();
+                              id(weather_label) = weather["label"].as<const char *>();
+                              id(weather_is_day) = weather["isDay"].as<bool>();
+                              id(weather_temperature_c) = weather["temperatureC"].as<int>();
+                              id(weather_stale) = weather["stale"] | true;
+                              id(weather_available) = true;
+                            }
+                          } else {
+                            id(weather_available) = false;
+                            id(weather_stale) = true;
+                          }
                           return true;
                         });
-                        if (!parsed) {
-                          id(summary_stale) = true;
-                          id(status) = "Invalid summary response";
-                        }
+                        if (!parsed) id(summary_stale) = true;
                         id(dashboard_display).update();
                   else:
                     - lambda: |-
                         id(summary_stale) = true;
-                        id(status) = "HTTP " + to_string(response->status_code);
                         id(dashboard_display).update();
+          on_error:
+            then:
+              - lambda: |-
+                  id(summary_stale) = true;
+                  id(dashboard_display).update();
+
+  - id: publish_focus
+    mode: single
+    then:
+      - http_request.send:
+          method: PUT
+          url: !secret finance_display_url
+          request_headers:
+            Authorization: !secret finance_display_authorization
+            Content-Type: application/json
+          body: !lambda |-
+            return id(focus_mode) ? std::string("{\"focusMode\":true}") : std::string("{\"focusMode\":false}");
+          capture_response: true
+          on_response:
+            then:
+              - lambda: |-
+                  bool accepted = false;
+                  if (response->status_code == 200) {
+                    accepted = json::parse_json(body, [](JsonObject root) -> bool {
+                      if (!root["focusMode"].is<bool>()) return false;
+                      id(focus_mode) = root["focusMode"].as<bool>();
+                      return true;
+                    });
+                  }
+                  id(focus_sync_pending) = false;
+                  id(focus_sync_error) = !accepted;
+                  id(dashboard_display).update();
+          on_error:
+            then:
+              - lambda: |-
+                  id(focus_sync_pending) = false;
+                  id(focus_sync_error) = true;
+                  id(dashboard_display).update();
 
 interval:
-  - interval: 15s
+  # Finance data remains server-cached for 15 seconds; the faster device poll
+  # makes a focus change appear on the other CYD within about five seconds.
+  - interval: 5s
     then:
       - script.execute: refresh_summary

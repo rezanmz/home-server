@@ -7,6 +7,8 @@ metadata:
     app.kubernetes.io/name: finance-display
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: finance-display
@@ -26,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: finance-display
-          image: ghcr.io/rezanmz/finance-display:0.1.0@sha256:6dfca907d90756455cd5790da762ec2739586165e79e89bd0ac6fc7978e7a4f3
+          image: ghcr.io/rezanmz/finance-display:0.2.0@sha256:f8e80e4108ecfe9dbf1e251e20d327a86b0a4538b58f0e4d12ca74492ed53f4d
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -45,8 +47,14 @@ spec:
             - name: CYD_API_TOKEN
               valueFrom:
                 secretKeyRef: {name: finance-display-secrets, key: cyd-api-token}
+            # Toronto coordinates match the cluster's configured local timezone.
+            # They are non-secret and keep weather lookup centralized off-device.
+            - {name: WEATHER_LATITUDE, value: "43.6532"}
+            - {name: WEATHER_LONGITUDE, value: "-79.3832"}
             - name: ACTUAL_DATA_DIR
               value: /var/lib/actual
+            - name: FOCUS_STATE_PATH
+              value: /var/lib/finance-display/focus-state.json
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 5
@@ -66,7 +74,11 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: actual-data, mountPath: /var/lib/actual}
+            - {name: focus-state, mountPath: /var/lib/finance-display}
       volumes:
         - name: actual-data
           emptyDir:
             sizeLimit: 64Mi
+        - name: focus-state
+          persistentVolumeClaim:
+            claimName: finance-display-state
