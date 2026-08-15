@@ -45,6 +45,10 @@ spec:
             - name: CYD_API_TOKEN
               valueFrom:
                 secretKeyRef: {name: finance-display-secrets, key: cyd-api-token}
+            # Toronto coordinates match the cluster's configured local timezone.
+            # They are non-secret and keep weather lookup centralized off-device.
+            - {name: WEATHER_LATITUDE, value: "43.6532"}
+            - {name: WEATHER_LONGITUDE, value: "-79.3832"}
             - name: ACTUAL_DATA_DIR
               value: /var/lib/actual
           readinessProbe:

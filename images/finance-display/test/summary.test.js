@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DISPLAY_CACHE_MS, SummaryCache, collectSummary } from '../lib.js';
+import {
+  DISPLAY_CACHE_MS,
+  FocusState,
+  SummaryCache,
+  WEATHER_CACHE_MS,
+  WeatherCache,
+  collectSummary,
+  normalizeWeather,
+} from '../lib.js';
 
 test('collectSummary uses the oldest open ActualQL reconciliation timestamp', async () => {
   const balances = new Map([
@@ -169,4 +177,49 @@ test('SummaryCache refreshes the display data every 15 seconds by default', asyn
   now += 1;
   await cache.get();
   assert.equal(calls, 2);
+});
+
+test('normalizeWeather maps WMO conditions into the compact display vocabulary', () => {
+  assert.deepEqual(
+    normalizeWeather({
+      time: '2026-08-13T12:00',
+      temperature_2m: -2.6,
+      weather_code: 85,
+      is_day: 0,
+    }),
+    {
+      condition: 'snow',
+      label: 'SNOW',
+      weatherCode: 85,
+      isDay: false,
+      temperatureC: -3,
+      observedAt: '2026-08-13T12:00',
+    },
+  );
+});
+
+test('WeatherCache keeps weather refreshes separate from fast display polling', async () => {
+  let now = 1_000;
+  let calls = 0;
+  const cache = new WeatherCache({
+    now: () => now,
+    load: async () => ({ condition: 'clear', weatherCode: calls++ }),
+  });
+
+  assert.equal((await cache.get()).weatherCode, 0);
+  now += WEATHER_CACHE_MS - 1;
+  assert.equal((await cache.get()).weatherCode, 0);
+  now += 1;
+  assert.equal((await cache.get()).weatherCode, 1);
+  assert.equal(calls, 2);
+});
+
+test('FocusState stores the desired boolean and an update timestamp', () => {
+  const focus = new FocusState({ now: () => new Date('2026-08-13T12:00:00.000Z') });
+  assert.deepEqual(focus.snapshot(), { focusMode: false, focusUpdatedAt: null });
+  assert.deepEqual(focus.set(true), {
+    focusMode: true,
+    focusUpdatedAt: '2026-08-13T12:00:00.000Z',
+  });
+  assert.throws(() => focus.set('true'), /must be a boolean/);
 });
