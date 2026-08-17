@@ -58,31 +58,38 @@ light:
 font:
   - file:
       type: gfonts
-      family: Quicksand
+      family: Fredoka
       weight: 500
     id: label_font
-    size: 12
+    size: 9
     bpp: 2
   - file:
       type: gfonts
-      family: Quicksand
+      family: Fredoka
       weight: 700
     id: amount_font
-    size: 40
+    size: 29
     bpp: 2
   - file:
       type: gfonts
-      family: Quicksand
+      family: Fredoka
       weight: 700
     id: account_font
-    size: 18
+    size: 15
     bpp: 2
   - file:
       type: gfonts
-      family: Quicksand
+      family: Fredoka
       weight: 700
     id: button_font
-    size: 14
+    size: 17
+    bpp: 2
+  - file:
+      type: gfonts
+      family: Fredoka
+      weight: 700
+    id: clock_font
+    size: 28
     bpp: 2
 
 globals:
@@ -134,6 +141,18 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'true'
+  - id: local_time
+    type: std::string
+    restore_value: no
+    initial_value: '"--:--"'
+  - id: local_period
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: theme_darkness_percent
+    type: int
+    restore_value: no
+    initial_value: '0'
   - id: focus_mode
     type: bool
     restore_value: no
@@ -158,21 +177,6 @@ display:
     rotation: 90
     update_interval: never
     lambda: |-
-      const Color panel(0x10, 0x06, 0x27);
-      const Color panel_soft(0x18, 0x0A, 0x35);
-      const Color text(0xFF, 0xF8, 0xFE);
-      const Color muted(0xC7, 0xB4, 0xDD);
-      const Color cyan(0x35, 0xF4, 0xE7);
-      const Color pink(0xFF, 0x58, 0xC7);
-      const Color peach(0xFF, 0xA3, 0xC9);
-      const Color warning(0xFF, 0xCC, 0x70);
-      const Color negative(0xFF, 0x74, 0xA4);
-      const Color dim_cyan(0x0B, 0x53, 0x60);
-      const Color dim_pink(0x69, 0x18, 0x62);
-      const Color cloud_fill(0x76, 0x50, 0x9D);
-      const Color cloud_light(0xC8, 0xA8, 0xE8);
-      const Color state_color = id(summary_stale) ? warning : cyan;
-
       auto fill_round_rect = [&](int x, int y, int width, int height, int radius, Color color) {
         it.filled_rectangle(x + radius, y, width - (radius * 2), height, color);
         it.filled_rectangle(x, y + radius, width, height - (radius * 2), color);
@@ -182,93 +186,156 @@ display:
         it.filled_circle(x + width - radius - 1, y + height - radius - 1, radius, color);
       };
 
-      auto mix_channel = [](uint8_t from, uint8_t to, float amount) -> uint8_t {
-        return static_cast<uint8_t>(from + ((static_cast<int>(to) - from) * amount));
+      auto smoothstep = [](float start, float end, float value) -> float {
+        float position = (value - start) / (end - start);
+        if (position < 0.0f) position = 0.0f;
+        if (position > 1.0f) position = 1.0f;
+        return position * position * (3.0f - (2.0f * position));
       };
 
-      // A continuous two-stage dusk gradient replaces the old visible color bands.
+      auto blend_rgb = [](uint32_t day, uint32_t night, float amount) -> uint32_t {
+        const uint8_t day_red = (day >> 16) & 0xFF;
+        const uint8_t day_green = (day >> 8) & 0xFF;
+        const uint8_t day_blue = day & 0xFF;
+        const uint8_t night_red = (night >> 16) & 0xFF;
+        const uint8_t night_green = (night >> 8) & 0xFF;
+        const uint8_t night_blue = night & 0xFF;
+        const uint8_t red = day_red + ((static_cast<int>(night_red) - day_red) * amount);
+        const uint8_t green = day_green + ((static_cast<int>(night_green) - day_green) * amount);
+        const uint8_t blue = day_blue + ((static_cast<int>(night_blue) - day_blue) * amount);
+        return (static_cast<uint32_t>(red) << 16) |
+          (static_cast<uint32_t>(green) << 8) |
+          static_cast<uint32_t>(blue);
+      };
+
+      auto as_color = [](uint32_t rgb) -> Color {
+        return Color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+      };
+
+      float darkness = id(theme_darkness_percent) / 100.0f;
+      if (darkness < 0.0f) darkness = 0.0f;
+      if (darkness > 1.0f) darkness = 1.0f;
+      const float surface_darkness = smoothstep(0.36f, 0.62f, darkness);
+      const bool night_text = darkness >= 0.48f;
+
+      const uint32_t sky_top = blend_rgb(0xCBEFFF, 0x111937, darkness);
+      const uint32_t sky_middle = blend_rgb(0xDCEBFF, 0x20234E, darkness);
+      const uint32_t sky_lower = blend_rgb(0xF8D6E5, 0x4A315A, darkness);
+      const uint32_t sky_bottom = blend_rgb(0xFFE8F0, 0x673955, darkness);
+      const Color primary = as_color(night_text
+        ? blend_rgb(0xF7EDFF, 0xFBF2FF, smoothstep(0.48f, 1.0f, darkness))
+        : blend_rgb(0x59678F, 0x3E496F, smoothstep(0.0f, 0.48f, darkness)));
+      const Color secondary = as_color(night_text
+        ? blend_rgb(0xD9D4EF, 0xCFCBEA, smoothstep(0.48f, 1.0f, darkness))
+        : blend_rgb(0x8D9AB8, 0x697596, smoothstep(0.0f, 0.48f, darkness)));
+      const Color panel = as_color(blend_rgb(0xFFFAFF, 0x202044, surface_darkness));
+      const Color panel_soft = as_color(blend_rgb(0xF3F9FF, 0x2A294F, surface_darkness));
+      const Color panel_edge = as_color(blend_rgb(0xFFFFFF, 0xA8DDFF, darkness));
+      const Color baby_blue = as_color(blend_rgb(0x8FDCFF, 0x68BDE8, darkness));
+      const Color powder_pink = as_color(blend_rgb(0xF29AC1, 0xD966A6, darkness));
+      const Color pale_yellow = as_color(blend_rgb(0xFFF2A8, 0xF5ECFF, darkness));
+      const Color warning = as_color(night_text ? 0xFFD2E6 : 0xA95179);
+      const Color negative = as_color(night_text ? 0xFFB6D4 : 0xB04F7A);
+
+      // Pastel daylight softly blends into the deep periwinkle night palette.
       for (int y = 0; y < 240; y++) {
-        float amount;
-        uint8_t red;
-        uint8_t green;
-        uint8_t blue;
-        if (y < 132) {
-          amount = y / 132.0f;
-          red = mix_channel(0x05, 0x13, amount);
-          green = mix_channel(0x02, 0x04, amount);
-          blue = mix_channel(0x16, 0x2C, amount);
+        uint32_t row;
+        if (y < 118) {
+          row = blend_rgb(sky_top, sky_middle, y / 118.0f);
         } else {
-          amount = (y - 132) / 108.0f;
-          red = mix_channel(0x13, 0x2B, amount);
-          green = mix_channel(0x04, 0x08, amount);
-          blue = mix_channel(0x2C, 0x47, amount);
+          row = blend_rgb(sky_lower, sky_bottom, (y - 118) / 122.0f);
         }
-        it.filled_rectangle(0, y, 320, 1, Color(red, green, blue));
+        it.filled_rectangle(0, y, 320, 1, as_color(row));
       }
 
-      // Low-contrast haze and asymmetric neon edge bloom.
-      it.rectangle(0, 0, 320, 240, Color(0x42, 0x0D, 0x50));
-      it.rectangle(2, 2, 316, 236, Color(0x25, 0x0B, 0x43));
-      it.rectangle(4, 4, 312, 232, Color(0x12, 0x18, 0x3C));
-      it.line(5, 5, 112, 5, dim_cyan);
-      it.line(5, 6, 82, 6, Color(0x0A, 0x37, 0x48));
-      it.line(207, 234, 314, 234, dim_pink);
-      it.line(238, 233, 314, 233, Color(0x42, 0x0E, 0x50));
-      it.line(5, 6, 5, 98, Color(0x0B, 0x3C, 0x50));
-      it.line(314, 135, 314, 233, Color(0x4D, 0x10, 0x55));
+      // Layered baby-blue and powder-pink edges imitate a soft neon haze.
+      it.rectangle(0, 0, 320, 240, as_color(blend_rgb(0xA8DDF7, 0x57375F, darkness)));
+      it.rectangle(2, 2, 316, 236, as_color(blend_rgb(0xF8D4E4, 0x8B507A, darkness)));
+      it.rectangle(4, 4, 312, 232, panel_edge);
+      it.line(6, 6, 126, 6, baby_blue);
+      it.line(6, 7, 88, 7, as_color(blend_rgb(0xD7F3FF, 0x68BDE8, darkness)));
+      it.line(194, 233, 313, 233, powder_pink);
+      it.line(231, 232, 313, 232, as_color(blend_rgb(0xFFE2EF, 0xD966A6, darkness)));
 
-      // Current conditions become the decorative sky element.
-      const int weather_x = 271;
-      const int weather_y = 53;
+      if (darkness > 0.25f) {
+        const Color star = as_color(blend_rgb(0xFFFFFF, 0xFFF5C7, darkness));
+        it.draw_pixel_at(164, 22, star);
+        it.line(197, 35, 203, 35, star);
+        it.line(200, 32, 200, 38, star);
+        it.draw_pixel_at(133, 45, star);
+      }
+
+      // Time and weather share the open sky above the finance card.
+      it.printf(16, 11, id(clock_font), primary, "%s", id(local_time).c_str());
+      if (!id(local_period).empty()) {
+        it.printf(87, 28, id(label_font), secondary, "%s", id(local_period).c_str());
+      }
+
+      std::string weather_text = id(weather_label);
+      for (char &character : weather_text) {
+        if (character >= 'A' && character <= 'Z') character += ('a' - 'A');
+      }
+      if (id(weather_available)) {
+        it.printf(
+          16,
+          46,
+          id(label_font),
+          id(weather_stale) ? warning : secondary,
+          "%d C - %.18s",
+          id(weather_temperature_c),
+          weather_text.c_str());
+      } else {
+        it.printf(16, 46, id(label_font), secondary, "weather waiting");
+      }
+
+      const int weather_x = 275;
+      const int weather_y = 34;
       const std::string &condition = id(weather_condition);
       if (!id(weather_available)) {
-        it.filled_circle(weather_x, weather_y, 27, Color(0x18, 0x0A, 0x37));
-        it.circle(weather_x, weather_y, 20, dim_pink);
-        it.line(weather_x - 7, weather_y, weather_x + 7, weather_y, muted);
-        it.line(weather_x, weather_y - 7, weather_x, weather_y + 7, muted);
-      } else if (condition == "clear" && id(weather_is_day)) {
-        it.filled_circle(weather_x, weather_y, 31, Color(0x32, 0x09, 0x4B));
-        it.filled_circle(weather_x, weather_y, 25, Color(0x6C, 0x1C, 0x66));
-        it.filled_circle(weather_x, weather_y, 19, peach);
-        it.circle(weather_x, weather_y, 21, pink);
+        it.filled_circle(weather_x, weather_y, 20, panel_soft);
+        it.circle(weather_x, weather_y, 15, powder_pink);
+        it.line(weather_x - 5, weather_y, weather_x + 5, weather_y, secondary);
+        it.line(weather_x, weather_y - 5, weather_x, weather_y + 5, secondary);
+      } else if (condition == "clear" && darkness < 0.50f) {
+        it.filled_circle(weather_x, weather_y, 22, as_color(blend_rgb(0xFFF8D4, 0x80668B, darkness)));
+        it.filled_circle(weather_x, weather_y, 16, pale_yellow);
+        it.circle(weather_x, weather_y, 18, panel_edge);
       } else if (condition == "clear") {
-        it.filled_circle(weather_x, weather_y, 29, Color(0x12, 0x15, 0x48));
-        it.filled_circle(weather_x, weather_y, 18, cyan);
-        it.filled_circle(weather_x + 7, weather_y - 6, 18, Color(0x13, 0x05, 0x2D));
-        it.draw_pixel_at(weather_x - 31, weather_y - 15, pink);
-        it.line(weather_x + 27, weather_y - 22, weather_x + 27, weather_y - 16, cyan);
-        it.line(weather_x + 24, weather_y - 19, weather_x + 30, weather_y - 19, cyan);
+        it.filled_circle(weather_x, weather_y, 21, as_color(0x31315F));
+        it.filled_circle(weather_x, weather_y, 15, as_color(0xF5ECFF));
+        it.filled_circle(weather_x + 6, weather_y - 5, 15, as_color(sky_top));
       } else {
-        // Cloud halo shared by cloudy, rain, snow, fog, and storm states.
-        it.filled_circle(weather_x, weather_y, 31, Color(0x20, 0x0A, 0x42));
-        it.filled_circle(weather_x - 8, weather_y + 2, 16, dim_pink);
-        it.filled_circle(weather_x + 7, weather_y - 5, 19, dim_cyan);
-        it.filled_circle(weather_x - 9, weather_y, 12, cloud_fill);
-        it.filled_circle(weather_x + 5, weather_y - 6, 16, cloud_light);
-        it.filled_circle(weather_x + 18, weather_y + 1, 11, cloud_fill);
-        it.filled_rectangle(weather_x - 19, weather_y, 47, 13, cloud_fill);
+        const Color cloud_fill = as_color(blend_rgb(0xFDF9FC, 0xA8B5DD, darkness));
+        const Color cloud_light = as_color(blend_rgb(0xFFFFFF, 0xCBD2EE, darkness));
+        it.filled_circle(weather_x, weather_y, 22, as_color(blend_rgb(0xEAF7FF, 0x39375F, darkness)));
+        it.filled_circle(weather_x - 9, weather_y + 3, 10, cloud_fill);
+        it.filled_circle(weather_x + 3, weather_y - 4, 13, cloud_light);
+        it.filled_circle(weather_x + 15, weather_y + 3, 9, cloud_fill);
+        it.filled_rectangle(weather_x - 17, weather_y + 2, 40, 10, cloud_fill);
 
         if (condition == "rain") {
-          it.line(weather_x - 13, weather_y + 18, weather_x - 17, weather_y + 25, cyan);
-          it.line(weather_x, weather_y + 18, weather_x - 4, weather_y + 25, cyan);
-          it.line(weather_x + 13, weather_y + 18, weather_x + 9, weather_y + 25, pink);
+          it.line(weather_x - 11, weather_y + 15, weather_x - 14, weather_y + 20, baby_blue);
+          it.line(weather_x, weather_y + 15, weather_x - 3, weather_y + 20, baby_blue);
+          it.line(weather_x + 11, weather_y + 15, weather_x + 8, weather_y + 20, powder_pink);
         } else if (condition == "snow") {
-          it.filled_circle(weather_x - 12, weather_y + 22, 2, cyan);
-          it.filled_circle(weather_x + 1, weather_y + 25, 2, text);
-          it.filled_circle(weather_x + 14, weather_y + 21, 2, pink);
+          it.filled_circle(weather_x - 10, weather_y + 18, 1, baby_blue);
+          it.filled_circle(weather_x + 1, weather_y + 20, 1, primary);
+          it.filled_circle(weather_x + 12, weather_y + 18, 1, powder_pink);
         } else if (condition == "storm") {
-          it.line(weather_x + 3, weather_y + 14, weather_x - 3, weather_y + 24, warning);
-          it.line(weather_x - 3, weather_y + 24, weather_x + 4, weather_y + 23, warning);
-          it.line(weather_x + 4, weather_y + 23, weather_x - 2, weather_y + 32, warning);
+          it.line(weather_x + 2, weather_y + 13, weather_x - 3, weather_y + 21, pale_yellow);
+          it.line(weather_x - 3, weather_y + 21, weather_x + 3, weather_y + 20, pale_yellow);
+          it.line(weather_x + 3, weather_y + 20, weather_x - 2, weather_y + 27, pale_yellow);
         } else if (condition == "fog") {
-          it.line(weather_x - 24, weather_y + 19, weather_x + 24, weather_y + 19, cyan);
-          it.line(weather_x - 17, weather_y + 25, weather_x + 18, weather_y + 25, pink);
+          it.line(weather_x - 18, weather_y + 16, weather_x + 18, weather_y + 16, baby_blue);
+          it.line(weather_x - 13, weather_y + 21, weather_x + 14, weather_y + 21, powder_pink);
         }
       }
 
-      it.filled_circle(18, 20, 2, state_color);
-      it.printf(27, 12, id(label_font), muted, "NET WORTH");
-
+      // Compact finance card keeps room for status and the enlarged control.
+      fill_round_rect(10, 67, 300, 64, 13, panel_edge);
+      fill_round_rect(12, 69, 296, 60, 11, panel_soft);
+      fill_round_rect(15, 72, 290, 54, 9, panel);
+      it.printf(25, 76, id(label_font), secondary, "net worth");
       const int64_t cents = id(net_worth_cents);
       const uint64_t absolute_cents = cents < 0 ? static_cast<uint64_t>(-(cents + 1)) + 1 : cents;
       char whole[24];
@@ -276,90 +343,121 @@ display:
       char amount[32];
       size_t cursor = 0;
       if (cents < 0) amount[cursor++] = '-';
+      if (id(currency) == "CAD" || id(currency) == "USD" || id(currency) == "AUD") {
+        amount[cursor++] = '$';
+      }
       const size_t whole_length = strlen(whole);
       for (size_t index = 0; index < whole_length; index++) {
         if (index > 0 && (whole_length - index) % 3 == 0) amount[cursor++] = ',';
         amount[cursor++] = whole[index];
       }
-      snprintf(
-        amount + cursor,
-        sizeof(amount) - cursor,
-        ".%02llu",
-        static_cast<unsigned long long>(absolute_cents % 100));
-      it.printf(15, 32, id(amount_font), cents < 0 ? negative : text, "%s", amount);
-
-      if (!id(currency).empty()) {
-        fill_round_rect(17, 82, 45, 19, 8, dim_pink);
-        fill_round_rect(19, 84, 41, 15, 6, panel);
-        it.printf(52, 85, id(label_font), pink, TextAlign::TOP_RIGHT, "%s", id(currency).c_str());
-      }
-      if (id(weather_available)) {
-        it.printf(
-          304,
-          87,
-          id(label_font),
-          id(weather_stale) ? warning : muted,
-          TextAlign::TOP_RIGHT,
-          "%d C  %.18s  OPEN-METEO",
-          id(weather_temperature_c),
-          id(weather_label).c_str());
+      amount[cursor] = '\0';
+      it.printf(24, 87, id(amount_font), cents < 0 ? negative : primary, "%s", amount);
+      if (id(currency).empty()) {
+        it.printf(25, 116, id(label_font), secondary, "OPEN-METEO");
       } else {
-        it.printf(304, 87, id(label_font), muted, TextAlign::TOP_RIGHT, "WEATHER WAITING");
+        it.printf(25, 116, id(label_font), secondary, "%s - OPEN-METEO", id(currency).c_str());
       }
 
-      // Soft reconciliation card; there is no perspective grid behind it.
-      fill_round_rect(11, 110, 298, 82, 11, Color(0x4D, 0x13, 0x5A));
-      fill_round_rect(13, 112, 294, 78, 9, panel_soft);
-      fill_round_rect(17, 116, 286, 70, 7, panel);
-      it.filled_circle(27, 130, 7, dim_cyan);
-      it.filled_circle(27, 130, 4, cyan);
-      it.printf(42, 121, id(label_font), pink, "OLDEST OPEN ACCOUNT");
-      it.printf(
-        24,
-        140,
-        id(account_font),
-        text,
-        "%.25s",
-        id(oldest_reconciled_account_name).empty() ? "Account unavailable" : id(oldest_reconciled_account_name).c_str());
-      if (id(oldest_reconciled_on).empty()) {
-        it.printf(24, 169, id(label_font), muted, "NO RECONCILIATION RECORD");
-      } else {
-        it.printf(24, 169, id(label_font), muted, "RECONCILED %s", id(oldest_reconciled_on).c_str());
-        fill_round_rect(227, 165, 68, 19, 8, id(summary_stale) ? warning : dim_cyan);
-        fill_round_rect(229, 167, 64, 15, 6, panel);
+      // A tiny hand-drawn heart keeps the visual cute without another font glyph.
+      it.filled_circle(282, 93, 4, powder_pink);
+      it.filled_circle(289, 93, 4, powder_pink);
+      for (int row = 0; row < 7; row++) {
+        it.line(278 + row, 95 + row, 293 - row, 95 + row, powder_pink);
+      }
+
+      // Reconciliation is calm only when every open account was handled today using fresh data.
+      const bool reconciliation_known = !id(oldest_reconciled_on).empty() && id(oldest_reconciled_days_ago) >= 0;
+      const bool summary_is_stale = id(summary_stale);
+      const bool all_clear = !summary_is_stale && reconciliation_known && id(oldest_reconciled_days_ago) == 0;
+      const Color reconciliation_accent = all_clear ? baby_blue : warning;
+      fill_round_rect(10, 136, 300, 38, 11, panel_edge);
+      fill_round_rect(12, 138, 296, 34, 9, panel_soft);
+      fill_round_rect(15, 141, 290, 28, 7, panel);
+      it.filled_circle(30, 155, 11, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
+      it.circle(30, 155, 11, reconciliation_accent);
+      if (summary_is_stale) {
+        it.line(30, 149, 30, 157, reconciliation_accent);
+        it.filled_circle(30, 161, 1, reconciliation_accent);
         it.printf(
-          287,
-          168,
+          50,
+          142,
+          id(account_font),
+          primary,
+          reconciliation_known ? "Finance data stale" : "Finance unavailable");
+        it.printf(
+          50,
+          159,
           id(label_font),
-          state_color,
+          secondary,
+          reconciliation_known ? "showing last known values" : "waiting for fresh summary");
+        fill_round_rect(247, 145, 48, 20, 9, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
+        it.printf(286, 150, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "stale");
+      } else if (all_clear) {
+        it.line(24, 155, 28, 159, reconciliation_accent);
+        it.line(28, 159, 36, 149, reconciliation_accent);
+        it.printf(50, 142, id(account_font), primary, "All clear");
+        it.printf(50, 159, id(label_font), secondary, "all accounts reconciled today");
+        fill_round_rect(247, 145, 48, 20, 9, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
+        it.printf(286, 150, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "today");
+      } else if (reconciliation_known) {
+        it.line(30, 149, 30, 157, reconciliation_accent);
+        it.filled_circle(30, 161, 1, reconciliation_accent);
+        it.printf(50, 142, id(account_font), primary, "%.18s", id(oldest_reconciled_account_name).c_str());
+        it.printf(50, 159, id(label_font), secondary, "oldest account to reconcile");
+        fill_round_rect(239, 145, 56, 20, 9, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
+        it.printf(
+          288,
+          150,
+          id(label_font),
+          reconciliation_accent,
           TextAlign::TOP_RIGHT,
-          "%d %s",
+          "%d day%s",
           id(oldest_reconciled_days_ago),
-          id(oldest_reconciled_days_ago) == 1 ? "DAY" : "DAYS");
+          id(oldest_reconciled_days_ago) == 1 ? "" : "s");
+      } else {
+        it.printf(27, 149, id(account_font), secondary, "?");
+        it.printf(50, 142, id(account_font), primary, "Account unavailable");
+        it.printf(50, 159, id(label_font), secondary, "missing reconciliation data");
       }
 
-      // The full-width illuminated control is also a generous touch target.
-      const Color focus_glow = id(focus_mode) ? Color(0x73, 0x1B, 0x74) : Color(0x2A, 0x10, 0x45);
-      const Color focus_edge = id(focus_mode) ? pink : Color(0x55, 0x31, 0x70);
-      const Color focus_fill = id(focus_mode) ? Color(0x3A, 0x0D, 0x49) : panel;
-      fill_round_rect(11, 200, 298, 34, 12, focus_glow);
-      fill_round_rect(14, 203, 292, 28, 10, focus_edge);
-      fill_round_rect(16, 205, 288, 24, 8, focus_fill);
-      it.filled_circle(31, 217, id(focus_mode) ? 7 : 5, id(focus_mode) ? cyan : Color(0x66, 0x54, 0x7A));
-      if (id(focus_mode)) it.circle(31, 217, 9, dim_cyan);
-      it.printf(49, 207, id(button_font), id(focus_mode) ? text : muted, "FOCUS MODE");
+      // Focus Mode now occupies nearly a quarter of the screen and lights up fully.
+      const Color focus_glow = id(focus_mode)
+        ? as_color(blend_rgb(0xFFB4D5, 0xE867AA, darkness))
+        : as_color(blend_rgb(0xC8EFFF, 0x39345F, surface_darkness));
+      const Color focus_edge = id(focus_mode) ? powder_pink : panel_edge;
+      const Color focus_fill = id(focus_mode)
+        ? as_color(blend_rgb(0xB8CDFD, 0x4B3A78, darkness))
+        : panel;
+      fill_round_rect(9, 178, 302, 55, 17, focus_glow);
+      fill_round_rect(12, 181, 296, 49, 15, focus_edge);
+      fill_round_rect(15, 184, 290, 43, 13, focus_fill);
+      const Color focus_text = id(focus_mode) ? as_color(0xFFFAFF) : primary;
+      it.printf(27, 188, id(button_font), focus_text, "Focus Mode");
+      const char *focus_note = id(focus_sync_pending)
+        ? "syncing..."
+        : id(focus_sync_error)
+          ? "sync failed - tap to retry"
+          : id(focus_mode)
+            ? "synced with both screens"
+            : "tap to begin";
+      it.printf(27, 210, id(label_font), id(focus_sync_error) ? warning : (id(focus_mode) ? as_color(0xFFF4FC) : secondary), "%s", focus_note);
+      const Color state_fill = id(focus_mode)
+        ? as_color(0xFFF8FD)
+        : as_color(blend_rgb(0xFFFFFF, 0x29284E, surface_darkness));
+      fill_round_rect(247, 188, 49, 30, 13, state_fill);
       it.printf(
         288,
-        208,
+        194,
         id(button_font),
-        id(focus_mode) ? cyan : muted,
+        id(focus_mode) ? as_color(0xD65D9B) : primary,
         TextAlign::TOP_RIGHT,
         id(focus_mode) ? "ON" : "OFF");
       if (id(focus_sync_pending)) {
-        it.filled_circle(298, 217, 3, pink);
+        it.filled_circle(301, 222, 2, powder_pink);
       } else if (id(focus_sync_error)) {
-        it.line(295, 214, 301, 220, warning);
-        it.line(301, 214, 295, 220, warning);
+        it.line(298, 219, 304, 225, warning);
+        it.line(304, 219, 298, 225, warning);
       }
 
 touchscreen:
@@ -387,7 +485,7 @@ binary_sensor:
     internal: true
     x_min: 10
     x_max: 310
-    y_min: 198
+    y_min: 176
     y_max: 239
     on_press:
       then:
@@ -447,6 +545,23 @@ script:
                               id(weather_temperature_c) = weather["temperatureC"].as<int>();
                               id(weather_stale) = weather["stale"] | true;
                               id(weather_available) = true;
+
+                              if (weather["theme"].is<JsonObject>()) {
+                                JsonObject theme = weather["theme"].as<JsonObject>();
+                                if (
+                                  theme["localTime"].is<const char *>() &&
+                                  theme["localPeriod"].is<const char *>() &&
+                                  theme["darknessPercent"].is<int>()) {
+                                  id(local_time) = theme["localTime"].as<const char *>();
+                                  id(local_period) = theme["localPeriod"].as<const char *>();
+                                  int darkness = theme["darknessPercent"].as<int>();
+                                  if (darkness < 0) darkness = 0;
+                                  if (darkness > 100) darkness = 100;
+                                  id(theme_darkness_percent) = darkness;
+                                }
+                              } else {
+                                id(theme_darkness_percent) = id(weather_is_day) ? 0 : 100;
+                              }
                             }
                           } else {
                             id(weather_available) = false;

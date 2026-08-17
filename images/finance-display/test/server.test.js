@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import test from 'node:test';
-import { createHttpServer } from '../server.js';
+import { createHttpServer, createWeatherLoader } from '../server.js';
 
 function environment(t) {
   const stateDirectory = mkdtempSync(join(tmpdir(), 'finance-display-focus-'));
@@ -16,6 +16,7 @@ function environment(t) {
     CYD_API_TOKEN: 'display-token',
     WEATHER_LATITUDE: '43.6532',
     WEATHER_LONGITUDE: '-79.3832',
+    LOCAL_TIME_ZONE: 'America/Toronto',
     FOCUS_STATE_PATH: join(stateDirectory, 'focus-state.json'),
   };
 }
@@ -25,10 +26,14 @@ function fakeWeather() {
     new Response(
       JSON.stringify({
         current: {
-          time: '2026-08-13T12:00',
+          time: Date.parse('2026-08-13T12:00:00.000Z') / 1000,
           temperature_2m: 24.4,
           weather_code: 2,
           is_day: 1,
+        },
+        daily: {
+          sunrise: [Date.parse('2026-08-13T10:00:00.000Z') / 1000],
+          sunset: [Date.parse('2026-08-14T00:00:00.000Z') / 1000],
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -109,8 +114,17 @@ test('summary endpoint returns only the derived display payload', async (t) => {
     weatherCode: 2,
     isDay: true,
     temperatureC: 24,
-    observedAt: '2026-08-13T12:00',
+    observedAt: '2026-08-13T12:00:00.000Z',
+    sunriseAt: '2026-08-13T10:00:00.000Z',
+    sunsetAt: '2026-08-14T00:00:00.000Z',
     stale: false,
+    theme: {
+      localTime: '8:00',
+      localPeriod: 'AM',
+      sunrise: '6:00 AM',
+      sunset: '8:00 PM',
+      darknessPercent: 0,
+    },
   });
   assert.match(result.body.asOf, /^\d{4}-\d{2}-\d{2}T/);
   assert.deepEqual(api.calls, [
@@ -122,6 +136,31 @@ test('summary endpoint returns only the derived display payload', async (t) => {
     ['downloadBudget', ['budget-id', { password: undefined }]],
     ['shutdown'],
   ]);
+});
+
+test('weather loader requests one local day with solar events', async (t) => {
+  const configured = environment(t);
+  let requested;
+  const load = createWeatherLoader(configured, async (url) => {
+    requested = url;
+    return fakeWeather()();
+  });
+
+  await load();
+
+  assert.equal(requested.searchParams.get('daily'), 'sunrise,sunset');
+  assert.equal(requested.searchParams.get('timezone'), 'America/Toronto');
+  assert.equal(requested.searchParams.get('forecast_days'), '1');
+  assert.equal(requested.searchParams.get('timeformat'), 'unixtime');
+});
+
+test('server rejects an invalid local timezone at startup', (t) => {
+  const configured = environment(t);
+  configured.LOCAL_TIME_ZONE = 'Not/A_Time_Zone';
+  assert.throws(
+    () => createHttpServer({ environment: configured, api: fakeActual(), fetchImplementation: fakeWeather() }),
+    /valid IANA time zone/,
+  );
 });
 
 test('focus mode is an authenticated idempotent update shared with summary readers', async (t) => {

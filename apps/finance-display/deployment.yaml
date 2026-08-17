@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: finance-display
-          image: ghcr.io/rezanmz/finance-display:0.2.0@sha256:f8e80e4108ecfe9dbf1e251e20d327a86b0a4538b58f0e4d12ca74492ed53f4d
+          image: ghcr.io/rezanmz/finance-display:0.3.1@sha256:ec51e5cfeba53e64104720a7660f56687289319576c1f6a60cdbb51cd0c2be20
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -50,10 +50,11 @@ spec:
             - name: CYD_API_TOKEN
               valueFrom:
                 secretKeyRef: {name: finance-display-secrets, key: cyd-api-token}
-            # Toronto coordinates match the cluster's configured local timezone.
-            # They are non-secret and keep weather lookup centralized off-device.
+            # Location and calendar timezone are explicit, non-secret settings.
+            # They keep weather, sunset transitions, and reconciliation days aligned.
             - {name: WEATHER_LATITUDE, value: "43.6532"}
             - {name: WEATHER_LONGITUDE, value: "-79.3832"}
+            - {name: LOCAL_TIME_ZONE, value: America/Toronto}
             - name: ACTUAL_DATA_DIR
               value: /var/lib/actual
             - name: FOCUS_STATE_PATH
