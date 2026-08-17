@@ -7,6 +7,8 @@ import {
   WeatherCache,
   collectSummary,
   normalizeWeather,
+  themeForTime,
+  validateTimeZone,
 } from './lib.js';
 
 const REQUIRED_ENVIRONMENT = [
@@ -16,6 +18,7 @@ const REQUIRED_ENVIRONMENT = [
   'CYD_API_TOKEN',
   'WEATHER_LATITUDE',
   'WEATHER_LONGITUDE',
+  'LOCAL_TIME_ZONE',
   'FOCUS_STATE_PATH',
 ];
 
@@ -80,7 +83,7 @@ export function createSummaryLoader(api, environment, now = () => new Date()) {
       await api.downloadBudget(environment.ACTUAL_BUDGET_SYNC_ID, {
         password: environment.ACTUAL_BUDGET_PASSWORD || undefined,
       });
-      return await collectSummary(api, now);
+      return await collectSummary(api, now, environment.LOCAL_TIME_ZONE);
     } finally {
       if (initialized) {
         await api.shutdown();
@@ -103,7 +106,10 @@ export function createWeatherLoader(environment, fetchImplementation = fetch) {
   url.searchParams.set('latitude', String(latitude));
   url.searchParams.set('longitude', String(longitude));
   url.searchParams.set('current', 'temperature_2m,weather_code,is_day');
-  url.searchParams.set('timezone', 'UTC');
+  url.searchParams.set('daily', 'sunrise,sunset');
+  url.searchParams.set('timezone', environment.LOCAL_TIME_ZONE);
+  url.searchParams.set('forecast_days', '1');
+  url.searchParams.set('timeformat', 'unixtime');
 
   return async () => {
     const response = await fetchImplementation(url, {
@@ -113,7 +119,8 @@ export function createWeatherLoader(environment, fetchImplementation = fetch) {
     if (!response.ok) {
       throw new Error(`weather request returned HTTP ${response.status}`);
     }
-    return normalizeWeather((await response.json()).current);
+    const body = await response.json();
+    return normalizeWeather(body.current, body.daily);
   };
 }
 
@@ -125,6 +132,7 @@ export function createHttpServer({
   focusState,
 } = {}) {
   requireEnvironment(environment);
+  validateTimeZone(environment.LOCAL_TIME_ZONE);
   const persistedFocusState = focusState || new FocusState({
     now,
     statePath: environment.FOCUS_STATE_PATH,
@@ -181,7 +189,10 @@ export function createHttpServer({
         weatherCache.get().then(
           (value) => {
             weatherErrorLogged = false;
-            return value;
+            return {
+              ...value,
+              theme: themeForTime(value, now(), environment.LOCAL_TIME_ZONE),
+            };
           },
           (error) => {
             if (!weatherErrorLogged) {

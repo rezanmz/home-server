@@ -11,6 +11,7 @@ import {
   WeatherCache,
   collectSummary,
   normalizeWeather,
+  themeForTime,
 } from '../lib.js';
 
 test('collectSummary uses the oldest open ActualQL reconciliation timestamp', async () => {
@@ -36,12 +37,12 @@ test('collectSummary uses the oldest open ActualQL reconciliation timestamp', as
           {
             name: 'Cash',
             closed: false,
-            last_reconciled: String(Date.parse('2026-08-12T00:00:00.000Z')),
+            last_reconciled: String(Date.parse('2026-08-12T21:00:00.000Z')),
           },
           {
             name: 'Loan',
             closed: false,
-            last_reconciled: String(Date.parse('2026-08-03T00:00:00.000Z')),
+            last_reconciled: String(Date.parse('2026-08-03T21:00:00.000Z')),
           },
           { name: 'Closed', closed: true, last_reconciled: '2000-01-01' },
         ],
@@ -49,7 +50,11 @@ test('collectSummary uses the oldest open ActualQL reconciliation timestamp', as
     },
   };
 
-  const summary = await collectSummary(actual, () => new Date('2026-08-13T12:00:00.000Z'));
+  const summary = await collectSummary(
+    actual,
+    () => new Date('2026-08-13T12:00:00.000Z'),
+    'America/Toronto',
+  );
 
   assert.deepEqual(summary, {
     netWorthCents: 73_456,
@@ -83,7 +88,11 @@ test('collectSummary omits reconciliation freshness when no open account has a v
     }),
   };
 
-  const summary = await collectSummary(actual, () => new Date('2026-08-13T12:00:00.000Z'));
+  const summary = await collectSummary(
+    actual,
+    () => new Date('2026-08-13T12:00:00.000Z'),
+    'America/Toronto',
+  );
 
   assert.deepEqual(summary, {
     netWorthCents: 0,
@@ -93,6 +102,34 @@ test('collectSummary omits reconciliation freshness when no open account has a v
     oldestReconciledDaysAgo: null,
     asOf: '2026-08-13T12:00:00.000Z',
   });
+});
+
+test('collectSummary advances reconciliation age at local midnight', async () => {
+  const reconciledAt = String(Date.parse('2026-08-12T21:00:00.000Z'));
+  const actual = {
+    getAccounts: async () => [{ id: 'cash', closed: false }],
+    getPreferences: async () => ({ currency: 'CAD' }),
+    getAccountBalance: async () => 0,
+    q: () => ({ select: () => ({}) }),
+    aqlQuery: async () => ({
+      data: [{ name: 'Cash', closed: false, last_reconciled: reconciledAt }],
+    }),
+  };
+
+  const beforeMidnight = await collectSummary(
+    actual,
+    () => new Date('2026-08-13T03:59:59.999Z'),
+    'America/Toronto',
+  );
+  const atMidnight = await collectSummary(
+    actual,
+    () => new Date('2026-08-13T04:00:00.000Z'),
+    'America/Toronto',
+  );
+
+  assert.equal(beforeMidnight.oldestReconciledDaysAgo, 0);
+  assert.equal(atMidnight.oldestReconciledDaysAgo, 1);
+  assert.equal(atMidnight.oldestReconciledOn, '2026-08-12');
 });
 
 
@@ -182,13 +219,16 @@ test('SummaryCache refreshes the display data every 15 seconds by default', asyn
   assert.equal(calls, 2);
 });
 
-test('normalizeWeather maps WMO conditions into the compact display vocabulary', () => {
+test('normalizeWeather maps WMO conditions and solar times into display data', () => {
   assert.deepEqual(
     normalizeWeather({
-      time: '2026-08-13T12:00',
+      time: Date.parse('2026-08-13T23:10:00.000Z') / 1000,
       temperature_2m: -2.6,
       weather_code: 85,
       is_day: 0,
+    }, {
+      sunrise: [Date.parse('2026-08-13T12:20:00.000Z') / 1000],
+      sunset: [Date.parse('2026-08-14T02:20:00.000Z') / 1000],
     }),
     {
       condition: 'snow',
@@ -196,8 +236,38 @@ test('normalizeWeather maps WMO conditions into the compact display vocabulary',
       weatherCode: 85,
       isDay: false,
       temperatureC: -3,
-      observedAt: '2026-08-13T12:00',
+      observedAt: '2026-08-13T23:10:00.000Z',
+      sunriseAt: '2026-08-13T12:20:00.000Z',
+      sunsetAt: '2026-08-14T02:20:00.000Z',
     },
+  );
+});
+
+test('themeForTime gradually follows local sunrise and sunset', () => {
+  const weather = {
+    sunriseAt: '2026-08-13T10:00:00.000Z',
+    sunsetAt: '2026-08-14T00:00:00.000Z',
+  };
+
+  assert.deepEqual(
+    themeForTime(weather, new Date('2026-08-13T12:00:00.000Z'), 'America/Toronto'),
+    {
+      localTime: '8:00',
+      localPeriod: 'AM',
+      sunrise: '6:00 AM',
+      sunset: '8:00 PM',
+      darknessPercent: 0,
+    },
+  );
+  assert.equal(
+    themeForTime(weather, new Date('2026-08-14T00:00:00.000Z'), 'America/Toronto')
+      .darknessPercent,
+    50,
+  );
+  assert.equal(
+    themeForTime(weather, new Date('2026-08-14T02:00:00.000Z'), 'America/Toronto')
+      .darknessPercent,
+    100,
   );
 });
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly CYD_OTA_VERSION="0.2.0"
+readonly CYD_OTA_VERSION="0.3.0"
 readonly IMAGE_NAMESPACE="${CYD_OTA_IMAGE_NAMESPACE:-ghcr.io/rezanmz}"
 readonly IMAGE_NAME="cyd-ota-updater"
 readonly BUILDER="${CYD_OTA_BUILDX_BUILDER:-cyd-ota-builder}"
