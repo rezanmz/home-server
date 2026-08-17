@@ -69,6 +69,39 @@ test('collectSummary uses the oldest open ActualQL reconciliation timestamp', as
     fields: ['name', 'closed', 'last_reconciled'],
   });
 });
+test('collectSummary omits reconciliation freshness when any open account was never reconciled', async () => {
+  const actual = {
+    getAccounts: async () => [
+      { id: 'today', closed: false },
+      { id: 'never', closed: false },
+    ],
+    getPreferences: async () => ({ currency: 'CAD' }),
+    getAccountBalance: async () => 0,
+    q: () => ({ select: () => ({}) }),
+    aqlQuery: async () => ({
+      data: [
+        { name: 'Today', closed: false, last_reconciled: '2026-08-17' },
+        { name: 'Never', closed: false, last_reconciled: null },
+      ],
+    }),
+  };
+
+  const summary = await collectSummary(
+    actual,
+    () => new Date('2026-08-17T16:00:00.000Z'),
+    'America/Toronto',
+  );
+
+  assert.deepEqual(summary, {
+    netWorthCents: 0,
+    currency: 'CAD',
+    oldestReconciledAccountName: null,
+    oldestReconciledOn: null,
+    oldestReconciledDaysAgo: null,
+    asOf: '2026-08-17T16:00:00.000Z',
+  });
+});
+
 test('collectSummary omits reconciliation freshness when no open account has a valid date', async () => {
   const actual = {
     getAccounts: async () => [

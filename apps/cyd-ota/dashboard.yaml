@@ -366,16 +366,34 @@ display:
         it.line(278 + row, 95 + row, 293 - row, 95 + row, powder_pink);
       }
 
-      // Reconciliation is calm when every open account was handled today.
+      // Reconciliation is calm only when every open account was handled today using fresh data.
       const bool reconciliation_known = !id(oldest_reconciled_on).empty() && id(oldest_reconciled_days_ago) >= 0;
-      const bool all_clear = reconciliation_known && id(oldest_reconciled_days_ago) == 0;
+      const bool summary_is_stale = id(summary_stale);
+      const bool all_clear = !summary_is_stale && reconciliation_known && id(oldest_reconciled_days_ago) == 0;
       const Color reconciliation_accent = all_clear ? baby_blue : warning;
       fill_round_rect(10, 136, 300, 38, 11, panel_edge);
       fill_round_rect(12, 138, 296, 34, 9, panel_soft);
       fill_round_rect(15, 141, 290, 28, 7, panel);
       it.filled_circle(30, 155, 11, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
       it.circle(30, 155, 11, reconciliation_accent);
-      if (all_clear) {
+      if (summary_is_stale) {
+        it.line(30, 149, 30, 157, reconciliation_accent);
+        it.filled_circle(30, 161, 1, reconciliation_accent);
+        it.printf(
+          50,
+          142,
+          id(account_font),
+          primary,
+          reconciliation_known ? "Finance data stale" : "Finance unavailable");
+        it.printf(
+          50,
+          159,
+          id(label_font),
+          secondary,
+          reconciliation_known ? "showing last known values" : "waiting for fresh summary");
+        fill_round_rect(247, 145, 48, 20, 9, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
+        it.printf(286, 150, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "stale");
+      } else if (all_clear) {
         it.line(24, 155, 28, 159, reconciliation_accent);
         it.line(28, 159, 36, 149, reconciliation_accent);
         it.printf(50, 142, id(account_font), primary, "All clear");
@@ -400,7 +418,7 @@ display:
       } else {
         it.printf(27, 149, id(account_font), secondary, "?");
         it.printf(50, 142, id(account_font), primary, "Account unavailable");
-        it.printf(50, 159, id(label_font), secondary, "waiting for reconciliation data");
+        it.printf(50, 159, id(label_font), secondary, "missing reconciliation data");
       }
 
       // Focus Mode now occupies nearly a quarter of the screen and lights up fully.

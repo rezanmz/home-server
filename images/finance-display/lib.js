@@ -80,14 +80,10 @@ function reconciliationRecord(lastReconciled, formatter) {
 
 function reconciliationSummary(accounts, now, timeZone) {
   const formatter = dateFormatter(timeZone);
-  const reconciled = accounts
-    .filter(
-      (account) =>
-        !account.closed &&
-        typeof account.name === 'string' &&
-        typeof account.last_reconciled === 'string',
-    )
+  const records = accounts
+    .filter((account) => !account.closed)
     .map((account) => {
+      if (typeof account.name !== 'string') return null;
       const record = reconciliationRecord(account.last_reconciled, formatter);
       return record === null
         ? null
@@ -97,10 +93,17 @@ function reconciliationSummary(accounts, now, timeZone) {
             ordinal: record.ordinal,
             timestamp: record.timestamp,
           };
-    })
-    .filter(Boolean)
-    .sort((left, right) => left.timestamp - right.timestamp);
-  const oldest = reconciled[0];
+    });
+
+  if (records.some((record) => record === null)) {
+    return {
+      oldestReconciledAccountName: null,
+      oldestReconciledOn: null,
+      oldestReconciledDaysAgo: null,
+    };
+  }
+
+  const oldest = records.sort((left, right) => left.timestamp - right.timestamp)[0];
   const today = formattedDate(now.getTime(), formatter).ordinal;
 
   return {
