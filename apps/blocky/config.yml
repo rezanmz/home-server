@@ -52,11 +52,11 @@ customDNS:
 blocking:
   denylists:
     ads:
-      # HaGeZi Multi PRO is the maintainer's recommended balanced tier. Use
-      # its wildcard format so one rule also covers arbitrary subdomains.
-      # Keep this as the single all-in-one source; stacking overlapping
-      # aggregate lists makes false-positive diagnosis needlessly ambiguous.
-      - https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro.txt
+      # HaGeZi Multi PRO++ expands the current balanced coverage while
+      # avoiding Ultimate's documented app and website breakage. Use its
+      # Blocky-compatible wildcard format so each rule covers subdomains.
+      # Keep one all-in-one source so false-positive diagnosis stays clear.
+      - https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro.plus.txt
   clientGroupsBlock:
     default:
       - ads
