@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly FINANCE_DISPLAY_VERSION="0.3.1"
+readonly FINANCE_DISPLAY_VERSION="0.3.2"
 readonly IMAGE_NAMESPACE="${FINANCE_DISPLAY_IMAGE_NAMESPACE:-ghcr.io/rezanmz}"
 readonly IMAGE_NAME="finance-display"
 readonly IMAGE_TAG="${FINANCE_DISPLAY_VERSION}"

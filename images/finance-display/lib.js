@@ -80,8 +80,32 @@ function reconciliationRecord(lastReconciled, formatter) {
 
 function reconciliationSummary(accounts, now, timeZone) {
   const formatter = dateFormatter(timeZone);
-  const records = accounts
-    .filter((account) => !account.closed)
+  const openAccounts = accounts.filter((account) => !account.closed);
+  const neverReconciled = openAccounts
+    .filter(
+      (account) =>
+        typeof account.name === 'string' &&
+        (account.last_reconciled === null || account.last_reconciled === ''),
+    )
+    .sort((left, right) => {
+      const leftOrder = Number(left.sort_order);
+      const rightOrder = Number(right.sort_order);
+      if (Number.isFinite(leftOrder) && Number.isFinite(rightOrder)) {
+        return leftOrder - rightOrder;
+      }
+      return left.name.localeCompare(right.name);
+    });
+
+  if (neverReconciled.length > 0) {
+    return {
+      reconciliationStatus: 'never',
+      oldestReconciledAccountName: neverReconciled[0].name,
+      oldestReconciledOn: null,
+      oldestReconciledDaysAgo: null,
+    };
+  }
+
+  const records = openAccounts
     .map((account) => {
       if (typeof account.name !== 'string') return null;
       const record = reconciliationRecord(account.last_reconciled, formatter);
@@ -97,6 +121,7 @@ function reconciliationSummary(accounts, now, timeZone) {
 
   if (records.some((record) => record === null)) {
     return {
+      reconciliationStatus: 'unavailable',
       oldestReconciledAccountName: null,
       oldestReconciledOn: null,
       oldestReconciledDaysAgo: null,
@@ -105,13 +130,15 @@ function reconciliationSummary(accounts, now, timeZone) {
 
   const oldest = records.sort((left, right) => left.timestamp - right.timestamp)[0];
   const today = formattedDate(now.getTime(), formatter).ordinal;
+  const daysAgo = oldest
+    ? Math.max(0, Math.round((today - oldest.ordinal) / DAY_MS))
+    : 0;
 
   return {
+    reconciliationStatus: daysAgo === 0 ? 'all-clear' : 'due',
     oldestReconciledAccountName: oldest?.accountName ?? null,
     oldestReconciledOn: oldest?.on ?? null,
-    oldestReconciledDaysAgo: oldest
-      ? Math.max(0, Math.round((today - oldest.ordinal) / DAY_MS))
-      : null,
+    oldestReconciledDaysAgo: daysAgo,
   };
 }
 
@@ -119,7 +146,9 @@ export async function collectSummary(actual, now = () => new Date(), timeZone = 
   const [accounts, preferences, reconciliationResult] = await Promise.all([
     actual.getAccounts(),
     actual.getPreferences(),
-    actual.aqlQuery(actual.q('accounts').select(['name', 'closed', 'last_reconciled'])),
+    actual.aqlQuery(
+      actual.q('accounts').select(['name', 'closed', 'sort_order', 'last_reconciled']),
+    ),
   ]);
   const collectedAt = now();
   let netWorthCents = 0;

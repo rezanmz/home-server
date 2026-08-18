@@ -103,6 +103,7 @@ test('summary endpoint returns only the derived display payload', async (t) => {
   assert.equal(result.status, 200);
   assert.equal(result.body.netWorthCents, 12_345);
   assert.equal(result.body.currency, 'CAD');
+  assert.equal(result.body.reconciliationStatus, 'due');
   assert.equal(result.body.oldestReconciledAccountName, 'Cash');
   assert.equal(result.body.oldestReconciledOn, '2026-08-12');
   assert.equal(result.body.oldestReconciledDaysAgo, 1);
