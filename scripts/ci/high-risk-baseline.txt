@@ -104,7 +104,6 @@ host-path|apps/v1/Deployment|media|downloads|volume/dev-net-tun/path//dev/net/tu
 host-path|apps/v1/Deployment|media|sabnzbd-vpn|volume/dev-net-tun/path//dev/net/tun
 host-port|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/wireguard/host-1234
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cyd-dashboard-ota|egress/1/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|finance-display|egress/2/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
@@ -143,8 +142,6 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|syncthing-la
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|wg-easy-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 mutable-git-ref|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec.ref/branch=main/url/https://github.com/rezanmz/home-server.git
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/202affe2d33fecf794cae4adc9adb1cb92542ddf481575b6e67985088a7cf781
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|argilla-datastores|spec/sha256/09dbe85fcd8006733310829a710029b2aa64ef332b2d2ef41a8f1b60b5d24941
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|argilla-server|spec/sha256/ba7d8303e306f01b3847f93fcfc8831d039f24f4ca848c49e36146bbd69be0c7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|spec/sha256/68e4643c3e7da8deded68ecaa30f6ad5ed0587c4f82f5d6f6e97ea12d59d6221
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-database|spec/sha256/ccdce8f21dda90152efd85ed6aa8d0e8a40ab16286651073bed741f830bf49a0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
@@ -212,7 +209,6 @@ privileged-namespace|v1/Namespace|default|metallb-system|pod-security-enforce
 privileged-namespace|v1/Namespace|default|network-services|pod-security-enforce
 privileged-namespace|v1/Namespace|default|traefik|pod-security-enforce
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-budget|spec/sha256/684ed87d74c289c7e268d472759cfc44852498dc9f3bff89a993b1d034778a3c
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|argilla|spec/sha256/df649e03aea7a44ef10f397b125d269c1b543791f162e2817a7fd5f2bcdb83ca
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256/a68303017aa042969ba9eb139f6227fb3e3e67b477e1dd6c376c964d2808a6bb
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|finance-display|spec/sha256/187d9bf55d5b52fc3554b49ba17a807bf3699550146687d233ed3f030ad5c0c3
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|hermes-agent|spec/sha256/bf4b001f2e7c56ac3e3f56c19edf191df1fdbfc9f71a1e8195fd6af80cf7c345

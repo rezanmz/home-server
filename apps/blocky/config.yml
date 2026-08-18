@@ -16,7 +16,6 @@ customDNS:
   filterUnmappedTypes: true
   mapping:
     # BEGIN SERVICE CATALOG GENERATED MAPPINGS
-    argilla.reza.network: 192.168.1.240
     audiobooks.reza.network: 192.168.1.240
     auth.reza.network: 192.168.1.240
     budget.reza.network: 192.168.1.240
