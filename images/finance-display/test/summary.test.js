@@ -59,6 +59,7 @@ test('collectSummary uses the oldest open ActualQL reconciliation timestamp', as
   assert.deepEqual(summary, {
     netWorthCents: 73_456,
     currency: 'CAD',
+    reconciliationStatus: 'due',
     oldestReconciledAccountName: 'Loan',
     oldestReconciledOn: '2026-08-03',
     oldestReconciledDaysAgo: 10,
@@ -66,10 +67,10 @@ test('collectSummary uses the oldest open ActualQL reconciliation timestamp', as
   });
   assert.deepEqual(reconciliationQuery, {
     table: 'accounts',
-    fields: ['name', 'closed', 'last_reconciled'],
+    fields: ['name', 'closed', 'sort_order', 'last_reconciled'],
   });
 });
-test('collectSummary omits reconciliation freshness when any open account was never reconciled', async () => {
+test('collectSummary names the first open account that was never reconciled', async () => {
   const actual = {
     getAccounts: async () => [
       { id: 'today', closed: false },
@@ -80,8 +81,8 @@ test('collectSummary omits reconciliation freshness when any open account was ne
     q: () => ({ select: () => ({}) }),
     aqlQuery: async () => ({
       data: [
-        { name: 'Today', closed: false, last_reconciled: '2026-08-17' },
-        { name: 'Never', closed: false, last_reconciled: null },
+        { name: 'Today', closed: false, sort_order: 1, last_reconciled: '2026-08-17' },
+        { name: 'Never', closed: false, sort_order: 2, last_reconciled: null },
       ],
     }),
   };
@@ -95,18 +96,18 @@ test('collectSummary omits reconciliation freshness when any open account was ne
   assert.deepEqual(summary, {
     netWorthCents: 0,
     currency: 'CAD',
-    oldestReconciledAccountName: null,
+    reconciliationStatus: 'never',
+    oldestReconciledAccountName: 'Never',
     oldestReconciledOn: null,
     oldestReconciledDaysAgo: null,
     asOf: '2026-08-17T16:00:00.000Z',
   });
 });
 
-test('collectSummary omits reconciliation freshness when no open account has a valid date', async () => {
+test('collectSummary reports unavailable for an invalid reconciliation date', async () => {
   const actual = {
     getAccounts: async () => [
       { id: 'open-invalid', closed: false, last_reconciled: 'not-a-date' },
-      { id: 'open-never', closed: false, last_reconciled: null },
       { id: 'closed', closed: true, last_reconciled: '2020-01-01' },
     ],
     getPreferences: async () => ({}),
@@ -115,7 +116,6 @@ test('collectSummary omits reconciliation freshness when no open account has a v
     aqlQuery: async () => ({
       data: [
         { name: 'Invalid', closed: false, last_reconciled: 'not-a-date' },
-        { name: 'Never', closed: false, last_reconciled: null },
         { name: 'Closed', closed: true, last_reconciled: '2020-01-01' },
       ],
     }),
@@ -130,6 +130,7 @@ test('collectSummary omits reconciliation freshness when no open account has a v
   assert.deepEqual(summary, {
     netWorthCents: 0,
     currency: null,
+    reconciliationStatus: 'unavailable',
     oldestReconciledAccountName: null,
     oldestReconciledOn: null,
     oldestReconciledDaysAgo: null,
@@ -161,7 +162,9 @@ test('collectSummary advances reconciliation age at local midnight', async () =>
   );
 
   assert.equal(beforeMidnight.oldestReconciledDaysAgo, 0);
+  assert.equal(beforeMidnight.reconciliationStatus, 'all-clear');
   assert.equal(atMidnight.oldestReconciledDaysAgo, 1);
+  assert.equal(atMidnight.reconciliationStatus, 'due');
   assert.equal(atMidnight.oldestReconciledOn, '2026-08-12');
 });
 

@@ -61,36 +61,36 @@ font:
       family: Fredoka
       weight: 500
     id: label_font
-    size: 9
-    bpp: 2
+    size: 13
+    bpp: 4
   - file:
       type: gfonts
       family: Fredoka
       weight: 700
     id: amount_font
-    size: 29
-    bpp: 2
+    size: 35
+    bpp: 4
   - file:
       type: gfonts
       family: Fredoka
       weight: 700
     id: account_font
-    size: 15
-    bpp: 2
+    size: 19
+    bpp: 4
   - file:
       type: gfonts
       family: Fredoka
       weight: 700
     id: button_font
-    size: 17
-    bpp: 2
+    size: 21
+    bpp: 4
   - file:
       type: gfonts
       family: Fredoka
       weight: 700
     id: clock_font
-    size: 28
-    bpp: 2
+    size: 32
+    bpp: 4
 
 globals:
   - id: net_worth_cents
@@ -113,6 +113,10 @@ globals:
     type: int
     restore_value: no
     initial_value: '-1'
+  - id: reconciliation_status
+    type: std::string
+    restore_value: no
+    initial_value: '"unavailable"'
   - id: summary_stale
     type: bool
     restore_value: no
@@ -224,10 +228,10 @@ display:
       const uint32_t sky_bottom = blend_rgb(0xFFE8F0, 0x673955, darkness);
       const Color primary = as_color(night_text
         ? blend_rgb(0xF7EDFF, 0xFBF2FF, smoothstep(0.48f, 1.0f, darkness))
-        : blend_rgb(0x59678F, 0x3E496F, smoothstep(0.0f, 0.48f, darkness)));
+        : blend_rgb(0x3F4E78, 0x344064, smoothstep(0.0f, 0.48f, darkness)));
       const Color secondary = as_color(night_text
-        ? blend_rgb(0xD9D4EF, 0xCFCBEA, smoothstep(0.48f, 1.0f, darkness))
-        : blend_rgb(0x8D9AB8, 0x697596, smoothstep(0.0f, 0.48f, darkness)));
+        ? blend_rgb(0xE8E3F7, 0xDDD8F0, smoothstep(0.48f, 1.0f, darkness))
+        : blend_rgb(0x5F6F94, 0x536183, smoothstep(0.0f, 0.48f, darkness)));
       const Color panel = as_color(blend_rgb(0xFFFAFF, 0x202044, surface_darkness));
       const Color panel_soft = as_color(blend_rgb(0xF3F9FF, 0x2A294F, surface_darkness));
       const Color panel_edge = as_color(blend_rgb(0xFFFFFF, 0xA8DDFF, darkness));
@@ -266,9 +270,9 @@ display:
       }
 
       // Time and weather share the open sky above the finance card.
-      it.printf(16, 11, id(clock_font), primary, "%s", id(local_time).c_str());
+      it.printf(15, 7, id(clock_font), primary, "%s", id(local_time).c_str());
       if (!id(local_period).empty()) {
-        it.printf(87, 28, id(label_font), secondary, "%s", id(local_period).c_str());
+        it.printf(89, 25, id(label_font), secondary, "%s", id(local_period).c_str());
       }
 
       std::string weather_text = id(weather_label);
@@ -277,15 +281,15 @@ display:
       }
       if (id(weather_available)) {
         it.printf(
-          16,
-          46,
+          15,
+          47,
           id(label_font),
           id(weather_stale) ? warning : secondary,
           "%d C - %.18s",
           id(weather_temperature_c),
           weather_text.c_str());
       } else {
-        it.printf(16, 46, id(label_font), secondary, "weather waiting");
+        it.printf(15, 47, id(label_font), secondary, "weather waiting");
       }
 
       const int weather_x = 275;
@@ -332,10 +336,10 @@ display:
       }
 
       // Compact finance card keeps room for status and the enlarged control.
-      fill_round_rect(10, 67, 300, 64, 13, panel_edge);
-      fill_round_rect(12, 69, 296, 60, 11, panel_soft);
-      fill_round_rect(15, 72, 290, 54, 9, panel);
-      it.printf(25, 76, id(label_font), secondary, "net worth");
+      fill_round_rect(10, 64, 300, 69, 13, panel_edge);
+      fill_round_rect(12, 66, 296, 65, 11, panel_soft);
+      fill_round_rect(15, 69, 290, 59, 9, panel);
+      it.printf(24, 69, id(label_font), secondary, "net worth");
       const int64_t cents = id(net_worth_cents);
       const uint64_t absolute_cents = cents < 0 ? static_cast<uint64_t>(-(cents + 1)) + 1 : cents;
       char whole[24];
@@ -352,63 +356,58 @@ display:
         amount[cursor++] = whole[index];
       }
       amount[cursor] = '\0';
-      it.printf(24, 87, id(amount_font), cents < 0 ? negative : primary, "%s", amount);
+      it.printf(23, 84, id(amount_font), cents < 0 ? negative : primary, "%s", amount);
       if (id(currency).empty()) {
-        it.printf(25, 116, id(label_font), secondary, "OPEN-METEO");
+        it.printf(294, 69, id(label_font), secondary, TextAlign::TOP_RIGHT, "OPEN-METEO");
       } else {
-        it.printf(25, 116, id(label_font), secondary, "%s - OPEN-METEO", id(currency).c_str());
+        it.printf(294, 69, id(label_font), secondary, TextAlign::TOP_RIGHT, "%s - OPEN-METEO", id(currency).c_str());
       }
 
       // A tiny hand-drawn heart keeps the visual cute without another font glyph.
-      it.filled_circle(282, 93, 4, powder_pink);
-      it.filled_circle(289, 93, 4, powder_pink);
+      it.filled_circle(282, 91, 4, powder_pink);
+      it.filled_circle(289, 91, 4, powder_pink);
       for (int row = 0; row < 7; row++) {
-        it.line(278 + row, 95 + row, 293 - row, 95 + row, powder_pink);
+        it.line(278 + row, 93 + row, 293 - row, 93 + row, powder_pink);
       }
 
-      // Reconciliation is calm only when every open account was handled today using fresh data.
-      const bool reconciliation_known = !id(oldest_reconciled_on).empty() && id(oldest_reconciled_days_ago) >= 0;
+      // Explicit states preserve the account name when an account has never been reconciled.
+      const std::string &reconciliation_state = id(reconciliation_status);
       const bool summary_is_stale = id(summary_stale);
-      const bool all_clear = !summary_is_stale && reconciliation_known && id(oldest_reconciled_days_ago) == 0;
+      const bool all_clear = !summary_is_stale && reconciliation_state == "all-clear";
+      const bool never_reconciled = !summary_is_stale && reconciliation_state == "never";
+      const bool reconciliation_due = !summary_is_stale && reconciliation_state == "due";
       const Color reconciliation_accent = all_clear ? baby_blue : warning;
-      fill_round_rect(10, 136, 300, 38, 11, panel_edge);
-      fill_round_rect(12, 138, 296, 34, 9, panel_soft);
-      fill_round_rect(15, 141, 290, 28, 7, panel);
-      it.filled_circle(30, 155, 11, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
-      it.circle(30, 155, 11, reconciliation_accent);
+      fill_round_rect(10, 137, 300, 43, 12, panel_edge);
+      fill_round_rect(12, 139, 296, 39, 10, panel_soft);
+      fill_round_rect(15, 142, 290, 33, 8, panel);
+      it.filled_circle(30, 158, 12, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
+      it.circle(30, 158, 12, reconciliation_accent);
       if (summary_is_stale) {
-        it.line(30, 149, 30, 157, reconciliation_accent);
-        it.filled_circle(30, 161, 1, reconciliation_accent);
-        it.printf(
-          50,
-          142,
-          id(account_font),
-          primary,
-          reconciliation_known ? "Finance data stale" : "Finance unavailable");
-        it.printf(
-          50,
-          159,
-          id(label_font),
-          secondary,
-          reconciliation_known ? "showing last known values" : "waiting for fresh summary");
-        fill_round_rect(247, 145, 48, 20, 9, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
-        it.printf(286, 150, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "stale");
+        it.line(30, 151, 30, 160, reconciliation_accent);
+        it.filled_circle(30, 166, 1, reconciliation_accent);
+        it.printf(49, 146, id(account_font), primary, "Finance data stale");
+        fill_round_rect(237, 147, 60, 24, 10, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
+        it.printf(288, 152, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "stale");
       } else if (all_clear) {
-        it.line(24, 155, 28, 159, reconciliation_accent);
-        it.line(28, 159, 36, 149, reconciliation_accent);
-        it.printf(50, 142, id(account_font), primary, "All clear");
-        it.printf(50, 159, id(label_font), secondary, "all accounts reconciled today");
-        fill_round_rect(247, 145, 48, 20, 9, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
-        it.printf(286, 150, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "today");
-      } else if (reconciliation_known) {
-        it.line(30, 149, 30, 157, reconciliation_accent);
-        it.filled_circle(30, 161, 1, reconciliation_accent);
-        it.printf(50, 142, id(account_font), primary, "%.18s", id(oldest_reconciled_account_name).c_str());
-        it.printf(50, 159, id(label_font), secondary, "oldest account to reconcile");
-        fill_round_rect(239, 145, 56, 20, 9, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
+        it.line(23, 158, 28, 163, reconciliation_accent);
+        it.line(28, 163, 37, 151, reconciliation_accent);
+        it.printf(49, 146, id(account_font), primary, "All clear");
+        fill_round_rect(237, 147, 60, 24, 10, as_color(blend_rgb(0xD6F5FF, 0x31547B, surface_darkness)));
+        it.printf(288, 152, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "today");
+      } else if (never_reconciled) {
+        it.line(30, 151, 30, 160, reconciliation_accent);
+        it.filled_circle(30, 166, 1, reconciliation_accent);
+        it.printf(49, 146, id(account_font), primary, "%.15s", id(oldest_reconciled_account_name).c_str());
+        fill_round_rect(237, 147, 60, 24, 10, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
+        it.printf(288, 152, id(label_font), reconciliation_accent, TextAlign::TOP_RIGHT, "never");
+      } else if (reconciliation_due) {
+        it.line(30, 151, 30, 160, reconciliation_accent);
+        it.filled_circle(30, 166, 1, reconciliation_accent);
+        it.printf(49, 146, id(account_font), primary, "%.15s", id(oldest_reconciled_account_name).c_str());
+        fill_round_rect(232, 147, 65, 24, 10, as_color(blend_rgb(0xFFDAEA, 0x743B64, surface_darkness)));
         it.printf(
           288,
-          150,
+          152,
           id(label_font),
           reconciliation_accent,
           TextAlign::TOP_RIGHT,
@@ -416,9 +415,8 @@ display:
           id(oldest_reconciled_days_ago),
           id(oldest_reconciled_days_ago) == 1 ? "" : "s");
       } else {
-        it.printf(27, 149, id(account_font), secondary, "?");
-        it.printf(50, 142, id(account_font), primary, "Account unavailable");
-        it.printf(50, 159, id(label_font), secondary, "missing reconciliation data");
+        it.printf(25, 147, id(account_font), secondary, "?");
+        it.printf(49, 146, id(account_font), primary, "Data unavailable");
       }
 
       // Focus Mode now occupies nearly a quarter of the screen and lights up fully.
@@ -429,35 +427,35 @@ display:
       const Color focus_fill = id(focus_mode)
         ? as_color(blend_rgb(0xB8CDFD, 0x4B3A78, darkness))
         : panel;
-      fill_round_rect(9, 178, 302, 55, 17, focus_glow);
-      fill_round_rect(12, 181, 296, 49, 15, focus_edge);
-      fill_round_rect(15, 184, 290, 43, 13, focus_fill);
+      fill_round_rect(9, 184, 302, 50, 16, focus_glow);
+      fill_round_rect(12, 187, 296, 44, 14, focus_edge);
+      fill_round_rect(15, 190, 290, 38, 12, focus_fill);
       const Color focus_text = id(focus_mode) ? as_color(0xFFFAFF) : primary;
-      it.printf(27, 188, id(button_font), focus_text, "Focus Mode");
+      it.printf(26, 188, id(button_font), focus_text, "Focus Mode");
       const char *focus_note = id(focus_sync_pending)
-        ? "syncing..."
+        ? "syncing both CYDs..."
         : id(focus_sync_error)
-          ? "sync failed - tap to retry"
+          ? "sync failed - tap again"
           : id(focus_mode)
-            ? "synced with both screens"
+            ? "synced on both CYDs"
             : "tap to begin";
-      it.printf(27, 210, id(label_font), id(focus_sync_error) ? warning : (id(focus_mode) ? as_color(0xFFF4FC) : secondary), "%s", focus_note);
+      it.printf(26, 213, id(label_font), id(focus_sync_error) ? warning : (id(focus_mode) ? as_color(0xFFF4FC) : secondary), "%s", focus_note);
       const Color state_fill = id(focus_mode)
         ? as_color(0xFFF8FD)
         : as_color(blend_rgb(0xFFFFFF, 0x29284E, surface_darkness));
-      fill_round_rect(247, 188, 49, 30, 13, state_fill);
+      fill_round_rect(244, 193, 52, 31, 13, state_fill);
       it.printf(
         288,
-        194,
+        196,
         id(button_font),
         id(focus_mode) ? as_color(0xD65D9B) : primary,
         TextAlign::TOP_RIGHT,
         id(focus_mode) ? "ON" : "OFF");
       if (id(focus_sync_pending)) {
-        it.filled_circle(301, 222, 2, powder_pink);
+        it.filled_circle(301, 228, 2, powder_pink);
       } else if (id(focus_sync_error)) {
-        it.line(298, 219, 304, 225, warning);
-        it.line(304, 219, 298, 225, warning);
+        it.line(298, 225, 304, 231, warning);
+        it.line(304, 225, 298, 231, warning);
       }
 
 touchscreen:
@@ -485,7 +483,7 @@ binary_sensor:
     internal: true
     x_min: 10
     x_max: 310
-    y_min: 176
+    y_min: 182
     y_max: 239
     on_press:
       then:
@@ -525,6 +523,17 @@ script:
                           id(oldest_reconciled_account_name) = root["oldestReconciledAccountName"].is<const char *>() ? root["oldestReconciledAccountName"].as<const char *>() : "";
                           id(oldest_reconciled_on) = root["oldestReconciledOn"].is<const char *>() ? root["oldestReconciledOn"].as<const char *>() : "";
                           id(oldest_reconciled_days_ago) = root["oldestReconciledDaysAgo"].is<int>() ? root["oldestReconciledDaysAgo"].as<int>() : -1;
+                          if (root["reconciliationStatus"].is<const char *>()) {
+                            id(reconciliation_status) = root["reconciliationStatus"].as<const char *>();
+                          } else if (!id(oldest_reconciled_account_name).empty() && id(oldest_reconciled_on).empty()) {
+                            id(reconciliation_status) = "never";
+                          } else if (id(oldest_reconciled_days_ago) == 0) {
+                            id(reconciliation_status) = "all-clear";
+                          } else if (id(oldest_reconciled_days_ago) > 0) {
+                            id(reconciliation_status) = "due";
+                          } else {
+                            id(reconciliation_status) = "unavailable";
+                          }
                           id(summary_stale) = root["stale"] | true;
 
                           if (!id(focus_sync_pending) && root["focusMode"].is<bool>()) {
