@@ -22,6 +22,44 @@ class RetiredVolumePolicyTests(unittest.TestCase):
             labels["recurring-job-group.longhorn.io/default"], "disabled"
         )
 
+    def test_argilla_archives_do_not_inherit_nightly_backups(self) -> None:
+        claims = [
+            document
+            for document in yaml.safe_load_all(
+                (REPO_ROOT / "apps/argilla/pvc.yaml").read_text(encoding="utf-8")
+            )
+            if document
+        ]
+        self.assertEqual(
+            {claim["metadata"]["name"] for claim in claims},
+            {
+                "argilla-data",
+                "argilla-postgres",
+                "argilla-elasticsearch",
+                "argilla-redis",
+            },
+        )
+        for claim in claims:
+            labels = claim["metadata"]["labels"]
+            self.assertEqual(labels["recurring-job.longhorn.io/source"], "enabled")
+            self.assertEqual(
+                labels["recurring-job-group.longhorn.io/default"], "disabled"
+            )
+            self.assertEqual(
+                labels["home-server.reza.network/retention"],
+                "argilla-gcp-migration-rollback",
+            )
+
+        kustomization = yaml.safe_load(
+            (REPO_ROOT / "apps/argilla/kustomization.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            kustomization["resources"],
+            ["secrets.sops.yaml", "pvc.yaml"],
+        )
+
     def test_backup_alerts_exclude_pvcs_that_disable_nightly_backups(self) -> None:
         release_documents = list(
             yaml.safe_load_all(

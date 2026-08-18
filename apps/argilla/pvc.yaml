@@ -3,6 +3,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: argilla-data
   namespace: apps
+  labels:
+    home-server.reza.network/retention: argilla-gcp-migration-rollback
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
+  annotations:
+    home-server.reza.network/review-after: "2026-09-01"
+    home-server.reza.network/final-export-sha256: 0a7522221c74b77059b3f56fdaba8639c0271d9bdc20ede8d9eb764a864ec4c3
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn
@@ -15,6 +22,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: argilla-postgres
   namespace: apps
+  labels:
+    home-server.reza.network/retention: argilla-gcp-migration-rollback
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
+  annotations:
+    home-server.reza.network/review-after: "2026-09-01"
+    home-server.reza.network/final-export-sha256: 0a7522221c74b77059b3f56fdaba8639c0271d9bdc20ede8d9eb764a864ec4c3
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn
@@ -27,6 +41,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: argilla-elasticsearch
   namespace: apps
+  labels:
+    home-server.reza.network/retention: argilla-gcp-migration-rollback
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
+  annotations:
+    home-server.reza.network/review-after: "2026-09-01"
+    home-server.reza.network/final-export-sha256: 0a7522221c74b77059b3f56fdaba8639c0271d9bdc20ede8d9eb764a864ec4c3
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn
@@ -39,6 +60,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: argilla-redis
   namespace: apps
+  labels:
+    home-server.reza.network/retention: argilla-gcp-migration-rollback
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
+  annotations:
+    home-server.reza.network/review-after: "2026-09-01"
+    home-server.reza.network/final-export-sha256: 0a7522221c74b77059b3f56fdaba8639c0271d9bdc20ede8d9eb764a864ec4c3
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn

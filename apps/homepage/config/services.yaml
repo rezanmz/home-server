@@ -137,12 +137,6 @@
         description: MCP service registry
         namespace: apps
         app: mcphub
-    - Argilla:
-        icon: mdi-database-edit
-        href: https://argilla.reza.network/
-        description: Dataset curation and annotation
-        namespace: apps
-        app: argilla
     - Hermes Agent:
         icon: mdi-robot-happy-outline
         href: https://hermes.reza.network/
