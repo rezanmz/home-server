@@ -123,6 +123,35 @@ data:
           provider: !KeyOf homepage-provider
           meta_launch_url: "https://homepage.reza.network/"
       - model: authentik_providers_proxy.proxyprovider
+        id: maintainerr-provider
+        identifiers:
+          name: "Provider for Maintainerr"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://maintainerr.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: maintainerr
+        attrs:
+          name: "Maintainerr"
+          provider: !KeyOf maintainerr-provider
+          meta_launch_url: "https://maintainerr.reza.network/"
+      - model: authentik_policies_expression.expressionpolicy
+        id: maintainerr-allowed-groups
+        identifiers:
+          name: "maintainerr allowed groups"
+        attrs:
+          execution_logging: false
+          expression: |
+            return any(ak_is_group_member(request.user, name=group) for group in ["home-admins"])
+      - model: authentik_policies.policybinding
+        identifiers:
+          policy: !KeyOf maintainerr-allowed-groups
+          target: !Find [authentik_core.application, [slug, maintainerr]]
+          order: 0
+      - model: authentik_providers_proxy.proxyprovider
         id: navidrome-provider
         identifiers:
           name: "Provider for Navidrome"
@@ -176,6 +205,7 @@ data:
         attrs:
           providers:
             - !KeyOf homepage-provider
+            - !KeyOf maintainerr-provider
             - !KeyOf navidrome-provider
             - !KeyOf slskd-provider
             - !KeyOf soularr-provider

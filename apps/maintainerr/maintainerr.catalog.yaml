@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: maintainerr
+spec:
+  name: Maintainerr
+  workload:
+    namespace: apps
+    app: maintainerr
+  homepage:
+    order: 70
+    group: Downloads & Automation
+    icon: maintainerr.png
+    description: Media collection maintenance
+  web:
+    hostname: maintainerr.reza.network
+    route: apps/maintainerr/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: false
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v2
+      blueprintName: Maintainerr proxy authentication
+      application:
+        slug: maintainerr
+        launchUrl: https://maintainerr.reza.network/
+      middleware: maintainerr-authentik
+      allowedGroups: [home-admins]
+  placement:
+    mode: floating
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/maintainerr/pvc.yaml]
+  observability:
+    mode: kubernetes

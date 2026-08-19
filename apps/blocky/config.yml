@@ -29,6 +29,7 @@ customDNS:
     jellyfin.reza.network: 192.168.1.240
     library.reza.network: 192.168.1.240
     lidarr.reza.network: 192.168.1.240
+    maintainerr.reza.network: 192.168.1.240
     mcphub.reza.network: 192.168.1.240
     music.reza.network: 192.168.1.240
     omnifin.reza.network: 192.168.1.240

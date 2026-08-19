@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: maintainerr
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: maintainerr
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: maintainerr
+  ports:
+    - name: http
+      port: 16246
+      targetPort: access-http
+      protocol: TCP

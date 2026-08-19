@@ -175,12 +175,34 @@
       "required": ["mode", "profile", "application", "middleware"],
       "properties": {
         "mode": {"const": "forward-auth"},
-        "profile": {"const": "authentik-forward-single-v1"},
+        "profile": {
+          "enum": [
+            "authentik-forward-single-v1",
+            "authentik-forward-single-v2"
+          ]
+        },
         "blueprintName": {"type": "string", "minLength": 1},
         "providerName": {"type": "string", "minLength": 1},
         "application": {"$ref": "#/$defs/application"},
-        "middleware": {"type": "string", "minLength": 1}
-      }
+        "middleware": {"type": "string", "minLength": 1},
+        "allowedGroups": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "profile": {"const": "authentik-forward-single-v1"}
+            }
+          },
+          "then": {"not": {"required": ["allowedGroups"]}},
+          "else": {"required": ["allowedGroups"]}
+        }
+      ]
     },
     "oidcAuth": {
       "type": "object",

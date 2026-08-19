@@ -34,6 +34,13 @@ spec:
       ports:
         - port: 5055
           protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: maintainerr
+      ports:
+        - port: 5055
+          protocol: TCP
   # Seerr connects to the user-configured Jellyfin and *arr endpoints.
   egress:
     - {}

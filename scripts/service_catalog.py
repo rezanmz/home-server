@@ -499,6 +499,31 @@ def authentik_forward_blueprint(
                 f"      meta_launch_url: {yaml_string(launch_url)}",
             ]
         )
+        if auth.get("profile") == "authentik-forward-single-v2":
+            allowed_groups = sorted(auth.get("allowedGroups", []))
+            # The policy identity must be derived from the immutable
+            # application slug only, never from the mutable display name:
+            # renaming the service must keep the policy and its binding
+            # stable so the blueprint updates them in place.
+            policy_id = f"{slug}-allowed-groups"
+            group_names = json.dumps(list(allowed_groups), ensure_ascii=False)
+            lines.extend(
+                [
+                    "  - model: authentik_policies_expression.expressionpolicy",
+                    f"    id: {policy_id}",
+                    "    identifiers:",
+                    f"      name: {yaml_string(f'{slug} allowed groups')}",
+                    "    attrs:",
+                    "      execution_logging: false",
+                    "      expression: |",
+                    f"        return any(ak_is_group_member(request.user, name=group) for group in {group_names})",
+                    "  - model: authentik_policies.policybinding",
+                    "    identifiers:",
+                    f"      policy: !KeyOf {policy_id}",
+                    f"      target: !Find [authentik_core.application, [slug, {slug}]]",
+                    "      order: 0",
+                ]
+            )
 
     lines.extend(
         [
@@ -1185,6 +1210,7 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                     reject_unknown(
                         auth,
                         {
+                            "allowedGroups",
                             "application",
                             "blueprintName",
                             "middleware",
@@ -1195,16 +1221,51 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                         f"{label}.web.auth",
                         errors,
                     )
-                    if auth.get("profile") != "authentik-forward-single-v1":
+                    profile = auth.get("profile")
+                    if profile not in {
+                        "authentik-forward-single-v1",
+                        "authentik-forward-single-v2",
+                    }:
                         errors.append(
                             f"{label}.web.auth.profile must be "
-                            "authentik-forward-single-v1"
+                            "authentik-forward-single-v1 or "
+                            "authentik-forward-single-v2"
                         )
                     require_nonempty_string(
                         auth.get("middleware"),
                         f"{label}.web.auth.middleware",
                         errors,
                     )
+                    allowed_groups = auth.get("allowedGroups")
+                    if allowed_groups is not None:
+                        groups_ok = (
+                            isinstance(allowed_groups, list)
+                            and bool(allowed_groups)
+                            and all(
+                                isinstance(group, str) and group.strip()
+                                for group in allowed_groups
+                            )
+                        )
+                        if not groups_ok or len(set(allowed_groups)) != len(
+                            allowed_groups
+                        ):
+                            errors.append(
+                                f"{label}.web.auth.allowedGroups must be "
+                                "a non-empty list of unique non-empty "
+                                "group names"
+                            )
+                    if profile == "authentik-forward-single-v1":
+                        if allowed_groups is not None:
+                            errors.append(
+                                f"{label}.web.auth.allowedGroups is only "
+                                "valid with profile "
+                                "authentik-forward-single-v2"
+                            )
+                    elif not isinstance(allowed_groups, list) or not allowed_groups:
+                        errors.append(
+                            f"{label}.web.auth.allowedGroups is required "
+                            "with profile authentik-forward-single-v2"
+                        )
 
                 if mode == "oidc":
                     reject_unknown(

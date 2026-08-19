@@ -36,7 +36,7 @@ class ServiceCatalogTests(unittest.TestCase):
     def test_catalog_is_decentralized_and_versioned(self) -> None:
         self.assertFalse((REPO_ROOT / "catalog" / "services.yaml").exists())
         entries = service_catalog.services(self.catalog)
-        self.assertEqual(len(entries), 40)
+        self.assertEqual(len(entries), 41)
         sources = [entry["_source"] for entry in entries]
         self.assertEqual(len(sources), len(set(sources)))
         self.assertTrue(all(source.endswith(".catalog.yaml") for source in sources))
@@ -63,6 +63,49 @@ class ServiceCatalogTests(unittest.TestCase):
             service_schema["$defs"]["service"]["properties"]["spec"][
                 "additionalProperties"
             ]
+        )
+
+    def test_schema_allows_groups_only_for_forward_auth(self) -> None:
+        schema = json.loads(
+            (REPO_ROOT / "catalog" / "service.schema.json").read_text()
+        )
+        forward_auth = schema["$defs"]["forwardAuth"]
+        self.assertEqual(
+            forward_auth["properties"]["profile"]["enum"],
+            [
+                "authentik-forward-single-v1",
+                "authentik-forward-single-v2",
+            ],
+        )
+        self.assertNotIn(
+            "allowedGroups", schema["$defs"]["oidcAuth"]["properties"]
+        )
+        self.assertNotIn(
+            "allowedGroups", schema["$defs"]["reasonAuth"]["properties"]
+        )
+        allowed_groups = forward_auth["properties"]["allowedGroups"]
+        self.assertEqual(allowed_groups["type"], "array")
+        self.assertEqual(allowed_groups["minItems"], 1)
+        self.assertTrue(allowed_groups["uniqueItems"])
+        self.assertEqual(
+            allowed_groups["items"], {"type": "string", "minLength": 1}
+        )
+        self.assertNotIn("allowedGroups", forward_auth["required"])
+        self.assertEqual(
+            forward_auth["allOf"],
+            [
+                {
+                    "if": {
+                        "properties": {
+                            "profile": {
+                                "const": "authentik-forward-single-v1"
+                            }
+                        }
+                    },
+                    "then": {"not": {"required": ["allowedGroups"]}},
+                    "else": {"required": ["allowedGroups"]},
+                }
+            ],
         )
 
     def test_authentik_blueprints_are_generated_from_service_descriptors(self) -> None:
@@ -134,6 +177,279 @@ class ServiceCatalogTests(unittest.TestCase):
         for provider_id in provider_ids:
             self.assertIn(f"        - !KeyOf {provider_id}", outpost)
 
+    def test_maintainerr_forward_auth_binds_home_admins(self) -> None:
+        maintainerr = next(
+            service
+            for service in service_catalog.services(self.catalog)
+            if service["id"] == "maintainerr"
+        )
+        auth = maintainerr["web"]["auth"]
+        self.assertEqual(auth["mode"], "forward-auth")
+        self.assertEqual(
+            auth["profile"], "authentik-forward-single-v2"
+        )
+        self.assertEqual(auth["application"]["slug"], "maintainerr")
+        self.assertEqual(auth["allowedGroups"], ["home-admins"])
+
+        blueprint = service_catalog.authentik_forward_blueprint(
+            [(maintainerr, auth)]
+        )
+        self.assertEqual(
+            blueprint.count(
+                "model: authentik_policies_expression.expressionpolicy"
+            ),
+            1,
+        )
+        self.assertEqual(
+            blueprint.count("model: authentik_policies.policybinding"), 1
+        )
+        self.assertIn(
+            "id: maintainerr-allowed-groups",
+            blueprint,
+        )
+        self.assertIn(
+            'name: "maintainerr allowed groups"',
+            blueprint,
+        )
+        self.assertIn(
+            "return any(ak_is_group_member(request.user, name=group) "
+            'for group in ["home-admins"])',
+            blueprint,
+        )
+        self.assertIn(
+            "policy: !KeyOf maintainerr-allowed-groups",
+            blueprint,
+        )
+        self.assertIn(
+            "target: !Find [authentik_core.application, [slug, maintainerr]]",
+            blueprint,
+        )
+        self.assertIn("order: 0", blueprint)
+
+        document = service_catalog.load_single_document(
+            REPO_ROOT / "apps" / "authentik" / "application-blueprints.yaml"
+        )
+        forward_auth = document["data"]["forward-auth.yaml"]
+        self.assertIn(
+            "id: maintainerr-allowed-groups",
+            forward_auth,
+        )
+        self.assertIn(
+            "return any(ak_is_group_member(request.user, name=group) "
+            'for group in ["home-admins"])',
+            forward_auth,
+        )
+        self.assertIn(
+            "target: !Find [authentik_core.application, [slug, maintainerr]]",
+            forward_auth,
+        )
+
+    def test_forward_auth_allowed_groups_emit_deterministic_bindings(self) -> None:
+        service = {
+            "id": "maintainerr",
+            "name": "Maintainerr",
+            "web": {"hostname": "maintainerr.reza.network"},
+        }
+        auth = {
+            "application": {"slug": "maintainerr"},
+            "profile": "authentik-forward-single-v2",
+            "allowedGroups": ["zeta", "home-admins", "alpha"],
+        }
+        blueprint = service_catalog.authentik_forward_blueprint([(service, auth)])
+
+        self.assertEqual(
+            blueprint.count(
+                "model: authentik_policies_expression.expressionpolicy"
+            ),
+            1,
+        )
+        self.assertEqual(
+            blueprint.count("model: authentik_policies.policybinding"), 1
+        )
+        self.assertIn(
+            "return any(ak_is_group_member(request.user, name=group) "
+            'for group in ["alpha", "home-admins", "zeta"])',
+            blueprint,
+        )
+        self.assertEqual(
+            blueprint.count(
+                "target: !Find [authentik_core.application, [slug, maintainerr]]"
+            ),
+            1,
+        )
+        self.assertEqual(
+            blueprint,
+            service_catalog.authentik_forward_blueprint([(service, auth)]),
+        )
+
+        # shrinking the group list updates the same policy in place instead
+        # of accumulating bindings, so revoked groups lose access
+        shrunk = dict(auth, allowedGroups=["home-admins"])
+        shrunk_blueprint = service_catalog.authentik_forward_blueprint(
+            [(service, shrunk)]
+        )
+        self.assertEqual(
+            shrunk_blueprint.count(
+                "model: authentik_policies_expression.expressionpolicy"
+            ),
+            1,
+        )
+        self.assertEqual(
+            shrunk_blueprint.count("model: authentik_policies.policybinding"),
+            1,
+        )
+        self.assertIn(
+            "return any(ak_is_group_member(request.user, name=group) "
+            'for group in ["home-admins"])',
+            shrunk_blueprint,
+        )
+        self.assertIn(
+            "id: maintainerr-allowed-groups",
+            shrunk_blueprint,
+        )
+
+    def test_forward_auth_policy_identity_survives_display_rename(self) -> None:
+        service = {
+            "id": "maintainerr",
+            "name": "Maintainerr",
+            "web": {"hostname": "maintainerr.reza.network"},
+        }
+        auth = {
+            "application": {"slug": "maintainerr"},
+            "profile": "authentik-forward-single-v2",
+            "allowedGroups": ["home-admins"],
+        }
+        before = service_catalog.authentik_forward_blueprint([(service, auth)])
+
+        renamed = dict(service, name="Maintainerr Media Manager")
+        after = service_catalog.authentik_forward_blueprint([(renamed, auth)])
+
+        def policy_blocks(blueprint: str) -> list[str]:
+            blocks: list[str] = []
+            lines = blueprint.splitlines()
+            start: int | None = None
+            for index, line in enumerate(lines):
+                if line.startswith(
+                    "  - model: authentik_policies_expression."
+                    "expressionpolicy"
+                ):
+                    start = index
+                elif line.startswith("  - model:") and start is not None:
+                    blocks.append("\n".join(lines[start:index]))
+                    start = None
+            if start is not None:
+                blocks.append("\n".join(lines[start:]))
+            return blocks
+
+        self.assertEqual(policy_blocks(before), policy_blocks(after))
+        self.assertIn(
+            'name: "Maintainerr Media Manager"',
+            after,
+        )
+        self.assertNotIn('name: "Maintainerr Media Manager"', before)
+
+    def test_forward_auth_without_groups_emits_no_bindings(self) -> None:
+        for service in service_catalog.services(self.catalog):
+            auth = service.get("web", {}).get("auth", {})
+            if auth.get("mode") != "forward-auth":
+                continue
+            if auth.get("allowedGroups") is None:
+                emitted = service_catalog.authentik_forward_blueprint(
+                    [(service, auth)]
+                )
+                self.assertNotIn(
+                    "authentik_policies.policybinding",
+                    emitted,
+                    msg=(
+                        f"{service['id']} forward-auth entry must not gain "
+                        "policy bindings"
+                    ),
+                )
+                self.assertNotIn(
+                    "authentik_policies_expression.expressionpolicy",
+                    emitted,
+                    msg=(
+                        f"{service['id']} forward-auth entry must not gain "
+                        "expression policies"
+                    ),
+                )
+
+        with_groups = [
+            service["id"]
+            for service in service_catalog.services(self.catalog)
+            if service.get("web", {}).get("auth", {}).get("mode")
+            == "forward-auth"
+            and service["web"]["auth"].get("allowedGroups")
+        ]
+        self.assertEqual(with_groups, ["maintainerr"])
+
+    def test_forward_auth_allowed_groups_must_be_unique_nonempty(self) -> None:
+        catalog = copy.deepcopy(self.catalog)
+        service = next(
+            item for item in catalog["services"] if item["id"] == "maintainerr"
+        )
+        service["web"]["auth"]["allowedGroups"] = ["home-admins", "home-admins"]
+        errors: list[str] = []
+        service_catalog.validate_catalog_structure(catalog, errors)
+        self.assertTrue(
+            any(
+                "allowedGroups must be a non-empty list of unique "
+                "non-empty group names"
+                in error
+                for error in errors
+            )
+        )
+
+    def test_forward_auth_v2_requires_allowed_groups(self) -> None:
+        catalog = copy.deepcopy(self.catalog)
+        service = next(
+            item for item in catalog["services"] if item["id"] == "maintainerr"
+        )
+        del service["web"]["auth"]["allowedGroups"]
+        errors: list[str] = []
+        service_catalog.validate_catalog_structure(catalog, errors)
+        self.assertTrue(
+            any(
+                "allowedGroups is required with profile "
+                "authentik-forward-single-v2"
+                in error
+                for error in errors
+            )
+        )
+
+    def test_forward_auth_v1_forbids_allowed_groups(self) -> None:
+        catalog = copy.deepcopy(self.catalog)
+        service = next(
+            item for item in catalog["services"] if item["id"] == "maintainerr"
+        )
+        service["web"]["auth"]["profile"] = "authentik-forward-single-v1"
+        errors: list[str] = []
+        service_catalog.validate_catalog_structure(catalog, errors)
+        self.assertTrue(
+            any(
+                "allowedGroups is only valid with profile "
+                "authentik-forward-single-v2"
+                in error
+                for error in errors
+            )
+        )
+
+    def test_allowed_groups_are_rejected_outside_forward_auth(self) -> None:
+        catalog = copy.deepcopy(self.catalog)
+        service = next(
+            item for item in catalog["services"] if item["id"] == "open-webui"
+        )
+        service["web"]["auth"]["allowedGroups"] = ["home-admins"]
+        errors: list[str] = []
+        service_catalog.validate_catalog_structure(catalog, errors)
+        self.assertTrue(
+            any(
+                "web.auth contains unknown field: allowedGroups"
+                in error
+                for error in errors
+            )
+        )
+
     def test_authentik_worker_patch_contains_only_confidential_clients(self) -> None:
         patch = service_catalog.load_single_document(
             REPO_ROOT
@@ -175,8 +491,12 @@ class ServiceCatalogTests(unittest.TestCase):
             if auth.get("mode") == "oidc":
                 self.assertEqual(auth["profile"], "authentik-oidc-v1")
             elif auth.get("mode") == "forward-auth":
-                self.assertEqual(
-                    auth["profile"], "authentik-forward-single-v1"
+                self.assertIn(
+                    auth["profile"],
+                    {
+                        "authentik-forward-single-v1",
+                        "authentik-forward-single-v2",
+                    },
                 )
 
     def test_homepage_order_survives_decentralized_discovery(self) -> None:
@@ -207,16 +527,17 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["Downloads & Automation"],
-             [
-                 "qBittorrent",
+            [
+                "qBittorrent",
                 "SABnzbd",
-                 "Prowlarr",
+                "Prowlarr",
                 "Radarr",
                 "Sonarr",
                 "Lidarr",
                 "Shelfmark",
                 "Soularr",
                 "slskd",
+                "Maintainerr",
             ],
         )
         self.assertEqual(
