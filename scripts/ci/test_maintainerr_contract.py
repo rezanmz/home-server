@@ -243,7 +243,13 @@ class MaintainerrContractTests(unittest.TestCase):
                 {
                     "namespaceSelector": {
                         "matchLabels": {"kubernetes.io/metadata.name": "traefik"}
-                    }
+                    },
+                    "podSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/name": "traefik",
+                            "app.kubernetes.io/instance": "traefik-traefik",
+                        }
+                    },
                 }
             ],
         )
