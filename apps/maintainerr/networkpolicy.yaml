@@ -12,9 +12,15 @@ spec:
     - Egress
   ingress:
     - from:
+        # Both selectors form one peer: only the gateway pods may present the
+        # X-Forwarded-For value that the same-pod proxy trusts.
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+              app.kubernetes.io/instance: traefik-traefik
       ports:
         - port: 16246
           protocol: TCP
