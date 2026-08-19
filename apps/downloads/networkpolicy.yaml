@@ -35,6 +35,19 @@ spec:
         - {port: 7878, protocol: TCP}
         - {port: 8989, protocol: TCP}
     - from:
+        # Maintainerr drives collection cleanup through the raw Radarr and
+        # Sonarr APIs. Its UI stays behind its own access proxy and the
+        # Authentik-protected Traefik route.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: maintainerr
+      ports:
+        - {port: 7878, protocol: TCP}
+        - {port: 8989, protocol: TCP}
+    - from:
         # MCPHub launches the reviewed Arr MCP server. It receives only raw API
         # access; client-visible tools remain constrained by MCPHub groups.
         - namespaceSelector:

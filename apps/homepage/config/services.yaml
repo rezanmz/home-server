@@ -124,6 +124,12 @@
         description: Soulseek search and download client
         namespace: media
         app: media-vpn
+    - Maintainerr:
+        icon: maintainerr.png
+        href: https://maintainerr.reza.network/
+        description: Media collection maintenance
+        namespace: apps
+        app: maintainerr
 - AI & Data:
     - Open WebUI:
         icon: open-webui.png
