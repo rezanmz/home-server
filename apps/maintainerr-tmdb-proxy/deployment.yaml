@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maintainerr-tmdb-proxy
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: maintainerr-tmdb-proxy
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: maintainerr-tmdb-proxy
+      app.kubernetes.io/component: egress-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: maintainerr-tmdb-proxy
+        app.kubernetes.io/component: egress-proxy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 13
+        runAsGroup: 13
+        fsGroup: 13
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: maintainerr-tmdb-proxy
+          image: ubuntu/squid:6.6-24.04_beta@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/sbin/squid"]
+          args: ["-f", "/etc/squid/squid.conf", "-NYC"]
+          ports:
+            - name: proxy
+              containerPort: 3128
+              protocol: TCP
+          readinessProbe:
+            tcpSocket: {port: proxy}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: proxy}
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 10m, memory: 192Mi, ephemeral-storage: 8Mi}
+            limits: {cpu: 200m, memory: 256Mi, ephemeral-storage: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: squid-config
+              mountPath: /etc/squid
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: squid-config
+          configMap:
+            name: maintainerr-tmdb-proxy-config
+            defaultMode: 0444
+        - name: tmp
+          emptyDir:
+            sizeLimit: 32Mi

@@ -25,7 +25,8 @@ spec:
         - port: 16246
           protocol: TCP
   # Maintainerr is connection-only: it reaches exactly the services it manages
-  # (Jellyfin, the raw Radarr/Sonarr APIs on media-vpn, and Seerr) plus DNS.
+  # (Jellyfin, the raw Radarr/Sonarr APIs on media-vpn, and Seerr), the TMDB
+  # egress proxy, plus DNS.
   egress:
     - to:
         - namespaceSelector:
@@ -72,3 +73,13 @@ spec:
               app.kubernetes.io/name: seerr
       ports:
         - {port: 5055, protocol: TCP}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: maintainerr-tmdb-proxy
+              app.kubernetes.io/component: egress-proxy
+      ports:
+        - {port: 3128, protocol: TCP}

@@ -51,3 +51,4 @@ resources:
   - ../../apps/headlamp
   - ../../apps/loggifly
   - ../../apps/maintainerr
+  - ../../apps/maintainerr-tmdb-proxy

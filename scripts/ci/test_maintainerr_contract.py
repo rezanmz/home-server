@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -18,6 +19,28 @@ NGINX_IMAGE = (
     "nginx:1.31.3-alpine@"
     "sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752"
 )
+PROXY_IMAGE = (
+    "ubuntu/squid:6.6-24.04_beta@"
+    "sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029"
+)
+PROXY_URL = "http://maintainerr-tmdb-proxy.apps.svc.cluster.local:3128"
+PROXY_NO_PROXY = "localhost,127.0.0.1,::1,[::1],.svc,.svc.cluster.local"
+PUBLIC_443_EXCLUSIONS = [
+    "0.0.0.0/8",
+    "10.0.0.0/8",
+    "100.64.0.0/10",
+    "127.0.0.0/8",
+    "169.254.0.0/16",
+    "172.16.0.0/12",
+    "192.0.0.0/24",
+    "192.0.2.0/24",
+    "192.168.0.0/16",
+    "198.18.0.0/15",
+    "198.51.100.0/24",
+    "203.0.113.0/24",
+    "224.0.0.0/4",
+    "240.0.0.0/4",
+]
 
 
 def documents(relative_path: str) -> list[dict]:
@@ -43,6 +66,16 @@ def filter_names(rule: dict) -> list[str]:
         item["extensionRef"]["name"]
         for item in rule.get("filters", [])
         if item["type"] == "ExtensionRef"
+    ]
+
+
+def squid_lines() -> list[str]:
+    return [
+        line.strip()
+        for line in (
+            REPO_ROOT / "apps/maintainerr-tmdb-proxy/squid.conf"
+        ).read_text().splitlines()
+        if line.strip() and not line.strip().startswith("#")
     ]
 
 
@@ -87,7 +120,12 @@ class MaintainerrContractTests(unittest.TestCase):
         self.assertEqual(maintainerr["imagePullPolicy"], "IfNotPresent")
         self.assertEqual(
             {entry["name"]: entry["value"] for entry in maintainerr["env"]},
-            {"LOG_LEVEL": "info", "TZ": "America/Toronto"},
+            {
+                "LOG_LEVEL": "info",
+                "TZ": "America/Toronto",
+                "HTTPS_PROXY": PROXY_URL,
+                "NO_PROXY": PROXY_NO_PROXY,
+            },
         )
         self.assertEqual(
             maintainerr["ports"],
@@ -147,6 +185,37 @@ class MaintainerrContractTests(unittest.TestCase):
             self.assertTrue(security_context["readOnlyRootFilesystem"])
             self.assertEqual(security_context["capabilities"]["drop"], ["ALL"])
             self.assertNotIn("add", security_context["capabilities"])
+
+    def test_maintainerr_proxy_environment_is_uppercase_and_bypass_free(self) -> None:
+        deployment = resource(
+            "apps/maintainerr/deployment.yaml", "Deployment", "maintainerr"
+        )
+        maintainerr = next(
+            container
+            for container in deployment["spec"]["template"]["spec"]["containers"]
+            if container["name"] == "maintainerr"
+        )
+        env = {entry["name"]: entry["value"] for entry in maintainerr["env"]}
+        # Only the uppercase proxy variables may exist; lower-case and
+        # HTTP/ALL variants would bypass or broaden the egress contract.
+        self.assertEqual(set(env), {"LOG_LEVEL", "TZ", "HTTPS_PROXY", "NO_PROXY"})
+        self.assertEqual(env["HTTPS_PROXY"], PROXY_URL)
+        self.assertEqual(env["NO_PROXY"], PROXY_NO_PROXY)
+        no_proxy_entries = env["NO_PROXY"].split(",")
+        self.assertTrue(all(no_proxy_entries))
+        self.assertNotIn("*", no_proxy_entries)
+        self.assertNotIn(".", no_proxy_entries)
+        self.assertNotIn("0.0.0.0", no_proxy_entries)
+        deployment_text = (REPO_ROOT / "apps/maintainerr/deployment.yaml").read_text()
+        for forbidden in (
+            "HTTP_PROXY",
+            "ALL_PROXY",
+            "https_proxy",
+            "no_proxy",
+            "http_proxy",
+            "all_proxy",
+        ):
+            self.assertNotIn(forbidden, deployment_text)
 
     def test_access_proxy_is_hardened_and_lan_only(self) -> None:
         deployment = resource(
@@ -331,10 +400,391 @@ class MaintainerrContractTests(unittest.TestCase):
                     },
                     {"port": 5055, "protocol": "TCP"},
                 ),
+                (
+                    {
+                        "namespaceSelector": {
+                            "matchLabels": {"kubernetes.io/metadata.name": "apps"}
+                        },
+                        "podSelector": {
+                            "matchLabels": {
+                                "app.kubernetes.io/name": "maintainerr-tmdb-proxy",
+                                "app.kubernetes.io/component": "egress-proxy",
+                            }
+                        },
+                    },
+                    {"port": 3128, "protocol": "TCP"},
+                ),
             ],
         )
         self.assertNotIn("0.0.0.0/0", str(policy))
         self.assertNotIn("10.42.1.0/24", str(policy))
+
+    def test_proxy_workload_is_singleton_immutable_and_isolated(self) -> None:
+        deployment = resource(
+            "apps/maintainerr-tmdb-proxy/deployment.yaml",
+            "Deployment",
+            "maintainerr-tmdb-proxy",
+        )
+        self.assertEqual(deployment["metadata"]["namespace"], "apps")
+        self.assertEqual(
+            deployment["metadata"]["labels"]["app.kubernetes.io/name"],
+            "maintainerr-tmdb-proxy",
+        )
+        self.assertEqual(deployment["spec"]["replicas"], 1)
+        self.assertEqual(deployment["spec"]["strategy"]["type"], "Recreate")
+        self.assertEqual(
+            deployment["spec"]["selector"]["matchLabels"],
+            {
+                "app.kubernetes.io/name": "maintainerr-tmdb-proxy",
+                "app.kubernetes.io/component": "egress-proxy",
+            },
+        )
+        pod = deployment["spec"]["template"]
+        self.assertEqual(
+            pod["metadata"]["labels"]["app.kubernetes.io/name"],
+            "maintainerr-tmdb-proxy",
+        )
+        self.assertEqual(
+            pod["metadata"]["labels"]["app.kubernetes.io/component"],
+            "egress-proxy",
+        )
+        pod_spec = pod["spec"]
+        self.assertFalse(pod_spec["automountServiceAccountToken"])
+        self.assertNotIn("serviceAccountName", pod_spec)
+        self.assertFalse(pod_spec.get("hostNetwork", False))
+        self.assertFalse(pod_spec.get("hostPID", False))
+        self.assertFalse(pod_spec.get("hostIPC", False))
+        self.assertNotIn("nodeSelector", pod_spec)
+        volumes = {volume["name"]: volume for volume in pod_spec["volumes"]}
+        self.assertEqual(set(volumes), {"squid-config", "tmp"})
+        self.assertEqual(
+            volumes["tmp"],
+            {"name": "tmp", "emptyDir": {"sizeLimit": "32Mi"}},
+        )
+        self.assertEqual(
+            volumes["squid-config"],
+            {
+                "name": "squid-config",
+                "configMap": {
+                    "name": "maintainerr-tmdb-proxy-config",
+                    "defaultMode": 0o444,
+                },
+            },
+        )
+
+    def test_proxy_image_command_probes_and_resources(self) -> None:
+        deployment = resource(
+            "apps/maintainerr-tmdb-proxy/deployment.yaml",
+            "Deployment",
+            "maintainerr-tmdb-proxy",
+        )
+        pod = deployment["spec"]["template"]["spec"]
+        proxy = next(
+            container
+            for container in pod["containers"]
+            if container["name"] == "maintainerr-tmdb-proxy"
+        )
+        self.assertEqual(proxy["image"], PROXY_IMAGE)
+        self.assertEqual(proxy["imagePullPolicy"], "IfNotPresent")
+        self.assertEqual(proxy["command"], ["/usr/sbin/squid"])
+        self.assertEqual(proxy["args"], ["-f", "/etc/squid/squid.conf", "-NYC"])
+        self.assertEqual(
+            proxy["ports"],
+            [{"name": "proxy", "containerPort": 3128, "protocol": "TCP"}],
+        )
+        self.assertEqual(
+            proxy["readinessProbe"],
+            {"tcpSocket": {"port": "proxy"}, "periodSeconds": 10},
+        )
+        self.assertEqual(
+            proxy["livenessProbe"],
+            {"tcpSocket": {"port": "proxy"}, "periodSeconds": 30},
+        )
+        self.assertNotIn("startupProbe", proxy)
+        self.assertEqual(
+            proxy["resources"],
+            {
+                "requests": {
+                    "cpu": "10m",
+                    "memory": "192Mi",
+                    "ephemeral-storage": "8Mi",
+                },
+                "limits": {
+                    "cpu": "200m",
+                    "memory": "256Mi",
+                    "ephemeral-storage": "64Mi",
+                },
+            },
+        )
+        self.assertEqual(
+            {mount["name"]: mount["mountPath"] for mount in proxy["volumeMounts"]},
+            {"squid-config": "/etc/squid", "tmp": "/tmp"},
+        )
+        config_mount = next(
+            mount
+            for mount in proxy["volumeMounts"]
+            if mount["name"] == "squid-config"
+        )
+        self.assertTrue(config_mount["readOnly"])
+
+    def test_proxy_security_context_is_uid_13_and_hardened(self) -> None:
+        deployment = resource(
+            "apps/maintainerr-tmdb-proxy/deployment.yaml",
+            "Deployment",
+            "maintainerr-tmdb-proxy",
+        )
+        pod = deployment["spec"]["template"]["spec"]
+        self.assertEqual(
+            pod["securityContext"],
+            {
+                "runAsNonRoot": True,
+                "runAsUser": 13,
+                "runAsGroup": 13,
+                "fsGroup": 13,
+                "fsGroupChangePolicy": "OnRootMismatch",
+                "seccompProfile": {"type": "RuntimeDefault"},
+            },
+        )
+        for container in pod["containers"]:
+            security_context = container["securityContext"]
+            self.assertFalse(security_context["allowPrivilegeEscalation"])
+            self.assertTrue(security_context["readOnlyRootFilesystem"])
+            self.assertEqual(security_context["capabilities"]["drop"], ["ALL"])
+            self.assertNotIn("add", security_context["capabilities"])
+
+    def test_proxy_service_is_cluster_ip_only_on_3128(self) -> None:
+        services = documents("apps/maintainerr-tmdb-proxy/service.yaml")
+        self.assertEqual(len(services), 1)
+        service = services[0]
+        self.assertEqual(service["kind"], "Service")
+        self.assertEqual(service["metadata"]["name"], "maintainerr-tmdb-proxy")
+        self.assertEqual(service["metadata"]["namespace"], "apps")
+        self.assertEqual(service["spec"]["type"], "ClusterIP")
+        self.assertEqual(
+            service["spec"]["selector"],
+            {
+                "app.kubernetes.io/name": "maintainerr-tmdb-proxy",
+                "app.kubernetes.io/component": "egress-proxy",
+            },
+        )
+        self.assertEqual(
+            service["spec"]["ports"],
+            [{"name": "proxy", "port": 3128, "targetPort": "proxy", "protocol": "TCP"}],
+        )
+        for port in service["spec"]["ports"]:
+            self.assertNotIn("nodePort", port)
+        self.assertNotIn("externalIPs", service["spec"])
+        self.assertNotIn("loadBalancerIP", service["spec"])
+
+    def test_proxy_has_no_route_catalog_pvc_or_secret(self) -> None:
+        proxy_dir = REPO_ROOT / "apps/maintainerr-tmdb-proxy"
+        self.assertEqual(
+            sorted(path.name for path in proxy_dir.iterdir()),
+            [
+                "deployment.yaml",
+                "kustomization.yaml",
+                "maintainerr-tmdb-proxy.catalog.yaml",
+                "networkpolicy.yaml",
+                "service.yaml",
+                "squid.conf",
+            ],
+        )
+        exclusion = yaml.safe_load(
+            (proxy_dir / "maintainerr-tmdb-proxy.catalog.yaml").read_text()
+        )
+        self.assertEqual(exclusion["kind"], "CatalogExclusion")
+        self.assertIn("no browser-facing service", exclusion["spec"]["reason"])
+        for path in proxy_dir.iterdir():
+            contents = path.read_text()
+            self.assertNotIn("Secret", contents, path.name)
+            self.assertNotIn("token", contents, path.name)
+            self.assertNotIn("hostPort", contents, path.name)
+            self.assertNotIn("hostNetwork", contents, path.name)
+
+    def test_proxy_network_policy_is_maintainerr_only_and_ipv4_public_443(self) -> None:
+        policy = resource(
+            "apps/maintainerr-tmdb-proxy/networkpolicy.yaml",
+            "NetworkPolicy",
+            "maintainerr-tmdb-proxy",
+        )
+        self.assertEqual(policy["metadata"]["namespace"], "apps")
+        self.assertEqual(policy["spec"]["policyTypes"], ["Ingress", "Egress"])
+        self.assertEqual(
+            policy["spec"]["podSelector"],
+            {
+                "matchLabels": {
+                    "app.kubernetes.io/name": "maintainerr-tmdb-proxy",
+                    "app.kubernetes.io/component": "egress-proxy",
+                }
+            },
+        )
+        self.assertEqual(len(policy["spec"]["ingress"]), 1)
+        ingress = policy["spec"]["ingress"][0]
+        self.assertEqual(
+            ingress["from"],
+            [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "apps"}
+                    },
+                    "podSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/name": "maintainerr",
+                            "app.kubernetes.io/component": "application",
+                        }
+                    },
+                }
+            ],
+        )
+        self.assertEqual(ingress["ports"], [{"port": 3128, "protocol": "TCP"}])
+
+        egress = policy["spec"]["egress"]
+        self.assertEqual(len(egress), 2)
+        dns_rule, public_rule = egress
+        self.assertEqual(
+            dns_rule,
+            {
+                "to": [
+                    {
+                        "namespaceSelector": {
+                            "matchLabels": {
+                                "kubernetes.io/metadata.name": "kube-system"
+                            }
+                        },
+                        "podSelector": {"matchLabels": {"k8s-app": "kube-dns"}},
+                    }
+                ],
+                "ports": [
+                    {"port": 53, "protocol": "UDP"},
+                    {"port": 53, "protocol": "TCP"},
+                ],
+            },
+        )
+        self.assertEqual(len(public_rule["to"]), 1)
+        ip_block = public_rule["to"][0]["ipBlock"]
+        self.assertEqual(ip_block["cidr"], "0.0.0.0/0")
+        self.assertEqual(ip_block["except"], PUBLIC_443_EXCLUSIONS)
+        self.assertEqual(public_rule["ports"], [{"port": 443, "protocol": "TCP"}])
+        # DNS plus public HTTPS only: no alternate or proxy egress port.
+        egress_ports = {
+            port["port"] for rule in egress for port in rule.get("ports", [])
+        }
+        self.assertEqual(egress_ports, {53, 443})
+        # Public egress is IPv4-only: no IPv6 rule of any form.
+        self.assertNotIn("::", str(policy))
+
+    def test_proxy_config_map_is_generated_with_hash_compatible_name(self) -> None:
+        kustomization = yaml.safe_load(
+            (REPO_ROOT / "apps/maintainerr-tmdb-proxy/kustomization.yaml").read_text()
+        )
+        self.assertEqual(
+            kustomization["resources"],
+            ["deployment.yaml", "service.yaml", "networkpolicy.yaml"],
+        )
+        self.assertEqual(len(kustomization["configMapGenerator"]), 1)
+        self.assertIsNot(
+            kustomization.get("generatorOptions", {}).get("disableNameSuffixHash"),
+            True,
+        )
+        generator = kustomization["configMapGenerator"][0]
+        self.assertEqual(generator["name"], "maintainerr-tmdb-proxy-config")
+        self.assertEqual(generator["namespace"], "apps")
+        self.assertEqual(generator["files"], ["squid.conf"])
+        # The Deployment references the generator's base name so Kustomize
+        # rewrites it to the content-hashed name at build time.
+        deployment = resource(
+            "apps/maintainerr-tmdb-proxy/deployment.yaml",
+            "Deployment",
+            "maintainerr-tmdb-proxy",
+        )
+        volume = next(
+            volume
+            for volume in deployment["spec"]["template"]["spec"]["volumes"]
+            if volume["name"] == "squid-config"
+        )
+        self.assertEqual(
+            volume["configMap"]["name"], "maintainerr-tmdb-proxy-config"
+        )
+
+    def test_squid_config_acl_order_allows_only_tmdb_443(self) -> None:
+        lines = squid_lines()
+        self.assertEqual(
+            [line for line in lines if line.startswith("http_port")],
+            ["http_port 3128"],
+        )
+        self.assertIn("acl localnet src 10.42.0.0/16", lines)
+        self.assertIn("acl CONNECT method CONNECT", lines)
+        self.assertEqual(
+            [line for line in lines if line.startswith("acl Safe_ports")],
+            ["acl Safe_ports port 443"],
+        )
+        self.assertEqual(
+            [line for line in lines if line.startswith("acl SSL_ports")],
+            ["acl SSL_ports port 443"],
+        )
+        # Security-significant order: reject unsafe ports, then non-CONNECT
+        # methods, then CONNECT to any non-443 port, before the single allow
+        # rule and the final deny-all. No rule may open a second allow path.
+        self.assertEqual(
+            [line for line in lines if line.startswith("http_access")],
+            [
+                "http_access deny !Safe_ports",
+                "http_access deny !CONNECT",
+                "http_access deny CONNECT !SSL_ports",
+                "http_access allow localnet CONNECT TMDB SSL_ports",
+                "http_access deny all",
+            ],
+        )
+
+    def test_squid_config_rejects_raw_ip_suffix_and_trailing_dot_bypass(self) -> None:
+        lines = squid_lines()
+        tmdb_acl = [line for line in lines if "dstdom_regex" in line]
+        self.assertEqual(
+            tmdb_acl,
+            ["acl TMDB dstdom_regex -n -i ^api\\.themoviedb\\.org$"],
+        )
+        # No raw-IP (dst) ACL offers an alternate TMDB allow path.
+        self.assertEqual(
+            [line for line in lines if re.match(r"acl\s+\S+\s+dst\s", line)],
+            [],
+        )
+        # Anchored, case-insensitive hostname match only.
+        allowed = re.compile(r"^api\.themoviedb\.org$", re.IGNORECASE)
+        self.assertIsNotNone(allowed.fullmatch("api.themoviedb.org"))
+        self.assertIsNotNone(allowed.fullmatch("API.TheMovieDB.ORG"))
+        for bypass in (
+            "api.themoviedb.org.evil.com",  # suffix/superdomain
+            "evilapi.themoviedb.org",  # prefix
+            "api.themoviedb.org.",  # trailing dot FQDN
+            "17.142.68.219",  # raw IP
+            "themoviedb.org",  # superdomain
+        ):
+            self.assertIsNone(allowed.fullmatch(bypass), bypass)
+
+    def test_squid_config_has_no_cache_pid_log_files_or_identity_leak(self) -> None:
+        lines = squid_lines()
+        self.assertIn("cache deny all", lines)
+        self.assertIn("cache_mem 0 MB", lines)
+        self.assertIn("maximum_object_size_in_memory 0 KB", lines)
+        self.assertIn("memory_pools off", lines)
+        self.assertIn("pinger_enable off", lines)
+        self.assertNotIn("cache_dir", lines)
+        self.assertIn("pid_filename none", lines)
+        # Any remaining writable state is explicitly bounded to /tmp or off.
+        self.assertIn("coredump_dir /tmp", lines)
+        self.assertIn("netdb_filename none", lines)
+        self.assertIn("cache_store_log none", lines)
+        self.assertIn("access_log stdio:/dev/stdout squid", lines)
+        self.assertIn("cache_log stdio:/dev/stderr", lines)
+        # Logs go to container streams; nothing is written under /var.
+        self.assertNotIn("/var/", lines)
+        # The proxy never reveals client or proxy identity to the origin.
+        self.assertIn("forwarded_for delete", lines)
+        self.assertIn("via off", lines)
+
+    def test_proxy_is_referenced_once_from_cluster_kustomization(self) -> None:
+        root = (REPO_ROOT / "clusters/home-server/kustomization.yaml").read_text()
+        self.assertEqual(root.count("../../apps/maintainerr-tmdb-proxy"), 1)
 
     def test_bilateral_destination_ingress_is_exact(self) -> None:
         jellyfin = resource(
@@ -521,21 +971,27 @@ class MaintainerrContractTests(unittest.TestCase):
 
     def test_app_is_referenced_once_from_cluster_kustomization(self) -> None:
         root = (REPO_ROOT / "clusters/home-server/kustomization.yaml").read_text()
-        self.assertEqual(root.count("../../apps/maintainerr"), 1)
-        self.assertIn("../../apps/maintainerr", root)
+        # Line-anchored: the proxy entry shares the "maintainerr" name prefix.
+        self.assertEqual(root.count("../../apps/maintainerr\n"), 1)
+        self.assertIn("../../apps/maintainerr\n", root)
 
     def test_manifests_contain_no_placeholders_or_plaintext_secrets(self) -> None:
         for manifest in [
-            "access-proxy.yaml",
-            "deployment.yaml",
-            "kustomization.yaml",
-            "maintainerr.catalog.yaml",
-            "networkpolicy.yaml",
-            "pvc.yaml",
-            "route.yaml",
-            "service.yaml",
+            "apps/maintainerr/access-proxy.yaml",
+            "apps/maintainerr/deployment.yaml",
+            "apps/maintainerr/kustomization.yaml",
+            "apps/maintainerr/maintainerr.catalog.yaml",
+            "apps/maintainerr/networkpolicy.yaml",
+            "apps/maintainerr/pvc.yaml",
+            "apps/maintainerr/route.yaml",
+            "apps/maintainerr/service.yaml",
+            "apps/maintainerr-tmdb-proxy/deployment.yaml",
+            "apps/maintainerr-tmdb-proxy/kustomization.yaml",
+            "apps/maintainerr-tmdb-proxy/networkpolicy.yaml",
+            "apps/maintainerr-tmdb-proxy/service.yaml",
+            "apps/maintainerr-tmdb-proxy/squid.conf",
         ]:
-            contents = (REPO_ROOT / f"apps/maintainerr/{manifest}").read_text()
+            contents = (REPO_ROOT / manifest).read_text()
             self.assertNotIn("TODO", contents, manifest)
             self.assertNotIn("REPLACE", contents, manifest)
             self.assertNotIn("PASSWORD", contents, manifest)
