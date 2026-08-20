@@ -58,6 +58,14 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            # Override the image-declared anonymous volumes with bounded,
+            # read-only pod volumes; Squid logs and cache state are disabled.
+            - name: squid-log
+              mountPath: /var/log/squid
+              readOnly: true
+            - name: squid-spool
+              mountPath: /var/spool/squid
+              readOnly: true
       volumes:
         - name: squid-config
           configMap:
@@ -66,3 +74,9 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 32Mi
+        - name: squid-log
+          emptyDir:
+            sizeLimit: 1Mi
+        - name: squid-spool
+          emptyDir:
+            sizeLimit: 1Mi

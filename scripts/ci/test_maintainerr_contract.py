@@ -456,11 +456,18 @@ class MaintainerrContractTests(unittest.TestCase):
         self.assertFalse(pod_spec.get("hostIPC", False))
         self.assertNotIn("nodeSelector", pod_spec)
         volumes = {volume["name"]: volume for volume in pod_spec["volumes"]}
-        self.assertEqual(set(volumes), {"squid-config", "tmp"})
+        self.assertEqual(
+            set(volumes), {"squid-config", "tmp", "squid-log", "squid-spool"}
+        )
         self.assertEqual(
             volumes["tmp"],
             {"name": "tmp", "emptyDir": {"sizeLimit": "32Mi"}},
         )
+        for name in ("squid-log", "squid-spool"):
+            self.assertEqual(
+                volumes[name],
+                {"name": name, "emptyDir": {"sizeLimit": "1Mi"}},
+            )
         self.assertEqual(
             volumes["squid-config"],
             {
@@ -518,14 +525,18 @@ class MaintainerrContractTests(unittest.TestCase):
         )
         self.assertEqual(
             {mount["name"]: mount["mountPath"] for mount in proxy["volumeMounts"]},
-            {"squid-config": "/etc/squid", "tmp": "/tmp"},
+            {
+                "squid-config": "/etc/squid",
+                "tmp": "/tmp",
+                "squid-log": "/var/log/squid",
+                "squid-spool": "/var/spool/squid",
+            },
         )
-        config_mount = next(
-            mount
-            for mount in proxy["volumeMounts"]
-            if mount["name"] == "squid-config"
-        )
-        self.assertTrue(config_mount["readOnly"])
+        mounts = {mount["name"]: mount for mount in proxy["volumeMounts"]}
+        self.assertTrue(mounts["squid-config"]["readOnly"])
+        self.assertTrue(mounts["squid-log"]["readOnly"])
+        self.assertTrue(mounts["squid-spool"]["readOnly"])
+        self.assertNotIn("readOnly", mounts["tmp"])
 
     def test_proxy_security_context_is_uid_13_and_hardened(self) -> None:
         deployment = resource(
