@@ -736,7 +736,7 @@ class MaintainerrContractTests(unittest.TestCase):
             ],
         )
 
-    def test_squid_config_rejects_raw_ip_suffix_and_trailing_dot_bypass(self) -> None:
+    def test_squid_config_rejects_raw_ip_suffix_and_superdomain_bypass(self) -> None:
         lines = squid_lines()
         tmdb_acl = [line for line in lines if "dstdom_regex" in line]
         self.assertEqual(
@@ -748,14 +748,15 @@ class MaintainerrContractTests(unittest.TestCase):
             [line for line in lines if re.match(r"acl\s+\S+\s+dst\s", line)],
             [],
         )
-        # Anchored, case-insensitive hostname match only.
+        # Anchored, case-insensitive hostname match only. Squid canonicalizes
+        # terminal DNS root dots before this ACL; equivalent spellings are
+        # therefore live behavior checks, not Python-regex assertions.
         allowed = re.compile(r"^api\.themoviedb\.org$", re.IGNORECASE)
         self.assertIsNotNone(allowed.fullmatch("api.themoviedb.org"))
         self.assertIsNotNone(allowed.fullmatch("API.TheMovieDB.ORG"))
         for bypass in (
             "api.themoviedb.org.evil.com",  # suffix/superdomain
             "evilapi.themoviedb.org",  # prefix
-            "api.themoviedb.org.",  # trailing dot FQDN
             "17.142.68.219",  # raw IP
             "themoviedb.org",  # superdomain
         ):
