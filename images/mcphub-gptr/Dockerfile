@@ -43,9 +43,9 @@ ARG FASTMCP_VERSION=2.14.7
 # renovate: datasource=npm packageName=@modelcontextprotocol/server-filesystem versioning=semver
 ARG FILESYSTEM_MCP_VERSION=2026.7.10
 # renovate: datasource=npm packageName=@eargollo/vikunja-mcp versioning=semver
-ARG VIKUNJA_MCP_VERSION=1.2.0
+ARG VIKUNJA_MCP_VERSION=1.2.1
 # renovate: datasource=npm packageName=@klodr/gmail-mcp versioning=semver
-ARG GMAIL_MCP_VERSION=1.3.1
+ARG GMAIL_MCP_VERSION=1.3.3
 # renovate: datasource=npm packageName=@cocal/google-calendar-mcp versioning=semver
 ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
 # renovate: datasource=npm packageName=@google-cloud/gcloud-mcp versioning=semver
@@ -62,9 +62,9 @@ ARG JELLYSEERR_MCP_RICH_VERSION=14.3.4
 # renovate: datasource=pypi packageName=mcp versioning=pep440
 ARG JELLYSEERR_MCP_SDK_VERSION=1.28.1
 # renovate: datasource=npm packageName=mcp-arr-server versioning=semver
-ARG MCP_ARR_VERSION=1.6.5
+ARG MCP_ARR_VERSION=1.7.3
 # renovate: datasource=npm packageName=navidrome-mcp versioning=semver
-ARG NAVIDROME_MCP_VERSION=2.1.0
+ARG NAVIDROME_MCP_VERSION=2.2.0
 # renovate: datasource=pypi packageName=audiobookshelf-mcp versioning=pep440
 ARG AUDIOBOOKSHELF_MCP_VERSION=1.0.1
 # renovate: datasource=pypi packageName=agent-utilities versioning=pep440
