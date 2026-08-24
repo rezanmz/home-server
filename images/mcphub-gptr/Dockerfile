@@ -142,7 +142,7 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates libmagic1 \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install --global --ignore-scripts \
+    && npm install --global --ignore-scripts --no-audit \
          "@modelcontextprotocol/server-filesystem@${FILESYSTEM_MCP_VERSION}" \
          "@eargollo/vikunja-mcp@${VIKUNJA_MCP_VERSION}" \
          "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
