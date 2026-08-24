@@ -139,16 +139,24 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # import-order repair; the official MCP server source is unchanged.
 # Jellyseerr's upstream Rich console defaults to stdout. The small sed below
 # preserves the upstream server while moving logs off the stdio JSON-RPC stream.
+# The base image preinstalls the same MCP server packages globally at older
+# transitive pins (hono, ip-address, fast-uri) that now carry high-severity
+# advisories, and npm's post-install audit fails on them. Those globals are
+# fully redundant: this RUN reinstalls the exact same set at our pinned
+# versions below. Remove them first so npm's built-in audit covers only
+# this repository's dependency tree.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates libmagic1 \
     && rm -rf /var/lib/apt/lists/* \
-    # npm's post-install audit is fatal on high-severity findings, and the
-    # samanhappy/mcphub base image ships its own global dependency tree
-    # (hono, ip-address, fast-uri) with recent high-severity advisories that
-    # this repo cannot fix from here. Disable the built-in audit; the base's
-    # dependency health is tracked upstream. Our own pinned packages are
-    # reviewed via Renovate.
-    && npm install --global --ignore-scripts --no-audit \
+    && rm -rf \
+         /usr/lib/node_modules/@cocal \
+         /usr/lib/node_modules/@eargollo \
+         /usr/lib/node_modules/@google-cloud \
+         /usr/lib/node_modules/@klodr \
+         /usr/lib/node_modules/@modelcontextprotocol \
+         /usr/lib/node_modules/mcp-arr-server \
+         /usr/lib/node_modules/navidrome-mcp \
+    && npm install --global --ignore-scripts \
          "@modelcontextprotocol/server-filesystem@${FILESYSTEM_MCP_VERSION}" \
          "@eargollo/vikunja-mcp@${VIKUNJA_MCP_VERSION}" \
          "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
