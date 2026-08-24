@@ -188,7 +188,7 @@ extract_resource OCIRepository flux-system traefik "${traefik_source}"
 validate_release_reference "${traefik_release}" OCIRepository flux-system traefik
 traefik_chart="$(pull_oci_chart \
   "${traefik_source}" \
-  f7f8b70f021f34164709bc6440165c0ccb79073dccb6369310d95a1c3cf8a2f0)"
+  cd475e9434edf118ad58f33e9d423780304c6458681071a2bce7f94b051a9659)"
 render_release "${traefik_release}" "${traefik_chart}"
 
 metallb_release="${tmp}/metallb-release.yaml"
@@ -230,7 +230,7 @@ validate_release_reference \
   "${observability_release}" OCIRepository flux-system kube-prometheus-stack
 observability_chart="$(pull_oci_chart \
   "${observability_source}" \
-  5609de52e7af33792e6c6678b9443cacaec0cd81feacc956f6da0209a7463cba)"
+  c17a08afbbaa8577b5bdc990511b3cf1a3a37ae76ce5817e7478300f9933749b)"
 render_release "${observability_release}" "${observability_chart}"
 
 : >"${expected_releases}"
