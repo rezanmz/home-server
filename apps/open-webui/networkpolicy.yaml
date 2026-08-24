@@ -34,13 +34,6 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: open-webui
-              app.kubernetes.io/component: tika
-      ports:
-        - {port: 9998, protocol: TCP}
-    - to:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: open-webui
               app.kubernetes.io/component: searxng
       ports:
         - {port: 8080, protocol: TCP}
@@ -91,30 +84,6 @@ spec:
               - 240.0.0.0/4
       ports:
         - {port: 443, protocol: TCP}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: tika
-  namespace: apps
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: open-webui
-      app.kubernetes.io/component: tika
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: open-webui
-              app.kubernetes.io/component: application
-      ports:
-        - port: 9998
-          protocol: TCP
-  egress: []
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

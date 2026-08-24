@@ -131,10 +131,6 @@ spec:
               value: same-origin
             - name: ENABLE_OLLAMA_API
               value: "False"
-            - name: CONTENT_EXTRACTION_ENGINE
-              value: tika
-            - name: TIKA_SERVER_URL
-              value: http://tika:9998
             # Every authenticated Open WebUI user may invoke every provider model.
             # Upstream provider availability, credit, privacy, and API-mode constraints
             # remain authoritative and are returned directly to the caller.
@@ -256,82 +252,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: open-webui-data
-        - name: tmp
-          emptyDir:
-            sizeLimit: 256Mi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: tika
-  namespace: apps
-  labels:
-    app.kubernetes.io/name: open-webui
-    app.kubernetes.io/component: tika
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: open-webui
-      app.kubernetes.io/component: tika
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: open-webui
-        app.kubernetes.io/component: tika
-    spec:
-      automountServiceAccountToken: false
-      enableServiceLinks: false
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: tika
-          image: apache/tika:3.3.1.0-full@sha256:d8e6ed96260ad89307a93195a1b856102987a818ac648502f8efbaf313d32470
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: http
-              containerPort: 9998
-              protocol: TCP
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-          startupProbe:
-            httpGet:
-              path: /tika
-              port: http
-            periodSeconds: 5
-            timeoutSeconds: 10
-            failureThreshold: 30
-          readinessProbe:
-            httpGet:
-              path: /tika
-              port: http
-            periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 3
-          livenessProbe:
-            httpGet:
-              path: /tika
-              port: http
-            periodSeconds: 60
-            timeoutSeconds: 10
-            failureThreshold: 3
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      volumes:
         - name: tmp
           emptyDir:
             sizeLimit: 256Mi
