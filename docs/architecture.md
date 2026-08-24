@@ -71,7 +71,7 @@ pod logs, or application APIs and cannot change cluster state.
 
 Open WebUI is the personal AI entry point at `chat.reza.network`. Authentik
 provides its native OIDC login; there is no local password login or public
-signup. Tika and SearXNG are cluster-only supporting services with no external
+signup. SearXNG is a cluster-only supporting service with no external
 routes. SearXNG supplies ordinary native web search. MCPHub is the single MCP
 registry and execution boundary for Open WebUI; its browser UI is LAN/VPN-only
 and uses native Authentik OIDC.

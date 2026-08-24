@@ -164,7 +164,6 @@
       "matchPackageNames": [
         "ghcr.io/open-webui/open-webui",
         "ghcr.io/searxng/searxng",
-        "apache/tika",
         "nousresearch/hermes-agent",
         "rezanmz/mcphub-gptr",
         "rezanmz/llamacloud-mcp",

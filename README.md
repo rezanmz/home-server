@@ -75,7 +75,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Area | Workloads | Entry points |
 | --- | --- | --- |
 | Identity and home | Authentik, Homepage, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
-| Personal apps | Actual Budget, Vikunja, MCPHub, Hermes Agent, Open WebUI with Tika, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `hermes.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
+| Personal apps | Actual Budget, Vikunja, MCPHub, Hermes Agent, Open WebUI, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `hermes.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
 | Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Seerr, Navidrome | `jellyfin.reza.network`, `seerr.reza.network`, `music.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Soularr, slskd | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network`, `lidarr.reza.network`, `soularr.reza.network`, `slskd.reza.network` |

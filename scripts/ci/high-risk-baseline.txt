@@ -166,7 +166,6 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-web
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|seerr|spec/sha256/e2481fcfb0c2f180be8431165fcfeec06318ec4acb125a263bba3940b62b2e8d
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|speedtest-tracker|spec/sha256/9e8889aa30075eb5715602faa8bc6ef3b41957d1d88c3e674f58780d916919e1
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|tika|spec/sha256/75787649c5cc65abdb9d4b53762cfbb17b685080007a1cf68a2fa7c4ef003d03
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vikunja|spec/sha256/dcc1255377ad4ce12e740741d3c11f91f2cad9f13b4fb38143c442985a33fb7e
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|juicefs-postgresql|spec/sha256/36716bbe1bac7ce647ee26d35af967c2201f94932647d5bc8aa4d1b9733ab0a7

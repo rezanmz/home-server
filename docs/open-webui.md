@@ -7,7 +7,7 @@ deployment must not rewrite those choices.
 
 The deployment manifests own only the runtime boundary: image version,
 resources, persistent storage, network access, login wiring, secure defaults,
-and the addresses of cluster services such as Tika and SearXNG.
+and the addresses of cluster services such as SearXNG.
 
 ## Profiles and model choice
 
