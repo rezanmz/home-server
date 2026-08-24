@@ -11,8 +11,8 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SABNZBD_IMAGE = (
-    "lscr.io/linuxserver/sabnzbd:5.1.0-ls266@"
-    "sha256:b0f9755d795913bd26ae3f3a12805668ab0681ab847a7624568559c573fc7cae"
+    "lscr.io/linuxserver/sabnzbd:5.1.1-ls268@"
+    "sha256:78253a5ed379d08c16deba4154a2468875aa25a729c54c59c1199f851f87c29e"
 )
 GLUETUN_IMAGE = (
     "qmcgaw/gluetun:v3.41.3@"
@@ -23,8 +23,8 @@ BUSYBOX_IMAGE = (
     "sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616"
 )
 NGINX_IMAGE = (
-    "nginx:1.31.3-alpine@"
-    "sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752"
+    "nginx:1.31.4-alpine@"
+    "sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913"
 )
 
 
