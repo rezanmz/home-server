@@ -7,6 +7,6 @@ spec:
   interval: 24h
   timeout: 2m
   ref:
-    tag: v1.5.1
-    commit: e7677b70ae75d14a4448fba94870e7deea6cf0ad
+    tag: v1.6.1
+    commit: 8bb74df00e56ec8f944d48c25e6c1c9c2f6848e3
   url: https://github.com/kubernetes-sigs/gateway-api.git
