@@ -156,7 +156,15 @@ RUN apt-get update \
          /usr/lib/node_modules/@modelcontextprotocol \
          /usr/lib/node_modules/mcp-arr-server \
          /usr/lib/node_modules/navidrome-mcp \
-    && npm install --global --ignore-scripts \
+    # npm's post-install audit is fatal on high-severity findings. After
+    # removing the redundant base globals above, the only remaining highs are
+    # bundled inside the npm CLI itself (e.g. its ip-address dependency),
+    # which a global install cannot avoid and this image cannot patch.
+    # --no-audit is scoped to that reality; the tree this repository controls
+    # (the seven pinned MCP packages below) audits clean apart from 2
+    # moderate findings with no upstream fix. npm's bundled deps are tracked
+    # by the npm project.
+    && npm install --global --ignore-scripts --no-audit \
          "@modelcontextprotocol/server-filesystem@${FILESYSTEM_MCP_VERSION}" \
          "@eargollo/vikunja-mcp@${VIKUNJA_MCP_VERSION}" \
          "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
