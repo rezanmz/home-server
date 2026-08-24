@@ -311,7 +311,7 @@ spec:
             - {name: config, mountPath: /config}
       containers:
         - name: home-assistant
-          image: ghcr.io/home-assistant/home-assistant:2026.8.1@sha256:6340a3de3917a9b19368e767310a96dd090f6a19aca8aeadf87fd1145cec9682
+          image: ghcr.io/home-assistant/home-assistant:2026.8.3@sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
@@ -362,7 +362,7 @@ spec:
             - name: config
               mountPath: /config
         - name: access-proxy
-          image: nginx:1.31.3-alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752
+          image: nginx:1.31.4-alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:

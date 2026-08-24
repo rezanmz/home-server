@@ -17,7 +17,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: duplicati
-          image: linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls304@sha256:9166c91eeef6965acf1b80f694ab03738fc143d1ff4e7be0c1d6a1bc89a24ed3
+          image: linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls305@sha256:b41c23f678002c41857ce82b7a301457b82d448d0c48749c486121796c308bad
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "0"}
@@ -52,7 +52,7 @@ spec:
             - {name: source, mountPath: /source, readOnly: true}
             - {name: media, mountPath: /media, readOnly: true}
         - name: access-proxy
-          image: nginx:1.31.3-alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752
+          image: nginx:1.31.4-alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913
           command: [nginx, -g, "daemon off;"]
           ports:
             - {name: access-http, containerPort: 18200}

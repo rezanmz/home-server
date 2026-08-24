@@ -368,7 +368,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: search-provider-proxy
-          image: ghcr.io/searxng/searxng:2026.8.12-54613defc@sha256:37baac8380e1a31e022b8dda0c58dbd6ba0630e3fdaf2c522bda3d140f5ef111
+          image: ghcr.io/searxng/searxng:2026.8.22-777ba8fa4@sha256:51ef3af3c4655f13c65ac63ec54f0abffbcd94c49e965041aae438d3f9794e55
           imagePullPolicy: IfNotPresent
           command: [python, /provider/search-provider-proxy.py]
           env:
@@ -423,7 +423,7 @@ spec:
             - name: provider-tmp
               mountPath: /tmp
         - name: searxng-free-engines
-          image: ghcr.io/searxng/searxng:2026.8.12-54613defc@sha256:37baac8380e1a31e022b8dda0c58dbd6ba0630e3fdaf2c522bda3d140f5ef111
+          image: ghcr.io/searxng/searxng:2026.8.22-777ba8fa4@sha256:51ef3af3c4655f13c65ac63ec54f0abffbcd94c49e965041aae438d3f9794e55
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
