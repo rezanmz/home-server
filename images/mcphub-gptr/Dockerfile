@@ -75,11 +75,13 @@ ARG ACTUAL_MCP_REVISION=24925803dff2dfb697cb6e53c06662ee66c94f01
 # renovate: datasource=npm packageName=@actual-app/api versioning=semver
 ARG ACTUAL_API_VERSION=26.7.0
 # renovate: datasource=npm packageName=hono versioning=semver
-ARG ACTUAL_MCP_HONO_VERSION=4.12.31
+ARG ACTUAL_MCP_HONO_VERSION=4.13.4
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
-ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.0.11
+ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.1
 # renovate: datasource=npm packageName=fast-uri versioning=semver
-ARG ACTUAL_MCP_FAST_URI_VERSION=3.1.4
+ARG ACTUAL_MCP_FAST_URI_VERSION=4.1.3
+# renovate: datasource=npm packageName=ip-address versioning=semver
+ARG ACTUAL_MCP_IP_ADDRESS_VERSION=10.5.0
 # renovate: datasource=npm packageName=body-parser versioning=semver
 ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
 # renovate: datasource=npm packageName=qs versioning=semver
@@ -156,15 +158,7 @@ RUN apt-get update \
          /usr/lib/node_modules/@modelcontextprotocol \
          /usr/lib/node_modules/mcp-arr-server \
          /usr/lib/node_modules/navidrome-mcp \
-    # npm's post-install audit is fatal on high-severity findings. After
-    # removing the redundant base globals above, the only remaining highs are
-    # bundled inside the npm CLI itself (e.g. its ip-address dependency),
-    # which a global install cannot avoid and this image cannot patch.
-    # --no-audit is scoped to that reality; the tree this repository controls
-    # (the seven pinned MCP packages below) audits clean apart from 2
-    # moderate findings with no upstream fix. npm's bundled deps are tracked
-    # by the npm project.
-    && npm install --global --ignore-scripts --no-audit \
+    && npm install --global --ignore-scripts \
          "@modelcontextprotocol/server-filesystem@${FILESYSTEM_MCP_VERSION}" \
          "@eargollo/vikunja-mcp@${VIKUNJA_MCP_VERSION}" \
          "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
@@ -196,6 +190,7 @@ RUN apt-get update \
          "overrides.hono=${ACTUAL_MCP_HONO_VERSION}" \
          "overrides.@hono/node-server=${ACTUAL_MCP_HONO_NODE_SERVER_VERSION}" \
          "overrides.fast-uri=${ACTUAL_MCP_FAST_URI_VERSION}" \
+         "overrides.ip-address=${ACTUAL_MCP_IP_ADDRESS_VERSION}" \
          "overrides.body-parser=${ACTUAL_MCP_BODY_PARSER_VERSION}" \
          "overrides.qs=${ACTUAL_MCP_QS_VERSION}" \
          "overrides.brace-expansion=${ACTUAL_MCP_BRACE_EXPANSION_VERSION}" \
