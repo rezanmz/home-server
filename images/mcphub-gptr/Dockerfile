@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1.25
 ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.26@sha256:efdbfa3990d5a27d0611ba509db30bcdda196dc14ee2fe7d5f1706cae636ef37
 ARG GCLOUD_IMAGE=gcr.io/google.com/cloudsdktool/google-cloud-cli:581.0.0-slim@sha256:2a52a0a58a2a267535f862bdb2026a5ababdb382ad1c49a06dd21a94df1cc4fc
-ARG GO_IMAGE=golang:1.26.5-bookworm@sha256:1ecb7edf62a0408027bd5729dfd6b1b8766e578e8df93995b225dfd0944eb651
+ARG GO_IMAGE=golang:1.26.7-bookworm@sha256:6ef6e30f0ea5c384f6d111cf856e024e3086bbdcb1779da3f3b3fbba0aea53d2
 
 FROM ${GCLOUD_IMAGE} AS gcloud
 FROM ${GO_IMAGE} AS operations-mcp-builder
 
-ARG GRAFANA_MCP_REVISION=fac7c8a312c6f6aee8330de72182dcf45bf4ae26
-ARG KUBERNETES_MCP_REVISION=56d6dfe9a1b994faca27fa3310cb54e3d3bc42ed
-ARG GITHUB_MCP_REVISION=7629b6e7337e1fc4b11a0ca5fdea4af4edd21f6e
+ARG GRAFANA_MCP_REVISION=fcb27c6dc86c4c108c601dea163c048d36e05742
+ARG KUBERNETES_MCP_REVISION=5d42192b288224d2d0ec7313826f1dd3e144a567
+ARG GITHUB_MCP_REVISION=8898db96b8043db1ddacff444600e408cf824fa2
 
 # Build the upstream operations servers from reviewed exact revisions. Some
 # are signed releases; others remain intentionally pinned to reviewed commits
@@ -52,11 +52,11 @@ ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
 ARG GCLOUD_MCP_VERSION=0.5.3
 # renovate: datasource=pypi packageName=pypdf versioning=pep440
 ARG PYPDF_VERSION=6.1.1
-ARG JELLYSEERR_MCP_REVISION=fccf5689d64ad3ac6fc69dff8d4cb5ccf625a29a
+ARG JELLYSEERR_MCP_REVISION=a8dde54d6f9e4139b2b630f099320046ba17f242
 # renovate: datasource=pypi packageName=httpx versioning=pep440
 ARG JELLYSEERR_MCP_HTTPX_VERSION=0.28.1
 # renovate: datasource=pypi packageName=python-dotenv versioning=pep440
-ARG JELLYSEERR_MCP_DOTENV_VERSION=1.2.2
+ARG JELLYSEERR_MCP_DOTENV_VERSION=1.2.3
 # renovate: datasource=pypi packageName=rich versioning=pep440
 ARG JELLYSEERR_MCP_RICH_VERSION=14.3.4
 # renovate: datasource=pypi packageName=mcp versioning=pep440
@@ -70,10 +70,10 @@ ARG AUDIOBOOKSHELF_MCP_VERSION=1.0.1
 # renovate: datasource=pypi packageName=agent-utilities versioning=pep440
 ARG AUDIOBOOKSHELF_MCP_AGENT_UTILITIES_VERSION=1.0.2
 # renovate: datasource=pypi packageName=python-dotenv versioning=pep440
-ARG AUDIOBOOKSHELF_MCP_DOTENV_VERSION=1.2.2
-ARG ACTUAL_MCP_REVISION=24925803dff2dfb697cb6e53c06662ee66c94f01
+ARG AUDIOBOOKSHELF_MCP_DOTENV_VERSION=1.2.3
+ARG ACTUAL_MCP_REVISION=9c64ad232448b47146a2e35f7ffaa6eefeb816bb
 # renovate: datasource=npm packageName=@actual-app/api versioning=semver
-ARG ACTUAL_API_VERSION=26.7.0
+ARG ACTUAL_API_VERSION=26.8.1
 # renovate: datasource=npm packageName=hono versioning=semver
 ARG ACTUAL_MCP_HONO_VERSION=4.13.4
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
