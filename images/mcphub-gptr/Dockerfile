@@ -142,7 +142,13 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates libmagic1 \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install --global --ignore-scripts \
+    # npm's post-install audit is fatal on high-severity findings, and the
+    # samanhappy/mcphub base image ships its own global dependency tree
+    # (hono, ip-address, fast-uri) with recent high-severity advisories that
+    # this repo cannot fix from here. Disable the built-in audit; the base's
+    # dependency health is tracked upstream. Our own pinned packages are
+    # reviewed via Renovate.
+    && npm install --global --ignore-scripts --no-audit \
          "@modelcontextprotocol/server-filesystem@${FILESYSTEM_MCP_VERSION}" \
          "@eargollo/vikunja-mcp@${VIKUNJA_MCP_VERSION}" \
          "@klodr/gmail-mcp@${GMAIL_MCP_VERSION}" \
