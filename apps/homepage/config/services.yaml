@@ -19,12 +19,6 @@
         description: Personal finance
         namespace: apps
         app: actual-budget
-    - Speedtest Tracker:
-        icon: speedtest-tracker.png
-        href: https://speedtest.reza.network/
-        description: Internet performance history
-        namespace: apps
-        app: speedtest-tracker
 - Productivity:
     - Vikunja:
         icon: vikunja.png
