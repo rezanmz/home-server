@@ -160,7 +160,7 @@ allow it.
 | Namespace | Workloads | Storage or external dependency |
 | --- | --- | --- |
 | `media` | Downloads/Arr stack and Calibre-Web | Downloads softly prefers a non-control-plane worker. Calibre-Web floats independently; its ingest handoff with Shelfmark uses a Longhorn RWX claim. Neither names a physical node. Pi-hosted NFS downloads and JuiceFS remain reachable from either node. |
-| `apps` | Actual Budget, Homepage, Seerr, Vikunja, Omnifin | Longhorn for stateful workloads; Homepage is stateless; Omnifin separates its public web process from the private credential-bearing gateway |
+| `apps` | Actual Budget, Homepage, Seerr, Vikunja | Longhorn for stateful workloads; Homepage is stateless |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
 | `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent; internal LlamaCloud MCP | Longhorn for state; LlamaCloud is stateless and reads the Syncthing vault over NFS |
 | `apps` | Open WebUI | Open WebUI uses Longhorn; Authentik OIDC dependency |
@@ -934,11 +934,10 @@ listed here so accepted risk does not turn into forgotten risk:
   continue quarterly isolated Syncthing plus application/database restores.
 - Decide whether to taint the Pi and tolerate only physically required
   workloads, reducing the trust implied by its pod-CIDR exception.
-- Until that trust is removed, audit every Internet-facing floating workload—
-  including Omnifin—for the private-route access it would inherit if scheduled
-  on the Pi. Pin it away from the Pi or document a reviewed NetworkPolicy and
-  route-level proof; do not copy floating placement into a new public service by
-  default.
+- Until that trust is removed, audit every Internet-facing floating workload
+  for the private-route access it would inherit if scheduled on the Pi. Pin it
+  away from the Pi or document a reviewed NetworkPolicy and route-level proof;
+  do not copy floating placement into a new public service by default.
 - Add a third-server control-plane design only as an intentional three-member
   HA migration; two server nodes do not provide the desired embedded-etcd
   failure tolerance.

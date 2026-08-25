@@ -61,17 +61,15 @@ and cluster-operations for architecture/placement concerns.
 3. Resolve the target tag to an immutable digest through an authoritative
    registry view. Verify the manifest list contains every required architecture
    and that the tag/variant matches the intended release channel. Never replace
-   a tag-qualified reference with tag-only or digest-only ambiguity. Preserve
-   Omnifin's tested digest-only edge form only when Omnifin is the named target.
+   a tag-qualified reference with tag-only or digest-only ambiguity.
 4. Inspect adjacent configuration, probes, resources, securityContext,
    NetworkPolicy, PVCs, and catalog claims for required coordinated changes.
 5. For stateful or format-changing updates, require a readable application export
    and current independent backup before rollout. Document whether old code can
    read post-migration data.
 6. Change the smallest set of manifests, preserving the service's reviewed
-   immutable form. Ordinary images remain `repository:tag@digest`; do not copy
-   the Omnifin digest-only exception. Do not combine an unrelated digest refresh
-   with a feature/version update.
+   immutable form. Ordinary images remain `repository:tag@digest`. Do not combine
+   an unrelated digest refresh with a feature/version update.
 7. Render catalog output if relevant and run the complete local validation
    bundle. Review source-pin, schema, secret, Helm-render, and high-risk results.
 8. If authorized, use protected review and Flux. At the exact merged revision,

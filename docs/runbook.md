@@ -250,93 +250,16 @@ payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
 metadata recovery is required to interpret those chunks. They are not included
 in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
-### Omnifin first run, OIDC, recovery, and upgrades
+### Omnifin retirement
 
-Omnifin is internet-accessible at `omnifin.reza.network`. Its public web process
-is stateless; the private gateway exclusively owns SQLite, connector
-credentials, sessions, authorization, and audit records. Never route the
-`omnifin-gateway` Service or copy connector credentials into the web Deployment.
-Both workloads and the maintenance job use the same digest-only immutable edge
-reference. Read its current identity from the active manifests and
-`scripts/ci/test_omnifin_contract.py`; do not copy a digest from this runbook or
-relax the contract to a mutable tag.
-
-A fresh database has no administrator. Open `/recovery` directly, obtain the
-`recovery-secret` from `apps/omnifin/secrets.sops.yaml`, and use Jellyfin Quick
-Connect or a Jellyfin administrator password to establish the first Omnifin
-administrator. The recovery route is deliberately hidden, rate-limited, and
-requires both the deployment secret and current Jellyfin administrator proof.
-Do not expose or store the recovered plaintext secret in a shell history,
-ticket, note, or application manifest.
-
-Authentik is registered from the service catalog with exact callback,
-post-logout, and back-channel logout URLs. In **Account & access → Identity
-providers**, create the application-owned provider with:
-
-- slug `authentik`, which produces provider ID `oidc-authentik`;
-- issuer `https://auth.reza.network/application/o/omnifin/`;
-- approved endpoint origin `https://auth.reza.network`;
-- client ID `omnifin`, `client_secret_basic`, RS256, and scopes `openid email
-  profile offline_access`; and
-- the provider-side client secret from
-  `apps/authentik/oidc-client-secrets.sops.yaml`.
-
-Save it disabled, run Omnifin's discovery validation, and only then enable it.
-Keep just-in-time users at the viewer role until a narrow claim mapping has
-been tested. OIDC configuration and connector credentials are operational
-application state encrypted in SQLite; do not duplicate them as Deployment
-environment variables or reconcile them from Git. On a fresh database,
-Authentik may create the first administrator through the recovery-bound
-`/recovery` flow, but ordinary OIDC sign-in never creates administrator
-authority and recovery bootstrap is refused once that invariant is satisfied.
-Media access remains denied until the Jellyfin identity is explicitly paired.
-
-The gateway may connect only to the reviewed internal media APIs. Prefer these
-addresses when adding connectors and explicitly approve the private-network
-destination in Omnifin:
-
-| Connector | Internal URL |
-| --- | --- |
-| Jellyfin | `http://jellyfin.media.svc.cluster.local:8096` |
-| Seerr | `http://seerr-api.apps.svc.cluster.local:5055` |
-| Radarr | `http://radarr.media.svc.cluster.local:7878` |
-| Sonarr | `http://sonarr.media.svc.cluster.local:8989` |
-| Prowlarr | `http://prowlarr.media.svc.cluster.local:9696` |
-| qBittorrent | `http://qbittorrent.media.svc.cluster.local:8080` |
-
-Validate and enable one connector at a time. Exercise one representative read
-and a harmless mutation before relying on each capability. The `omnifin-data`
-PVC inherits the nightly Longhorn B2 backup policy, but that is not a substitute
-for an application backup. Before an upgrade, trigger and verify a retained
-application-native backup; retain its result, backup
-manifest, and exact image digest. Keep the matching encryption and recovery
-secrets separately protected. Do not start the upgrade until the backup can be
-read and verified; a rollback must restore that verified pre-upgrade database
-backup and the previous immutable image together, never just change the image
-while retaining a database opened by the new gateway.
-
-The daily `omnifin-maintenance` CronJob runs at 03:17 UTC with
-`maintenance backup-retained --retain 14`. It requires the gateway on the same
-node because `omnifin-data` is RWO, forbids overlap, and writes retained,
-application-native backups locally under `/data/backups`. The data-mounting
-gateway and maintenance pod intentionally omit pod-level `fsGroup` and
-`fsGroupChangePolicy` to prevent recursive Longhorn permission widening. The
-maintenance pod has no public network path, recovery-secret or other credential
-mount, service-account token, init container, or egress. Its required affinity
-to a running gateway lets it rely on the gateway init's `DAC_OVERRIDE`, `CHOWN`,
-and `FOWNER` capabilities only for exact private-path repairs: `/data` is
-`65532:65532`/`0700` and the database, WAL, and SHM files are private. The
-gateway's Secret projections are `0444` and mounted only in that gateway
-container. The gateway init repair lets the daily maintenance CronJob run with
-the gateway online and verify its `0600` database files without widening them.
-
-After the rollout, retain evidence from the current image's `doctor`, `health`,
-and `flight-check` commands; `doctor` validates the local gateway
-endpoints `http://127.0.0.1:4000/healthz` and
-`http://127.0.0.1:4000/readyz`. Confirm the CronJob's latest retained backup completed,
-verify that backup, and record its digest and manifest. Then validate the
-Jellyfin, Seerr, Radarr, Sonarr, Prowlarr, and qBittorrent connector checks
-individually, including one harmless read and mutation where supported.
+Omnifin is retired. Its `omnifin-data` PVC (SQLite: connector credentials, OIDC
+configuration, sessions, and audit records) and the `omnifin-secrets`
+encryption/recovery Secret remain reconciled as recovery artifacts; the
+application-native backups under `/data/backups` are retained inside the PVC.
+The Authentik OIDC provider, application, and provider-side client secret
+(`AUTHENTIK_OIDC_OMNIFIN_CLIENT_SECRET`) are retained because no tested
+Authentik cleanup lifecycle exists. Take a verified final export of the PVC
+before any destructive cleanup.
 
 ## DNS and DHCP
 
