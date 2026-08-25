@@ -102,7 +102,14 @@ jobs:
           FLUX_VERIFY_ONLY=true scripts/bootstrap-flux.sh
           python3 -m py_compile scripts/*.py
           python3 -m py_compile scripts/ci/*.py
-          python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
+
+      - name: Validate agent guidance
+        run: python3 scripts/ci/validate-agent-guidance.py
+
+      - name: Run Python unit tests
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/python-cache
+        run: python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 
       - name: Reject plaintext Kubernetes Secrets
         run: python3 scripts/ci/validate-secrets.py

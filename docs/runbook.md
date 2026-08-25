@@ -1,5 +1,11 @@
 # Home cluster runbook
 
+Commands in this runbook describe the supported procedure after authorization;
+they are not standing permission. Repository edits, commits, pushes, pull
+requests, merges, remote workflows or publication, live cluster or host work,
+application state, external providers, credentials, and destructive actions
+remain separate authorization planes.
+
 ## Access and first checks
 
 The Kubernetes API is not exposed publicly. Administer the cluster through the
@@ -48,7 +54,10 @@ Before changing storage, create an application-level export or snapshot and
 verify that it can be read. Longhorn uses `reclaimPolicy: Retain`, but that
 only protects a volume after PVC deletion; it is not a database backup.
 
-To request immediate reconciliation after a push:
+Normal Flux polling is the default. The following annotations mutate live Flux
+objects; use them only with explicit live-mutation authorization for the exact
+GitRepository and Kustomization after the intended revision reaches protected
+`main`:
 
 ```bash
 stamp=$(date +%s)
@@ -217,19 +226,22 @@ state.
 
 Audiobookshelf is internet-accessible at `audiobooks.reza.network` and uses its
 native Authentik OIDC flow for browsers and the official mobile app. Its local
-root account is a recovery path; the generated password is stored only in the
-SOPS-encrypted `media/audiobookshelf-secrets` Secret. Do not disable local auth
-without replacing and testing that recovery path.
+root account is a recovery path stored in Audiobookshelf's backed-up application
+state; preserve its credential in the operator's protected recovery system.
+Authentik's provider copy of the OIDC secret is SOPS-managed, while the
+relying-party copy is application-managed as declared by the catalog. Do not
+invent a workload Secret or disable local auth without replacing and testing
+that recovery path.
 
-The lifecycle bootstrap writes `/config/.gitops-bootstrap-complete` only after
-the root account, OIDC settings, and initial libraries are configured. The
-marker includes a one-way hash of the OIDC client secret: ordinary restarts do
-not need the recovery login, while a secret rotation reconciles the application
-settings before writing a new marker. The pod cannot become Ready on an empty
-PVC before that hook succeeds. If the hook fails, inspect the previous
-container log and verify the Authentik OIDC provider/application and discovery
-document, encrypted secrets, NFS mounts, and root credential; do not bypass the
-hook or create the marker manually to clear the outage.
+The local root, OIDC relying-party settings, and libraries are application-owned
+state. The Deployment intentionally has no Git-managed post-start reconciler,
+bootstrap password, or durable marker; the ownership validator rejects those
+patterns. Its `/healthcheck` readiness probe also does not prove onboarding.
+When restoring to an empty replacement PVC, first remove or withhold the public
+route through reviewed desired state, configure and verify the recovery root,
+OIDC, and initial libraries through a separately authorized private path, then
+restore public exposure in a second reviewed change. Never expose an empty
+first-owner page or add an init hook that overwrites restored settings.
 
 Longhorn and its B2 target protect `/config` and `/metadata`. The writable
 `audiobooks` and `podcasts` directories and read-only `books` directory are
@@ -244,8 +256,10 @@ Omnifin is internet-accessible at `omnifin.reza.network`. Its public web process
 is stateless; the private gateway exclusively owns SQLite, connector
 credentials, sessions, authorization, and audit records. Never route the
 `omnifin-gateway` Service or copy connector credentials into the web Deployment.
-Both workloads are pinned to the immutable v0.16.0 release
-`ghcr.io/rezanmz/omnifin@sha256:8018eb13bea4032f05517991626928100d778789418ccaaca6400cf3069fee76`.
+Both workloads and the maintenance job use the same digest-only immutable edge
+reference. Read its current identity from the active manifests and
+`scripts/ci/test_omnifin_contract.py`; do not copy a digest from this runbook or
+relax the contract to a mutable tag.
 
 A fresh database has no administrator. Open `/recovery` directly, obtain the
 `recovery-secret` from `apps/omnifin/secrets.sops.yaml`, and use Jellyfin Quick
@@ -686,8 +700,9 @@ in B2. Do not treat Longhorn replicas as copies of NFS or JuiceFS payload data.
 ### Media storage inventory
 
 The **Media Storage** Grafana dashboard separates three storage layers: the
-2 TiB logical JuiceFS/B2 library, the Pi filesystem holding active downloads
-and K3s, and each node's disposable JuiceFS cache. Category figures cover
+10 TiB logical JuiceFS/B2 library (whose static Kubernetes binding metadata
+remains 2 TiB), the Pi filesystem holding active downloads and K3s, and each
+node's disposable JuiceFS cache. Category figures cover
 `movies`, `tv`, `music`, `books`, `audiobooks`, and `podcasts`; downloads have
 their own local metrics because imports are copies across filesystems and no
 longer share hardlinks.
@@ -892,11 +907,11 @@ independent freshness-check successes are.
 
 Only PVCs using the default `longhorn` StorageClass are eligible for nightly
 B2 coverage. PVCs using `longhorn-observability` are intentionally excluded
-because Prometheus, Alertmanager, Loki, and Tempo telemetry is reproducible and
+because Prometheus and Alertmanager telemetry is reproducible and
 backing Prometheus up with the same Prometheus-dependent alert path would give a
 misleading coverage number. A new eligible PVC may be shown as missing until
-the next 06:17 UTC nightly Longhorn run. It alerts only if it remains uncovered
-for 36 hours.
+the next 06:17 America/Toronto nightly Longhorn run. It alerts only if it
+remains uncovered for 36 hours.
 
 Dashboard and alert semantics are deliberately narrower than “the backup can
 definitely restore every application”:
@@ -924,7 +939,7 @@ sudo k3s kubectl -n monitoring port-forward \
   service/observability-prometheus 9090:9090
 ```
 
-Then open the internet-accessible, Authentik-protected Grafana dashboard or
+Then open the LAN/WireGuard-only, Authentik-protected Grafana dashboard or
 inspect the Prometheus **Alerts** page through Grafana's Prometheus datasource.
 For a stale or missing Longhorn PVC, open the per-PVC table, confirm the PVC and
 StorageClass, then inspect the `b2-nightly` recurring-job history and backup

@@ -1982,6 +1982,8 @@ def explain(catalog: dict[str, Any], service_id: str) -> None:
     print(
         f"  State: {data.get('class')}; protection: {data.get('protection')}"
     )
+    if data.get("note"):
+        print(f"  State boundary: {data.get('note')}")
     print(f"  Monitoring: {observability.get('mode')}")
     if card.get("enabled", True) is False:
         print(f"  Homepage: omitted — {card.get('reason')}")

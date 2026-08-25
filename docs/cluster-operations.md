@@ -9,6 +9,12 @@ Use the [service lifecycle manual](service-operations.md) for application
 manifests and the [runbook](runbook.md) for incident recovery and backup restore
 procedures.
 
+Commands in this manual describe the supported procedure after authorization;
+they are not standing permission. Repository edits, commits, pushes, pull
+requests, merges, remote workflows or publication, live cluster or host work,
+application state, external providers, credentials, and destructive actions
+remain separate authorization planes.
+
 ## Configuration ownership
 
 The repository is the source of truth, but not every layer is reconciled by
@@ -154,8 +160,7 @@ allow it.
 | Namespace | Workloads | Storage or external dependency |
 | --- | --- | --- |
 | `media` | Downloads/Arr stack and Calibre-Web | Downloads softly prefers a non-control-plane worker. Calibre-Web floats independently; its ingest handoff with Shelfmark uses a Longhorn RWX claim. Neither names a physical node. Pi-hosted NFS downloads and JuiceFS remain reachable from either node. |
-| `apps` | Actual Budget, Homepage, Seerr, Speedtest Tracker | Longhorn for stateful workloads; Homepage is stateless |
-| `apps` | Argilla server/worker, PostgreSQL, Elasticsearch, Redis | Separate Longhorn PVCs; application is multi-component, not transactionally backed up as one unit |
+| `apps` | Actual Budget, Homepage, Seerr, Speedtest Tracker, Vikunja, Omnifin | Longhorn for stateful workloads; Homepage is stateless; Omnifin separates its public web process from the private credential-bearing gateway |
 | `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
 | `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent; internal LlamaCloud MCP | Longhorn for state; LlamaCloud is stateless and reads the Syncthing vault over NFS |
 | `apps` | Open WebUI | Open WebUI uses Longhorn; Authentik OIDC dependency |
@@ -899,9 +904,9 @@ listed here so accepted risk does not turn into forgotten risk:
   cluster and its Telegram exporter. Also add an automated per-volume Longhorn
   freshness/coverage check; a reachable BackupTarget alone does not prove that
   every volume is current.
-- Add recurring native database/application exports for multi-PVC or
-  write-heavy services such as Argilla, and restore-test them with the matching
-  block backups. Write and rehearse a production Syncthing disaster-recovery
+- Add recurring native database/application exports for active multi-PVC or
+  write-heavy services, and restore-test them with the matching block backups.
+  Write and rehearse a production Syncthing disaster-recovery
   procedure in addition to its existing disposable restore proof.
 - Resolve the live-only CoreDNS hostname selector described above and add a
   bounded, redacted K3s API audit policy with rotation and off-node shipping so
@@ -929,6 +934,11 @@ listed here so accepted risk does not turn into forgotten risk:
   continue quarterly isolated Syncthing plus application/database restores.
 - Decide whether to taint the Pi and tolerate only physically required
   workloads, reducing the trust implied by its pod-CIDR exception.
+- Until that trust is removed, audit every Internet-facing floating workload—
+  including Omnifin—for the private-route access it would inherit if scheduled
+  on the Pi. Pin it away from the Pi or document a reviewed NetworkPolicy and
+  route-level proof; do not copy floating placement into a new public service by
+  default.
 - Add a third-server control-plane design only as an intentional three-member
   HA migration; two server nodes do not provide the desired embedded-etcd
   failure tolerance.
