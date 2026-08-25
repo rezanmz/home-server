@@ -25,14 +25,23 @@ Fill every line with exact identities. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; volume/mount/backup inspection]
 - Live cluster/host mutation: [yes/no; quiesce/copy/attach/resize scope]
 - Application-state mutation: [yes/no; exact quiesce/export/migration operations]
 - External/provider mutation: [yes/no; object-store/NFS/backup objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact old PVC/PV/volume/path/data]
 
 Permission to edit a PVC manifest does not authorize changing or deleting the
 bound live volume, NFS path, object-store data, or application database.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -88,6 +97,9 @@ will not clean old objects automatically.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return before/after mount and identity chains, writer inventory, authority and
 backup classification, export/backup/read-test proof, migration/copy verification,
 manifest/descriptor/generated diffs, validation results, live mutations, retained
@@ -95,6 +107,7 @@ old objects, and exact functional/backup acceptance without exposing secrets.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] After an authorized cutover, the target is the single intended data
       authority with correct mount/access semantics; otherwise the cutover remains
       an explicit unexecuted phase.

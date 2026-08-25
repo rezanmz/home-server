@@ -13,6 +13,12 @@ procedure merely because its backup has an isolated read test; production
 Syncthing disaster recovery is one procedure that still needs to be written
 and rehearsed.
 
+Commands in this manual describe the supported procedure after authorization;
+they are not standing permission. Repository edits, commits, pushes, pull
+requests, merges, remote workflows or publication, live cluster or host work,
+application state, external providers, credentials, and destructive actions
+remain separate authorization planes.
+
 ## Operating rules
 
 1. Git is the desired state. GitHub Actions validates it; Flux deploys it after
@@ -29,6 +35,11 @@ and rehearsed.
    source, and require its first backup and recovery test after initialization.
 5. Every new network path, privileged setting, host dependency, and high-risk
    baseline change must be intentional and reviewable.
+6. Update durable documentation and agent guidance when supported behavior,
+   ownership, safety gates, workflow, rollback, validation, or evidence changes.
+   Review the authoritative manual, `AGENTS.md`, routed skills, reusable prompts,
+   indexes, examples, and validation; record why each is not applicable when it
+   is reasonably in question.
 
 ## Operator prerequisites
 
@@ -607,6 +618,7 @@ Run the repository checks after the final manifest edit:
 ```bash
 set -euo pipefail
 scripts/ci/validate-shell.sh
+python3 scripts/ci/validate-agent-guidance.py
 python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 python3 scripts/ci/validate-secrets.py
 python3 scripts/ci/validate-application-state-ownership.py
@@ -652,9 +664,12 @@ findings, including unrelated ones.
 
 ### 9. Deploy and prove the service
 
-Open a pull request and merge only after the required validation check passes.
-Flux normally notices `main` automatically. To request an immediate pull and
-root reconciliation:
+When separately authorized, open a pull request and merge only after the
+required validation check passes. Flux normally notices `main` automatically;
+waiting for its polling interval is the default deployment path. The following
+annotations mutate live Flux objects and require explicit live-mutation
+authorization for the exact GitRepository and Kustomization after the intended
+revision reaches `main`:
 
 ```bash
 ssh beelink 'stamp=$(date +%s); \

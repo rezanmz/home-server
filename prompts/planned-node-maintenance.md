@@ -26,14 +26,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; preflight and observation scope]
 - Live cluster/host mutation: [yes/no; cordon, drain, package, restart, reboot scope]
 - Application-state mutation: [yes/no; exact quiesce or settings operations; normally no]
 - External/provider mutation: [yes/no; router, DHCP, DNS, alerting objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact local data or registration; normally no]
 
 Maintenance authority for one node or service does not authorize changes to the
 other node, Longhorn policy, provider state, application data, or credentials.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -107,6 +116,9 @@ recovery remain unsupported; a maintenance window does not make them routine.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return pre/post revisions and health baseline, outage statement, backup/read
 tests, target capacity, dry-run and actual drain results, host change and backup,
 restart/reboot observations, node/platform/storage recovery, physical-service
@@ -114,6 +126,7 @@ and client tests, alert/silence status, all mutations, and unresolved deviations
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Expected physical and workload outages are explicit and accepted.
 - [ ] Backups, other-node capacity, replicas, and dry-run drain pass before work.
 - [ ] Host/K3s work follows a supported procedure with a concrete rollback.

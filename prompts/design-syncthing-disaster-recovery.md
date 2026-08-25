@@ -38,16 +38,25 @@ host, external, and destructive scopes is no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target and draft/ready]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; Syncthing, NFS, Longhorn, Restic scope]
 - Live cluster mutation: [yes/no; exact disposable/production resources; default no]
 - Host mutation: [yes/no; exact NFS/export/filesystem hosts; production default no]
 - Application-state mutation: [yes/no; exact Syncthing/UI/API/peer state; default no]
 - External/provider mutation: [yes/no; exact B2, router, peer-distribution objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact disposable or production data/identity]
 
 Design permission does not authorize restoring into the production export,
 starting a duplicate device identity, reconnecting peers, changing router state,
 revoking keys, pruning Restic, or deleting old file/config data.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals, skills, and primary research
 
@@ -208,6 +217,9 @@ production disaster recovery.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return repository/upstream research revisions, failure model, four-part recovery
 manifest, exact Restic and Longhorn recovery IDs, key/device fingerprints,
 cross-plane RPO analysis, compatible image evidence, isolated file/config/
@@ -217,6 +229,7 @@ Never expose key values or private file content.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] NFS file data, Longhorn config/identity, Restic history/canary, and pinned
       Syncthing runtime/network identity are separately and jointly modeled.
 - [ ] One exact trusted snapshot and one compatible config-volume recovery point

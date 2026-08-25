@@ -24,15 +24,24 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target/comments]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; live comparison scope]
 - Live cluster/host mutation: [yes/no; normally no]
 - Application-state mutation: [yes/no; normally no]
 - External/provider mutation: [yes/no; normally no]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; normally no]
 
 Review permission does not authorize writing a baseline. Baseline-write permission
 does not authorize accepting unrelated findings, changing manifests, merging, or
 deploying.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -83,6 +92,9 @@ conceal an already deployed high-risk change.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return exact render inputs/revisions, added/removed/changed finding table, source
 trace, per-finding threat/necessity/compensating controls, alternate design,
 baseline diff, checker/full validation results, and recommendation. State every
@@ -90,6 +102,7 @@ finding deliberately retained.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Every baseline delta maps to an understood rendered source change.
 - [ ] Each accepted risk has necessity, scope, owner, and compensating controls.
 - [ ] No unrelated or hidden finding is accepted.

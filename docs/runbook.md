@@ -1,5 +1,11 @@
 # Home cluster runbook
 
+Commands in this runbook describe the supported procedure after authorization;
+they are not standing permission. Repository edits, commits, pushes, pull
+requests, merges, remote workflows or publication, live cluster or host work,
+application state, external providers, credentials, and destructive actions
+remain separate authorization planes.
+
 ## Access and first checks
 
 The Kubernetes API is not exposed publicly. Administer the cluster through the
@@ -48,7 +54,10 @@ Before changing storage, create an application-level export or snapshot and
 verify that it can be read. Longhorn uses `reclaimPolicy: Retain`, but that
 only protects a volume after PVC deletion; it is not a database backup.
 
-To request immediate reconciliation after a push:
+Normal Flux polling is the default. The following annotations mutate live Flux
+objects; use them only with explicit live-mutation authorization for the exact
+GitRepository and Kustomization after the intended revision reaches protected
+`main`:
 
 ```bash
 stamp=$(date +%s)

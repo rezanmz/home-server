@@ -4,6 +4,12 @@ This manual covers the shared `media` JuiceFS Community Edition filesystem.
 It is the recovery and change-control reference for the B2-backed organized
 media library; it is not an application-specific configuration guide.
 
+Commands in this manual describe the supported procedure after authorization;
+they are not standing permission. Repository edits, commits, pushes, pull
+requests, merges, remote workflows or publication, live cluster or host work,
+application state, external providers, credentials, and destructive actions
+remain separate authorization planes.
+
 ## Storage contract
 
 | Data | Authority | Runtime behavior |

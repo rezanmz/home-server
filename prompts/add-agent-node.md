@@ -27,14 +27,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target and draft/ready]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; existing nodes and candidate host]
 - Live cluster/host mutation: [yes/no; exact install, join, label, taint, storage operations]
 - Application-state mutation: [yes/no; exact service/device objects; normally no]
 - External/provider mutation: [yes/no; DHCP, router, DNS, inventory objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact candidate-host data or stale registration]
 
 Repository permission does not authorize first contact with the host, K3s
 installation, token creation, uncordoning, Longhorn admission, or provider work.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -117,6 +126,9 @@ proof fails, leave the candidate unschedulable and preserve evidence.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return base and merged revisions, candidate fingerprint verification, fresh-host
 proof, hardware/network inventory, repository and installed config comparison,
 helper and token lifecycle results, node labels/taints, platform-pod readiness,
@@ -125,6 +137,7 @@ canary result, external actions, validation results, and rollback status.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The host is authenticated, uniquely named, and proven fresh before install.
 - [ ] The node joins only as an agent through the repository-pinned path.
 - [ ] Admission taint/cordon prevents ordinary scheduling until every gate passes.

@@ -27,14 +27,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; backup, storage, production comparison]
 - Live cluster/host mutation: [yes/no; exact disposable restore resources]
 - Application-state mutation: [yes/no; exact disposable or production UI/API objects]
 - External/provider mutation: [yes/no; exact B2/backup/API objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact disposable cleanup only unless separately stated]
 
 Authority to create a drill does not authorize production detach, overwrite,
 route exposure, provider deletion, credential rotation, or retained-data cleanup.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -120,6 +129,9 @@ server-token recovery path.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return exact source/backup/export/key-dependency chain, base/deployed revision,
 isolation design and object identities, restore logs/status, schema/version,
 checksums/counts, representative read/write/auth behavior, RTO/data-age result,
@@ -128,6 +140,7 @@ unsupported recovery gap.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The recovery point, keys, image/schema, and full identity chain are proven.
 - [ ] Restore resources are uniquely isolated and cannot mutate production.
 - [ ] Storage and application-level recovery objectives are tested with evidence.

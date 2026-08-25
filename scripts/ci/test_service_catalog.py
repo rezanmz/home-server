@@ -673,6 +673,19 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertIn("Relying application's OIDC settings", text)
 
+    def test_explain_includes_required_mixed_data_boundary(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            service_catalog.explain(self.catalog, "audiobookshelf")
+        text = output.getvalue()
+        service = next(
+            item for item in service_catalog.services(self.catalog)
+            if item["id"] == "audiobookshelf"
+        )
+        self.assertEqual(service["data"]["class"], "mixed")
+        self.assertIn("State: mixed; protection: longhorn-b2", text)
+        self.assertIn(f"State boundary: {service['data']['note']}", text)
+
     def test_homepage_self_omission_is_explicit(self) -> None:
         entries = {
             service["id"]: service

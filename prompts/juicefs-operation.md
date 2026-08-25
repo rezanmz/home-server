@@ -28,14 +28,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; mounts, metadata, cache, logs]
 - Live cluster/host mutation: [yes/no; exact mount, cache, config, copy, restore scope]
 - Application-state mutation: [yes/no; exact consumer quiesce/config operations]
 - External/provider mutation: [yes/no; exact B2 key/bucket operations]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact cache, disposable restore, source data, old key]
 
 Repository edits do not authorize `juicefs config`, B2 credential work, cache
 deletion, metadata restoration, host mutation, migration, or source cleanup.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -123,6 +132,9 @@ as a quota operation.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return exact filesystem/metadata/PV identities, base and deployed revisions,
 writer and mount inventory, backup/export/key dependency proof, operation branch
 executed, non-secret config planes changed, node/category coverage, checksums and
@@ -131,6 +143,7 @@ destructive actions, retained recovery material, and rollback status.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Filesystem identity and all recovery dependencies are proven before mutation.
 - [ ] Production metadata, encrypted chunks, and downloads remain correctly separated.
 - [ ] The requested operation follows its narrow supported branch and one-writer rule.

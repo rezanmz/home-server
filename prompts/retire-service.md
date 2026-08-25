@@ -34,10 +34,13 @@ Fill every line with exact identities. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; inventory scope]
 - Live cluster/host mutation: [yes/no; suspend/scale/delete exact objects]
 - Application-state mutation: [yes/no; exact quiesce/export/UI/API operations]
 - External/provider mutation: [yes/no; exact DNS/OAuth/router/backup objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact Git/live/storage/secret objects approved]
 
 The word “retire” does not authorize any destructive line. Retain is the default
@@ -45,6 +48,12 @@ for an object whose decision or identity is missing. Refresh destructive
 authorization after discovery with exact names, UIDs, cascade behavior, and
 newly created drill/cleanup identities; a broad pre-inventory approval is not a
 safe deletion scope.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -146,6 +155,9 @@ require confirmation within the destructive scope.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return the initial and final Flux inventories, writer inventories, retain/destroy
 matrix, owner graph, exact storage/backup identity chain or stateless negative
 evidence, continuous quiescence evidence, export/restore result or justified
@@ -156,6 +168,7 @@ dependencies. Never include secret values.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] If live retirement was authorized, traffic and all writers are absent at
       the verified final revision; otherwise the unexecuted live phase is explicit.
 - [ ] Root/child pruning behavior was handled explicitly; no owner was removed

@@ -26,14 +26,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; host and impact inspection]
 - Live cluster/host mutation: [yes/no; copy, package, reload, restart, reboot scope]
 - Application-state mutation: [yes/no; exact UI/API objects; normally no]
 - External/provider mutation: [yes/no; router, DNS, DHCP, inventory objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact host files/data; normally no]
 
 Repository edit, merge, and host apply are independent permissions. Authority
 for the Pi does not authorize the Beelink, and vice versa.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -101,6 +110,9 @@ is supported. Do not delete host data because Git no longer references it.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return exact host identity, base/merged revision, ownership decision, before/after
 checksums and effective state, files/helper changed, syntax and repository
 validation, installed backup location, apply/reload result, node/storage impact,
@@ -108,6 +120,7 @@ listener/mount/client tests, all external/live actions, and rollback readiness.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The setting is correctly classified as host-owned and narrowly scoped.
 - [ ] Repository and installed state match the exact reviewed revision.
 - [ ] Syntax, service, node, storage, and client-path checks pass.

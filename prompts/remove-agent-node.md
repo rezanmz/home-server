@@ -26,14 +26,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target and state]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; exact node and dependent systems]
 - Live cluster/host mutation: [yes/no; cordon, drain, evacuation, uninstall, metadata scope]
 - Application-state mutation: [yes/no; exact peer, folder, share, or service identity]
 - External/provider mutation: [yes/no; router, DHCP, DNS, peer, inventory objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact node registration, host data, volumes, credentials]
 
 Drain or hardware-removal intent does not imply permission to delete PVCs,
 replicas, NFS trees, backups, Secrets, peers, or provider records.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -110,6 +119,9 @@ migration, or datastore recovery from the agent-removal procedure.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return the exact node identity, base/merged/Flux revisions, full dependency
 matrix, backup/read-test evidence, replacement admission, dry-run and real drain
 results, workload placement and functional checks, Longhorn zero-dependency
@@ -118,6 +130,7 @@ repository/provider/destructive actions, validation, and retained rollback state
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The target is proven to be an agent and every dependency is inventoried.
 - [ ] Replacement capacity and all physical-service migrations pass before removal.
 - [ ] Stateful moves have current independent recovery and functional proof.

@@ -121,18 +121,22 @@ Hermes and the shared personal-tool boundary are documented in the
    `python3 scripts/service_catalog.py render`.
 3. Encrypt any new Secret with SOPS before it enters Git.
 4. Render and validate the cluster locally.
-5. Push a branch and open a pull request. The protected `main` branch requires
-   the validation workflow, including shell and Python checks, SOPS structure,
-   Kustomize rendering, Kubernetes schemas, and the reviewed high-risk-policy
-   baseline.
-6. Merge only after the required check passes. Flux then pulls the protected
-   `main` revision and reconciles it into the cluster.
+5. When separately authorized, create a commit, push a branch, and open a pull
+   request. The protected `main` branch requires the validation workflow,
+   including shell and Python checks, SOPS structure, Kustomize rendering,
+   Kubernetes schemas, and the reviewed high-risk-policy baseline. Inspect
+   branch/path filters before pushing; a push may have publication effects
+   beyond pull-request validation.
+6. When separately authorized, merge only after the required check passes and
+   after accepting the automatic effects of the exact diff. Flux then pulls
+   the protected `main` revision and reconciles it into the cluster.
 
 Useful local checks:
 
 ```bash
 set -euo pipefail
 scripts/ci/validate-shell.sh
+python3 scripts/ci/validate-agent-guidance.py
 python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 python3 scripts/ci/validate-secrets.py
 python3 scripts/ci/validate-application-state-ownership.py

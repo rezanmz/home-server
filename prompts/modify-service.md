@@ -25,10 +25,13 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; resources/hosts]
 - Live cluster/host mutation: [yes/no; exact reconcile/restart/migration scope]
 - Application-state mutation: [yes/no; exact UI/API objects and operations]
 - External/provider mutation: [yes/no; exact objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact data/resources]
 
 An implementation request does not authorize merge, live rollout, UI mutation,
@@ -36,6 +39,12 @@ provider changes, or deletion.
 If merge is authorized, it necessarily authorizes Flux and the declared
 controller effects of that exact diff; manual reconcile/restart and unrelated
 provider work remain separate.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -90,6 +99,9 @@ that a Git revert cannot un-revoke.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return the ownership map, before/after behavior, changed/generated files,
 migration and recovery proof, catalog semantic checks, complete validation and
 CI results, high-risk explanation, exact live/external actions, and the exact
@@ -98,6 +110,7 @@ was not authorized or could not run.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The requested behavior changes without taking ownership of unrelated state.
 - [ ] Stable identities and recovery prerequisites are preserved or migrated
       explicitly.

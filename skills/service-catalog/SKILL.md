@@ -104,10 +104,17 @@ Referenced manifest existence is not semantic storage validation. In particular,
 do not label an organized JuiceFS library as Pi NFS merely because a historical
 NFS module still exists or the descriptor vocabulary lacks a precise value.
 
-If the current schema cannot truthfully express the data authority or protection
-boundary, stop and propose a versioned schema/adapter evolution. Do not force a
-false classification into an existing enum or hide the mismatch in a vague
-note. Keep the workload explicit until the catalog can model it safely.
+For the current `mixed` data class, the protection enum and required boundary
+note form one declaration. Select the enum that describes the represented
+protected component, reference every storage manifest, and use the note to name
+each data set, its authority, its independent-backup status, and any limitation
+of the aggregate enum. Never read the enum alone as coverage for every mixed
+store.
+
+If no class, protection, and precise note can describe the boundary without a
+false safety claim, stop and propose a versioned schema/adapter evolution. A
+vague note must not be used to conceal a mismatch; keep the workload explicit
+until the catalog can model it safely.
 
 ## Retire or exclude
 

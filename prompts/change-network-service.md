@@ -27,14 +27,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; nodes, listeners, mounts, logs]
 - Live cluster/host mutation: [yes/no; rollout, export reload, peer/config scope]
 - Application-state mutation: [yes/no; exact peers, users, folders, shares, or settings]
 - External/provider mutation: [yes/no; exact router, DHCP, DNS, peer objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact lease, peer, export data, identity, credential]
 
 Permission to edit manifests does not authorize host reload, application-state
 changes, router work, peer distribution, credential revocation, or data deletion.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -115,6 +124,9 @@ DR, or loosen privileged/high-risk policy merely to restore connectivity.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return ownership by plane, exact revisions, baseline and final listeners,
 client-path tests, state/writer/backup identity, manifest/descriptor/generated
 diffs, host installed comparison, application/provider actions, validation and
@@ -123,6 +135,7 @@ plane-specific rollback readiness.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The authoritative plane owns each changed setting exactly once.
 - [ ] Physical node, interface, PodCIDR, export, and state boundaries are preserved.
 - [ ] Full validation and exact-revision reconciliation pass for repository changes.

@@ -37,16 +37,24 @@ no; one permission never implies another.
 - Open or update a pull request: [yes/no; target and draft/ready]
 - Merge to protected `main`: [yes/no; exact PR and required checks]
 - Read-only cluster/host/network access: [yes/no; targets]
-- Live reconcile, restart, scale, or pod deletion: [yes/no; exact operation]
+- Live cluster/host mutation (reconcile, restart, scale, or pod deletion): [yes/no; exact operation]
 - Application-state mutation: [yes/no; exact Finance UI/API objects; normally no]
+- External/provider mutation not otherwise listed: [yes/no; exact objects and operations]
 - OTA-write both physical devices: [yes/no; exact reserved identities]
 - Change/restart Kea DHCP: [yes/no; desired and live scopes]
 - Edit/rotate/revoke a Secret or external credential: [yes/no; exact copies]
+- Destructive actions not otherwise listed: [yes/no; exact resource, data, or device identities]
 - Manual serial/USB flash, erase, or device replacement: [yes/no; identity]
 
 A qualifying branch push may publish a fixed GHCR tag before review. Repository
 edit or branch-push authority does not silently authorize that registry side
 effect; resolve the authorization conflict before pushing.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -156,6 +164,9 @@ a serial-flash procedure. Do not clean up old generated ConfigMaps incidentally.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return:
 
 - exact base, PR, merged, and Flux revisions;
@@ -171,6 +182,7 @@ Return:
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The requested firmware behavior is encoded in the Git-owned dashboard
       without taking ownership of Finance application state.
 - [ ] No production credential or compiled secret-bearing artifact leaks.

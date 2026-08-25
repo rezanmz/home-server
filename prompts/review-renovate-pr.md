@@ -24,14 +24,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; PR branch/remote]
 - Open or update a pull request: [yes/no; comments/labels/ready state]
 - Merge: [yes/no; exact PR and conditions]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; baseline or post-merge checks]
 - Live cluster/host mutation: [yes/no; usually no]
 - Application-state mutation: [yes/no; usually no]
 - External/provider mutation: [yes/no; usually no]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; usually no]
 
 Review authority alone permits no branch edit, PR mutation, merge, deploy, or
 live/provider change.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -87,6 +96,9 @@ reverse external, application-state, or destructive effects.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return an update-by-update table with current/target identity, release impact,
 architecture/state/security risk, validation status, rollback safety, and
 recommendation. Include exact PR head, required-check result, any authorized PR
@@ -94,6 +106,7 @@ actions, and post-merge revision evidence if performed.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Every changed dependency/source is immutable and tied to upstream evidence.
 - [ ] Grouping, migration, architecture, generated, and high-risk effects are
       explicitly reviewed.

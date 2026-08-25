@@ -25,14 +25,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; architecture/runtime checks]
 - Live cluster/host mutation: [yes/no; consumer rollout scope]
 - Application-state mutation: [yes/no; normally no]
 - External/provider mutation: [yes/no; exact registry publish/tag/attestation]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; tag/package deletion, normally no]
 
 Repository-edit permission does not authorize publishing to a registry. Registry
 publish permission does not authorize changing or deploying consumers.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -84,6 +93,9 @@ the previous binary cannot read new state.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return immutable upstream identities/checksums, patch and dependency inventory,
 platform test results, non-secret build/publish workflow evidence, manifest-list
 digest/platforms, SBOM/provenance locations, consumer diffs, validation/CI results,
@@ -91,6 +103,7 @@ registry actions, and exact live digest/revision proof if deployed.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Inputs are immutable, licensed, checksum/provenance verified, and secret-free.
 - [ ] Every required platform builds and tests successfully.
 - [ ] Published output has a recorded manifest digest and expected attestations.

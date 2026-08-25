@@ -26,14 +26,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; targets, queries, bounded logs]
 - Live cluster/host mutation: [yes/no; port-forward, silence, restart, test scope]
 - Application-state mutation: [yes/no; exact Grafana UI/dashboard/preferences objects]
 - External/provider mutation: [yes/no; Telegram or credential/provider objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact dashboards, series/storage, silences]
 
 Read access does not authorize a silence, alert test that pages someone, route
 publication, retention change, restart, or UI dashboard mutation.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -108,6 +117,9 @@ deliberately treated as reproducible.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return previous/final descriptor mode, metric provenance, rendered selectors,
 target status, sample series and cardinality, policy proof, healthy/failing
 alert evaluations, dashboard owner, notification/inhibition results, storage
@@ -116,6 +128,7 @@ revision, temporary/live actions, and rollback status.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The observability mode truthfully matches the available signal.
 - [ ] Scrape endpoint, selectors, and NetworkPolicy are exact and non-sensitive.
 - [ ] Alerts are actionable and tested; notification side effects are authorized.

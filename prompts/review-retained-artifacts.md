@@ -25,14 +25,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; inventory scope]
 - Live cluster/host mutation: [yes/no; exact ownership/delete operations]
 - Application-state mutation: [yes/no; exact export/quiesce/UI/API operations]
 - External/provider mutation: [yes/no; exact DNS/auth/backup/provider objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact Git/live/data/secret objects]
 
 A candidate labeled “orphan” is not authorized for deletion. Retain when identity,
 ownership, writer status, or recovery dependency is uncertain.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -85,6 +94,9 @@ objects and deleted provider/data objects are not recovered by a Git revert alon
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return a per-artifact table with Git path, live identity, Flux owner/prune behavior,
 references/writers, data/key/backup dependencies, classification, confidence,
 recommended action, and required authority. Include changed/generated files and
@@ -92,6 +104,7 @@ validation only if edits were authorized.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Every artifact has an evidence-backed classification and exact owner.
 - [ ] Root/child pruning and retained-child reconciliation behavior are explicit.
 - [ ] Recovery artifacts have stable ownership and complete key/data prerequisites.

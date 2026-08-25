@@ -58,6 +58,7 @@ After the final edit, run every repository-owned check and render:
     scripts/ci/validate-shell.sh
     FLUX_VERIFY_ONLY=true scripts/bootstrap-flux.sh
     python3 -m py_compile scripts/*.py scripts/ci/*.py
+    python3 scripts/ci/validate-agent-guidance.py
     python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
     python3 scripts/ci/validate-secrets.py
     python3 scripts/ci/validate-application-state-ownership.py

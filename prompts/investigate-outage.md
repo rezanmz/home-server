@@ -24,14 +24,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; namespaces/hosts/log scope]
 - Live cluster/host mutation: [yes/no; exact suspend/restart/reconcile/repair]
 - Application-state mutation: [yes/no; exact diagnostic/repair UI/API objects]
 - External/provider mutation: [yes/no; exact DNS/auth/storage/provider action]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact objects; normally no]
 
 Read-only access allows observation, not annotations, exec that writes state,
 rollout restart, scale, job creation, token refresh, or Flux reconciliation.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -87,6 +96,9 @@ external state changed.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return a timestamped timeline, exact Git/Flux revisions, affected/unaffected
 scope, request-path observations, relevant redacted events/logs, hypotheses and
 tests, root cause/confidence, drift found, actions taken, recovery prerequisites,
@@ -94,6 +106,7 @@ and a prioritized next step. Separate observed fact from inference.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The blast radius and failing boundary are evidenced, not guessed.
 - [ ] Desired revision, reconciliation state, and runtime state are distinguished.
 - [ ] The result provides a supported cause or a minimal set of discriminating

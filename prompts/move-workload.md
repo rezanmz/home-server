@@ -27,14 +27,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; nodes, storage, mounts, listeners]
 - Live cluster/host mutation: [yes/no; rollout, cordon, attach, migration scope]
 - Application-state mutation: [yes/no; exact UI/API storage, path, or identity changes]
 - External/provider mutation: [yes/no; router, DNS, DHCP, peer objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact old path, volume, or host resource]
 
 A placement edit does not authorize host preparation, data copy, live patching,
 provider changes, or deletion of the old data path.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -104,6 +113,9 @@ disaster recovery as an ordinary workload move.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return active owner and exact revisions, before/after placement, architecture
 proof, physical-dependency map, storage identity and writer inventory,
 backup/read test, host preparation, manifest/descriptor/generated diffs,
@@ -112,6 +124,7 @@ read/write checks, external actions, retained old state, and cutback readiness.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Target architecture, capacity, host, network, and physical dependencies pass.
 - [ ] Every shared RWO controller moves as one unit with current recovery evidence.
 - [ ] Desired placement and catalog intent agree and full validation passes.

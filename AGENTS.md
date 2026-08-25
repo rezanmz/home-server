@@ -17,6 +17,11 @@ The guidance has three layers:
 For each task, load the matching skill and read the manual it names. Skills and
 prompts are navigation aids, not replacements for the manuals.
 
+Runtime-specific files are discovery adapters only. The repository-root
+`AGENTS.md`, canonical `skills/`, and canonical `prompts/` remain authoritative;
+do not maintain edited policy copies under `.claude/`, `.cursor/`, `.github/`,
+`.agents/`, or `.omp/`.
+
 When sources appear to disagree:
 
 - active Kustomization reachability and a fresh render establish Git desired
@@ -25,9 +30,46 @@ When sources appear to disagree:
 - the relevant `docs/` manual defines the supported operating procedure;
 - a skill or prompt must never silently override a manual.
 
+A manual describes how an already authorized operation is performed. The
+presence of a command in a manual is not permission to run it.
+
 Stop and report the discrepancy before a risky action. Do not make prose true
 by changing production, and do not assume a YAML file is active merely because
 it exists.
+
+## Keep guidance and documentation current
+
+Repository guidance is part of the supported implementation. When an
+authorized change alters durable topology, ownership, security boundaries,
+supported commands, automatic side effects, validation, rollback, evidence,
+recurring maintenance, or agent discovery, update the affected guidance in the
+same change:
+
+- update the authoritative operator manual first or in the same change;
+- update this file when repository-wide safety, authority, routing, workflow,
+  or completion changes;
+- update every affected skill's trigger, sources, gates, workflow, rollback,
+  and evidence contract;
+- update affected task prompts, the generic prompt template, and prompt/skill
+  indexes when their inputs, permissions, workflow, or acceptance changes;
+- update runtime adapters only when discovery changes, and keep them as thin
+  imports, pointers, documented canonical links, or configured canonical
+  directories; and
+- update validation and tests whenever the contract can be checked
+  mechanically.
+
+Guidance repair is not standing authority. In a read-only task, report drift
+and the files that need correction. During an authorized implementation, repair
+the guidance needed to keep that implementation truthful. If required guidance
+is outside the authorized edit scope, stop before shipping an incoherent
+change. Never rewrite documentation merely to rationalize unexplained live
+drift.
+
+Put durable architecture, ownership, safety decisions, and supported procedures
+in the appropriate manual. Put task-specific commands, revisions, validation
+output, and rollout evidence in the commit, pull request, or task record. Do not
+copy secrets or transient pod state into durable guidance, and prefer references
+to authoritative version/configuration sources over mutable copied values.
 
 ## Operating model
 
@@ -108,15 +150,21 @@ Match actions to the user's request:
 - An audit, explanation, review, or diagnosis authorizes read-only inspection,
   not repository edits, live mutation, push, PR, merge, credential rotation,
   or provider changes.
-- A request to change or build authorizes scoped repository edits and local
-  validation. It does not by itself authorize push, merge, live emergency
-  patches, destructive storage work, secret revocation, router changes, or
-  provider-side deletion.
+- A request to change or build authorizes scoped working-tree edits and local
+  validation only. Creating commits, pushing, opening or updating a pull
+  request, merging, dispatching or rerunning a remote workflow, publishing an
+  image or artifact, and every live, application, provider, credential, or
+  destructive mutation remain separate actions.
 - Read-only live checks are appropriate when they are needed to prove current
   state and cluster access is in scope. Avoid reading Secret payloads.
 - A merged change may be verified live read-only. Any live mutation outside the
   normal Flux path requires explicit authorization and the documented emergency
   loop.
+
+Do not infer one permission from another. When a filled authorization matrix
+exists, it controls. If its permissions cannot produce the requested
+deliverable—for example PR permission without the prerequisite commit and push
+permissions—stop and resolve the conflict instead of broadening authority.
 
 Merging to protected `main` is itself authorization for Flux to deploy that
 desired state. It can also cause declared controllers to mutate external or
@@ -126,9 +174,12 @@ effect of the merged diff. Split review-only work from deployment, or explicitly
 authorize every automatic effect before merge. Manual reconcile, restart,
 bootstrap, provider cleanup, and other extra mutations remain separate.
 
-Inspect `.github/workflows/build-*-image.yml` before pushing. Some pushes to
-named branch patterns build and publish container images to GHCR; a push can
-therefore have effects beyond Git.
+Before a push or merge, inspect current workflow branch and path filters. A
+qualifying action can run a publishing workflow, including a merge-created push
+to `main`. Both the Git action and its exact workflow, registry, or artifact
+effect must be authorized. If an inevitable effect is denied, use a proven
+non-triggering path or stop. A manual workflow dispatch or rerun is always a
+separate remote mutation.
 
 ## Start every task safely
 
@@ -192,6 +243,8 @@ docs/                    authoritative architecture and operator manuals
 renovate.json            dependency discovery, grouping, scheduling, risk labels
 skills/                  task-specific agent workflows
 prompts/                 reusable operator task briefs
+.agents/, .omp/, and runtime instruction files
+                         thin discovery adapters to canonical guidance
 ```
 
 `clusters/home-server/kustomization.yaml` is the root reachability list. Follow
@@ -285,6 +338,7 @@ active volume mounts because historical descriptions can lag a migration.
 | Task | Load this skill | Start with this manual |
 | --- | --- | --- |
 | Orient, scope, or determine authority/ownership | `home-server-safety` | `docs/architecture.md` |
+| Change agent instructions, skills, prompts, or runtime discovery | `agent-guidance` | `skills/README.md` |
 | Run local/CI-equivalent validation | `validation` | `.github/workflows/validate-cluster.yml` |
 | Add, modify, roll back, or retire a service | `service-lifecycle` | `docs/service-operations.md` |
 | Change a catalog descriptor/compiler/profile | `service-catalog` | `docs/service-catalog.md` |
@@ -362,13 +416,17 @@ them; adjacent bootstrap or restore commands are not substitutes.
    new empty volume, prove there is no prior data, protect the import source,
    and define the post-initialization backup and restore gate.
 5. Edit the smallest coherent set: manifests, descriptor, tests/policies,
-   documentation, and host source files where applicable.
+   documentation, affected agent guidance, and host source files where
+   applicable. Apply the guidance-maintenance contract above whenever durable
+   behavior or a supported procedure changes.
 6. Run `service_catalog.py render` when integration intent changes. Encrypt new
    Secrets before they touch disk history or staging.
 7. Run the full local validation contract from the `validation` skill and
    inspect generated and high-risk diffs.
-8. Commit a focused change. Push/open a PR only when authorized; merge only
-   after the protected validation check is green.
+8. Create focused commits, push, and open or update a PR only when each action
+   and its inevitable workflow effects are authorized. Never infer merge
+   authority from PR authority. Merge only after the protected validation check
+   is green and all deployment/controller effects are authorized.
 9. Let Flux reconcile the merged `main` revision. Do not substitute manual
    apply for reconciliation.
 10. Verify live at the exact merged revision: Flux readiness, rollout,
@@ -387,6 +445,7 @@ child-render list live in `skills/validation/SKILL.md`; CI is authoritative if
 it changes. At minimum, the gate includes:
 
 - shell syntax and all Python unit tests;
+- agent-guidance structure, indexes, adapters, and local links;
 - source and rendered Secret validation;
 - application-state ownership policy;
 - root plus independently reconciled child renders;
@@ -445,7 +504,9 @@ procedures, preserve evidence and request a change-specific reviewed plan.
 A repository change is complete only when:
 
 1. the active manifests, descriptor, generated output, tests, policies, and
-   documentation agree;
+   documentation agree, and affected manuals, repository guidance, skills,
+   prompts, indexes, adapters, and examples are updated or explicitly proven
+   not applicable;
 2. the full applicable local validation contract passes and the diff contains
    no unexplained generated or high-risk changes;
 3. any authorized PR has the required green CI result; and

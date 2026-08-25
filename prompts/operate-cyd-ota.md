@@ -30,25 +30,33 @@ Fill every line. Blank or ambiguous means no.
 - Repository edits: [yes/no; exact paths]
 - Local compile/cache mutation: [yes/no; scope]
 - Create commits: [yes/no; scope]
-- Push branch / trigger automatic GHCR publication: [yes/no; branch/tag]
+- Push a branch: [yes/no; branch/tag and acknowledged automatic GHCR publication]
 - Dispatch or rerun an image workflow: [yes/no; exact workflow/ref]
 - Publish or overwrite a registry artifact: [yes/no; exact registry/tag]
 - Open or update a pull request: [yes/no; target and state]
 - Merge protected `main`: [yes/no; exact PR and required checks]
 - Read-only cluster/host/network access: [yes/no; exact resources]
 - Read non-secret pod logs/events and bounded lease entries: [yes/no]
-- Reconcile, scale, restart, or delete updater resources: [yes/no; operation]
+- Live cluster/host mutation (reconcile, scale, restart, or delete updater resources): [yes/no; operation]
 - Application-state mutation: [yes/no; exact Finance UI/API objects; normally no]
+- External/provider mutation not otherwise listed: [yes/no; exact objects and operations]
 - Re-attempt OTA to both devices: [yes/no; exact reserved identities]
 - Pause repeated OTA attempts through exceptional live mitigation: [yes/no;
   exact Flux/workload scope]
 - Change or restart Kea DHCP: [yes/no; exact desired/live operations]
 - Edit/rotate/revoke bearer, Wi-Fi, or OTA credentials: [yes/no; exact copies]
+- Destructive actions not otherwise listed: [yes/no; exact resource, data, or device identities]
 - Manual serial/USB recovery, erase, or replacement: [yes/no; exact device]
 
 Read-only diagnosis does not authorize a pod deletion. Deleting or restarting the
 pod retries both physical devices. Git edit, registry, merge, live-cluster, DHCP,
 credential, and device-write permissions remain separate.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -201,6 +209,9 @@ restarts or improvise destructive device recovery.
 
 ## Rollback and evidence
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Rollback is another two-device write. Restore the prior dashboard source and a
 compatible prior updater digest through Git; reverting only the image leaves the
 current ConfigMap source in place. Verify both upload and physical behavior.
@@ -220,6 +231,7 @@ Return:
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The failure is classified without leaking credentials or broadening access.
 - [ ] No pod action is mislabeled as harmless; both OTA side effects are authorized.
 - [ ] Dashboard, image, Secret, NetworkPolicy, and Kea identities agree.

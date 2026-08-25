@@ -32,10 +32,13 @@ no. Permission does not cascade from one line to another.
 - Push a branch: [yes/no; remote and branch]
 - Open or update a pull request: [yes/no; target and draft/ready state]
 - Merge: [yes/no; exact pull request and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; commands/targets]
 - Live cluster/host mutation: [yes/no; exact resources and allowed operations]
 - Application-state mutation: [yes/no; exact UI/API objects and operations]
 - External/provider mutation: [yes/no; exact provider objects and operations]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact identities and retain/destroy decision]
 
 Do not use direct `kubectl apply`, `edit`, or `set image` as the normal change
@@ -46,6 +49,12 @@ If `Merge` is yes, enumerate the automatic effects of the exact diff: Flux will
 deploy it, and reconciled workloads may update Authentik, Cloudflare, or another
 managed system. Merge cannot be yes while an inevitable effect is denied.
 Manual reconcile/restart and later cleanup remain separate operations.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -72,6 +81,7 @@ First load skill `home-server-safety`. Add the task-specific skills from:
 - `high-risk-review`
 - `ci-supply-chain`
 - `retained-artifacts`
+- `agent-guidance`
 
 Read the task-specific manual named in `AGENTS.md`. At minimum, route among the
 architecture, service-catalog, catalog-design, configuration-ownership,
@@ -86,8 +96,9 @@ runbook manuals. Manuals override shortcuts; flag drift instead of guessing.
 3. Establish current state using repository evidence and only the read-only live
    access authorized above.
 4. Present material assumptions, safety gates, and the smallest viable plan.
-5. Make only authorized edits or mutations. Update colocated catalog intent and
-   generated output when applicable; never hand-edit generated regions.
+5. Make only authorized edits or mutations. Update colocated catalog intent,
+   generated output, durable manuals, and affected agent guidance when
+   applicable; never hand-edit generated regions.
 6. Run the complete validation bundle after the final repository edit. Treat
    catalog semantic claims, Helm rendering, secret safety, source pins, and
    high-risk findings as independent gates.
@@ -122,6 +133,9 @@ objects that a revert would leave behind.]
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return:
 
 - exact Git revision and worktree status inspected;
@@ -136,6 +150,7 @@ Return:
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The requested outcome is met within the authorization matrix.
 - [ ] Desired state, catalog intent, generated output, and ownership agree.
 - [ ] Full applicable validation passes on the final tree.

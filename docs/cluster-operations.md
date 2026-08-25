@@ -9,6 +9,12 @@ Use the [service lifecycle manual](service-operations.md) for application
 manifests and the [runbook](runbook.md) for incident recovery and backup restore
 procedures.
 
+Commands in this manual describe the supported procedure after authorization;
+they are not standing permission. Repository edits, commits, pushes, pull
+requests, merges, remote workflows or publication, live cluster or host work,
+application state, external providers, credentials, and destructive actions
+remain separate authorization planes.
+
 ## Configuration ownership
 
 The repository is the source of truth, but not every layer is reconciled by

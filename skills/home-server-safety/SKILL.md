@@ -23,6 +23,10 @@ For service work, also read docs/service-operations.md. For node or host work,
 read docs/cluster-operations.md. For incidents, read docs/runbook.md. For a
 setting whose owner is unclear, read docs/configuration-ownership.md.
 
+Manuals define the supported procedure for an operation after it is authorized;
+their commands are not standing permission to edit, commit, push, merge,
+reconcile, restart, publish, or mutate a live or external system.
+
 Do not infer desired state from a file merely because it exists. Follow
 clusters/home-server/kustomization.yaml and each referenced kustomization.yaml.
 Unreferenced manifests may be frozen recovery material. Treat a conflict between
@@ -71,10 +75,17 @@ operation.
 
 - A request to review, diagnose, or explain authorizes read-only inspection, not
   implementation or live repair.
-- A request to edit Git authorizes repository changes in scope, not pushing,
-  merging, reconciling, applying host files, or mutating external providers.
-- A request to deploy through the normal workflow authorizes the documented
-  Git/PR/Flux path, not direct kubectl apply, edit, or set image.
+- A request to edit Git authorizes scoped working-tree changes and local
+  validation only. Commits, pushes, pull-request creation or updates, merge,
+  workflow dispatch/rerun, image or artifact publication, reconcile, host
+  application, application state, provider changes, and destructive work are
+  separate permissions.
+- Do not collapse delivery permissions into “the normal workflow.” If a filled
+  authorization matrix permits a pull request but denies its prerequisite
+  commit or push, stop and resolve the conflict instead of inferring authority.
+- Before any push or merge, inspect current workflow branch and path filters.
+  Authorize every inevitable publication or registry effect of that exact Git
+  action; use a proven non-triggering path or stop when an effect is denied.
 - Merging to protected `main` necessarily authorizes Flux to deploy the exact
   diff and any declared controller effects, such as Authentik blueprint or
   Cloudflare DDNS updates. Do not merge while denying an inevitable effect of
@@ -92,6 +103,10 @@ operation.
   reviewed high-risk-policy change. Never regenerate that baseline merely to
   make a check pass.
 - Never print or commit plaintext secrets or an age private identity.
+
+When an authorized implementation changes a durable procedure or boundary,
+apply the guidance-maintenance matrix in AGENTS.md in the same change. During a
+read-only task, report guidance drift without editing it.
 
 Stop and report rather than improvise when the documented prerequisites,
 identity chain, backup evidence, or authorization are missing.
@@ -119,6 +134,8 @@ Report:
 - files changed and generated output reviewed;
 - validation results and any skipped check;
 - whether any live, host, application, or external state was changed;
+- every commit, push, pull-request, workflow, registry, or artifact action and
+  its non-secret identity;
 - for a deployed change, the exact reconciled revision and task-specific live
   acceptance evidence;
 - unresolved drift, unsupported operations, and rollback or recovery

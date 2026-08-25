@@ -31,16 +31,25 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target and draft/ready]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; targets]
 - Live cluster/host mutation beyond automatic Flux: [yes/no; reconcile/bootstrap/restart scope]
 - Application-state mutation: [yes/no; exact onboarding/UI/API scope]
 - External/provider mutation: [yes/no; DNS, OAuth, router, registry objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; normally no for an addition]
 
 Repository-edit permission does not authorize a provider change, merge, Flux
 reconcile, direct apply, application onboarding, or secret revocation.
 If merge is yes, enumerate and authorize the automatic deployment plus any
 declared Authentik or Cloudflare effects; otherwise stop at a reviewable PR.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -106,6 +115,9 @@ migration.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Report base revision, closest pattern used, ownership decisions, files added,
 generated diffs, image digest/architectures, security and network decisions,
 storage/backup evidence, catalog `explain` and semantic checks, complete
@@ -114,6 +126,7 @@ include the exact reconciled revision and non-secret acceptance observations.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Active manifests and a colocated descriptor express consistent intent.
 - [ ] Image, security, network, auth, storage, ownership, and recovery gates pass.
 - [ ] Generated outputs are compiler-produced and fully reviewed.

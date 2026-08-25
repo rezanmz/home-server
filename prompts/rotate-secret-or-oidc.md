@@ -24,15 +24,24 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; Secret metadata/workload status only]
 - Live cluster/host mutation: [yes/no; exact restart/reconcile scope]
 - Application-state mutation: [yes/no; exact credential/UI/API object]
 - External/provider mutation: [yes/no; create/update/revoke exact credential]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; revoke/delete exact old value or key]
 
 Never include a secret value in this brief, logs, command arguments, chat, a
 temporary plaintext file, or evidence. Git edit authority does not authorize the
 provider or application-state half of a rotation.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -91,6 +100,9 @@ data and the matching key.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Report only encrypted paths, Secret metadata names, ownership/consumer inventory,
 catalog structural agreement, redacted validation results, provider/application/
 live actions, exact reconciled revision, functional success, old-value revocation
@@ -98,6 +110,7 @@ status, and retained recovery dependencies. Report no plaintext or private key.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Every copy and consumer has the intended new credential or documented owner.
 - [ ] SOPS structure, catalog references, and full validation pass without leakage.
 - [ ] The dependent path works at the exact deployed revision when rollout is in scope.

@@ -40,16 +40,25 @@ host, external, and destructive scopes is no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target and draft/ready]
 - Merge: [yes/no; exact PR and required checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; Beelink, agent, backup, and log scope]
 - Live cluster mutation: [yes/no; exact production Kubernetes objects; default no]
 - Host mutation: [yes/no; exact disposable or production hosts; production default no]
 - Application-state mutation: [yes/no; exact disposable or production application data]
 - External/provider mutation: [yes/no; exact off-host storage, DNS, DHCP, or key objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact disposable artifacts; production default no]
 
 Research and design permission does not authorize taking the production API
 offline, copying plaintext secrets, rotating a token, restoring a datastore, or
 starting a replacement server on the production network.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals, skills, and primary research
 
@@ -202,6 +211,9 @@ arguments, or call a local-on-Beelink archive disaster recovery.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return repository and upstream research revisions, topology/identity inventory,
 failure model, consistency rationale, backup-set schema, checksums/fingerprints,
 encryption and custody design, off-host publication/retention, fail-closed tests,
@@ -211,6 +223,7 @@ Never include secret values.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] The design atomically couples a consistency-safe SQLite backup with its
       exact historical server token and immutable K3s/host identity.
 - [ ] Complete encrypted sets are authenticated, checksummed, and recoverable

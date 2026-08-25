@@ -24,14 +24,23 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; release/CRD/state inspection]
 - Live cluster/host mutation: [yes/no; reconcile/upgrade scope]
 - Application-state mutation: [yes/no; exact migration/UI/API operations]
 - External/provider mutation: [yes/no; registry/source actions, normally no]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; CRD/data/storage operations]
 
 Editing a chart pin does not authorize migration Jobs, manual Helm commands,
 Flux reconciliation, or storage mutation.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -85,6 +94,9 @@ CR storage, completed hooks, external state, or manually deleted objects.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return source identity proof, release/upgrade findings, before/after rendered
 inventory and security diff, image pins/architectures, CRD/hook/state analysis,
 backup evidence, both high-risk explanations, complete validation/CI results,
@@ -92,6 +104,7 @@ and exact live revision/Helm conditions when deployed.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Chart source and selected images remain immutable and independently rendered.
 - [ ] Values, CRDs, hooks, RBAC, security, storage, and migrations are reviewed.
 - [ ] Recovery and downgrade/forward-fix paths are explicit.

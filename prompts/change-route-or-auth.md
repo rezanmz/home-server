@@ -26,10 +26,13 @@ Fill every line. Blank or ambiguous means no.
 - Push a branch: [yes/no; remote/branch]
 - Open or update a pull request: [yes/no; target]
 - Merge: [yes/no; exact PR and checks]
+- Remote workflow dispatch or rerun: [yes/no; exact workflow and ref]
+- Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; route/DNS/auth inspection]
 - Live cluster/host mutation: [yes/no; reconcile/restart/bootstrap scope]
 - Application-state mutation: [yes/no; exact role/login/bootstrap objects]
 - External/provider mutation: [yes/no; exact DNS/router/OAuth objects]
+- Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact record/client/credential removal]
 
 Public exposure, provider changes, application roles, and credential rotation each
@@ -37,6 +40,12 @@ require their matching explicit authority; repository edits imply none of them.
 If merge is authorized, it necessarily deploys the diff and may make declared
 Cloudflare DDNS and Authentik controllers act; authorize those inevitable
 effects or keep the work review-only.
+
+A pull-request deliverable requires separate authority to create its commit,
+push its branch, and open or update the pull request. Before a push or merge,
+inspect current branch/path filters and authorize every inevitable remote
+workflow, registry, or artifact-publication effect. If such an effect is denied,
+use a proven non-triggering path or stop before the triggering action.
 
 ## Manuals and skills
 
@@ -101,6 +110,9 @@ credentials; name those coordinated reversals explicitly.
 
 ## Evidence contract
 
+Report every commit, push, pull-request, merge, workflow, registry, and
+artifact-publication action in addition to the task-specific evidence below.
+
 Return before/after traffic and auth flow, ownership decisions, descriptor and
 generated diffs, callback/scope/group/role evidence, NetworkPolicy paths, complete
 validation, exact provider/live actions, reconciled revision, and client-by-client
@@ -108,6 +120,7 @@ success/denial results without secret values.
 
 ## Acceptance criteria
 
+- [ ] Durable behavior is documented; affected manuals, agent guidance, and examples are updated, or non-applicability is justified.
 - [ ] Exposure, DNS, route, backend, authentication, and policy express one
       consistent least-privilege boundary.
 - [ ] Native OIDC or the documented forward-auth exception is fully justified;

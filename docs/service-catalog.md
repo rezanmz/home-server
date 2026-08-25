@@ -446,6 +446,10 @@ For a plain-language view at any time:
 python3 scripts/service_catalog.py explain <service-id>
 ```
 
+For `mixed`, excluded, and platform-managed data, read the printed state
+boundary together with the class and protection enum. The enum alone is not a
+claim that every referenced store has the same backup or authority model.
+
 ## Schema and profile evolution
 
 Descriptor API versions and integration profiles are separate:
