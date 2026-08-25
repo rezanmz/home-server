@@ -1856,11 +1856,13 @@ application passwords or API keys. Rotate one integration at a time, update its
 SOPS Secret, reconcile, and prove the dependent workload before revoking the
 old value.
 
-The legacy Speedtest Tracker database must not replace the current PVC until a
-trusted copy of its matching `APP_KEY` is recovered and proven. The database is
-healthy, but encrypted fields cannot be validated from a hash or a newly
-generated key. Keep the legacy source read-only and preserve the current PVC
-until that prerequisite is satisfied.
+Speedtest Tracker is retired. Its current `speedtest-tracker-config` PVC and
+`APP_KEY` Secret are retained as recovery artifacts, while the legacy Speedtest
+Tracker database remains a separate read-only source. The legacy database must
+not replace the current PVC until a trusted copy of its matching `APP_KEY` is
+recovered and proven: encrypted fields cannot be validated from a hash or a newly
+generated key. Keep both sources and take a verified final export of the current
+PVC before any destructive cleanup.
 
 ## Planned maintenance
 
