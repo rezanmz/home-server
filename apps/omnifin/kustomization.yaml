@@ -1,10 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  # Omnifin retired. Only its data PVC (SQLite: connector credentials, OIDC
+  # config, sessions, audit) and the encryption/recovery Secret that can
+  # decrypt that database remain reconciled as recovery artifacts. Runtime,
+  # maintenance, route, and network manifests are gone. The PVC stays in
+  # Longhorn's default nightly backup group until a verified final export is
+  # taken; freeze it afterward. Application-native backups under /data/backups
+  # are retained inside the PVC.
   - secrets.sops.yaml
   - pvc.yaml
-  - deployment.yaml
-  - maintenance.yaml
-  - service.yaml
-  - networkpolicy.yaml
-  - route.yaml

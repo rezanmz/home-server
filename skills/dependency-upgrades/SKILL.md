@@ -89,10 +89,8 @@ that uncertainty and stop before merge or publication.
 
 For ordinary images, keep the complete `repository:tag@sha256:digest` form.
 Never replace a digest with a mutable tag or drop a useful release tag. Preserve
-intentional variants and channel constraints. Omnifin's edge reference is a
-current digest-only exception enforced by its contract test; preserve and review
-that identity as a special case rather than copying it to another service. For
-any digest-only rebuild, still review provenance/release metadata and the
+intentional variants and channel constraints. For any digest-only rebuild, still
+review provenance/release metadata and the
 architecture list; the bytes changed even if a channel name did not.
 
 Find every copy of a coupled image reference. Some pins intentionally appear in

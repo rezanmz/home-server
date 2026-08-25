@@ -316,9 +316,7 @@ NetworkPolicy selectors.
 
 Unless the service has a reviewed reason not to, require:
 
-- an immutable image reference, normally in
-  `repository:tag@sha256:digest` form; Omnifin's contract-tested edge build is
-  the current digest-only exception and is not a template for new services;
+- an immutable image reference in `repository:tag@sha256:digest` form;
 - a multi-architecture image when placement is floating;
 - `automountServiceAccountToken: false`;
 - non-root UID/GID, `RuntimeDefault` seccomp, no privilege escalation, and all

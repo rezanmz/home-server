@@ -124,9 +124,7 @@ Start topology, traffic, placement, storage, and trust-boundary work in
    ordinary references retain a human release tag as
    `repository:tag@sha256:digest`. Flux Git tags carry exact commit pins. Helm
    sources are fetched, checksummed, rendered, schema-checked, and policy
-   scanned. Omnifin's tracked edge build is a deliberate digest-only exception
-   enforced by its contract test; do not copy or normalize that exception
-   without a reviewed release-identity change.
+   scanned.
 8. **High-risk baselines are review locks.** Never regenerate
    `scripts/ci/high-risk-baseline.txt` or the Helm baseline merely to make CI
    green. Review every added and removed finding.

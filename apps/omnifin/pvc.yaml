@@ -3,6 +3,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: omnifin-data
   namespace: apps
+  labels:
+    home-server.reza.network/retention: omnifin-retirement
+  annotations:
+    home-server.reza.network/review-after: "2026-12-01"
 spec:
   accessModes:
     - ReadWriteOnce
