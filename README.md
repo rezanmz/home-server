@@ -4,6 +4,10 @@ This repository is the declarative source of truth for a two-node K3s home
 cluster. Flux reconciles `main`; GitHub Actions validates the manifests but does
 not deploy them. The former Docker Compose deployment and SWAG edge are retired.
 
+Coding and operations agents must start with [AGENTS.md](AGENTS.md). Reusable
+task playbooks live in [`skills/`](skills/) and copy-paste task briefs live in
+[`prompts/`](prompts/); both route back to the operator manuals below.
+
 For operating details, see the [cluster architecture](docs/architecture.md),
 the [service integration catalog](docs/service-catalog.md), the
 [catalog design decision](docs/service-catalog-design.md), the
@@ -76,11 +80,10 @@ each directory's `kustomization.yaml` defines the desired resources.
 | --- | --- | --- |
 | Identity and home | Authentik, Homepage, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
 | Personal apps | Actual Budget, Vikunja, MCPHub, Hermes Agent, Open WebUI, internal SearXNG, MCP-managed research/Google/Obsidian tools, Speedtest Tracker | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `hermes.reza.network`, `chat.reza.network`, `speedtest.reza.network` |
-| Annotation | Argilla with PostgreSQL, Elasticsearch, Redis, and worker | `argilla.reza.network` |
 | Media | Jellyfin, Seerr, Navidrome | `jellyfin.reza.network`, `seerr.reza.network`, `music.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Soularr, slskd | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network`, `lidarr.reza.network`, `soularr.reza.network`, `slskd.reza.network` |
 | Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
-| Network services | Blocky DNS, Kea DHCP, ISC Stork, wg-easy, Samba, Syncthing | DNS at `192.168.1.2`, DHCP from `192.168.1.3`, read-only `stork.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
+| Network services | Blocky DNS, Kea DHCP, ISC Stork, wg-easy, Samba, Syncthing | DNS at `192.168.1.2` and `192.168.1.3`, DHCP from `192.168.1.3`, read-only `stork.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
 | Operations | Grafana, Prometheus, Alertmanager, Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `grafana.reza.network`, scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
 Headlamp is the read-only Kubernetes dashboard at `headlamp.reza.network`;
@@ -91,6 +94,10 @@ Alertmanager have no external routes. Glances is no longer deployed. The
 former Loggifly function is now a Kubernetes event exporter that sends warning
 events to Telegram. Its historical application name is retained in the
 manifests.
+
+Argilla is retired. Its directory remains active only to retain the encrypted
+recovery Secret and frozen rollback PVCs; no Argilla runtime or route is
+desired.
 
 Homepage is the YAML-managed service directory at `homepage.reza.network`. It
 is limited to the LAN or WireGuard, requires an Authentik session through the
@@ -128,6 +135,7 @@ set -euo pipefail
 scripts/ci/validate-shell.sh
 python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 python3 scripts/ci/validate-secrets.py
+python3 scripts/ci/validate-application-state-ownership.py
 {
   kubectl kustomize clusters/home-server
   printf '\n---\n'
@@ -159,6 +167,8 @@ clusters/home-server/    Flux reconciliation entry point
 infrastructure/          K3s platform, storage, ingress, and host configuration
 scripts/                 host preparation, bootstrap, and migration helpers
 docs/                    architecture and operations documentation
+skills/                  task-specific agent workflows
+prompts/                 reusable operator task briefs
 ```
 
 ## Access and security
@@ -166,8 +176,8 @@ docs/                    architecture and operations documentation
 - Most administrative interfaces are restricted to the home LAN and WireGuard
   ranges by an application-side proxy or a Traefik middleware. Headlamp also
   requires an Authentik session.
-- Argilla and the explicitly public application routes are reachable through
-  the public Gateway. A user-facing application that supports OIDC, OAuth2, or
+- The explicitly public application routes are reachable through the public
+  Gateway. A user-facing application that supports OIDC, OAuth2, or
   SAML natively must use that native integration with Authentik. Proxy or
   forward-auth is an exception for applications without suitable native
   support, not the default. The service lifecycle manual records the required

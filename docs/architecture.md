@@ -258,12 +258,13 @@ Audiobookshelf is pinned to the Beelink as a security-placement constraint. Its
 public route uses Audiobookshelf's native OIDC implementation with an Authentik
 provider, including the official mobile client's PKCE callback. Keeping this
 Internet-facing workload off the Pi prevents it from inheriting the Pi pod
-CIDR's deliberate trust on private routes for masqueraded WireGuard clients. A
-post-start bootstrap keeps the pod out of Service endpoints until the local
-recovery root, OIDC settings, and initial libraries exist, preventing a public
-visitor from claiming an empty instance. Dedicated audiobook and podcast NFS
-paths are writable so uploads, subscriptions, and downloaded episodes persist;
-the shared Calibre ebook library is mounted separately and read-only.
+CIDR's deliberate trust on private routes for masqueraded WireGuard clients.
+Audiobookshelf's local recovery root, OIDC settings, and libraries are
+application-owned on its Longhorn volumes; the ownership policy deliberately
+rejects a Git post-start reconciler or bootstrap marker. An empty replacement
+must therefore remain off the public route during separately authorized private
+onboarding. Writable audiobook and podcast categories come from JuiceFS, while
+the JuiceFS books category is mounted separately and read-only.
 
 ## Storage
 
@@ -283,9 +284,10 @@ Four storage mechanisms serve different data classes:
 
 K3s does not bundle the Kubernetes CSI snapshot APIs. The cluster therefore
 reconciles the upstream external-snapshotter CRDs and common snapshot controller
-from the exact `v8.5.0` commit used by Longhorn's snapshotter sidecars; the
-controller image is pinned to a multi-architecture digest. This restores the
-snapshot API, but local snapshots are not an independent backup target.
+from the exact tag and commit declared in
+`infrastructure/snapshot-controller/repository.yaml`; the controller image is
+pinned to a multi-architecture digest. This restores the snapshot API, but
+local snapshots are not an independent backup target.
 
 The organized media payload survives either node or SSD failing because B2 is
 authoritative. It still requires the JuiceFS PostgreSQL metadata to interpret
@@ -306,8 +308,9 @@ S3-compatible BackupTarget. The credential is stored only in the SOPS-encrypted
 SSE-B2 encryption at rest; transport uses the regional HTTPS endpoint.
 
 The `b2-nightly` recurring job applies to Longhorn's `default` job group and
-runs at 06:17 UTC with one backup at a time, 14 retained recovery points, and a
-full backup after every seven completed incremental backups. Volumes that are
+runs at 06:17 America/Toronto time with one backup at a time, 14 retained
+recovery points, and a full backup after every seven completed incremental
+backups. Volumes that are
 detached at that time may be attached temporarily so they are not silently
 skipped. These block-level backups are crash-consistent, not coordinated
 application-consistent backups across PostgreSQL, Redis, Elasticsearch, or

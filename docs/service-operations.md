@@ -22,36 +22,51 @@ and rehearsed.
    path. Flux will normally overwrite overlapping live changes.
 3. The root Flux Kustomization has pruning disabled. Removing YAML from Git
    does **not** remove the corresponding live object.
-4. Back up and read-test persistent data before changing a PVC, database,
-   application encryption key, or storage layout. A replica, retained PV, or
-   local snapshot is not an independent backup.
+4. Back up and read-test existing persistent data before changing a PVC,
+   database, application encryption key, or storage layout. A replica, retained
+   PV, or local snapshot is not an independent backup. A genuinely new empty
+   claim has no prior data to back up; prove that it is new, protect any import
+   source, and require its first backup and recovery test after initialization.
 5. Every new network path, privileged setting, host dependency, and high-risk
    baseline change must be intentional and reviewable.
 
 ## Operator prerequisites
 
-The documented commands assume the workstation has `kubectl`, Python 3,
-`sops`, `jq`, and SSH, and that the repository's age identity is readable at
-`$SOPS_AGE_KEY_FILE` or `~/.config/sops/age/keys.txt`. The `beelink` and `pi`
-SSH aliases must resolve, and the operator must have non-interactive sudo on the
-nodes. Verify the access path without printing any secret:
+Check prerequisites per task plane. A repository-only proposal does not require
+Pi access, live-cluster access, or a SOPS private identity unless that proposal
+edits encrypted values.
+
+For local rendering and repository validation:
 
 ```bash
 set -euo pipefail
-command -v kubectl python3 sops jq ssh >/dev/null
-SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
-export SOPS_AGE_KEY_FILE
-test -r "$SOPS_AGE_KEY_FILE"
+command -v git kubectl python3 >/dev/null
+python3 -c 'import yaml'
 kubectl kustomize clusters/home-server >/dev/null
-sops --decrypt infrastructure/longhorn/backups/backup-credentials.sops.yaml \
-  >/dev/null
+```
+
+For editing an existing SOPS Secret, additionally require `sops` and the
+repository's existing age identity at `$SOPS_AGE_KEY_FILE` or the documented
+default location. Verify it with a bounded decrypt to `/dev/null`; never create
+a replacement identity to bypass a missing key.
+
+For authorized live verification, require `ssh`, `jq`, the `beelink` alias, and
+non-interactive sudo:
+
+```bash
+command -v ssh jq >/dev/null
 ssh beelink 'sudo -n k3s kubectl get --raw=/readyz >/dev/null'
+```
+
+Require the `pi` alias and its non-interactive sudo only for a task that actually
+inspects or changes Pi-hosted NFS, network services, or host policy:
+
+```bash
 ssh pi 'sudo -n true'
 ```
 
-Stop if any prerequisite fails. Do not work around a missing age identity by
-creating a new one: existing Secrets are encrypted to the repository's current
-recipient.
+Stop the affected phase when its prerequisite fails and report what remains
+unverified. Do not claim live, host, or secret proof from repository-only checks.
 
 ## Understand ownership before editing
 
@@ -187,10 +202,13 @@ Before implementing authentication for a new user-facing service:
    its exact `client.providerLogout` method and URL in the service catalog.
    Prefer back-channel logout over a browser iframe when both are supported.
 3. Use a public client with authorization code plus PKCE when the application
-   implements PKCE and does not need a client secret. Otherwise, keep the OIDC
-   client secret in SOPS-encrypted Secrets. Send only the minimum required
-   scopes, prefer stable subject matching, and never grant administrator access
-   merely because any Authentik user can authenticate.
+   implements PKCE and does not need a client secret. For a confidential client,
+   keep Authentik's provider copy in SOPS. Put the relying-party copy either in
+   a SOPS Secret when Kubernetes supplies it at startup, or in backed-up
+   application state when the supported UI owns it; do not duplicate both
+   patterns. Send only the minimum required scopes, prefer stable subject
+   matching, and never grant administrator access merely because any Authentik
+   user can authenticate.
 4. Add the Authentik issuer path to the workload's NetworkPolicy, including
    the split-horizon Traefik pre- and post-DNAT destinations. Verify discovery,
    login, callback, logout, and any official mobile client before exposure.
@@ -204,23 +222,26 @@ client type, exact callbacks, scopes, and application identity in the
 service's colocated descriptor. The catalog compiler generates that
 application's separate blueprint document inside the shared ConfigMap.
 
-For a confidential client, add its provider-side secret to the shared encrypted
-OIDC client Secret and the same value to the relying application's encrypted
-Secret. The compiler derives and generates the worker's required
-`secretKeyRef`; a new client therefore changes the pod template, and a missing
-key stops the pod instead of silently breaking only its blueprint. A reviewed
-PKCE public client has no Secret or worker environment entry. Run `render`,
-inspect the generated diffs, and use `explain <service-id>` before `check`.
-Never edit the aggregate Authentik blueprint or generated worker patch directly,
-and do not add a per-application Authentik manifest or Deployment patch.
+For every confidential client, add the provider-side value to the shared
+encrypted OIDC client Secret. Then choose one relying-party ownership pattern:
 
-For a confidential client, the relying application still needs the same client
-secret in its own namespace. Rotate both encrypted copies in one reviewed
-change, then restart the Authentik Deployment so the worker receives the new
-environment value. Verify that the provider and application blueprint instance
-is Successful before rolling the relying application. This duplication is
-preferable to adding a cluster-wide Secret replication controller or granting
-cross-namespace Secret access.
+- `secret.manifest` and `secret.key` when the workload consumes a Kubernetes
+  Secret; the compiler validates that second encrypted copy and generates the
+  Authentik worker reference; or
+- `secret.managedBy: application-state` with a reason when the application UI
+  stores the value in its backed-up database. The compiler validates only the
+  provider copy, and the rollout requires a separately authorized UI change.
+
+A reviewed PKCE public client has no Secret or worker environment entry. Run
+`render`, inspect the generated diffs, and use `explain <service-id>` before
+`check`. Never edit the aggregate Authentik blueprint or generated worker patch
+directly, and do not add a cross-namespace Secret replication controller.
+
+For Kubernetes-owned relying-party secrets, rotate both encrypted copies in one
+reviewed change. For application-owned copies, coordinate the provider SOPS edit
+with the supported UI/API operation; a pull request cannot complete that half.
+In either case, keep the old value valid until Authentik and the relying
+application have both been proven when overlap is supported.
 
 ISC does not publish supported production Stork container images. Rebuild the
 pinned Stork server, non-root agent, and web UI targets only from the reviewed
@@ -284,7 +305,9 @@ NetworkPolicy selectors.
 
 Unless the service has a reviewed reason not to, require:
 
-- an immutable image reference in `repository:tag@sha256:digest` form;
+- an immutable image reference, normally in
+  `repository:tag@sha256:digest` form; Omnifin's contract-tested edge build is
+  the current digest-only exception and is not a template for new services;
 - a multi-architecture image when placement is floating;
 - `automountServiceAccountToken: false`;
 - non-root UID/GID, `RuntimeDefault` seccomp, no privilege escalation, and all
@@ -332,6 +355,14 @@ realistic requested size. The class has two replicas, delayed binding, and
 group when `spec.recurringJobSelector` is empty; there is no explicit
 `b2-nightly` selector on each Volume. A bound PVC therefore proves neither
 backup membership nor a completed backup.
+
+For a genuinely new empty claim, record that no pre-change data set exists and
+protect any source that will be imported. Do not pretend a backup can precede
+volume creation. After initialization or import, require the exact new volume to
+produce an independent backup and complete an appropriate isolated read/restore
+test before calling the stateful addition operationally complete. The inventory
+commands below are therefore post-deployment checks for a new claim and
+pre-mutation checks for an existing one.
 
 Map the PVC to its PV and Longhorn volume, require the target to be available,
 and select the newest successful backup created by the recurring job:
@@ -578,6 +609,7 @@ set -euo pipefail
 scripts/ci/validate-shell.sh
 python3 -m unittest discover --start-directory scripts/ci --pattern 'test_*.py'
 python3 scripts/ci/validate-secrets.py
+python3 scripts/ci/validate-application-state-ownership.py
 
 {
   kubectl kustomize clusters/home-server
@@ -596,6 +628,7 @@ python3 scripts/service_catalog.py check --rendered /tmp/home-server.yaml
 python3 scripts/ci/validate-secrets.py --rendered /tmp/home-server.yaml
 python3 scripts/ci/check-high-risk-policy.py \
   /tmp/home-server.yaml scripts/ci/high-risk-baseline.txt
+python3 scripts/ci/validate-git-source-pins.py /tmp/home-server.yaml
 ```
 
 The protected GitHub workflow additionally runs pinned strict schema checks and
@@ -737,6 +770,20 @@ List exactly what will be retained or destroyed:
 - DNS names and router rules; and
 - historical manifests needed to interpret retained data.
 
+Make credential decisions per field and owner, not only per Secret object. A
+service may depend on one key inside the shared Authentik Secret, a separate
+application encryption key, provider credentials, and the repository-wide SOPS
+age identity. Destroying the shared age identity is never service cleanup.
+Record whether the retention goal is a functionally restorable service or only
+a data archive, and retain the compatible image/schema, decryption keys, OAuth
+client/provider dependencies, and restore procedure required by that choice.
+
+Define destruction semantics honestly. Removing a Kubernetes Secret does not
+revoke its provider credential or erase Git history/backups. Deleting a Longhorn
+backup record does not prove physical erasure from B2 hidden versions, and
+provider-side manipulation of the shared backupstore can corrupt other recovery
+points. There is no generic service-level physical-erasure procedure.
+
 Create and read-test the application/database export before stopping the last
 writer, unless the application documents a supported offline export. The final
 quiesced block/file backup comes after the writer inventory reaches zero.
@@ -747,6 +794,10 @@ Use a reviewed Git change to scale controllers to zero or suspend schedules and
 remove the route from the active Kustomization. After Flux has applied that
 revision, explicitly delete the now-unowned live HTTPRoute because the root will
 not prune it. Verify the route is gone before taking the final quiesced backup.
+Removing a route, NetworkPolicy, workload image, or other scanned boundary also
+removes its exact high-risk finding. Review that subtraction and update only the
+corresponding baseline entry; a stale accepted finding fails validation just as
+an unreviewed addition does.
 
 Suspending a CronJob does not stop a Job it already created, and scaling a
 Deployment or StatefulSet does not stop standalone pods or another controller.
@@ -813,12 +864,21 @@ Deployments and StatefulSets must be fixed at zero replicas in reconciled Git;
 any HPA targeting them must be absent, because it can rescale a zero-replica
 controller. A matching DaemonSet must be removed from desired state and
 explicitly deleted—it cannot be scaled to zero. Inventory any service-specific
-operator/custom resource that can recreate a writer as well. Require no active
-Job, pod, mount, or VolumeAttachment that can write the data, and require a
-Longhorn volume to be detached when the service no longer needs it. Re-run all
-five inventories immediately before the final backup so a schedule or
-controller cannot race an old observation. Only then create the final quiesced
-off-site storage backup.
+operator/custom resource that can recreate a writer as well.
+
+The PVC-based queries above are only a minimum. Also inventory writers that use
+an API, database Service, inline NFS/CSI volume, host path, object store,
+external credential, webhook, or human client without mounting the named claim.
+For each created Job, inspect owner references, suspend state, conditions,
+backoff/retry behavior, deletion timestamp, and every owned Pod; `active: 0` or
+a Pod phase alone does not prove the Job cannot create another writer.
+
+Require no retryable Job, pod, mount, or VolumeAttachment that can write the
+data, and require a Longhorn volume to be detached when the service no longer
+needs it. Re-run the full inventory immediately before the final backup and
+continuously watch controllers, Jobs, Pods, mounts, and attachments throughout
+the quiescence window. Abort if any writer reappears. Only then create the final
+quiesced off-site storage backup.
 
 Do not run `kubectl delete -k apps/SERVICE_NAME`: it can delete PVCs and Secrets
 that the retention plan intended to preserve.
@@ -864,8 +924,10 @@ reconciling its old path.
 Deleting a Longhorn PVC leaves a retained PV/Volume by default. Deleting a
 static NFS PVC does not delete the Pi directory. Before any storage action,
 capture and review the complete identity chain: PVC namespace/name/UID, PV
-name/UID and reclaim policy, CSI volume handle/Longhorn Volume name, attachment
-state, latest verified backup, and NFS server/path where applicable.
+name/UID, `claimRef` UID, reclaim policy, StorageClass/provisioner, CSI driver
+and handle, Longhorn Volume name/UID and Kubernetes identity fields, each
+VolumeAttachment UID/node, latest verified Backup/BackupVolume/target/repository
+identity, remote artifact, and NFS server/path where applicable.
 
 For retention, leave the exact resource under a stable Git/Flux owner and
 require it to be detached and backed up. For destruction, write a
@@ -886,11 +948,23 @@ That host change is outside Flux.
   `python3 scripts/service_catalog.py render`. This removes its generated
   Homepage, Blocky, and Cloudflare DDNS entries together. A retained
   recovery-only app path needs a narrow colocated `CatalogExclusion` reason.
+- Descriptor removal removes Authentik's generated `state: present` declaration
+  but does not delete its database objects. There is no implemented generic
+  catalog cleanup lifecycle at this revision. Retain and report the provider,
+  application, mappings, policy bindings, and outpost membership unless a
+  separately authorized, tested service-specific cleanup or a versioned catalog
+  lifecycle is added first.
+- Catalog rendering changes hash-named ConfigMaps used by shared Homepage,
+  Blocky, Cloudflare DDNS, and Authentik consumers. Verify the new aggregate
+  rollouts and unrelated services. Delete an old generated ConfigMap only after
+  proving no live pod references its exact name; root pruning will not remove it.
 - Allow Blocky's configured five-minute custom-record TTL to expire on clients,
   or flush only the affected client cache when absence must be immediate.
 - Explicitly delete the exact Cloudflare record: `DELETE_ON_STOP=false`, so
   removing a generated name from the list does not remove the provider record.
-- Remove router forwards only after confirming no retained service uses them.
+- Router 80/443 forwarding is shared by public services. Do not treat it as a
+  per-service cleanup object; remove or change a forward only after proving its
+  complete cluster-wide consumer set and obtaining separate provider authority.
 - Revoke or delete provider-side API keys, OAuth/OIDC clients, webhooks,
   service accounts, and integrations selected for destruction. Record why any
   surviving credential is retained; deleting its Kubernetes Secret does not
@@ -903,7 +977,9 @@ Confirm Flux is Ready at the intended revision, the retired objects are absent,
 retained volumes are detached and backed up, no Released PV was accidentally
 orphaned, and no service-specific DNS or host export selected for destruction
 remains. Record the recovery artifacts and their restore prerequisites next to
-the retained manifests.
+the retained manifests. Reconcile the same revision again and repeat former-UID,
+owner-reference, label, endpoint, route, Job, and writer checks so a stale child
+or controller cannot silently recreate the runtime.
 
 ## Short checklists
 

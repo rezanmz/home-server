@@ -176,7 +176,9 @@ Authentication modes are:
 - `oidc`: generate an Authentik provider and application using the immutable
   `authentik-oidc-v1` profile;
 - `forward-auth`: generate an Authentik single-application proxy provider using
-  `authentik-forward-single-v1`;
+  `authentik-forward-single-v1`, or use `authentik-forward-single-v2` with a
+  required `allowedGroups` list when the application also needs group-level
+  authorization;
 - `native`: use the application's supported authentication and document why
   native OIDC is unavailable or unsuitable; or
 - `none`: only permitted on a private route and requires a reason.
@@ -331,9 +333,13 @@ Do not claim `metrics` merely because kube-state-metrics can see a pod.
    - floating or physical placement;
    - each state store and its off-site protection; and
    - Kubernetes-only, application metrics, platform, or no monitoring.
-4. For confidential OIDC, create the same high-entropy client secret in the
-   shared Authentik SOPS Secret and the relying application's SOPS Secret. Do
-   not print either plaintext in a command transcript.
+4. For confidential OIDC, create the provider copy in the shared Authentik SOPS
+   Secret. If Kubernetes supplies the relying-party value, create the same value
+   in that application's SOPS Secret and declare its manifest/key. If the
+   supported application UI stores it, declare
+   `secret.managedBy: application-state` with a reason and plan the separately
+   authorized UI operation. Do not create a redundant second owner or print the
+   value in a transcript.
 5. Render:
 
    ```bash
@@ -395,14 +401,23 @@ blueprint file disappears.
 2. Take and verify the final backup if state is retained.
 3. Explicitly delete the live Kubernetes objects according to the retirement
    runbook.
-4. Apply an Authentik cleanup blueprint with `state: absent` for the provider
-   and application, verify it succeeded, then remove that cleanup declaration.
-5. Remove the service descriptor and run `render`.
+4. Remove the service descriptor and run `render`. This removes the generated
+   `state: present` declaration but does not delete existing Authentik database
+   objects.
+5. Treat Authentik deletion as a separate application-state and destructive
+   operation. The repository currently has no versioned catalog lifecycle field
+   or tested generic cleanup declaration that enumerates providers,
+   applications, mappings, policy bindings, and outpost membership. Retain and
+   report those objects unless the change first adds such a tested mechanism or
+   supplies a service-specific reviewed cleanup procedure.
 6. If the directory remains registered only for recovery artifacts, replace
    the service descriptor with a colocated `CatalogExclusion` and a narrow
    reason.
 
-Never use an exclusion to hide an active workload.
+A narrow exclusion is valid for a retained recovery-only module or an internal
+support controller with no catalog-owned web, DNS, Homepage, auth, placement,
+data-protection, or monitoring intent. Never use an exclusion to hide an active
+service whose integration intent belongs in a Service descriptor.
 
 ## Understand failures
 
@@ -436,8 +451,10 @@ python3 scripts/service_catalog.py explain <service-id>
 Descriptor API versions and integration profiles are separate:
 
 - `catalog.reza.network/v1alpha1` defines the descriptor shape.
-- `authentik-oidc-v1` and `authentik-forward-single-v1` define generated
-  provider behavior.
+- `authentik-oidc-v1`, `authentik-forward-single-v1`, and
+  `authentik-forward-single-v2` define generated provider behavior. Forward
+  auth v2 adds a generated application policy binding for the descriptor's
+  required `allowedGroups` list.
 
 An existing profile version is immutable. New behavior gets a new profile
 version and an explicit descriptor migration. The compiler never silently

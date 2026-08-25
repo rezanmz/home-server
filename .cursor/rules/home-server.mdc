@@ -1,0 +1,12 @@
+---
+description: Required operating entry point for every home-server repository task
+alwaysApply: true
+---
+
+Read and follow `AGENTS.md` before inspecting, editing, reviewing, or operating
+this repository. Load the task-specific `skills/<name>/SKILL.md` selected by its
+routing table and read the authoritative operator manual named by that skill.
+Use `prompts/` for reusable task briefs and explicit authorization boundaries.
+
+Do not copy rules into this file or silently resolve conflicts. Apply the
+precedence and stop conditions in `AGENTS.md`.

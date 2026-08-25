@@ -53,7 +53,7 @@ spec:
     protection: longhorn-b2
     manifests:
       - apps/audiobookshelf/pvc.yaml
-      - infrastructure/nfs-media/media.yaml
-    note: Configuration and metadata are backed up; NFS audiobooks and downloaded podcast media are outside Longhorn.
+      - infrastructure/juicefs/storage.yaml
+    note: Configuration and metadata use Longhorn B2 backups; writable audiobooks/podcasts and read-only books use JuiceFS, whose encrypted B2 chunks are authoritative rather than an independent backup. The current catalog protection enum does not model that mixed recovery boundary precisely.
   observability:
     mode: kubernetes
