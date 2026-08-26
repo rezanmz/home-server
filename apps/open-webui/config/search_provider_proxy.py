@@ -26,6 +26,9 @@ MAX_UPSTREAM_BYTES = 4 * 1024 * 1024
 PUBLIC_ENGINE_TIMEOUT_SECONDS = 4
 PAID_PROVIDER_TIMEOUT_SECONDS = 7
 PUBLIC_ENGINE_COOLDOWN_SECONDS = 15 * 60
+# Paid providers get a shorter cooldown so an exhausted quota stops per-query
+# 7 s attempts without a long-lived outage masking recovery.
+PAID_PROVIDER_COOLDOWN_SECONDS = 5 * 60
 RESULT_LIMIT = 10
 PUBLIC_ENGINES = (
     ("duckduckgo", "ddg"),
@@ -235,9 +238,9 @@ def is_available(provider: str) -> bool:
         return False
 
 
-def start_cooldown(provider: str) -> None:
+def start_cooldown(provider: str, seconds: int = PUBLIC_ENGINE_COOLDOWN_SECONDS) -> None:
     with _cooldowns_lock:
-        _cooldowns[provider] = time.monotonic() + PUBLIC_ENGINE_COOLDOWN_SECONDS
+        _cooldowns[provider] = time.monotonic() + seconds
 
 
 def attempt(
@@ -248,6 +251,7 @@ def attempt(
     attempted: list[str],
     *,
     cooldown_on_error: bool = False,
+    cooldown_seconds: int = PUBLIC_ENGINE_COOLDOWN_SECONDS,
 ) -> list[dict[str, Any]]:
     if cooldown_on_error and not is_available(provider):
         record(provider, "cooldown")
@@ -259,7 +263,7 @@ def attempt(
         record(provider, "error")
         log_attempt(provider, "error")
         if cooldown_on_error:
-            start_cooldown(provider)
+            start_cooldown(provider, cooldown_seconds)
         return []
     outcome = "success" if results else "empty"
     record(provider, outcome)
@@ -285,7 +289,15 @@ def ordered_search(query: str, page: int = 1) -> dict[str, Any]:
             return {"organic_results": results, "provider": provider, "attempted": attempted}
 
     for provider, search in (("brave", brave_search), ("serpapi", serpapi_search)):
-        results = attempt(provider, search, query, page, attempted)
+        results = attempt(
+            provider,
+            search,
+            query,
+            page,
+            attempted,
+            cooldown_on_error=True,
+            cooldown_seconds=PAID_PROVIDER_COOLDOWN_SECONDS,
+        )
         if results:
             record_search("success")
             return {"organic_results": results, "provider": provider, "attempted": attempted}

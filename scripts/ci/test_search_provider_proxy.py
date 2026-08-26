@@ -142,6 +142,62 @@ class SearchProviderProxyTests(unittest.TestCase):
         self.assertIn('searxng_search_requests_total{outcome="success"} 1', metrics)
         self.assertNotIn("private query", metrics)
 
+    def test_failed_paid_provider_enters_short_cooldown(self) -> None:
+        with (
+            mock.patch.object(proxy, "searxng_engine_search", return_value=[]),
+            mock.patch.object(
+                proxy, "brave_search", side_effect=proxy.ProviderError("HTTP 429")
+            ),
+            mock.patch.object(proxy, "serpapi_search", return_value=RESULT),
+            mock.patch.object(proxy, "log_attempt"),
+        ):
+            first = proxy.ordered_search("cooldown probe")
+
+        self.assertEqual(first["provider"], "serpapi")
+
+        with (
+            mock.patch.object(proxy, "searxng_engine_search", return_value=[]),
+            mock.patch.object(proxy, "brave_search") as brave,
+            mock.patch.object(proxy, "serpapi_search", return_value=RESULT) as serpapi,
+            mock.patch.object(proxy, "log_attempt"),
+        ):
+            second = proxy.ordered_search("cooldown probe two")
+
+        brave.assert_not_called()
+        serpapi.assert_called_once()
+        self.assertEqual(second["provider"], "serpapi")
+        self.assertNotIn("brave", second["attempted"])
+
+    def test_paid_cooldown_expires_and_recovers_brave(self) -> None:
+        with (
+            mock.patch.object(proxy, "searxng_engine_search", return_value=[]),
+            mock.patch.object(
+                proxy, "brave_search", side_effect=proxy.ProviderError("HTTP 429")
+            ),
+            mock.patch.object(proxy, "serpapi_search", return_value=RESULT),
+            mock.patch.object(proxy, "log_attempt"),
+        ):
+            proxy.ordered_search("expiry probe")
+
+        self.assertIn("brave", proxy._cooldowns)
+        deadline = proxy._cooldowns["brave"]
+        self.assertLessEqual(
+            deadline - __import__("time").monotonic(),
+            proxy.PAID_PROVIDER_COOLDOWN_SECONDS,
+        )
+
+        proxy._cooldowns["brave"] = 0
+        with (
+            mock.patch.object(proxy, "searxng_engine_search", return_value=[]),
+            mock.patch.object(proxy, "brave_search", return_value=RESULT) as brave,
+            mock.patch.object(proxy, "serpapi_search") as serpapi,
+            mock.patch.object(proxy, "log_attempt"),
+        ):
+            recovered = proxy.ordered_search("expiry probe two")
+
+        brave.assert_called_once()
+        serpapi.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
