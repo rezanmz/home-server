@@ -236,9 +236,7 @@ metadata:
     app.kubernetes.io/component: database
 spec:
   replicas: 1
-  # DB_URL (application-owned secret) references the mcphub-postgres
-  # Service; mcphub-postgresql was a byte-identical duplicate and is retired.
-  serviceName: mcphub-postgres
+  serviceName: mcphub-postgresql
   selector:
     matchLabels:
       app.kubernetes.io/name: mcphub
