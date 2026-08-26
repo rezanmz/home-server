@@ -199,5 +199,30 @@ class SearchProviderProxyTests(unittest.TestCase):
         serpapi.assert_not_called()
 
 
+
+    def test_empty_paid_result_enters_cooldown(self) -> None:
+        with (
+            mock.patch.object(proxy, "searxng_engine_search", return_value=[]),
+            mock.patch.object(proxy, "brave_search", return_value=[]),
+            mock.patch.object(proxy, "serpapi_search", return_value=RESULT),
+            mock.patch.object(proxy, "log_attempt"),
+        ):
+            first = proxy.ordered_search("empty brave probe")
+
+        self.assertEqual(first["provider"], "serpapi")
+
+        with (
+            mock.patch.object(proxy, "searxng_engine_search", return_value=[]),
+            mock.patch.object(proxy, "brave_search") as brave,
+            mock.patch.object(proxy, "serpapi_search", return_value=RESULT) as serpapi,
+            mock.patch.object(proxy, "log_attempt"),
+        ):
+            second = proxy.ordered_search("empty brave probe two")
+
+        brave.assert_not_called()
+        serpapi.assert_called_once()
+        self.assertEqual(second["provider"], "serpapi")
+
+
 if __name__ == "__main__":
     unittest.main()

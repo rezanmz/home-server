@@ -268,6 +268,11 @@ def attempt(
     outcome = "success" if results else "empty"
     record(provider, outcome)
     log_attempt(provider, outcome, len(results))
+    # An empty result from a paid provider (HTTP 200, zero hits) is the
+    # signature of an exhausted-but-responsive quota. Cooldown it so the next
+    # query does not burn another paid attempt for the same nothing.
+    if not results and cooldown_on_error:
+        start_cooldown(provider, cooldown_seconds)
     return results
 
 
@@ -365,7 +370,16 @@ class SearchHandler(BaseHandler):
             self.send_body(400, "application/json", b'{"error":"invalid_request"}')
             return
 
-        document = ordered_search(query, page)
+        # Bound fan-out: many concurrent requests would otherwise multiply
+        # paid-provider attempts at the same moment (the sequential fallback
+        # order only holds within one request).
+        if not _search_slots.acquire(timeout=5):
+            self.send_body(503, "application/json", b'{"error":"overloaded"}')
+            return
+        try:
+            document = ordered_search(query, page)
+        finally:
+            _search_slots.release()
         provider = document["provider"] or "none"
         results = [
             {
@@ -408,6 +422,10 @@ class MetricsHandler(BaseHandler):
             )
             return
         self.send_body(404, "application/json", b'{"error":"not_found"}')
+
+
+MAX_CONCURRENT_SEARCHES = 4
+_search_slots = threading.BoundedSemaphore(MAX_CONCURRENT_SEARCHES)
 
 
 def main() -> None:

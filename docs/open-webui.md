@@ -110,9 +110,10 @@ or user settings.
 
 After a restore, verify OIDC login, model visibility, each profile's base model,
 the single MCPHub connection, one SearXNG search, retrieval over a disposable
-document, and a harmless personal-tool read. Do not introduce a reconciler to
-make a restore appear complete; repair the backed-up application state through
-the supported UI.
+document, a harmless personal-tool read, one STT/TTS round-trip (OpenRouter
+external engines), the web-search confirmation gate, and interactive tool
+approvals. Do not introduce a reconciler to make a restore appear complete;
+repair the backed-up application state through the supported UI.
 
 ## Change workflow
 
