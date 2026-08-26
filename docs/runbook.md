@@ -1196,7 +1196,7 @@ sudo k3s kubectl -n apps exec deploy/open-webui -c open-webui -- python -c \
 Inspect the search-provider adapter and paid-fallback counters:
 
 ```bash
-sudo k3s kubectl -n apps logs deploy/open-webui -c search-provider-proxy --tail=150
+sudo k3s kubectl -n apps logs deploy/searxng -c search-provider-proxy --tail=150
 ```
 
 The **AI Services** Grafana dashboard shows SearXNG failures, provider outcomes,
@@ -1210,8 +1210,9 @@ completed migration in the normal pod startup path.
 
 If application state must be restored, restore the Longhorn volume from B2,
 then verify OIDC login, profile model choices, the single MCPHub connection,
-search, retrieval, and memory. Git recreates the workload but not these
-application-owned settings.
+search, retrieval, memory, one STT/TTS round-trip (OpenRouter external
+engines), the web-search confirmation gate, and interactive tool approvals.
+Git recreates the workload but not these application-owned settings.
 
 ### MCPHub and official GPT Researcher
 

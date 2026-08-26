@@ -35,7 +35,7 @@ spec:
           annotations:
             summary: Searches are exhausting every configured provider
             description: At least two searches failed after trying every available provider during the last hour. Inspect the AI Services dashboard and the search-provider-proxy logs.
-            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#internal-searxng-search
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#open-webui-application-state-and-search
         - alert: SearXNGBraveQuotaApproaching
           expr: >-
             sum(increase(searxng_provider_requests_total{provider="brave"}[30d])) >= 800
@@ -44,7 +44,7 @@ spec:
           annotations:
             summary: Cluster-observed Brave usage is approaching its monthly allowance
             description: Prometheus observed at least 800 Brave API attempts in the last 30 days. Confirm the provider's calendar-month usage before the 1000-query allowance is exhausted.
-            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#internal-searxng-search
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#open-webui-application-state-and-search
         - alert: SearXNGSerpAPIQuotaApproaching
           expr: >-
             sum(increase(searxng_provider_requests_total{provider="serpapi"}[30d])) >= 200
@@ -53,4 +53,4 @@ spec:
           annotations:
             summary: Cluster-observed SerpAPI usage is approaching its monthly allowance
             description: Prometheus observed at least 200 SerpAPI fallback attempts in the last 30 days. Confirm the provider's calendar-month usage before the 250-query allowance is exhausted.
-            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#internal-searxng-search
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#open-webui-application-state-and-search
