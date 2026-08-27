@@ -472,18 +472,20 @@ systemctl is-enabled network-watchdog.timer  # expected: disabled
 systemctl is-active network-watchdog.timer   # expected: inactive
 ```
 
-The cluster nodes themselves use four independent public upstream resolvers
-(`1.1.1.1`, `8.8.8.8`, `9.9.9.9`, `208.67.222.222`) from four distinct
-operators, tracked in `infrastructure/hosts/beelink/netplan.yaml`. K3s
-explicitly passes that resolver file (`/run/systemd/resolve/resolv.conf`) to
-kubelet, so CoreDNS cannot retain an old Blocky address in a long-lived pod
-sandbox. The nodes must not use Blocky: after an eviction or reboot, a node may
-need DNS to pull the Blocky or Longhorn image required to restore DNS. Kea
-advertises both Blocky addresses to LAN clients. CoreDNS forwards external
-names to that same upstream list, so it survives a single operator's blip but
-still fails if the node's whole UDP/53 WAN path is lost. CoreDNS reads the
-resolver list once at pod startup: after changing netplan nameservers, restart
-the CoreDNS pod to adopt them. Verify every path:
+The cluster nodes themselves use three independent public upstream resolvers
+(`1.1.1.1`, `8.8.8.8`, `9.9.9.9`) from three distinct operators, tracked in
+`infrastructure/hosts/beelink/netplan.yaml`. Exactly three: kubelet caps the
+nameserver list it copies into `dnsPolicy=Default` pods at three and emits
+`DNSConfigForming` warnings about any excess. K3s explicitly passes that
+resolver file (`/run/systemd/resolve/resolv.conf`) to kubelet, so CoreDNS
+cannot retain an old Blocky address in a long-lived pod sandbox. The nodes
+must not use Blocky: after an eviction or reboot, a node may need DNS to pull
+the Blocky or Longhorn image required to restore DNS. Kea advertises both
+Blocky addresses to LAN clients. CoreDNS forwards external names to that same
+upstream list, so it survives a single operator's blip but still fails if the
+node's whole UDP/53 WAN path is lost. CoreDNS reads the resolver list once at
+pod startup: after changing netplan nameservers, restart the CoreDNS pod to
+adopt them. Verify every path:
 
 ```bash
 ssh pi 'cat /etc/resolv.conf; getent ahostsv4 ghcr.io'
