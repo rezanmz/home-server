@@ -1,0 +1,46 @@
+# CoreDNS runs as a k3s-managed Addon, so its metrics ServiceMonitor comes from
+# the kube-prometheus-stack (service observability-coredns, job label "coredns",
+# port 9153). This rule adds the cluster-level failure signals the upstream
+# coredns rules do not cover: total upstream loss and sustained SERVFAIL
+# answers. Both match the observed intermittent "GitOperationFailed ...
+# server misbehaving" flap: CoreDNS forwards external names to the node's
+# independent public resolvers (see infrastructure/hosts/beelink/netplan.yaml),
+# and a WAN/UDP blip fails every workload's external lookups at once.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: coredns
+  namespace: monitoring
+  labels:
+    release: observability
+spec:
+  groups:
+    - name: home-server.coredns
+      rules:
+        - alert: CoreDNSForwardUpstreamBroken
+          expr: increase(coredns_forward_healthcheck_broken_total{job="coredns"}[10m]) > 0
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: CoreDNS lost reachability of all its public upstream resolvers
+            description: >
+              CoreDNS's forward plugin marked every configured upstream
+              unhealthy at least once in the last 10 minutes. Cluster workloads
+              cannot resolve external names while this persists, and Flux Git
+              checkout fails with "server misbehaving". Check Beelink WAN and
+              UDP/53 reachability with the runbook's cluster DNS probes.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#dns-and-dhcp
+        - alert: CoreDNSServfailRateHigh
+          expr: >
+            sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[10m]))
+            / sum(rate(coredns_dns_responses_total{job="coredns"}[10m])) > 0.05
+          for: 10m
+          labels: {severity: warning, cluster: home-server}
+          annotations:
+            summary: More than 5% of CoreDNS responses are SERVFAIL for 10 minutes
+            description: >
+              Cluster DNS is failing a sustained share of answers. Intermittent
+              blips shorter than 10 minutes are tolerated by design (Flux and
+              clients retry); a sustained rate means the node's upstream
+              resolvers or the WAN path are degraded. Compare per-upstream
+              forward latency and check Beelink reachability.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#dns-and-dhcp

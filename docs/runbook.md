@@ -472,12 +472,18 @@ systemctl is-enabled network-watchdog.timer  # expected: disabled
 systemctl is-active network-watchdog.timer   # expected: inactive
 ```
 
-The cluster nodes themselves use `1.1.1.1` and `9.9.9.9` as independent host
-resolvers. K3s explicitly passes those resolver files to kubelet, so CoreDNS
-cannot retain an old Blocky address in a long-lived pod sandbox. The nodes must
-not use Blocky: after an eviction or reboot, a node may need DNS to pull the
-Blocky or Longhorn image required to restore DNS. Kea advertises both Blocky
-addresses to LAN clients. Verify every path:
+The cluster nodes themselves use four independent public upstream resolvers
+(`1.1.1.1`, `8.8.8.8`, `9.9.9.9`, `208.67.222.222`) from four distinct
+operators, tracked in `infrastructure/hosts/beelink/netplan.yaml`. K3s
+explicitly passes that resolver file (`/run/systemd/resolve/resolv.conf`) to
+kubelet, so CoreDNS cannot retain an old Blocky address in a long-lived pod
+sandbox. The nodes must not use Blocky: after an eviction or reboot, a node may
+need DNS to pull the Blocky or Longhorn image required to restore DNS. Kea
+advertises both Blocky addresses to LAN clients. CoreDNS forwards external
+names to that same upstream list, so it survives a single operator's blip but
+still fails if the node's whole UDP/53 WAN path is lost. CoreDNS reads the
+resolver list once at pod startup: after changing netplan nameservers, restart
+the CoreDNS pod to adopt them. Verify every path:
 
 ```bash
 ssh pi 'cat /etc/resolv.conf; getent ahostsv4 ghcr.io'
@@ -485,6 +491,33 @@ ssh beelink 'resolvectl status enp1s0; getent ahostsv4 ghcr.io'
 dig +short @192.168.1.2 github.com A
 dig +short @192.168.1.3 github.com A
 ```
+
+
+### Cluster DNS failures (GitOperationFailed, "server misbehaving")
+
+External-name resolution for every workload follows one path: pod → CoreDNS
+(`10.43.0.10`) → forward plugin → the node's public upstream list (above).
+Cluster-internal names never leave CoreDNS's `kubernetes` plugin and are not
+affected by upstream loss. A transient WAN or UDP/53 failure on the node
+therefore appears as short bursts of
+`GitOperationFailed ... dial tcp: lookup github.com ... server misbehaving`
+from Flux while internal DNS keeps working. Flux retries and recovers on the
+next sync interval; treat repeated windows as a node WAN-path problem, not a
+Flux or GitHub problem.
+
+Probes (read-only):
+
+```bash
+ssh beelink 'sudo k3s kubectl run dns-probe --rm -i --restart=Never --image=busybox:1.36 -- sh -c "for i in 1 2 3 4 5; do nslookup github.com 10.43.0.10 | tail -2; done"'
+ssh beelink 'resolvectl status enp1s0; resolvectl query github.com'
+ssh beelink 'sudo k3s kubectl -n flux-system get gitrepository flux-system -o jsonpath="{range .status.conditions[*]}{.type}={.status} {.lastTransitionTime}{\" \"}{end}"'
+```
+
+Alerts `CoreDNSForwardUpstreamBroken` (forward plugin marked every upstream
+unhealthy) and `CoreDNSServfailRateHigh` (>5% SERVFAIL sustained for 10
+minutes) distinguish a total upstream loss from a partial degradation; their
+rules live in `infrastructure/coredns/metrics.yaml`. Transient windows shorter
+than the alert windows are tolerated by design.
 
 If the Pi reports `DiskPressure=True`, the downloads storage guard should
 already have stopped every torrent at 200 GiB or 20% free. Confirm the guard
