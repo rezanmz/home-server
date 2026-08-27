@@ -17,7 +17,12 @@ network:
       nameservers:
         # Cluster nodes must not depend on the Blocky workload they are
         # responsible for recreating. LAN clients still receive Blocky through
-        # Kea; only the node host resolver uses independent upstreams.
+        # Kea; only the node host resolver uses independent public upstreams
+        # from four operators, so a single operator or path blip cannot take
+        # down cluster-wide external resolution (CoreDNS forwards to this
+        # same list). Keep at least three distinct operators here.
         addresses:
           - 1.1.1.1
+          - 8.8.8.8
           - 9.9.9.9
+          - 208.67.222.222
