@@ -16,18 +16,17 @@ spec:
   web:
     hostname: jellyfin.reza.network
     route: apps/jellyfin/route.yaml
-    visibility: private
-    accessMiddleware: lan-vpn-only
+    visibility: public
     dns:
       cloudflare: true
       splitHorizon: true
     auth:
       mode: native
-      reason: Jellyfin uses its supported local user authentication and official clients.
+      reason: Jellyfin uses its supported local user authentication and official clients; the SSO plugin is alpha-quality and does not support mobile-client OIDC, so Authentik OIDC or forward-auth is unsuitable.
   placement:
     mode: beelink
     manifest: apps/jellyfin/deployment.yaml
-    reason: Requires the Beelink AMD GPU for hardware transcoding and LAN discovery.
+    reason: Requires the Beelink AMD GPU for hardware transcoding, and keeps this Internet-facing workload from inheriting the Pi pod CIDR's private-route trust.
   data:
     class: mixed
     protection: longhorn-b2

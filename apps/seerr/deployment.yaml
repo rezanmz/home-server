@@ -18,6 +18,8 @@ spec:
         app.kubernetes.io/name: seerr
     spec:
       automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: beelink
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

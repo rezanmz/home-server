@@ -16,8 +16,7 @@ spec:
   web:
     hostname: seerr.reza.network
     route: apps/seerr/route.yaml
-    visibility: private
-    accessMiddleware: lan-vpn-only
+    visibility: public
     dns:
       cloudflare: true
       splitHorizon: true
@@ -25,7 +24,9 @@ spec:
       mode: native
       reason: Seerr uses its supported Jellyfin/local login; native OIDC is not available.
   placement:
-    mode: floating
+    mode: beelink
+    manifest: apps/seerr/deployment.yaml
+    reason: Keeps this Internet-facing workload from inheriting the Pi pod CIDR's private-route trust.
   data:
     class: longhorn
     protection: longhorn-b2

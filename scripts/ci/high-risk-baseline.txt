@@ -7,8 +7,8 @@ access-proxy-boundary|v1/ConfigMap|apps|actual-budget-access-proxy|data/sha256/d
 access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-dcbm4m6mt8|data/sha256/c11e4beb17f2e12b3ac2c6dbd48f279d78ef66fe12c3fab85b76b903f5927240
 access-proxy-boundary|v1/ConfigMap|apps|maintainerr-access-proxy|data/sha256/205dc4334735ce2e78ae6765a396355db28ab27fd07c08d886810a8abd680376
 access-proxy-boundary|v1/ConfigMap|apps|mcphub-access-proxy|data/sha256/c02a93be7038899d154bccf2a7b51ef07b039ef73b0bb8bbab2956ae75bf2792
-access-proxy-boundary|v1/ConfigMap|apps|seerr-access-proxy|data/sha256/9904042157d0308934dfbe9f85c4e30f3bf9cce098885a59febc67879abcbdd5
-access-proxy-boundary|v1/ConfigMap|media|jellyfin-access-proxy|data/sha256/6a10b2fb7cf7d55f4599c6e2cf22c801d425fa4a62a63c1972a3dd5fc2e1be72
+access-proxy-boundary|v1/ConfigMap|apps|seerr-access-proxy|data/sha256/b4b791722ad19285da2f8a835149f1e3a27c3b690fd81d3f3830ca86473ba4bf
+access-proxy-boundary|v1/ConfigMap|media|jellyfin-access-proxy|data/sha256/e237b3d8feb6c06130fc0cfa90038b2d404662ea87d2b5b925834fcdc0a0001a
 access-proxy-boundary|v1/ConfigMap|media|lidarr-access-proxy|data/sha256/b8a7693c1d874f865134e2d5b94ed27ba6052f4e6484231eb335b6c5a4b420c5
 access-proxy-boundary|v1/ConfigMap|media|prowlarr-access-proxy|data/sha256/40c89068b8f9145fe4cbcfe7547b65b8a1b269f3435f1ab12b0fffc5329bb6a7
 access-proxy-boundary|v1/ConfigMap|media|qbittorrent-access-proxy|data/sha256/bd19213ab6c2385a576d596b5a7d8ae1971b171d693d6419ff4a1981f047bfb3
@@ -108,10 +108,11 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|llamacl
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|maintainerr-tmdb-proxy|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/5/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|seerr|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|calibre-web|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|cleanuparr|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|egress/1/peer/0/cidr/0.0.0.0/0/except/none
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|jellyfin|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|navidrome|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.168.0.0/16,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|egress/2/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -212,11 +213,11 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|homepage|spec/sha256/
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|maintainerr|spec/sha256/b6a4f84d6f31e524c88c7aefab674eb582f0864f721a13d2551492a4e70253f3
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c6cb8bde71d6bed19e47c796e5c2d0adc5148549b033e8bf847cf705a18d59e
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|seerr|spec/sha256/112f10a64f1c8768448bdc696a37ed3e8966fd68cd2ead449451fe373dfc4bab
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|seerr|spec/sha256/d0604b82cfffd6f87c188ac69da554a050ad03a35042f0a473918dae20941f38
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vikunja|spec/sha256/06933edc112128e2e973f97a896466c99e3225179ef0c77ac226b94fba1dd7cc
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|audiobookshelf|spec/sha256/9be2497d352f2f4fa032722a81ec64ff535be8738805732e80d2926d6dae99d7
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|calibre-web|spec/sha256/d4b5c2cb40f15ebef544c2b9b81b351312fa0bbcf6d888e0184a940036c8228d
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|jellyfin|spec/sha256/8a55160b112d428a95f1acccd8cea3b0efb22f0df6d896d7286cd3770171e219
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|jellyfin|spec/sha256/d35436acaa0c222cdff37baac0f4e770685af8c5d8e79555777d65820ab6c7fb
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|lidarr|spec/sha256/4364804117a81108c814afd12b0dcc6209593b48374ca08caaf45a538d6fc057
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|navidrome|spec/sha256/ac4ffe5844ce33fedcbffc68b17532a3be370e67281688c4e864b7f48ae10ac0
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|prowlarr|spec/sha256/b45a1bb03c081043f0e8bc74a2b9949674ada63fe8243aa29eb8dd373bbb346d
@@ -241,7 +242,6 @@ traefik-backend-boundary|traefik.io/v1alpha1/ServersTransport|network-services|s
 traefik-backend-boundary|traefik.io/v1alpha1/TraefikService|network-services|syncthing-mtls|spec/sha256/9d4f3306034153efabc38b20c244162eea73d5bdf33f0aaaee467657a665eea6
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|egress/0/all-destinations
-universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|seerr|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|media-vpn|egress/0/all-destinations
 universal-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|sabnzbd-vpn|egress/0/all-destinations
 unverified-git-source|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|external-snapshotter|spec.verify/url/https://github.com/kubernetes-csi/external-snapshotter.git/ref/tag=<immutable-selector>,commit=<immutable-commit>
