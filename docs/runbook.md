@@ -250,6 +250,34 @@ payloads are authoritative in the dedicated media B2 bucket; PostgreSQL
 metadata recovery is required to interpret those chunks. They are not included
 in the Audiobookshelf PVC backup and B2 is not an independent second copy.
 
+### Jellyfin and Seerr public exposure
+
+Jellyfin (`jellyfin.reza.network`) and Seerr (`seerr.reza.network`) are
+internet-accessible with their native application authentication. Both are
+pinned to the Beelink so an exposed pod cannot inherit the Pi pod CIDR's
+deliberate trust on private routes. Jellyfin has no supported OIDC path for
+official mobile clients, so its accounts are the boundary; the same accounts
+sign in to Seerr. Before or immediately after any public exposure change,
+verify the application-side controls, which are application-owned state:
+
+- the shared Jellyfin account is non-administrator, library-scoped, and has
+  content downloads disabled; administrator accounts use unique strong
+  passwords;
+- the reverse proxy is listed under Jellyfin's `Known Proxies` so remote-access
+  rules and login throttling see real client addresses;
+- DLNA and LAN discovery are disabled on Jellyfin while the route is public
+  (the host-network 8096 listener is otherwise a direct LAN surface);
+- Seerr open signups are disabled and shared users hold only the requester
+  role.
+
+Jellyfin's raw port 8096 remains reachable from the LAN through its
+host-network listener; that accepted deviation is unchanged and still relies on
+Jellyfin authentication as the final control. After an exposed service's
+Longhorn configuration is restored to an empty replacement PVC, withhold the
+public route first, rebuild and verify the accounts and integrations through a
+separately authorized private path, then restore exposure in a second reviewed
+change.
+
 ### Omnifin retirement
 
 Omnifin is retired. Its `omnifin-data` PVC (SQLite: connector credentials, OIDC
