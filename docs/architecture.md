@@ -213,9 +213,10 @@ must not silently create a new Internet-facing router mapping.
 Blocky's split-horizon mappings point HTTP hostnames at the Traefik VIP
 `192.168.1.240`, so application pod placement is independent of DNS. SMB, NFS,
 and WireGuard continue to use `192.168.1.2`; DHCP replies come from Kea at
-`192.168.1.3` while advertising both nodes as resolvers. Jellyfin advertises its
-Traefik HTTPS hostname; its host network is retained only for LAN discovery and
-DLNA multicast.
+`192.168.1.3` while advertising both nodes as resolvers. Jellyfin and Seerr
+advertise their Traefik HTTPS hostnames and are internet-accessible with native
+application authentication; Jellyfin's host network is retained only for LAN
+discovery and DLNA multicast, and DLNA is disabled while the route is public.
 
 ## Workload placement
 
@@ -265,6 +266,16 @@ rejects a Git post-start reconciler or bootstrap marker. An empty replacement
 must therefore remain off the public route during separately authorized private
 onboarding. Writable audiobook and podcast categories come from JuiceFS, while
 the JuiceFS books category is mounted separately and read-only.
+
+Jellyfin and Seerr are the other Internet-facing media services. Jellyfin is
+pinned to the Beelink for its AMD GPU and the same Pi pod CIDR trust reason. It
+authenticates with its local user accounts because the SSO plugin is
+alpha-quality and does not support official mobile clients, so shared accounts
+must remain non-administrators with per-library access and downloads disabled,
+and DLNA must stay disabled while the route is public. Seerr is pinned to the
+Beelink for the trust reason alone; its egress reaches only the Jellyfin API,
+Radarr, and Sonarr, with private address space blocked from its public metadata
+path.
 
 ## Storage
 

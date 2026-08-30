@@ -16,11 +16,6 @@ spec:
             group: traefik.io
             kind: Middleware
             name: custom-errors
-        - type: ExtensionRef
-          extensionRef:
-            group: traefik.io
-            kind: Middleware
-            name: lan-vpn-only
       backendRefs:
         - name: seerr
           port: 5055

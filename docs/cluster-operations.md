@@ -122,7 +122,8 @@ host path, NFS endpoint, device mount, or host port is the durable constraint.
 
 | Workload | Why it is pinned | Physical dependencies |
 | --- | --- | --- |
-| `media/jellyfin` | AMD hardware transcoding and LAN discovery | `/dev/dri/renderD128` via the device plugin, host network, Longhorn config, and read-only JuiceFS library |
+| `media/jellyfin` | AMD hardware transcoding, and keeping the public workload off the Pi pod CIDR's private-route trust | `/dev/dri/renderD128` via the device plugin, host network, Longhorn config, and read-only JuiceFS library |
+| `apps/seerr` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config, Jellyfin raw API, Radarr/Sonarr APIs, and public TMDB metadata |
 | `media/audiobookshelf` | Public workload must not inherit the Pi pod CIDR's private-route trust | Longhorn config/metadata, writable JuiceFS audiobooks/podcasts, read-only JuiceFS books, and Authentik OIDC |
 | `media/navidrome` | Keeps music scanning and streaming on the main compute node | Longhorn application state and read-only JuiceFS music |
 | `apps/home-assistant` | Keeps third-party integration code and selected LAN egress off the Pi's trusted NFS host | Longhorn configuration; approved LAN integrations require protocol-scoped network policy |
@@ -160,8 +161,7 @@ allow it.
 | Namespace | Workloads | Storage or external dependency |
 | --- | --- | --- |
 | `media` | Downloads/Arr stack and Calibre-Web | Downloads softly prefers a non-control-plane worker. Calibre-Web floats independently; its ingest handoff with Shelfmark uses a Longhorn RWX claim. Neither names a physical node. Pi-hosted NFS downloads and JuiceFS remain reachable from either node. |
-| `apps` | Actual Budget, Homepage, Seerr, Vikunja | Longhorn for stateful workloads; Homepage is stateless |
-| `apps` | Authentik server/worker and PostgreSQL StatefulSet | Longhorn |
+| `apps` | Actual Budget, Homepage, Vikunja | Longhorn for stateful workloads; Homepage is stateless |
 | `apps` | MCPHub and PostgreSQL/pgvector StatefulSet; Hermes Agent; internal LlamaCloud MCP | Longhorn for state; LlamaCloud is stateless and reads the Syncthing vault over NFS |
 | `apps` | Open WebUI | Open WebUI uses Longhorn; Authentik OIDC dependency |
 | `apps` | Cloudflare DDNS | Stateless; Cloudflare API dependency |
