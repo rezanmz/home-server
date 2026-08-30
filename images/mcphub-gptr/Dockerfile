@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1.25
-ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.26@sha256:efdbfa3990d5a27d0611ba509db30bcdda196dc14ee2fe7d5f1706cae636ef37
-ARG GCLOUD_IMAGE=gcr.io/google.com/cloudsdktool/google-cloud-cli:581.0.0-slim@sha256:2a52a0a58a2a267535f862bdb2026a5ababdb382ad1c49a06dd21a94df1cc4fc
+ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.33@sha256:e218878c6af3358f4fd62e1337eab7355ea72089505e7e5a75a9126e0f56cbb1
+ARG GCLOUD_IMAGE=gcr.io/google.com/cloudsdktool/google-cloud-cli:582.0.0-slim@sha256:14026c08cf391812086012d6c5f14078221ce1b46be0df419f7f31ec9f69c712
 ARG GO_IMAGE=golang:1.26.7-bookworm@sha256:6ef6e30f0ea5c384f6d111cf856e024e3086bbdcb1779da3f3b3fbba0aea53d2
 
 FROM ${GCLOUD_IMAGE} AS gcloud
 FROM ${GO_IMAGE} AS operations-mcp-builder
 
-ARG GRAFANA_MCP_REVISION=fcb27c6dc86c4c108c601dea163c048d36e05742
-ARG KUBERNETES_MCP_REVISION=5d42192b288224d2d0ec7313826f1dd3e144a567
-ARG GITHUB_MCP_REVISION=8898db96b8043db1ddacff444600e408cf824fa2
+ARG GRAFANA_MCP_REVISION=619e9c3caa773eab94bdd7eaa1d58929ef2e14b7
+ARG KUBERNETES_MCP_REVISION=dfbb2d27a4573003848e15381c162c25ad95f7ed
+ARG GITHUB_MCP_REVISION=febc3293a4feb70e62399f39a26b082f78b9b176
 
 # Build the upstream operations servers from reviewed exact revisions. Some
 # are signed releases; others remain intentionally pinned to reviewed commits
@@ -39,7 +39,7 @@ ARG GPTR_MCP_REVISION=63884773685b1f12c7f0d9e283b3d71a5b9b5fda
 # renovate: datasource=pypi packageName=gpt-researcher versioning=pep440
 ARG GPT_RESEARCHER_VERSION=0.16.0
 # renovate: datasource=pypi packageName=fastmcp versioning=pep440
-ARG FASTMCP_VERSION=2.14.7
+ARG FASTMCP_VERSION=3.4.7
 # renovate: datasource=npm packageName=@modelcontextprotocol/server-filesystem versioning=semver
 ARG FILESYSTEM_MCP_VERSION=2026.7.10
 # renovate: datasource=npm packageName=@eargollo/vikunja-mcp versioning=semver
@@ -51,7 +51,7 @@ ARG GOOGLE_CALENDAR_MCP_VERSION=2.6.2
 # renovate: datasource=npm packageName=@google-cloud/gcloud-mcp versioning=semver
 ARG GCLOUD_MCP_VERSION=0.5.3
 # renovate: datasource=pypi packageName=pypdf versioning=pep440
-ARG PYPDF_VERSION=6.1.1
+ARG PYPDF_VERSION=6.16.2
 ARG JELLYSEERR_MCP_REVISION=a8dde54d6f9e4139b2b630f099320046ba17f242
 # renovate: datasource=pypi packageName=httpx versioning=pep440
 ARG JELLYSEERR_MCP_HTTPX_VERSION=0.28.1
@@ -60,11 +60,11 @@ ARG JELLYSEERR_MCP_DOTENV_VERSION=1.2.3
 # renovate: datasource=pypi packageName=rich versioning=pep440
 ARG JELLYSEERR_MCP_RICH_VERSION=14.3.4
 # renovate: datasource=pypi packageName=mcp versioning=pep440
-ARG JELLYSEERR_MCP_SDK_VERSION=1.28.1
+ARG JELLYSEERR_MCP_SDK_VERSION=1.29.1
 # renovate: datasource=npm packageName=mcp-arr-server versioning=semver
 ARG MCP_ARR_VERSION=1.7.3
 # renovate: datasource=npm packageName=navidrome-mcp versioning=semver
-ARG NAVIDROME_MCP_VERSION=2.2.0
+ARG NAVIDROME_MCP_VERSION=2.3.0
 # renovate: datasource=pypi packageName=audiobookshelf-mcp versioning=pep440
 ARG AUDIOBOOKSHELF_MCP_VERSION=1.0.1
 # renovate: datasource=pypi packageName=agent-utilities versioning=pep440

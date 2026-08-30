@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # renovate: datasource=docker depName=samanhappy/mcphub versioning=semver
-readonly MCPHUB_VERSION="1.0.26"
+readonly MCPHUB_VERSION="1.0.33"
 readonly GPTR_MCP_REVISION="63884773685b1f12c7f0d9e283b3d71a5b9b5fda"
 readonly GPTR_MCP_SHORT_REVISION="${GPTR_MCP_REVISION:0:12}"
 readonly ACTUAL_MCP_REVISION="9c64ad232448b47146a2e35f7ffaa6eefeb816bb"
 readonly ACTUAL_MCP_SHORT_REVISION="${ACTUAL_MCP_REVISION:0:12}"
 readonly GCLOUD_MCP_VERSION="0.5.3"
 readonly MCP_ARR_VERSION="1.7.3"
-readonly NAVIDROME_MCP_VERSION="2.2.0"
+readonly NAVIDROME_MCP_VERSION="2.3.0"
 readonly AUDIOBOOKSHELF_MCP_VERSION="1.0.1"
 readonly IMAGE_NAMESPACE="${MCPHUB_IMAGE_NAMESPACE:-ghcr.io/rezanmz}"
 readonly IMAGE_NAME="mcphub-gptr"
