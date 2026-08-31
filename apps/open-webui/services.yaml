@@ -39,3 +39,22 @@ spec:
       port: 8081
       targetPort: metrics
       protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-terminal
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: open-terminal
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: open-webui
+    app.kubernetes.io/component: open-terminal
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
