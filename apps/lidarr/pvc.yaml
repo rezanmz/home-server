@@ -5,4 +5,4 @@ spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn
   resources:
-    requests: {storage: 5Gi}
+    requests: {storage: 10Gi}
