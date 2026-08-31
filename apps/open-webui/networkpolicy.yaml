@@ -37,6 +37,15 @@ spec:
               app.kubernetes.io/component: searxng
       ports:
         - {port: 8080, protocol: TCP}
+    # The agent terminal workspace: code execution and file access via the
+    # Open Terminal API on the dedicated workspace pod.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: open-webui
+              app.kubernetes.io/component: open-terminal
+      ports:
+        - {port: 8000, protocol: TCP}
     - to:
         - podSelector:
             matchLabels:
