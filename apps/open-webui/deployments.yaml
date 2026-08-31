@@ -463,8 +463,9 @@ spec:
       automountServiceAccountToken: false
       nodeSelector:
         kubernetes.io/hostname: beelink
-      seccompProfile:
-        type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: open-terminal
           image: ghcr.io/open-webui/open-terminal@sha256:8f6d2045aa69e348e39d89bf59e6b267773532335333eed14ff16bbc7c964b73
