@@ -99,7 +99,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-6" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-7" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -209,6 +209,13 @@ RUN apt-get update \
          --requirements /opt/gptr-mcp/requirements.txt \
          "gpt-researcher==${GPT_RESEARCHER_VERSION}" \
          "fastmcp==${FASTMCP_VERSION}" \
+    # Patch: the source-curation skill hardcodes max_tokens=8000, which
+    # truncates reasoning-model curation calls (finish_reason=length with
+    # empty content). Route it through the configured SMART_TOKEN_LIMIT.
+    && sed -i 's/max_tokens=8000,/max_tokens=self.researcher.cfg.smart_token_limit,/' \
+         /opt/gptr-mcp/.venv/lib/python3.13/site-packages/gpt_researcher/skills/curator.py \
+    && grep -Fq 'max_tokens=self.researcher.cfg.smart_token_limit,' \
+         /opt/gptr-mcp/.venv/lib/python3.13/site-packages/gpt_researcher/skills/curator.py \
     && uv venv --python /usr/local/bin/python3 /opt/vision-guard/.venv \
     && uv pip install \
          --python /opt/vision-guard/.venv/bin/python \
