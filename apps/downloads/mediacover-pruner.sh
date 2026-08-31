@@ -13,12 +13,13 @@ readonly mediacover_path="${MEDIACOVER_PATH:-/config/MediaCover}"
 readonly prune_interval="${PRUNE_INTERVAL_SECONDS:-86400}"
 readonly age_days="${MEDIACOVER_AGE_DAYS:-30}"
 readonly state_dir="${STATE_PATH:-/tmp}"
+readonly heartbeat_tick="${HEARTBEAT_TICK_SECONDS:-60}"
 
 log() {
   printf '%s mediacover-pruner %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
 }
 
-case "$prune_interval:$age_days" in
+case "$prune_interval:$age_days:$heartbeat_tick" in
   *[!0-9:]* | *::* | :* | *:)
     log "received invalid numeric settings"
     exit 2
@@ -40,6 +41,12 @@ while :; do
     after=$(du -sh "$mediacover_path" 2>/dev/null | cut -f1)
     log "pruned MediaCover (age > ${age_days}d): before=${before:-?} after=${after:-?}"
   fi
-  touch "$state_dir/pruner-heartbeat"
-  sleep "$prune_interval"
+  # Sleep in short ticks while keeping the heartbeat fresh so the readiness
+  # probe tracks liveness of the loop, not the prune cadence.
+  waited=0
+  while [ "$waited" -lt "$prune_interval" ]; do
+    touch "$state_dir/pruner-heartbeat"
+    sleep "$heartbeat_tick"
+    waited=$((waited + heartbeat_tick))
+  done
 done
