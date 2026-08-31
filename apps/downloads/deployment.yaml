@@ -263,6 +263,30 @@ spec:
             - {name: storage-guard-state, mountPath: /tmp}
             - {name: import-cleaner-state, mountPath: /import-cleaner-state, readOnly: true}
             - {name: media-downloads, mountPath: /media/downloads}
+        - name: downloads-mediacover-pruner
+          image: linuxserver/qbittorrent:5.2.3_v2.0.14-ls473@sha256:304b19cf94bf4fda534e0b086cab9c5f1a9e139a8180c05c0ad7d2ba1526fa99
+          imagePullPolicy: IfNotPresent
+          command: [sh, /opt/mediacover-pruner/mediacover-pruner.sh]
+          env:
+            - {name: PRUNE_INTERVAL_SECONDS, value: "86400"}
+            - {name: MEDIACOVER_AGE_DAYS, value: "30"}
+          readinessProbe:
+            exec:
+              command: [sh, -ec, "find /tmp/pruner-heartbeat -mmin -3 -print -quit | grep -q ."]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: mediacover-pruner, mountPath: /opt/mediacover-pruner, readOnly: true}
+            - {name: pruner-state, mountPath: /tmp}
+            - {name: lidarr-config, mountPath: /config}
         - name: downloads-import-cleaner
           image: linuxserver/qbittorrent:5.2.3_v2.0.14-ls473@sha256:304b19cf94bf4fda534e0b086cab9c5f1a9e139a8180c05c0ad7d2ba1526fa99
           imagePullPolicy: IfNotPresent
@@ -749,27 +773,3 @@ spec:
         - {name: li-nginx-cache, emptyDir: {}}
         - {name: sh-nginx-tmp, emptyDir: {}}
         - {name: sh-nginx-cache, emptyDir: {}}
-        - name: downloads-mediacover-pruner
-          image: linuxserver/qbittorrent:5.2.3_v2.0.14-ls473@sha256:304b19cf94bf4fda534e0b086cab9c5f1a9e139a8180c05c0ad7d2ba1526fa99
-          imagePullPolicy: IfNotPresent
-          command: [sh, /opt/mediacover-pruner/mediacover-pruner.sh]
-          env:
-            - {name: PRUNE_INTERVAL_SECONDS, value: "86400"}
-            - {name: MEDIACOVER_AGE_DAYS, value: "30"}
-          readinessProbe:
-            exec:
-              command: [sh, -ec, "find /tmp/pruner-heartbeat -mmin -3 -print -quit | grep -q ."]
-            initialDelaySeconds: 15
-            periodSeconds: 30
-            timeoutSeconds: 3
-          resources:
-            requests: {cpu: 10m, memory: 16Mi}
-            limits: {cpu: 100m, memory: 64Mi}
-          securityContext:
-            runAsNonRoot: false
-            allowPrivilegeEscalation: false
-            capabilities: {drop: [ALL]}
-          volumeMounts:
-            - {name: mediacover-pruner, mountPath: /opt/mediacover-pruner, readOnly: true}
-            - {name: pruner-state, mountPath: /tmp}
-            - {name: lidarr-config, mountPath: /config}
