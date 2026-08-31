@@ -72,10 +72,10 @@ spec:
               # v0.11.1 sizes BOTH background worker pools from this value
               # (up to 2x threads total).
               value: "8"
-            # Bound agentic tool loops. The upstream default of 256 can turn a
-            # bad search result into a large burst of provider requests.
+            # Bound agentic tool loops. Raised from 12 to the upstream default
+            # so long deep-research and multi-tool turns can complete.
             - name: CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS
-              value: "12"
+              value: "256"
             # Keep outbound aiohttp connections and total request time bounded.
             - name: AIOHTTP_POOL_CONNECTIONS
               value: "20"
