@@ -17,3 +17,7 @@ configMapGenerator:
     namespace: media
     files:
       - import-cleaner.sh
+  - name: downloads-mediacover-pruner
+    namespace: media
+    files:
+      - mediacover-pruner.sh
