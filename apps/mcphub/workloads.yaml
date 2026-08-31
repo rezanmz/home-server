@@ -56,7 +56,7 @@ spec:
           # Extends the ordinary (not -full) MCPHub image with pinned, reviewed
           # MCP packages. Server registrations and all runtime settings remain
           # application-owned state in MCPHub's PostgreSQL database.
-          image: ghcr.io/rezanmz/mcphub-gptr:1.0.33-63884773685b-actual-9c64ad232448-assistant-suite-6@sha256:e4ead67e979921a7f9b3d118aa3a68d09c8db059967f96a5b3144a499c8cff7b
+          image: ghcr.io/rezanmz/mcphub-gptr:1.0.33-63884773685b-actual-9c64ad232448-assistant-suite-7@sha256:5d874aa0e665e639ca0bc387237037c5186bd18ce7c844341a289bb6a62dacb9
           imagePullPolicy: IfNotPresent
           env:
             - name: HOME
