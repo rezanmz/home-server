@@ -77,11 +77,13 @@ spec:
             - name: CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS
               value: "256"
             # Keep outbound aiohttp connections and total request time bounded.
-            - name: AIOHTTP_POOL_CONNECTIONS
-              value: "20"
-            - name: AIOHTTP_POOL_CONNECTIONS_PER_HOST
-              value: "10"
+            # 900s total: high-reasoning GLM responses legitimately stream for
+            # minutes; 120s killed them mid-flight with a silent TimeoutError.
             - name: AIOHTTP_CLIENT_TIMEOUT
+              value: "900"
+            # Kill streams that stop sending chunks for 2 minutes instead of
+            # waiting out the full total cap on a stalled connection.
+            - name: AIOHTTP_CLIENT_STREAM_IDLE_TIMEOUT
               value: "120"
             # GPT Researcher is intentionally a long-running, explicit tool.
             # Keep ordinary provider requests bounded by the shorter timeout.
