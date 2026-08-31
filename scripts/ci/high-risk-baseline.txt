@@ -46,6 +46,7 @@ added-capability|apps/v1/Deployment|network-services|kea-dhcp4|container/kea-dhc
 added-capability|apps/v1/Deployment|network-services|kea-dhcp4|init-container/prepare-state-directories/CHOWN
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_ADMIN
 added-capability|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/NET_RAW
+allow-privilege-escalation|apps/v1/Deployment|apps|open-terminal|container/open-terminal
 explicit-root-group|apps/v1/Deployment|apps|hermes-agent|container/hermes-agent
 explicit-root-group|apps/v1/Deployment|apps|home-assistant|container/home-assistant
 explicit-root-group|apps/v1/Deployment|media|downloads|init-container/prepare-soulseek-state
@@ -106,6 +107,7 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|hermes-
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|maintainerr-tmdb-proxy|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-terminal|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/5/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|seerr|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -155,6 +157,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|maintain
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcp-v8|spec/sha256/32f934c59f12825edd076b4f9137756d9088ec197f4efe3afe6f96e9a4f0eb51
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-application|spec/sha256/37abc13945951611dc511d657e61ec658c4c29371de0f1182349f0e1b1179ac3
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcphub-database|spec/sha256/205561babc563910b0546aeb27045a4be9f9e950d85a4fa4b0b43ffe10be56de
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-terminal|spec/sha256/fedfb19c39833c69ced7462760f656240fef234f753018241a6de48f6eea07b7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|spec/sha256/f5ed0087b15054b31a60c7357f46ca2bd0c8dff5bedebaa810703d7226feabff
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|seerr|spec/sha256/3f5ac6307a5c94376562a99d4f5dcf00eefd830eab40984b66411b95ea1ef4be

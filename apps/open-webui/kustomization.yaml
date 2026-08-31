@@ -9,6 +9,7 @@ configMapGenerator:
 resources:
   - secrets.sops.yaml
   - searxng-secrets.sops.yaml
+  - open-terminal-secrets.sops.yaml
   - searxng-provider-secrets.sops.yaml
   - pvc.yaml
   - deployments.yaml

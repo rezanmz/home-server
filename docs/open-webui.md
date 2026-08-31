@@ -101,6 +101,26 @@ Store durable facts or preferences only when useful. Never store secrets,
 credentials, speculation, or work information. An explicit current statement
 overrides conflicting memory.
 
+## Code execution and Open Terminal
+
+Chat code execution runs through Open Terminal, a dedicated agent
+workspace pod in the `apps` namespace reached only by the Open WebUI
+application pod over the cluster-internal API. The terminal executes
+agent-written shell commands and Python with full package installation,
+so its isolation is deliberate: it runs as a singleton pinned to the
+Beelink with no service-account token, ingress restricted to the Open
+WebUI pod, egress limited to DNS and globally routed HTTP/S, resource
+caps, and its own Longhorn workspace volume. Its API key lives in
+SOPS-encrypted repository state and is shared with the Open WebUI
+terminal connection, which is application-owned configuration stored in
+the instance database. The legacy Pyodide browser engine remains the
+declared fallback but was unreliable in Safari; use the terminal.
+
+Because the terminal is a real computer for the agent, treat tool
+approvals seriously: it can install software and reach the public
+internet from the workspace, and the workspace volume is covered by the
+normal Longhorn B2 backup policy.
+
 ## Backup and recovery
 
 The Open WebUI Longhorn volume contains the settings described above as well as
