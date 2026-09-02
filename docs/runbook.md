@@ -622,10 +622,21 @@ cannot push configuration changes into an already imported profile.
 
 The Pi kubelet allowlists only `net.ipv4.ip_forward` and
 `net.ipv4.conf.all.src_valid_mark` as pod-scoped unsafe sysctls. wg-easy
-declares those settings directly and needs only `NET_ADMIN` plus `NET_RAW`; it
-must not regain a privileged init container, `SYS_MODULE`, or a `/lib/modules`
-host mount. A `SysctlForbidden` pod status means the deployed Pi K3s config no
-longer matches `infrastructure/k3s/agent-pi-config.yaml`.
+declares those settings directly and holds only `NET_ADMIN` plus `NET_RAW`; it
+must never regain a privileged init container or `SYS_MODULE`. A
+`SysctlForbidden` pod status means the deployed Pi K3s config no longer matches
+`infrastructure/k3s/agent-pi-config.yaml`.
+
+The wg-easy v15 database configuration includes an IPv6 address, so wg-quick
+applies ip6tables-legacy NAT rules at interface bring-up. The container cannot
+insert kernel modules, so the Pi host must preload `ip6_tables` and
+`ip6table_nat` from `infrastructure/k3s/pi-modules-load.yaml` (installed as
+`/etc/modules-load.d/wg-easy-ip6.conf`); the deployment's read-only
+`/lib/modules` mount exists only so the container's modprobe resolves those
+already-loaded modules. If a rescheduled pod starts with the modules unloaded,
+wg-quick rolls back, deletes `wg0`, and the VPN goes dark while the pod still
+passes its TCP web-UI probes. Check `sudo lsmod | grep ip6` on the Pi and
+expect both modules listed.
 
 wg-easy also masquerades VPN clients when forwarding them to the cluster. As a
 result, Traefik and the application-side access proxies see `10.42.1.0/24`, the
