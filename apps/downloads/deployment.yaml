@@ -226,10 +226,10 @@ spec:
           command: [sh, /opt/storage-guard/storage-guard.sh]
           env:
             - {name: CHECK_INTERVAL_SECONDS, value: "60"}
-            - {name: MIN_FREE_BYTES, value: "107374182400"}
-            - {name: MIN_FREE_PERCENT, value: "10"}
-            - {name: RESUME_FREE_BYTES, value: "214748364800"}
-            - {name: RESUME_FREE_PERCENT, value: "20"}
+            - {name: MIN_FREE_BYTES, value: "214748364800"}
+            - {name: MIN_FREE_PERCENT, value: "20"}
+            - {name: RESUME_FREE_BYTES, value: "322122547200"}
+            - {name: RESUME_FREE_PERCENT, value: "30"}
           readinessProbe:
             exec:
               command: [sh, -ec, "find /tmp/guard-heartbeat -mmin -3 -print -quit | grep -q ."]

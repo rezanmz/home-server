@@ -116,10 +116,10 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         guard = containers["downloads-storage-guard"]
         guard_env = {item["name"]: item["value"] for item in guard["env"]}
         self.assertEqual(guard_env["CHECK_INTERVAL_SECONDS"], "60")
-        self.assertEqual(guard_env["MIN_FREE_BYTES"], "107374182400")
-        self.assertEqual(guard_env["MIN_FREE_PERCENT"], "10")
-        self.assertEqual(guard_env["RESUME_FREE_BYTES"], "214748364800")
-        self.assertEqual(guard_env["RESUME_FREE_PERCENT"], "20")
+        self.assertEqual(guard_env["MIN_FREE_BYTES"], "214748364800")
+        self.assertEqual(guard_env["MIN_FREE_PERCENT"], "20")
+        self.assertEqual(guard_env["RESUME_FREE_BYTES"], "322122547200")
+        self.assertEqual(guard_env["RESUME_FREE_PERCENT"], "30")
         guard_mounts = {item["name"]: item for item in guard["volumeMounts"]}
         self.assertEqual(
             guard_mounts["media-downloads"]["mountPath"], "/media/downloads"
