@@ -90,12 +90,15 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/wireguard
-            # wg-quick loads ip6_tables for the IPv6 NAT rules generated from
-            # the wg-easy database. Without host modules the container cannot
-            # modprobe, wg-quick rolls back, and wg0 never comes up. This
-            # restores the modules view the former privileged init provided;
-            # the mount is read-only and the container keeps its unprivileged
-            # security context.
+            # wg-quick adds ip6tables-legacy NAT rules for the IPv6 address in
+            # the wg-easy database. The container has no SYS_MODULE, so it can
+            # never insert kernel modules; the Pi host must preload
+            # ip6_tables and ip6table_nat at boot
+            # (infrastructure/k3s/pi-modules-load.yaml, installed as
+            # /etc/modules-load.d/wg-easy-ip6.conf). This read-only mount only
+            # lets the container's modprobe resolve those already-loaded
+            # modules instead of erroring on a missing module tree; wg-quick
+            # rolls back and deletes wg0 when the host kernel lacks them.
             - name: modules
               mountPath: /lib/modules
               readOnly: true

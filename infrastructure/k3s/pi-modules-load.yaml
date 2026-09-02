@@ -1,0 +1,13 @@
+# Installed as /etc/modules-load.d/wg-easy-ip6.conf on raspberrypi. Boot-time
+# kernel module list; apply with `sudo modprobe ip6table_nat` after editing so
+# a running host does not wait for the next reboot.
+#
+# The wg-easy pod (apps/vpn) generates ip6tables-legacy NAT rules for its IPv6
+# ULA address at wg-quick bring-up. The container holds only NET_ADMIN and
+# NET_RAW, so it cannot insert kernel modules; if the host has not already
+# loaded these, wg-quick fails to initialize the ip6tables nat table, rolls
+# back, deletes wg0, and the VPN goes dark while the pod still passes its
+# TCP web-UI probes. The read-only /lib/modules mount in the deployment lets
+# the container's modprobe resolve these already-loaded modules cleanly.
+ip6_tables
+ip6table_nat
