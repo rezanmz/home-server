@@ -40,7 +40,7 @@ data:
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "description": "Space available to normal users on the Pi SSD that holds active downloads, K3s, Longhorn, logs, and the operating system.",
-          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "orange", "value": 107374182400}, {"color": "yellow", "value": 214748364800}, {"color": "green", "value": 322122547200}]}, "unit": "bytes"}},
+          "fieldConfig": {"defaults": {"decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "orange", "value": 214748364800}, {"color": "yellow", "value": 322122547200}, {"color": "green", "value": 429496729600}]}, "unit": "bytes"}},
           "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
           "id": 1,
           "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},

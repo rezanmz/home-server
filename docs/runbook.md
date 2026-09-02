@@ -1759,14 +1759,16 @@ Full-file preallocation is enabled in the same backed-up qBittorrent settings.
 The `downloads-storage-guard` container is the hard safety boundary: every 60
 seconds it verifies that `/media/downloads` is NFS, checks free bytes and
 percentage, and tags and stops only active incomplete torrents when either free
-space is below 100 GiB or free space is below 10%. Completed imports and the
+space is below 200 GiB or free space is below 20%. Completed imports and the
 cleaner remain active so they can reclaim space. Once free space is at least
-200 GiB and 20%, the guard automatically resumes only the torrents carrying its
+300 GiB and 30%, the guard automatically resumes only the torrents carrying its
 `storage-guard-paused` ownership tag. It first requires a fresh successful
 cleaner check of the NFS/JuiceFS mounts, Arr ownership policy, and qBittorrent
 inventory. It never resumes a manually stopped torrent and never deletes a
 payload. The 100 GiB hysteresis band prevents rapid stop/start cycles; do not
-replace it with qBittorrent queueing.
+replace it with qBittorrent queueing. The stop threshold sits well above the
+kubelet DiskPressure eviction point so the guard always wins that race; do not
+lower it below 20% free.
 
 ```bash
 sudo k3s kubectl -n media logs deployment/downloads -c downloads-storage-guard --tail=100
