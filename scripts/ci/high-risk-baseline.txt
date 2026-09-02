@@ -98,6 +98,7 @@ host-path|apps/v1/DaemonSet|media|dri-device-plugin|volume/device-plugin/path//v
 host-path|apps/v1/DaemonSet|media|dri-device-plugin|volume/dri/path//dev/dri
 host-path|apps/v1/Deployment|media|downloads|volume/dev-net-tun/path//dev/net/tun
 host-path|apps/v1/Deployment|media|sabnzbd-vpn|volume/dev-net-tun/path//dev/net/tun
+host-path|apps/v1/Deployment|network-services|wg-easy|volume/modules/path//lib/modules
 host-port|apps/v1/Deployment|network-services|wg-easy|container/wg-easy/wireguard/host-1234
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16

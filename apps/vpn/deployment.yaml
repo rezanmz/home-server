@@ -90,7 +90,20 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/wireguard
+            # wg-quick loads ip6_tables for the IPv6 NAT rules generated from
+            # the wg-easy database. Without host modules the container cannot
+            # modprobe, wg-quick rolls back, and wg0 never comes up. This
+            # restores the modules view the former privileged init provided;
+            # the mount is read-only and the container keeps its unprivileged
+            # security context.
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: wg-easy-config
+        - name: modules
+          hostPath:
+            path: /lib/modules
+            type: Directory
