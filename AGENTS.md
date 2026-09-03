@@ -212,6 +212,10 @@ git log -1 --format='%H %cI %s' refs/remotes/origin/main
   slug (`feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `perf/…`,
   `test/…`). Never create tool-specific prefixes such as `codex/` for new
   branches.
+- Branches are ephemeral. Default to merging the work and then deleting the
+  branch — locally and remotely — as part of the same task; when a branch's
+  content is already merged or superseded, delete it instead. Do not leave
+  stale branches, worktrees, or superseded open PRs behind.
 - Read the relevant manuals and the nearest active implementation before
   editing. Copy a security and storage *shape*, not an exception.
 - Identify intended authorization, desired-state owner, live owner, data owner,
