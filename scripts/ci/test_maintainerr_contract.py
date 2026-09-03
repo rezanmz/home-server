@@ -12,8 +12,8 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAINTAINERR_IMAGE = (
-    "ghcr.io/maintainerr/maintainerr:3.24.0@"
-    "sha256:2ac67f176a77f1e78d66b24c1b0d108c587abe1063f46ce75cfaa4cd06516a80"
+    "ghcr.io/maintainerr/maintainerr:3.26.0@"
+    "sha256:0ff47e2465704ceb90cd79a1516844bc1c74f6c8eef8317988618a01e5a680ea"
 )
 NGINX_IMAGE = (
     "nginx:1.31.5-alpine@"
