@@ -92,36 +92,39 @@ Source: the same incident.
   and `core.config_entries`. Read key names, domains, and titles only; never
   print credential values.
 
-## 2026-09-03 — ls image bump stalls SABnzbd downloads (data unread in socket buffers)
+## 2026-09-03 — SABnzbd `bandwidth_max` is bytes/s: "20000" caps downloads at ~20 KB/s
 
 Source: Eweka/Usenet slow-download incident on 2026-09-03 (queue pinned at
-~30 KB/s for ~18 hours; account lock from the provider was a second, separate
-layer).
+~30 KB/s for ~18 hours across all 190 items; an Eweka account lock was a
+second, separate layer, fixed by a portal password reset).
 
-PRs #293/#297 (2026-09-02 evening) bumped
-`lscr.io/linuxserver/sabnzbd` from `5.1.1-ls268` to `5.1.2-ls270` and re-pinned
-the digest to the multi-arch index (`13d4404f…`). From the pod's first start on
-the new build, the downloader accepted TCP+TLS, sent NNTP commands, and then
-never read the responses: each socket held 10–114 KB unread in the kernel
-receive queue while the process idled at ~9m CPU. SABnzbd reported a crawl
-(~30 KB/s) with "Timed out" / "Server broke off connection" churn. A raw
-`python3` NNTP client inside the same container fetched the very same article
-IDs at ~1 MB/s through the same Gluetun tunnel — exonerating the ISP line
-(~1 Gbps), the VPN tunnel, NFS (~72 MB/s fsync'd), the Longhorn config PVC
-(~50 MB/s), DNS, and the provider itself. API restart, disconnect-all,
-pipelining off, and connection-count changes did not help.
+`bandwidth_max = 20000` in `sabnzbd.ini` reads as "20000 KB/s" but SABnzbd
+interprets the value as **bytes/s** — a ~20 KB/s hard cap. The downloader's
+throttle loop (`downloader.py`: sleep-loop whenever `BPSMeter.bps >
+bandwidth_limit`) pins throughput at exactly the ceiling: BPS meter debug
+showed a steady 20–40 KB/s while queue items reported "Downloading" with zero
+`mb` progress for hours. SABnzbd UI/API show `speedlimit_abs: 20000`, which
+looks like a percentage-derived value and gives no hint of the unit.
 
-- **Watch for:** "slow provider" symptoms where `ss`/`/proc/net/tcp` shows
-  ESTABLISHED sockets with non-zero Recv-Q and near-idle CPU. Data arriving
-  but unread is an application bug, not a network problem — stop tuning
-  connections and test the same articles with a raw client from the same
-  container to bisect app vs. path.
-- **Diagnostics that worked, in order:** raw NNTP fetch of the exact stalled
-  article IDs (article-existence + path in one test), `/proc/net/tcp`
-  Recv-Q/Send-Q of the downloader's sockets, fsync'd write tests on both
-  storage paths, and correlating stall onset with `git log` image bumps.
-- **Durable fix:** pin images for acquisition-critical workloads to digests
-  previously proven on this cluster; a re-pinned multi-arch index digest can
-  resolve to a materially different build than the single-arch digest that was
-  validated. Rollback digest: `5.1.1-ls268@sha256:78253a5e…` (the build that
-  sustained ~1 TB/day).
+The incident produced two wrong hypotheses before the real cause: an Eweka
+per-IP throttle (disproven — raw probes got 5–55 MB/s through the same
+tunnel), and the #293/#297 image bump (disproven — rolling back
+`5.1.2-ls270` to `5.1.1-ls268` changed nothing, so the digest was restored).
+
+- **Watch for:** any "everything crawls at one exact number" symptom in
+  SABnzbd. A rock-steady KB/s ceiling that survives restarts, reconnects,
+  pipelining changes, and connection-count changes is a configured limit, not
+  a network fault. Check `bandwidth_max` first; its unit is bytes/s, and the
+  BPS-meter debug lines (`[bpsmeter:356] Speed: …`) sit exactly at it.
+- **Diagnostics that worked:** comparing BPS debug lines against
+  `bandwidth_max` (matching numbers = the cap), then raw NNTP clients in the
+  same container (fetching the exact stalled article IDs) to exonerate line,
+  VPN exit, provider backends (all 5 Eweka IPs individually), NFS/Longhorn
+  fsync writes, DNS, pipelining, and flow age (a single flow held 7.4 MB/s for
+  25 minutes).
+- **Durable fix:** express the intended cap with explicit units
+  (`20971520` = 20 MiB/s) rather than a bare 20000; the value now lives as
+  `bandwidth_max = 20971520`. Provider-side note: Eweka locks accounts
+  (NNTP `502 Authentication Failed` with unchanged credentials, from any IP)
+  after heavy volume from a shared VPN exit; a portal password reset clears
+  it.
