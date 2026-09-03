@@ -96,6 +96,25 @@ architecture list; the bytes changed even if a channel name did not.
 Find every copy of a coupled image reference. Some pins intentionally appear in
 more than one values field or workload and must advance together.
 
+Verify the digest is the multi-arch image index (an OCI index or manifest list
+listing every architecture the workload may run on), not a single-platform
+manifest. Docker Hub tags with an `amd64-` prefix (for example the linuxserver
+images) resolve to amd64-only manifests; pinning that digest breaks any pod
+that can schedule to the arm64 node with `no match for platform in manifest`
+(PRs #293/#297). Resolve the digest from the unprefixed version tag, then
+verify the index actually lists `arm64` (and `amd64`) before committing. GHCR
+`tags/list` is truncated and unsorted; do not treat its first page as the
+newest version. Cross-check GHCR-published apps against the upstream GitHub
+release.
+
+Never change the pod template of an existing Kubernetes `Job` — including only
+its image digest — unless the Job object is removed first. Jobs are immutable;
+a digest bump on `apps/stork/bootstrap-job.yaml` (the `stork-lockdown-v1`
+Job) fails Flux dry-run with `Job.batch ... is invalid: spec.template ...`
+(commit 57e810e, PRs #293/#295). If an update touches an immutable Job, delete
+the live Job in the same reviewed change, or leave the Job's pin unchanged
+until a deliberate retirement or recreation plan is authorized.
+
 ### Flux Git sources
 
 Keep the declared release tag and full immutable commit aligned. Verify that the

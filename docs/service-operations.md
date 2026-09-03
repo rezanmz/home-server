@@ -704,6 +704,18 @@ flow. Add these precautions based on the change type.
 ### Image or configuration
 
 - Read release notes and verify the pinned digest and target architectures.
+- The digest must be the multi-arch image index listing every architecture the
+  workload may run on. Docker Hub tags prefixed `amd64-` (linuxserver images)
+  resolve to amd64-only manifests; pinning them breaks arm64 nodes with
+  `no match for platform in manifest`. Resolve from the unprefixed version tag
+  and verify the index lists `arm64` before committing (PRs #293/#297).
+- Do not trust a GHCR `tags/list` first page as the newest version: it is
+  truncated and unsorted. Cross-check GHCR-published apps against the upstream
+  GitHub release.
+- A digest bump that changes the pod template of an existing Kubernetes `Job`
+  fails Flux dry-run: Jobs are immutable (stork-lockdown-v1, PRs #293/#295).
+  Delete the live Job in the same reviewed change or leave the Job's pin until
+  a recreation plan is authorized.
 - Preserve the previous digest for a Git revert.
 - Treat an application schema migration as a storage change, not a routine
   image update.
