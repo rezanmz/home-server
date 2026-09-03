@@ -64,6 +64,13 @@ potentially overwriting side effect even though deployed manifests remain
 digest-pinned. State this risk before pushing the branch or dispatching the
 workflow.
 
+Current image workflow branch filters are limited (`main`, `codex/**`,
+`omos/**`). Standard-named branches (`feat/…`, `fix/…`, `chore/…`, `docs/…`)
+do not match them, and repository guidance forbids new tool-prefixed branches.
+For a pre-merge publication from a standard-named branch use `workflow_dispatch`
+on that branch and state the dispatch as a separate remote mutation; never
+re-introduce tool-prefixed branch names to reach a push filter.
+
 Do not publish from a dirty checkout. Untracked files can enter a Docker build
 context; this is especially important for helpers whose context is the repository
 root. Confirm ignored and untracked content and ensure no decrypted secret, age

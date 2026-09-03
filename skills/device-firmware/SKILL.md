@@ -127,6 +127,15 @@ references change; do not delete them as incidental cleanup.
 
 Do not use direct `kubectl apply`, `edit`, or `set image` as the normal path.
 
+## Symptom triage
+
+A stale CYD screen is a data-path symptom, not automatically a firmware issue.
+The CYD renders data fetched from the cataloged Finance service, which syncs
+Actual Budget. Before touching firmware, check the `finance-display` pod logs
+for sync errors and confirm the bundled `@actual-app/api` release line matches
+the running `actual-server`. In that case the OTA pod and devices are usually
+healthy. Background: [lessons learned](../../docs/lessons-learned.md).
+
 ## Preflight
 
 Record without exposing credentials:

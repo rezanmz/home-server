@@ -71,6 +71,19 @@ output, and rollout evidence in the commit, pull request, or task record. Do not
 copy secrets or transient pod state into durable guidance, and prefer references
 to authoritative version/configuration sources over mutable copied values.
 
+## Operational lessons
+
+After investigating or fixing any non-trivial issue — incident, outage, silent
+failure, version drift, or externally caused breakage — decide whether it
+taught something genuinely non-obvious that a future agent must know. If it
+did, record a dated entry in `docs/lessons-learned.md` in the same change, add
+the mechanical prevention where one exists (grouping rule, test, CI check),
+and cross-link the affected manual or skill. Record only repository-,
+cluster-, or integration-specific knowledge: failure signatures, hidden
+couplings, silent-failure modes, undocumented vendor behavior, and diagnostic
+recipes. Do not record general engineering knowledge or obvious
+troubleshooting, and never record secret values.
+
 ## Operating model
 
 ```text
@@ -195,7 +208,10 @@ git log -1 --format='%H %cI %s' refs/remotes/origin/main
   unrelated modifications into the task.
 - If the current branch is stale, divergent, or dirty, use a dedicated worktree
   based on `origin/main` rather than forcing the current tree into shape.
-- Use a `codex/` branch by default when creating a branch for Codex work.
+- Use Conventional-Commits-style branch prefixes with a short descriptive
+  slug (`feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `perf/…`,
+  `test/…`). Never create tool-specific prefixes such as `codex/` for new
+  branches.
 - Read the relevant manuals and the nearest active implementation before
   editing. Copy a security and storage *shape*, not an exception.
 - Identify intended authorization, desired-state owner, live owner, data owner,
