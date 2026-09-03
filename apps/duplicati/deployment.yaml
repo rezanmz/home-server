@@ -17,7 +17,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: duplicati
-          image: linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls306@sha256:87e52e63a62aa34cc0a01cbc53736baf0c3a5c9ea60bbfd1ac3ad08a2fa91cf2
+          image: linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls306@sha256:04de62478b16d7dc587c750272fb74424fb31ea9e0697473ac9273b6c5e0a7ad
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "0"}
