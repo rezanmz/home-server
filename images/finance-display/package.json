@@ -1,6 +1,6 @@
 {
   "name": "finance-display",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,6 +11,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@actual-app/api": "26.8.0"
+    "@actual-app/api": "26.9.0"
   }
 }

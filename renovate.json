@@ -109,6 +109,12 @@
       "enabled": false
     },
     {
+      "description": "The finance-display API client must track the same Actual release line as the server; schema drift breaks budget sync permanently.",
+      "matchDatasources": ["docker", "npm"],
+      "matchPackageNames": ["actualbudget/actual-server", "@actual-app/api"],
+      "groupName": "Actual Budget"
+    },
+    {
       "description": "Flux GitRepository tags must advance together with their commits; digest-only updates detach the commit from the declared release tag.",
       "matchManagers": ["flux"],
       "matchDatasources": ["git-refs"],
