@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: finance-display
-          image: ghcr.io/rezanmz/finance-display:0.3.2@sha256:7cb39baf53390acc5a604bedde2b3884df7e64259cf60b134f98d254d29224e2
+          image: ghcr.io/rezanmz/finance-display:0.3.3@sha256:6f3a6bbf5fcfc99ed77b9bc1cfb1466d16400b75b369a14b2dd043cd0a000218
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
