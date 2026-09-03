@@ -91,3 +91,37 @@ Source: the same incident.
   `kubectl exec` into the pod using `/config/.storage/core.entity_registry`
   and `core.config_entries`. Read key names, domains, and titles only; never
   print credential values.
+
+## 2026-09-03 — ls image bump stalls SABnzbd downloads (data unread in socket buffers)
+
+Source: Eweka/Usenet slow-download incident on 2026-09-03 (queue pinned at
+~30 KB/s for ~18 hours; account lock from the provider was a second, separate
+layer).
+
+PRs #293/#297 (2026-09-02 evening) bumped
+`lscr.io/linuxserver/sabnzbd` from `5.1.1-ls268` to `5.1.2-ls270` and re-pinned
+the digest to the multi-arch index (`13d4404f…`). From the pod's first start on
+the new build, the downloader accepted TCP+TLS, sent NNTP commands, and then
+never read the responses: each socket held 10–114 KB unread in the kernel
+receive queue while the process idled at ~9m CPU. SABnzbd reported a crawl
+(~30 KB/s) with "Timed out" / "Server broke off connection" churn. A raw
+`python3` NNTP client inside the same container fetched the very same article
+IDs at ~1 MB/s through the same Gluetun tunnel — exonerating the ISP line
+(~1 Gbps), the VPN tunnel, NFS (~72 MB/s fsync'd), the Longhorn config PVC
+(~50 MB/s), DNS, and the provider itself. API restart, disconnect-all,
+pipelining off, and connection-count changes did not help.
+
+- **Watch for:** "slow provider" symptoms where `ss`/`/proc/net/tcp` shows
+  ESTABLISHED sockets with non-zero Recv-Q and near-idle CPU. Data arriving
+  but unread is an application bug, not a network problem — stop tuning
+  connections and test the same articles with a raw client from the same
+  container to bisect app vs. path.
+- **Diagnostics that worked, in order:** raw NNTP fetch of the exact stalled
+  article IDs (article-existence + path in one test), `/proc/net/tcp`
+  Recv-Q/Send-Q of the downloader's sockets, fsync'd write tests on both
+  storage paths, and correlating stall onset with `git log` image bumps.
+- **Durable fix:** pin images for acquisition-critical workloads to digests
+  previously proven on this cluster; a re-pinned multi-arch index digest can
+  resolve to a materially different build than the single-arch digest that was
+  validated. Rollback digest: `5.1.1-ls268@sha256:78253a5e…` (the build that
+  sustained ~1 TB/day).
