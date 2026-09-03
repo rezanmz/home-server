@@ -369,7 +369,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: prowlarr
-          image: linuxserver/prowlarr:2.5.2.5491-ls158@sha256:7f59d67c54c7540de72e2dc128e5e2441e37d8dbdbfa447870899dea16ebd50e
+          image: linuxserver/prowlarr:2.5.2.5491-ls158@sha256:91844fa2c927ad6ede5630127183cc7868b175f6223e83e6a5da1fffea2aa782
           imagePullPolicy: IfNotPresent
           env: &linuxserver-env
             - {name: PUID, value: "1000"}
