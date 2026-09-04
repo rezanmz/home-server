@@ -521,8 +521,8 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 256Mi}
-            limits: {cpu: 750m, memory: 768Mi}
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {cpu: 750m, memory: 2Gi}
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
