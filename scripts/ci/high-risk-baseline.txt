@@ -4,7 +4,7 @@
 # a risk therefore also removes its exception; adding one requires an explicit
 # baseline change for review. Format: rule|apiVersion/kind|namespace|name|location
 access-proxy-boundary|v1/ConfigMap|apps|actual-budget-access-proxy|data/sha256/de270f692ba8df0b624fe522d8b9a6d56eec66077a2c80254b8bd9d48be483d5
-access-proxy-boundary|v1/ConfigMap|apps|actual-horizon-access-proxy|data/sha256/819bd4ce290ceb67380d7f104daf50d9d8adefd9ac8c25eb1b77f896f10e355f
+access-proxy-boundary|v1/ConfigMap|apps|actual-horizon-access-proxy|data/sha256/9990d075e0db3b5e9b382d241685d16ad122fea6e10ba94e7deec448373134e3
 access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-dcbm4m6mt8|data/sha256/c11e4beb17f2e12b3ac2c6dbd48f279d78ef66fe12c3fab85b76b903f5927240
 access-proxy-boundary|v1/ConfigMap|apps|maintainerr-access-proxy|data/sha256/205dc4334735ce2e78ae6765a396355db28ab27fd07c08d886810a8abd680376
 access-proxy-boundary|v1/ConfigMap|apps|mcphub-access-proxy|data/sha256/c02a93be7038899d154bccf2a7b51ef07b039ef73b0bb8bbab2956ae75bf2792
