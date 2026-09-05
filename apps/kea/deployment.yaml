@@ -64,7 +64,7 @@ spec:
             - {name: runtime, mountPath: /runtime}
       containers:
         - name: kea-dhcp4
-          image: docker.cloudsmith.io/isc/docker/kea-dhcp4:3.2.0@sha256:9c67ace6719e846cab3dcbac594530f6b45f3c6aa74be1ca41702bca2cfa3176
+          image: docker.cloudsmith.io/isc/docker/kea-dhcp4:3.3.1@sha256:3bfcfe7c74d09cd8dc1ff405c858a3f6fcf8bb3da8c4df584b488c285dc0570c
           imagePullPolicy: IfNotPresent
           command: [/usr/sbin/kea-dhcp4]
           args: [-c, /etc/kea/kea-dhcp4.conf]
