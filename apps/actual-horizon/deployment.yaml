@@ -42,9 +42,11 @@ spec:
             - {name: AUTH_MODE, value: disabled}
             - {name: DATA_DIR, value: /var/lib/horizon}
             - {name: ACTUAL_DATA_DIR, value: /var/lib/actual}
-            - name: ACTUAL_SERVER_URL
-              valueFrom:
-                secretKeyRef: {name: actual-horizon-secrets, key: actual-server-url}
+            # Loopback hop into the access-proxy sidecar's stream forwarder;
+            # see its comment for why the internal Service URL cannot be used
+            # directly. The host string is non-secret; credentials stay in the
+            # Secret below.
+            - {name: ACTUAL_SERVER_URL, value: "http://127.0.0.1:5007"}
             - name: ACTUAL_PASSWORD
               valueFrom:
                 secretKeyRef: {name: actual-horizon-secrets, key: actual-password}

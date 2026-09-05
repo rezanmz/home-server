@@ -7,6 +7,19 @@ data:
   nginx.conf: |
     pid /tmp/nginx.pid;
     events {}
+    stream {
+      # Localhost-only hop to Actual's internal sync API. Upstream Horizon
+      # accepts plain http solely for loopback destinations, while the
+      # cluster's private-route boundary deliberately distrusts pod-network
+      # egress (see lan-vpn-only). Binding here keeps both properties: the
+      # app sees loopback http and no cleartext leaves the pod; the cluster
+      # leg stays under NetworkPolicy to the internal Service. Revisit if
+      # upstream supports cluster-local http directly.
+      server {
+        listen 127.0.0.1:5007;
+        proxy_pass actual-budget-api.apps.svc.cluster.local:5006;
+      }
+    }
     http {
       access_log /dev/stdout;
       error_log /dev/stderr warn;
