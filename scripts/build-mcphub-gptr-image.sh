@@ -13,7 +13,7 @@ readonly NAVIDROME_MCP_VERSION="2.3.0"
 readonly AUDIOBOOKSHELF_MCP_VERSION="1.0.1"
 readonly IMAGE_NAMESPACE="${MCPHUB_IMAGE_NAMESPACE:-ghcr.io/rezanmz}"
 readonly IMAGE_NAME="mcphub-gptr"
-readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}-actual-${ACTUAL_MCP_SHORT_REVISION}-assistant-suite-7"
+readonly IMAGE_TAG="${MCPHUB_VERSION}-${GPTR_MCP_SHORT_REVISION}-actual-${ACTUAL_MCP_SHORT_REVISION}-assistant-suite-8"
 readonly BUILDER="${MCPHUB_BUILDX_BUILDER:-mcphub-gptr-builder}"
 readonly PLATFORMS="${MCPHUB_PLATFORMS:-linux/amd64,linux/arm64}"
 

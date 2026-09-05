@@ -41,6 +41,21 @@ data frozen at the last good sync while every pod looked healthy.
   `@actual-app/api`. When adding a service that embeds a client library
   mirroring a server product, pair them in one Renovate group from day one.
 
+### Second consumer found 2026-09-05
+
+Source: MCPHub `assistant-suite-8` fix (actual-mcp API bump).
+
+The MCPHub image (`images/mcphub-gptr/Dockerfile`) embeds the same client
+library (`@actual-app/api`, built into `s-stefanov/actual-mcp` at pinned
+revision) via `ARG ACTUAL_API_VERSION`, and #300 fixed only the
+`finance-display` consumer. Hermes' Actual MCP tools stayed broken with the
+same schema error even after the CYD fix. The `renovate:` ARG comment and the
+"Actual Budget" group did not move the pin when the server upgraded — do not
+assume Renovate caught every consumer. When bumping `actualbudget/actual-server`,
+manually verify every `@actual-app/api` pin: `finance-display/package.json`,
+`images/mcphub-gptr/Dockerfile` `ACTUAL_API_VERSION`, and the suite tag bump
+(tag must change with content per the coupling gate).
+
 ## 2026-09-03 — TP-Link firmware update silently breaks Kasa local control
 
 Source: incident investigation on 2026-09-03 (all seven KL125 bulbs
