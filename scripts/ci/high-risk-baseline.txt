@@ -4,6 +4,7 @@
 # a risk therefore also removes its exception; adding one requires an explicit
 # baseline change for review. Format: rule|apiVersion/kind|namespace|name|location
 access-proxy-boundary|v1/ConfigMap|apps|actual-budget-access-proxy|data/sha256/de270f692ba8df0b624fe522d8b9a6d56eec66077a2c80254b8bd9d48be483d5
+access-proxy-boundary|v1/ConfigMap|apps|actual-horizon-access-proxy|data/sha256/819bd4ce290ceb67380d7f104daf50d9d8adefd9ac8c25eb1b77f896f10e355f
 access-proxy-boundary|v1/ConfigMap|apps|home-assistant-access-proxy-dcbm4m6mt8|data/sha256/c11e4beb17f2e12b3ac2c6dbd48f279d78ef66fe12c3fab85b76b903f5927240
 access-proxy-boundary|v1/ConfigMap|apps|maintainerr-access-proxy|data/sha256/205dc4334735ce2e78ae6765a396355db28ab27fd07c08d886810a8abd680376
 access-proxy-boundary|v1/ConfigMap|apps|mcphub-access-proxy|data/sha256/c02a93be7038899d154bccf2a7b51ef07b039ef73b0bb8bbab2956ae75bf2792
@@ -125,6 +126,7 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-serv
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|egress/0/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-ingress-source|networking.k8s.io/v1/NetworkPolicy|network-services|syncthing|ingress/2/peer/0/cidr/0.0.0.0/0/except/none
 internet-wide-ingress-source|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|ingress/2/peer/0/cidr/0.0.0.0/0/except/none
+middleware-boundary|traefik.io/v1alpha1/Middleware|apps|actual-horizon-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|apps|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
 middleware-boundary|traefik.io/v1alpha1/Middleware|apps|homepage-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
@@ -142,7 +144,8 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|lan-vpn-only
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|syncthing-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|wg-easy-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 mutable-git-ref|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-system|spec.ref/branch=main/url/https://github.com/rezanmz/home-server.git
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/202affe2d33fecf794cae4adc9adb1cb92542ddf481575b6e67985088a7cf781
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/800281b98b4ddc02142632cd21c0073fbefc1b3d4910f64a6aae842e8fc9a1b0
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-horizon|spec/sha256/e5c9d1ed08c53fdac1cc5acdcf259208b4fc94763872edb44b47061fe2b5e04f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|spec/sha256/68e4643c3e7da8deded68ecaa30f6ad5ed0587c4f82f5d6f6e97ea12d59d6221
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-database|spec/sha256/ccdce8f21dda90152efd85ed6aa8d0e8a40ab16286651073bed741f830bf49a0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
@@ -163,6 +166,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-web
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|seerr|spec/sha256/3f5ac6307a5c94376562a99d4f5dcf00eefd830eab40984b66411b95ea1ef4be
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vikunja|spec/sha256/dcc1255377ad4ce12e740741d3c11f91f2cad9f13b4fb38143c442985a33fb7e
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vocabet|spec/sha256/b4f6277551905ff0225ced3469b6d1ca627c07332e7d7d5d02296750cec4e36e
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|juicefs-postgresql|spec/sha256/36716bbe1bac7ce647ee26d35af967c2201f94932647d5bc8aa4d1b9733ab0a7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|kube-system|observability-node-exporter|spec/sha256/37f053596d712e401b7faf79f7d085250ee55ff0a7a846017d84ea06e0e31885
@@ -209,6 +213,7 @@ privileged-namespace|v1/Namespace|default|metallb-system|pod-security-enforce
 privileged-namespace|v1/Namespace|default|network-services|pod-security-enforce
 privileged-namespace|v1/Namespace|default|traefik|pod-security-enforce
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-budget|spec/sha256/684ed87d74c289c7e268d472759cfc44852498dc9f3bff89a993b1d034778a3c
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-horizon|spec/sha256/50e85fbf5d8dc0baa11e3f0104aaeb98b881858f6fcf735ce2acad6dfdf2e431
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256/a68303017aa042969ba9eb139f6227fb3e3e67b477e1dd6c376c964d2808a6bb
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|finance-display|spec/sha256/187d9bf55d5b52fc3554b49ba17a807bf3699550146687d233ed3f030ad5c0c3
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|hermes-agent|spec/sha256/bf4b001f2e7c56ac3e3f56c19edf191df1fdbfc9f71a1e8195fd6af80cf7c345
@@ -219,6 +224,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|seerr|spec/sha256/d0604b82cfffd6f87c188ac69da554a050ad03a35042f0a473918dae20941f38
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vikunja|spec/sha256/06933edc112128e2e973f97a896466c99e3225179ef0c77ac226b94fba1dd7cc
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vocabet|spec/sha256/2f58ad1417af0ae8aa0768798bbdb3c09a86784e3595cebd7caa8912d6e9a7ba
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|audiobookshelf|spec/sha256/9be2497d352f2f4fa032722a81ec64ff535be8738805732e80d2926d6dae99d7
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|calibre-web|spec/sha256/d4b5c2cb40f15ebef544c2b9b81b351312fa0bbcf6d888e0184a940036c8228d
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|jellyfin|spec/sha256/d35436acaa0c222cdff37baac0f4e770685af8c5d8e79555777d65820ab6c7fb

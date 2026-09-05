@@ -19,6 +19,12 @@
         description: Personal finance
         namespace: apps
         app: actual-budget
+    - Actual Horizon:
+        icon: mdi-chart-timeline-variant
+        href: https://horizon.reza.network/
+        description: True cost of wants against budget goals
+        namespace: apps
+        app: actual-horizon
 - Productivity:
     - Vikunja:
         icon: vikunja.png
@@ -51,6 +57,12 @@
         description: Audiobooks and podcasts
         namespace: media
         app: audiobookshelf
+    - Vocabet:
+        icon: mdi-gamepad-variant
+        href: https://vocabet.reza.network/
+        description: Room-based party word game
+        namespace: apps
+        app: vocabet
     - Calibre-Web:
         icon: calibre-web.png
         href: https://library.reza.network/

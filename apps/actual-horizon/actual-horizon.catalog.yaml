@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: actual-horizon
+spec:
+  name: Actual Horizon
+  workload:
+    namespace: apps
+    app: actual-horizon
+  homepage:
+    order: 35
+    group: Home & Identity
+    icon: mdi-chart-timeline-variant
+    description: True cost of wants against budget goals
+  web:
+    hostname: horizon.reza.network
+    route: apps/actual-horizon/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v1
+      blueprintName: Actual Horizon proxy authentication
+      application:
+        slug: actual-horizon
+        launchUrl: https://horizon.reza.network/
+      middleware: actual-horizon-authentik
+  placement:
+    mode: beelink
+    manifest: apps/actual-horizon/deployment.yaml
+    reason: The upstream image is amd64-only, so the workload cannot float onto the Pi.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/actual-horizon/pvc.yaml]
+  observability:
+    mode: kubernetes

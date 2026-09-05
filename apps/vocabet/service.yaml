@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vocabet
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: vocabet
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: vocabet
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+      protocol: TCP

@@ -18,6 +18,8 @@ resources:
   - ../../apps/home-assistant
   - ../../apps/actual-budget
   - ../../apps/finance-display
+  - ../../apps/actual-horizon
+  - ../../apps/vocabet
   - ../../apps/cyd-ota
   - ../../apps/authentik
   - ../../apps/seerr

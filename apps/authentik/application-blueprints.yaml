@@ -107,6 +107,22 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
       - model: authentik_providers_proxy.proxyprovider
+        id: actual-horizon-provider
+        identifiers:
+          name: "Provider for Actual Horizon"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://horizon.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: actual-horizon
+        attrs:
+          name: "Actual Horizon"
+          provider: !KeyOf actual-horizon-provider
+          meta_launch_url: "https://horizon.reza.network/"
+      - model: authentik_providers_proxy.proxyprovider
         id: homepage-provider
         identifiers:
           name: "Provider for Homepage"
@@ -204,6 +220,7 @@ data:
           name: authentik Embedded Outpost
         attrs:
           providers:
+            - !KeyOf actual-horizon-provider
             - !KeyOf homepage-provider
             - !KeyOf maintainerr-provider
             - !KeyOf navidrome-provider
