@@ -73,7 +73,7 @@ ARG AUDIOBOOKSHELF_MCP_AGENT_UTILITIES_VERSION=1.0.2
 ARG AUDIOBOOKSHELF_MCP_DOTENV_VERSION=1.2.3
 ARG ACTUAL_MCP_REVISION=9c64ad232448b47146a2e35f7ffaa6eefeb816bb
 # renovate: datasource=npm packageName=@actual-app/api versioning=semver
-ARG ACTUAL_API_VERSION=26.8.1
+ARG ACTUAL_API_VERSION=26.9.0
 # renovate: datasource=npm packageName=hono versioning=semver
 ARG ACTUAL_MCP_HONO_VERSION=4.13.4
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
@@ -85,7 +85,7 @@ ARG ACTUAL_MCP_IP_ADDRESS_VERSION=10.5.0
 # renovate: datasource=npm packageName=body-parser versioning=semver
 ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
 # renovate: datasource=npm packageName=qs versioning=semver
-ARG ACTUAL_MCP_QS_VERSION=6.15.3
+ARG ACTUAL_MCP_QS_VERSION=6.16.0
 # renovate: datasource=npm packageName=brace-expansion versioning=semver
 ARG ACTUAL_MCP_BRACE_EXPANSION_VERSION=2.1.2
 # renovate: datasource=npm packageName=ua-parser-js versioning=semver
@@ -99,7 +99,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-7" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-8" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
