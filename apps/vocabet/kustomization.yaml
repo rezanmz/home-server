@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - deployment.yaml
+  - ghcr-pull-secret.sops.yaml
   - service.yaml
   - networkpolicy.yaml
   - route.yaml
