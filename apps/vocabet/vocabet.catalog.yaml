@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: vocabet
+spec:
+  name: Vocabet
+  workload:
+    namespace: apps
+    app: vocabet
+  homepage:
+    order: 35
+    group: Media
+    icon: mdi-gamepad-variant
+    description: Room-based party word game
+  web:
+    hostname: vocabet.reza.network
+    route: apps/vocabet/route.yaml
+    visibility: public
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: Vocabet has no accounts or upstream SSO; room-code join is its native access control, and the same-origin WebSocket plus QR join flow is incompatible with forward-auth.
+  placement:
+    mode: floating
+  data:
+    class: stateless
+    protection: not-applicable
+  observability:
+    mode: kubernetes

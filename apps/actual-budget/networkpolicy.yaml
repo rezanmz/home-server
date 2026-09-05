@@ -18,7 +18,7 @@ spec:
       ports:
         - port: 15006
           protocol: TCP
-    # MCPHub and the finance display may reach Actual's internal, read-only API.
+    # MCPHub, the finance display, and Actual Horizon may reach Actual's internal, read-only API.
     - from:
         - podSelector:
             matchLabels:
@@ -27,6 +27,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: finance-display
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: actual-horizon
       ports:
         - port: 5006
           protocol: TCP
