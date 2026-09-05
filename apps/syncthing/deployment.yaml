@@ -33,7 +33,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: syncthing
-          image: lscr.io/linuxserver/syncthing:v2.1.3-ls228@sha256:9e9b931bf48a8a08bffaaa7e2fc2b7d0126b02def2bf1d3395d9b531817f9af3
+          image: lscr.io/linuxserver/syncthing:2.1.3@sha256:9e9b931bf48a8a08bffaaa7e2fc2b7d0126b02def2bf1d3395d9b531817f9af3
           imagePullPolicy: IfNotPresent
           env:
             - name: PUID
