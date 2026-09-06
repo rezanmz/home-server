@@ -33,7 +33,7 @@ spec:
         - name: vocabet
           # Rooms live in process memory; a restart ends running games by
           # design, so the container is stateless and read-only.
-          image: ghcr.io/rezanmz/categories:main@sha256:5a7c8a6638f9d5eeba6b62efd614d1d47d13ddd2916db1dde4cd1871f0374be1
+          image: ghcr.io/rezanmz/categories:main@sha256:bfb223ef359cc1db49e0d54aef8d1262c041fb095ab1ae46cc3069a152d029ee
           imagePullPolicy: IfNotPresent
           env:
             - {name: PORT, value: "3001"}

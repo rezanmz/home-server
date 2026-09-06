@@ -31,10 +31,10 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-horizon
-          # Upstream v1.1.0 has no native login/callback routes yet, so browser
+          # Upstream v1.1.1 has no native login/callback routes yet, so browser
           # SSO is enforced by Traefik forward-auth and AUTH_MODE stays
           # disabled. Revisit native OIDC once upstream wires its auth module.
-          image: ghcr.io/rezanmz/actual-horizon:main@sha256:4f8520c2d94ffd916bfbc7338aa826346a8f03828a5cc2d802ea967fc71f7cbf
+          image: ghcr.io/rezanmz/actual-horizon:main@sha256:44efa500ccecd477c80f98ebee2fdda4702d3ae7a523b8a0b2ebc7f0181f1b08
           imagePullPolicy: IfNotPresent
           env:
             - {name: TZ, value: America/Toronto}
