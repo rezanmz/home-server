@@ -98,7 +98,8 @@ spec:
             failureThreshold: 6
           mountOptions:
             - cache-dir=/var/lib/juicefs-cache
-            - cache-size=409600
+            # Lowered from 400G after the Pi root filled past 70%.
+            - cache-size=256000
             - free-space-ratio=0.25
             - cache-eviction=lru
             - cache-expire=0
