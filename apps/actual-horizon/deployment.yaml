@@ -66,11 +66,14 @@ spec:
               memory: 512Mi
           readinessProbe:
             httpGet: {path: /api/health, port: http}
+            # Full budget download takes minutes; don't spam Unhealthy during boot.
+            initialDelaySeconds: 90
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           livenessProbe:
             httpGet: {path: /api/health, port: http}
+            initialDelaySeconds: 90
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
@@ -117,7 +120,9 @@ spec:
             claimName: actual-horizon-data
         - name: actual-cache
           emptyDir:
-            sizeLimit: 64Mi
+            # 37M budget + @actual-app/api backup zips + re-download spikes
+            # evicted the pod at 64Mi. See incident 2026-09-06.
+            sizeLimit: 512Mi
         - name: access-proxy-config
           configMap:
             name: actual-horizon-access-proxy
