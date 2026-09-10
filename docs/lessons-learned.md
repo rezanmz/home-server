@@ -143,3 +143,36 @@ tunnel), and the #293/#297 image bump (disproven — rolling back
   (NNTP `502 Authentication Failed` with unchanged credentials, from any IP)
   after heavy volume from a shared VPN exit; a portal password reset clears
   it.
+
+## 2026-09-10 — Library print() corrupts FastMCP stdio JSON-RPC; MCP tool calls hang silently
+
+Source: MCPHub `assistant-suite-9` fix (gpt-researcher `deep_research`).
+
+Open WebUI's `gpt-researcher-deep_research` calls produced no answer, no
+error, and no tool result, while MCPHub's own upstream stderr log showed the
+research *completing successfully* minutes earlier (correct cost, context,
+sources). Every `quick_search` worked. The loss was between the stdio child
+and MCPHub: FastMCP 3.x's stdio writer binds the process stdout buffer
+directly, and gpt-researcher's `curator.py` dumps its entire source blob via
+bare `print()` during every curated run. Interleaved non-protocol lines
+corrupt the response frame; MCPHub's MCP SDK client drops unparseable stdout
+lines through an `onerror` hook it never sets, so the pending `callTool`
+promise simply hangs forever (upstream timeout is effectively infinite).
+MCPHub forwards only child *stderr*, so the stdout pollution is invisible in
+its logs.
+
+- **Watch for:** any MCPHub tool whose server-side completion log exists but
+  whose `Tool call result` line never follows — that combination means lost
+  stdio frames or a killed child, not an LLM or retriever failure.
+- **Diagnostic recipe:** grep MCPHub logs for the upstream's completion line,
+  then for the paired `Tool call result` / activities-row absence; compare
+  against a tool that does deliver on the same child.
+- **Prevention:** `images/mcphub-gptr/Dockerfile` now redirects `sys.stdout`
+  to stderr at server import and rebinds the pinned mcp SDK's writer to
+  fd 1, both grep-verified fail-closed. When adding any stdio-transport MCP
+  child, check the dependency tree for stdout writers first (same pattern as
+  the Jellyseerr Rich-console patch).
+- **Related quirk:** `PUT /api/servers/…` (and `/reload`) in MCPHub kill the
+  stdio child; any in-flight long-running tool call dies with
+  `McpError -32000: Connection closed` and its paid result is discarded.
+  Edit server config only when nothing long-running is in flight.

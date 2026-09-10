@@ -75,7 +75,7 @@ ARG ACTUAL_MCP_REVISION=9c64ad232448b47146a2e35f7ffaa6eefeb816bb
 # renovate: datasource=npm packageName=@actual-app/api versioning=semver
 ARG ACTUAL_API_VERSION=26.9.0
 # renovate: datasource=npm packageName=hono versioning=semver
-ARG ACTUAL_MCP_HONO_VERSION=4.13.4
+ARG ACTUAL_MCP_HONO_VERSION=4.13.7
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
 ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.1
 # renovate: datasource=npm packageName=fast-uri versioning=semver
@@ -99,7 +99,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-8" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-9" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -138,7 +138,16 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # server. GPT
 # Researcher 0.16.0 imports three typing
 # annotations after using them, so the released dependency receives a one-line
-# import-order repair; the official MCP server source is unchanged.
+# import-order repair.
+# Stdio JSON-RPC hygiene: FastMCP 3.x binds the stdio writer directly to the
+# process stdout buffer, and both gpt-researcher library code (curator.py
+# dumps the full source blob with bare print() during every curated run) and
+# gptr-mcp's own startup diagnostics write to that same stream. Interleaved
+# non-protocol lines corrupt MCP response frames; MCPHub's SDK client drops
+# unparseable lines silently, so long deep_research calls never returned.
+# Two sed patches keep stdout protocol-only: the server entry redirects
+# sys.stdout to stderr at import time, and the pinned mcp SDK's stdio_server
+# binds its writer to fd 1 explicitly. Both are grep-verified fail-closed.
 # Jellyseerr's upstream Rich console defaults to stdout. The small sed below
 # preserves the upstream server while moving logs off the stdio JSON-RPC stream.
 # The base image preinstalls the same MCP server packages globally at older
@@ -216,6 +225,19 @@ RUN apt-get update \
          /opt/gptr-mcp/.venv/lib/python3.13/site-packages/gpt_researcher/skills/curator.py \
     && grep -Fq 'max_tokens=self.researcher.cfg.smart_token_limit,' \
          /opt/gptr-mcp/.venv/lib/python3.13/site-packages/gpt_researcher/skills/curator.py \
+    # Patch: reserve stdout for MCP stdio JSON-RPC frames only. The gptr-mcp
+    # entry redirects sys.stdout to stderr at import (covering gpt-researcher
+    # library print() diagnostics such as the curator source dump), and the
+    # pinned mcp SDK stdio_server binds its writer to fd 1 explicitly so the
+    # JSON-RPC output is unaffected by that redirect.
+    && sed -i 's/^import sys$/import sys\nsys.stdout = sys.stderr  # home-server: stdout reserved for MCP JSON-RPC/' \
+         /opt/gptr-mcp/server.py \
+    && grep -Fq 'sys.stdout = sys.stderr  # home-server: stdout reserved for MCP JSON-RPC' \
+         /opt/gptr-mcp/server.py \
+    && sed -i 's/stdout = anyio.wrap_file(TextIOWrapper(sys.stdout.buffer, encoding="utf-8"))/stdout = anyio.wrap_file(TextIOWrapper(open(1, mode="wb", closefd=False), encoding="utf-8"))/' \
+         /opt/gptr-mcp/.venv/lib/python3.13/site-packages/mcp/server/stdio.py \
+    && grep -Fq 'open(1, mode="wb", closefd=False)' \
+         /opt/gptr-mcp/.venv/lib/python3.13/site-packages/mcp/server/stdio.py \
     && uv venv --python /usr/local/bin/python3 /opt/vision-guard/.venv \
     && uv pip install \
          --python /opt/vision-guard/.venv/bin/python \
