@@ -207,3 +207,30 @@ for 50m of the ledger.
   into a single grouped Telegram message over 4096 characters. The recording
   rules in `infrastructure/observability/backup-health-rules.yaml` now aggregate
   `max by (namespace, cronjob)` to one series per job.
+
+## 2026-09-13 — Kubelet restart triggers a permanent Longhorn FailedMount storm on healthy volumes
+
+Two `systemctl restart k3s` operations on beelink (K3s config change) produced a
+stream of Telegram alerts: `MountVolume.SetUp failed … Aborted desc = no Pending
+workload pods for volume … to be mounted: map[Failed:[<old pods>] Running:[<live
+pod>]]` for `open-webui`, `actual-horizon`, and `finance-display`, repeating every
+~2 minutes per pod with counts climbing past 20. Every volume was `attached` +
+`healthy` and every application was fully functional — the live bind mounts
+survive the kubelet restart; only the *replayed* `NodePublish` for an
+already-`Running` pod is rejected by Longhorn's CSI plugin (upstream
+longhorn/longhorn#8072), and kubelet's retry loop re-emits the Warning forever.
+
+- **Watch for:** `FailedMount … no Pending workload pods` where the listed
+  `Running:` pod is the current serving pod and the volume reports
+  `state=attached robust=healthy`. It is not data corruption.
+- **Remedy:** restart each affected pod once (`kubectl delete pod`); the
+  replacement mounts cleanly as a `Pending` workload and the event loop dies
+  with the old pod. Then delete the stale `Failed`/`Evicted` pod leftovers the
+  message's `Failed:[…]` list names — they persist for days and appear in every
+  later alert for the same volume.
+- **Verification pitfall:** probing the mount at the manifest's nominal path
+  (`/app/data`) failed while the real container `mountPath` (`/app/backend/data`)
+  was healthy — read `.spec.containers[*].volumeMounts` before declaring a mount
+  broken.
+- **Prevention:** expect this alert storm in the minutes after any kubelet/k3s
+  service restart on a Longhorn node; it is self-inflicted noise, not an outage.

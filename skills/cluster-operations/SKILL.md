@@ -111,6 +111,11 @@ Do not weaken Longhorn drain policy, force-delete storage pods, use `--force`,
 or add `--delete-emptydir-data` until every exact blocked object and local file
 has been classified. A blocked drain is evidence, not an inconvenience.
 
+After any kubelet or `systemctl restart k3s`, expect Longhorn `FailedMount`
+"no Pending workload pods" retry storms on already-Running pods
+(longhorn/longhorn#8072); the data plane is intact. Follow the recovery note
+in the cluster manual's planned-maintenance section.
+
 ### Add or permanently remove an agent
 
 Use the complete admission/removal sequence in the cluster manual. For

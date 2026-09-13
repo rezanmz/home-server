@@ -705,6 +705,19 @@ WireGuard, SMB, Syncthing, and Pi-pinned pods. For the Beelink, expect loss of
 DHCP, the API/control plane, and most compute. The other node being Ready does
 not remove those physical dependencies.
 
+**Known side effect of a kubelet/`systemctl restart k3s` on a node using
+Longhorn (2026-09-13):** after the kubelet comes back it re-runs
+`MountVolume.SetUp` for volumes of pods that are already `Running`. Longhorn's
+CSI plugin rejects those replays (`Aborted: no Pending workload pods for volume
+… to be mounted`) and kubelet retries forever, so every retry emits a
+`FailedMount` Warning that the event exporter forwards to Telegram in a
+~2-minute storm that never self-heals. The mounts and data plane stay healthy
+(probe the real `mountPath` inside the pod before believing otherwise). The
+remedy is to restart each affected pod once — the replacement mounts normally
+as a `Pending` workload — and to delete the stale `Failed`/`Evicted` pods the
+event message lists under `Failed:[…]`, which otherwise linger in every future
+message. Tracked upstream as longhorn/longhorn#8072.
+
 ## Permanently remove an agent
 
 Do not use this procedure for the Beelink server. Do not permanently remove one
