@@ -8,6 +8,14 @@ tls-san:
 flannel-backend: host-gw
 secrets-encryption: true
 write-kubeconfig-mode: "0600"
+# Garbage-collect unused container images well before the kubelet default
+# (85%): beelink's imagefs shares the root filesystem that also backs the
+# Longhorn disk, and 7+ weeks of image churn silently filled it to 81%, which
+# made the Longhorn disk unschedulable and left sonarr-config degraded for
+# days (2026-09-11 incident). GC at 70% down to 50% keeps the guard far away.
+# Unlike the Pi agent config, re-pulling is always safe here.
+image-gc-high-threshold: 70
+image-gc-low-threshold: 50
 # Never make pod recovery depend on Blocky. Kubelet copies these independent
 # host upstreams into dnsPolicy=Default pods such as CoreDNS.
 resolv-conf: /run/systemd/resolve/resolv.conf

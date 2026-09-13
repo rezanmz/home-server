@@ -64,8 +64,13 @@ spec:
                 - name: TMPDIR
                   value: /tmp
               resources:
+                # 50m requests made this job permanently unschedulable on the
+                # Pi (Sep 2026: node reached 3990m/4000m CPU requests, the job
+                # sat Pending, and the deadline killed it daily for a week).
+                # The tree is a few MB and restic is I/O-bound on B2 upload,
+                # so a 10m reservation is sufficient; the burst limit stays 1.
                 requests:
-                  cpu: 50m
+                  cpu: 10m
                   memory: 128Mi
                 limits:
                   cpu: "1"

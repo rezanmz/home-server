@@ -72,20 +72,24 @@ spec:
             )
         - record: home_server_longhorn_backup_stale_pvcs
           expr: count(home_server_longhorn_backup_age_seconds > 129600) or vector(0)
+        # max by (namespace, cronjob) collapses kube-state-metrics target
+        # labels (pod/instance/container/endpoint/service) to one series;
+        # otherwise each scrape-target label set becomes a duplicate alert
+        # instance in one Telegram group and the message exceeds 4096 chars.
         - record: home_server_syncthing_backup_age_seconds
           expr: |
             time()
-            - kube_cronjob_status_last_successful_time{
+            - max by (namespace, cronjob) (kube_cronjob_status_last_successful_time{
                 namespace="network-services",
                 cronjob="syncthing-backup"
-              }
+              })
         - record: home_server_syncthing_backup_freshness_check_age_seconds
           expr: |
             time()
-            - kube_cronjob_status_last_successful_time{
+            - max by (namespace, cronjob) (kube_cronjob_status_last_successful_time{
                 namespace="network-services",
                 cronjob="syncthing-backup-freshness"
-              }
+              })
         - record: home_server_syncthing_recent_failed_jobs
           expr: |
             sum(
