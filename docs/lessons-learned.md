@@ -176,3 +176,34 @@ its logs.
   stdio child; any in-flight long-running tool call dies with
   `McpError -32000: Connection closed` and its paid result is discarded.
   Edit server config only when nothing long-running is in flight.
+
+## 2026-09-13 — CronJob DeadlineExceeded with zero pod logs means Pending, not slow
+
+The nightly Syncthing Restic backup failed with `DeadlineExceeded` after its full
+12-hour window for seven consecutive days. Every investigation instinct pointed
+at restic, B2, or the NFS source — all healthy: the tree is ~6 MB, the repo reads
+fine, and network from the job's node is normal. `kube_pod_status_unschedulable`
+in Prometheus showed the truth: every backup pod had been stuck **Pending** the
+entire time; `activeDeadlineSeconds` also bounds scheduling wait, and a pod that
+never starts produces no logs anywhere. The Pi had crossed 99% of allocatable CPU
+**requests** (3990m/4000m) when the Sep 7 JuiceFS Helm upgrade restarted its mount
+pod with a 250m request; the backup job needed 50m and could not be scheduled or
+preempt anything. Native sidecars (init containers with `restartPolicy: Always`)
+are counted additively in node request totals — the `gluetun` sidecar accounts
+for 50m of the ledger.
+
+- **Watch for:** `DeadlineExceeded`/`BackoffLimitExceeded` on any CronJob whose
+  pods leave no container logs — query `kube_pod_status_unschedulable` for the
+  pod before touching the application.
+- **Prevention:** `apps/syncthing/backups/cronjob.yaml` reserves only 10m CPU;
+  burst (limits) still gets a full core.
+- **Diagnostic recipe:** `sum(kube_pod_container_resource_requests{resource="cpu",
+  node="..."})` plus `kubectl describe node` Allocated-resources ledger against
+  the pending pod's request answers capacity rejections in one query.
+- **Related drift:** the same incident family included `message length exceeds
+  Telegram limits` failures: kube-state-metrics joins scrape-target labels
+  (pod/instance/container/endpoint/service) into recording-rule series, so
+  `SyncthingBackupStale` fired one duplicate alert instance per target label set
+  into a single grouped Telegram message over 4096 characters. The recording
+  rules in `infrastructure/observability/backup-health-rules.yaml` now aggregate
+  `max by (namespace, cronjob)` to one series per job.
