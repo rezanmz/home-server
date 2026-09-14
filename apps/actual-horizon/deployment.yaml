@@ -31,7 +31,9 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-horizon
-          # v1.2.2 fixes refresh (issue #50, incident 2026-09-13): the sync
+          # v1.2.3 also evaluates chart day boundaries in ACTUAL_TIMEZONE
+          # instead of UTC (#53), defaulting to the container TZ. v1.2.2
+          # fixes refresh (issue #50, incident 2026-09-13): the sync
           # job now pulls from Actual before recomputing snapshots, so a UI
           # refresh reflects server changes instead of the boot-time cache.
           # Keeps the v1.2.1 background single-flight split (#46) so refresh
@@ -39,7 +41,7 @@ spec:
           # 2026-09-11). No native login/callback routes yet, so browser SSO
           # is enforced by Traefik forward-auth and AUTH_MODE stays disabled.
           # Revisit native OIDC once upstream wires its auth module.
-          image: ghcr.io/rezanmz/actual-horizon:v1.2.2@sha256:60c9ca6b93d783e7fe7c2f72688c32dc9c1680c69d2343890a950b1b02060356
+          image: ghcr.io/rezanmz/actual-horizon:v1.2.3@sha256:ecc2a98309f57e2aa262897bffa93090b10ca6a33fc437e76c60caf72126f514
           imagePullPolicy: IfNotPresent
           env:
             - {name: TZ, value: America/Toronto}
