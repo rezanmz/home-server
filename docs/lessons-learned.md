@@ -234,3 +234,30 @@ longhorn/longhorn#8072), and kubelet's retry loop re-emits the Warning forever.
   broken.
 - **Prevention:** expect this alert storm in the minutes after any kubelet/k3s
   service restart on a Longhorn node; it is self-inflicted noise, not an outage.
+
+## 2026-09-14 — Alertmanager's default Telegram template silently degrades oversized groups
+
+When a grouped alert notification rendered from Alertmanager's built-in
+`telegram.default.message` exceeds Telegram's 4096-character limit under
+`parse_mode: HTML`, the notifier does NOT fail: it sends the literal placeholder
+`Alertmanager notification could not be sent: message length exceeds Telegram
+limits…` instead of the alert content and returns success
+(`prometheus/alertmanager` `notify/telegram/telegram.go`, the HTML branch).
+`alertmanager_notifications_failed_total` stays at zero, so dashboards and
+alert-on-alerting rules see nothing. During the Sep 7–13 backup gap this is how
+`SyncthingBackupStale` notifications vanished while the operator believed
+delivery was healthy; the operator only ever saw the placeholder itself.
+
+- **Watch for:** the placeholder arriving as a normal-looking Telegram message
+  from the alert bot — it is not an informational relay, it is a lost
+  notification. Correlate with the firing alert list, not with delivery
+  counters.
+- **Diagnostic recipe:** `increase(alertmanager_notifications_failed_total
+  {integration="telegram"}[N])` cannot prove delivery health for this failure
+  mode; query the receivers' message template instead
+  (`/api/v2/status` → `config.original`).
+- **Prevention:** give `telegram_configs.message` a compact CUSTOM template —
+  non-default templates take the notifier's `TruncateInRunes` path and are
+  auto-truncated (and logged) rather than replaced. Landed in
+  `infrastructure/observability/alertmanager-config.sops.yaml` (#324); the
+  instance-count duplication that fed it was fixed by #320.
