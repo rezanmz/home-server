@@ -256,8 +256,16 @@ delivery was healthy; the operator only ever saw the placeholder itself.
   {integration="telegram"}[N])` cannot prove delivery health for this failure
   mode; query the receivers' message template instead
   (`/api/v2/status` → `config.original`).
-- **Prevention:** give `telegram_configs.message` a compact CUSTOM template —
-  non-default templates take the notifier's `TruncateInRunes` path and are
-  auto-truncated (and logged) rather than replaced. Landed in
-  `infrastructure/observability/alertmanager-config.sops.yaml` (#324); the
-  instance-count duplication that fed it was fixed by #320.
+- **Prevention:** make the message length-bounded by construction. Two
+  apparent shortcuts do NOT work in this stack: (a) custom templates are only
+  auto-truncated on the notifier's non-HTML branch — with the default
+  `parse_mode: HTML` even custom templates hit the same placeholder path; and
+  (b) removing `parse_mode` (or setting it to `""`) is silently undone by the
+  prometheus-operator: `provisionAlertmanagerConfiguration` parses the secret's
+  config into alertmanager's structs and re-marshals it, and Telegram's
+  `ParseMode` is `parse_mode,omitempty`, so an empty string round-trips away
+  (verified live: `/api/v2/status` re-showed `parse_mode: HTML` after both
+  #324 and #326). The durable fix is a template bounded by construction — cap
+  alert instances per message (first 6 of N, alertname + description) — landed
+  in `infrastructure/observability/alertmanager-config.sops.yaml` (#327); the
+  instance-count duplication that fed the oversize was fixed by #320.
