@@ -176,7 +176,7 @@ validate_release_reference \
   "${cert_manager_release}" OCIRepository flux-system cert-manager
 cert_manager_chart="$(pull_oci_chart \
   "${cert_manager_source}" \
-  c27101f3f3e2349fb4a9e704316105bf7b52ad73b8c8257d3498ef7f2f6a4adc)"
+  73a56e1728edd6c99f1f31082618c3259d279a76b7ebd3d4bdc5475c2442d34a)"
 render_release \
   "${cert_manager_release}" \
   "${cert_manager_chart}"
