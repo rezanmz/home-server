@@ -11,8 +11,8 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SABNZBD_IMAGE = (
-    "lscr.io/linuxserver/sabnzbd:5.1.2-ls270@"
-    "sha256:13d4404f1242f819e0cc2e294def5858def251a3609eb59404dad303075a564a"
+    "lscr.io/linuxserver/sabnzbd:5.1.3-ls273@"
+    "sha256:948ea3dc45d68943ec14b33ba37ffa1488da3e9837bf3ca0f75621e971614d85"
 )
 GLUETUN_IMAGE = (
     "qmcgaw/gluetun:v3.41.3@"
