@@ -230,7 +230,7 @@ validate_release_reference \
   "${observability_release}" OCIRepository flux-system kube-prometheus-stack
 observability_chart="$(pull_oci_chart \
   "${observability_source}" \
-  c17a08afbbaa8577b5bdc990511b3cf1a3a37ae76ce5817e7478300f9933749b)"
+  059635123b23ca91ed4d8e4101989d88a9d1f728d9200f83d575d9febd1c634f)"
 render_release "${observability_release}" "${observability_chart}"
 
 : >"${expected_releases}"
