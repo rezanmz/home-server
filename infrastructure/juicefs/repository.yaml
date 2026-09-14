@@ -8,8 +8,8 @@ spec:
   timeout: 2m
   url: https://github.com/juicedata/charts.git
   ref:
-    tag: helm-chart-juicefs-csi-driver-0.32.4
-    commit: cd1c75ddce8667e89131420ff55205c6cce095bc
+    tag: helm-chart-juicefs-csi-driver-0.32.5
+    commit: 0097335d3dd0db5af486bdc7203447b11cbc56cf
   ignore: |
     /*
     !/charts/

@@ -85,7 +85,7 @@ helm-externally-exposed-service|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|tr
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.web.hostPort/value-80
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.websecure.hostPort/value-443
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/5bb4ca36703dbcd5375ca8d8183c797ea9e41888d66183ec7579a6c4c9344b20
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/d611a19f9d60513408001768d3f0d4675ecb79138c37ed2f2e5eae2f060d80bc
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/1b39a73e00878a413c34761d772dd9e80c07a49bf88f3844d81c0df367f6d8e2
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/f1357329293aec180c410ae80640d441d11dde948b3186baf974b893e93376f4
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/5bcfe477512c9ee9662f861cf276d644ae600b59444811a5296f4895381a19db
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/c3ed165698b82dc65244606a7c857d339e6ce5f98d64c087e06e98f95037b2da
