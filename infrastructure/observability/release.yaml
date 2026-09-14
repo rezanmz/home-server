@@ -98,26 +98,26 @@ spec:
         releaseNamespace: true
       automountServiceAccountToken: true
       image:
-        tag: v0.93.0
-        sha: a001ed10a3823bbf2410ea347796d0e35ff8decd24fb98acbe7ab9e98d431c39
+        tag: v0.93.1
+        sha: e52bb28fd41c98dd407c7a8cba8bdcfe7eabd7447e250afaf1fe7bb816dedbff
       prometheusConfigReloader:
         image:
-          tag: v0.93.0
-          sha: 0ccb22ca9f3f6fd9f76ce95585d18bd2e363d421c534dde710be4bd13caa551d
+          tag: v0.93.1
+          sha: 428f088fe6fe07ab138bda92113664b04848a1dc408e4d3680a60ecdb55d1a65
         resources:
           requests: {cpu: 10m, memory: 32Mi}
           limits: {cpu: 200m, memory: 128Mi}
       thanosImage:
-        tag: v0.42.2
-        sha: 6249f7aaadd3695df637fb2eb4cb9a9955611eee691c3970892fe9c0dc3f2db6
+        tag: v0.42.4
+        sha: b567818fe608067eb0f1d7c2c4fe361e7ad83c8a256234c97685f1d0bf670cc8
       resources:
         requests: {cpu: 50m, memory: 128Mi}
         limits: {cpu: 500m, memory: 384Mi}
 
     kube-state-metrics:
       image:
-        tag: v2.19.1
-        sha: sha256:85108987d044b18a098126732f98602df408888c0f7d456241f5abefb9744bc1
+        tag: v2.20.0
+        sha: sha256:42cfe3723a5f058171c627537fb57a3ea0f26e4380fa18555a95cb1a1b4cfc5b
       # Backup coverage must distinguish active Longhorn claims from frozen
       # rollback volumes that explicitly opt out of the nightly job. Expose
       # only that one PVC label rather than the full, high-cardinality set.
@@ -214,8 +214,8 @@ spec:
             - {port: http-prom, path: /metrics, interval: 30s, scrapeTimeout: 10s}
       prometheusSpec:
         image:
-          tag: v3.13.1-distroless
-          sha: 214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80
+          tag: v3.14.0-distroless
+          sha: 50c707e96da5ade383cb1707790576480485e93de06aa60ad8802cb5f744bd0a
         scrapeInterval: 30s
         evaluationInterval: 30s
         retention: 14d
@@ -244,8 +244,8 @@ spec:
         configSecret: observability-alertmanager
         automountServiceAccountToken: false
         image:
-          tag: v0.33.1
-          sha: 9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
+          tag: v0.34.0
+          sha: 690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
         retention: 120h
         resources:
           requests: {cpu: 50m, memory: 64Mi}
@@ -260,8 +260,8 @@ spec:
 
     grafana:
       image:
-        tag: 13.1.1
-        sha: 7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b
+        tag: 13.2.0
+        sha: 3fd54ae1214669f8355f065ec9f6445d5279a3d77095ab048ca045685272429b
       testFramework:
         enabled: false
       admin:
@@ -319,8 +319,8 @@ spec:
         automountServiceAccountToken: true
       sidecar:
         image:
-          tag: 2.10.0
-          sha: 21b9fe7bb29d65caf2445ccbf96ff6eda5e589a92bd8f5188f957fe75b551d72
+          tag: 2.10.1
+          sha: 7eac5c4fed714a18d038fc9fea57d8744d113367935dac0ea4eb6a87cef704a3
         resources:
           requests: {cpu: 10m, memory: 32Mi}
           limits: {cpu: 200m, memory: 128Mi}
