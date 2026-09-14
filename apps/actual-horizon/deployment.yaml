@@ -31,14 +31,15 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-horizon
-          # v1.2.1 ships background single-flight sync (#47): POST /api/sync
-          # answers 202 immediately and the budget job yields to the event
-          # loop, so UI refresh no longer starves /api/health past probe
-          # timeouts (incident 2026-09-11). No native login/callback routes
-          # yet, so browser SSO is enforced by Traefik forward-auth and
-          # AUTH_MODE stays disabled. Revisit native OIDC once upstream wires
-          # its auth module.
-          image: ghcr.io/rezanmz/actual-horizon:v1.2.1@sha256:bc00cba322a29fba1dc8bc656227de7ee5d0f811db5a4d131b4e21eb37256267
+          # v1.2.2 fixes refresh (issue #50, incident 2026-09-13): the sync
+          # job now pulls from Actual before recomputing snapshots, so a UI
+          # refresh reflects server changes instead of the boot-time cache.
+          # Keeps the v1.2.1 background single-flight split (#46) so refresh
+          # no longer starves /api/health past probe timeouts (incident
+          # 2026-09-11). No native login/callback routes yet, so browser SSO
+          # is enforced by Traefik forward-auth and AUTH_MODE stays disabled.
+          # Revisit native OIDC once upstream wires its auth module.
+          image: ghcr.io/rezanmz/actual-horizon:v1.2.2@sha256:60c9ca6b93d783e7fe7c2f72688c32dc9c1680c69d2343890a950b1b02060356
           imagePullPolicy: IfNotPresent
           env:
             - {name: TZ, value: America/Toronto}
