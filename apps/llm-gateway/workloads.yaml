@@ -35,10 +35,13 @@ spec:
           type: RuntimeDefault
       containers:
         - name: litellm
-          # Hardened upstream build: /app and the Prisma client tree are owned
-          # by nobody (65534) and the engine binaries under /opt/prisma are
-          # world-readable, so the proxy starts without any root-owned writes.
-          image: ghcr.io/berriai/litellm-non_root:v1.83.14-stable@sha256:5bb1d45eefe9b8bdc8d1b34617b8112d03bfc78fc247bea62d7ebd89918c875c
+          # Hardened upstream build: it runs as uid 65534 (nobody) with the
+          # Prisma client tree owned unprivileged and engine binaries under
+          # /opt/prisma world-readable, so the proxy starts without any
+          # root-owned writes. Upstream stopped publishing the old `-stable`
+          # tag suffix after v1.83.14; the plain release tag is now the stable
+          # line and Renovate tracks it.
+          image: ghcr.io/berriai/litellm-non_root:v1.101.0@sha256:633ae8495a5146fef15298a9d4eadb7ff2634b2218274c2666d2d77d11ace30b
           imagePullPolicy: IfNotPresent
           args: ["--config", "/app/config.yaml", "--port", "4000"]
           env:
