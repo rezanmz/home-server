@@ -108,7 +108,9 @@ connections, router keys, OAuth sessions, and usage state in its own
 Longhorn-backed SQLite data directory. Git owns the server contract only: the
 image pin, boot secrets (initial password, JWT/API-key secrets, machine-id
 salt), route, and network boundary. The dashboard authenticates with 9Router's
-own password/cookie session (it has no OIDC support), and the `/v1` API
+own SAML SSO against Authentik (no OIDC support exists upstream; the SAML
+provider is a hand-maintained blueprint beside the catalog-generated OIDC
+ones) with a password fallback for break-glass, and the `/v1` API
 requires a router key; both stay LAN/VPN-only behind the Gateway route
 allowlist. MCP access for agents remains MCPHub's responsibility; 9Router
 serves model traffic only.

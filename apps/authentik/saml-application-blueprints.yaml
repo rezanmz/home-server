@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-saml-application-blueprints
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: authentik
+data:
+  # Hand-maintained companion to the catalog-generated
+  # authentik-application-blueprints ConfigMap. The compiler only models OIDC;
+  # 9Router's dashboard supports SAML SSO (and no OIDC), so its provider lives
+  # here. Both ConfigMaps are projected into /blueprints/custom on the server.
+  9router-saml.yaml: |
+    version: 1
+    metadata:
+      name: "9Router SAML"
+    entries:
+      - model: authentik_providers_saml.samlprovider
+        id: 9router-saml-provider
+        attrs:
+          name: "Provider for 9Router"
+          acs_url: "https://router.reza.network/api/auth/saml/acs"
+          audience: "urn:9router:sp"
+          sp_binding: redirect
+          sign_assertion: true
+          signing_kp: !Find [authentik_crypto.certificatekeypair, ['name', 'authentik Self-signed Certificate']]
+          property_mappings:
+            - !Find [authentik_providers_saml.samlpropertymapping, [managed, goauthentik.io/providers/saml/email]]
+            - !Find [authentik_providers_saml.samlpropertymapping, [managed, goauthentik.io/providers/saml/name]]
+            - !Find [authentik_providers_saml.samlpropertymapping, [managed, goauthentik.io/providers/saml/upn]]
+      - model: authentik_core.application
+        id: 9router
+        identifiers:
+          slug: 9router
+        attrs:
+          name: "9Router"
+          provider: !KeyOf 9router-saml-provider
+          meta_launch_url: "https://router.reza.network/"
+          launch_url: "https://router.reza.network/"
