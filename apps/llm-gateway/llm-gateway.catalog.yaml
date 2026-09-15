@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: llm-gateway
+spec:
+  name: LLM Gateway
+  workload:
+    namespace: apps
+    app: llm-gateway
+  homepage:
+    order: 21
+    group: AI & Data
+    icon: mdi-router-network
+    description: Provider routing and virtual-key gateway
+  web:
+    hostname: llm-gateway.reza.network
+    route: apps/llm-gateway/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: forward-auth
+      profile: authentik-forward-single-v1
+      blueprintName: LLM Gateway proxy authentication
+      application:
+        slug: llm-gateway
+        launchUrl: https://llm-gateway.reza.network/
+      middleware: llm-gateway-authentik
+  placement:
+    mode: beelink
+    manifest: apps/llm-gateway/workloads.yaml
+    reason: Single writer for the SQLite datastore on the only server node.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/llm-gateway/pvc.yaml]
+  observability:
+    mode: kubernetes

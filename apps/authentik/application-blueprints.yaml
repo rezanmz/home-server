@@ -139,6 +139,22 @@ data:
           provider: !KeyOf homepage-provider
           meta_launch_url: "https://homepage.reza.network/"
       - model: authentik_providers_proxy.proxyprovider
+        id: llm-gateway-provider
+        identifiers:
+          name: "Provider for LLM Gateway"
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: forward_single
+          external_host: "https://llm-gateway.reza.network"
+      - model: authentik_core.application
+        identifiers:
+          slug: llm-gateway
+        attrs:
+          name: "LLM Gateway"
+          provider: !KeyOf llm-gateway-provider
+          meta_launch_url: "https://llm-gateway.reza.network/"
+      - model: authentik_providers_proxy.proxyprovider
         id: maintainerr-provider
         identifiers:
           name: "Provider for Maintainerr"
@@ -222,6 +238,7 @@ data:
           providers:
             - !KeyOf actual-horizon-provider
             - !KeyOf homepage-provider
+            - !KeyOf llm-gateway-provider
             - !KeyOf maintainerr-provider
             - !KeyOf navidrome-provider
             - !KeyOf slskd-provider

@@ -111,6 +111,22 @@ external free tier while the active lower limit remains editable in MCPHub.
 
 ## Backup and restore
 
+## LLM gateway ownership
+
+The LiteLLM gateway is the single LLM routing layer. Git owns the deployment,
+image pin, network boundary, route, forward-auth identity, storage, and the
+server config (master key and salt references, database path, safety flags).
+Everything an administrator edits in the gateway UI is application state in
+its Longhorn-backed SQLite database: tier model lists, fallback chains,
+provider credentials, virtual keys, team membership, and spend ceilings.
+Provider credentials never enter Git; they are entered through the gateway's
+own UI or CLI.
+
+Applications reference stable tier names through virtual keys, never concrete
+provider model IDs, so the underlying model can change in one gateway setting
+without touching application configuration. After restoring the gateway
+volume, verify one admin login and one completion through a virtual key.
+
 This boundary depends on application data being protected. Longhorn snapshots
 and the B2 backup target protect Open WebUI, MCPHub, Audiobookshelf, Vikunja,
 and other Longhorn-backed application state. Restoring only Git recreates the

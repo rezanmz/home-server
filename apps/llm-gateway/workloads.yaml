@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: llm-gateway
+    app.kubernetes.io/component: application
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: llm-gateway
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: llm-gateway
+        app.kubernetes.io/component: application
+    spec:
+      # Single writer for the SQLite datastore; Longhorn RWO would fail over
+      # a second replica anyway.
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-v1.83.14-stable@sha256:c81eb79cd4333c6cfe374c0ec929110fd23f0ee5f7fd198855a6fbddc77b83ba
+          imagePullPolicy: IfNotPresent
+          args: ["--config", "/app/config.yaml", "--port", "4000"]
+          env:
+            - name: HOME
+              value: /tmp/litellm
+            # Bundled model-cost map instead of a startup fetch from
+            # githubusercontent; Renovate keeps the image current.
+            - name: LITELLM_LOCAL_MODEL_COST_MAP
+              value: "True"
+            - name: DATABASE_URL
+              value: sqlite:////data/litellm.db
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-gateway-secrets
+                  key: master-key
+            - name: LITELLM_SALT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-gateway-secrets
+                  key: salt-key
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: llm-gateway-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: llm-gateway-data
+        - name: tmp
+          emptyDir: {}
