@@ -1,0 +1,247 @@
+diff --git a/server.py b/server.py
+index 592dbf6..2d4d1b5 100644
+--- a/server.py
++++ b/server.py
+@@ -8,6 +8,8 @@ to conduct web research and generate reports via the MCP protocol.
+ import os
+ import sys
+ import uuid
++import asyncio
++import time
+ import logging
+ from typing import Dict, Any, Optional, List
+ from dotenv import load_dotenv
+@@ -20,6 +22,7 @@ load_dotenv()
+ 
+ from utils import (
+     research_store,
++    create_error_response,
+     create_success_response, 
+     handle_exception,
+     get_researcher_by_id, 
+@@ -45,6 +48,114 @@ mcp = FastMCP(
+ if not hasattr(mcp, "researchers"):
+     mcp.researchers = {}
+ 
++# Home-server async research jobs.
++#
++# A blocking deep_research call runs for the entire research (often more
++# than five minutes). MCP gateways and clients bound how long a single
++# response stream may stay silent (Open WebUI's MCP client drops it at
++# 300 s), which orphans the finished, paid-for result. start_research
++# launches the same work as a background task and research_status
++# long-polls it in bounded slices, so every MCP call returns promptly and
++# the caller can report the current phase to the user between polls.
++
++# research_id -> mutable job record. Finished jobs keep their payload so
++# polls after completion are cheap and idempotent.
++research_jobs: Dict[str, Dict[str, Any]] = {}
++# Strong references to live background tasks so the event loop keeps them.
++_research_tasks: Dict[str, "asyncio.Task"] = {}
++_MAX_RETAINED_RESEARCH_JOBS = 50
++
++
++class ResearchJobHandler:
++    """GPTResearcher log_handler that records phase events into a job."""
++
++    def __init__(self, job: Dict[str, Any]):
++        self.job = job
++
++    async def on_research_step(self, step: str, details: Any = None, **kwargs):
++        if step == "cost_update":
++            if isinstance(details, dict):
++                self.job["cost_usd"] = details.get("total_cost")
++            return
++        self.job["phase"] = str(step)
++
++    async def on_agent_action(self, action: str, **kwargs):
++        self.job["phase"] = str(action)
++
++    async def on_tool_start(self, tool_name: str, **kwargs):
++        self.job["phase"] = f"tool:{tool_name}"
++
++
++def _prune_research_jobs() -> None:
++    finished = [j for j in research_jobs.values() if j["status"] != "running"]
++    overflow = len(finished) - _MAX_RETAINED_RESEARCH_JOBS
++    if overflow <= 0:
++        return
++    ordered = sorted(finished, key=lambda j: j["finished_at"] or 0)
++    for stale in ordered[:overflow]:
++        research_jobs.pop(stale["research_id"], None)
++
++
++def _start_research_task(query: str) -> str:
++    research_id = str(uuid.uuid4())
++    job: Dict[str, Any] = {
++        "research_id": research_id,
++        "status": "running",
++        "phase": "queued",
++        "query": query,
++        "started_at": time.time(),
++        "finished_at": None,
++        "error": None,
++        "cost_usd": None,
++        "progress": {},
++        "result": None,
++        "done": asyncio.Event(),
++    }
++    research_jobs[research_id] = job
++    _prune_research_jobs()
++
++    async def _run() -> None:
++        researcher = GPTResearcher(query, log_handler=ResearchJobHandler(job))
++
++        def _on_progress(progress: Any) -> None:
++            job["phase"] = "deep_research"
++            job["progress"] = {
++                "depth": getattr(progress, "depth", None),
++                "breadth": getattr(progress, "breadth", None),
++                "total_queries": getattr(progress, "total_queries", None),
++                "completed_queries": getattr(progress, "completed_queries", None),
++                "current_query": getattr(progress, "current_query", None),
++            }
++
++        try:
++            await researcher.conduct_research(on_progress=_on_progress)
++            mcp.researchers[research_id] = researcher
++            logger.info(f"Research completed for ID: {research_id}")
++
++            context = researcher.get_research_context()
++            sources = researcher.get_research_sources()
++            source_urls = researcher.get_source_urls()
++            store_research_results(query, context, sources, source_urls)
++            job["result"] = {
++                "source_count": len(sources),
++                "context": context,
++                "sources": format_sources_for_response(sources),
++                "source_urls": source_urls,
++            }
++            job["status"] = "completed"
++            job["phase"] = "research_completed"
++        except Exception as e:
++            job["status"] = "failed"
++            job["error"] = str(e)
++            logger.error(f"Background research failed for ID {research_id}: {e}")
++        finally:
++            job["finished_at"] = time.time()
++            job["done"].set()
++            _research_tasks.pop(research_id, None)
++
++    _research_tasks[research_id] = asyncio.create_task(_run())
++    return research_id
++
+ 
+ @mcp.resource("research://{topic}")
+ async def research_resource(topic: str) -> str:
+@@ -95,6 +206,12 @@ async def deep_research(query: str) -> Dict[str, Any]:
+     """
+     Conduct a web deep research on a given query using GPT Researcher. 
+     Use this tool when you need time-sensitive, real-time information like stock prices, news, people, specific knowledge, etc.
++
++    Note: this call blocks for the entire research, which commonly takes
++    several minutes, and the finished result can be lost if any hop between
++    the caller and this server bounds how long one response stream may stay
++    silent. Prefer start_research + research_status for full researches and
++    keep deep_research for short queries.
+     
+     Args:
+         query: The research query or topic
+@@ -137,6 +254,97 @@ async def deep_research(query: str) -> Dict[str, Any]:
+         return handle_exception(e, "Research")
+ 
+ 
++@mcp.tool()
++async def start_research(query: str) -> Dict[str, Any]:
++    """
++    Start a background web deep research on a given query and return its ID
++    immediately, without waiting for the research to finish. Prefer this over
++    deep_research for full researches.
++
++    Poll the outcome with research_status(research_id); when it reports
++    "completed" it includes the same context and sources deep_research would
++    have returned, so no further research call is needed. Relays the current
++    phase between polls so the user is not left without updates.
++
++    Args:
++        query: The research query or topic
++
++    Returns:
++        Dict containing the research_id to pass to research_status
++    """
++    logger.info(f"Starting background research on query: {query}...")
++    research_id = _start_research_task(query)
++    return create_success_response({
++        "research_id": research_id,
++        "query": query,
++        "status": "started",
++        "next_step": (
++            "Call research_status with this research_id and wait_seconds=90 "
++            "until status is completed or failed. Share the reported phase "
++            "with the user between polls."
++        ),
++    })
++
++
++@mcp.tool()
++async def research_status(research_id: str, wait_seconds: int = 90) -> Dict[str, Any]:
++    """
++    Report the progress of a background research started with start_research.
++
++    Waits server-side up to wait_seconds (clamped to 0-120) for completion.
++    If the research is still running, returns its current phase, elapsed
++    time, partial progress, and accumulated cost so the caller can tell the
++    user where the research stands, then should call again. When completed,
++    returns the full research payload (context, sources, source_urls) in the
++    same shape deep_research produces; write_report accepts this
++    research_id.
++
++    Args:
++        research_id: The ID returned by start_research
++        wait_seconds: Max seconds this call waits for completion (default 90)
++
++    Returns:
++        Dict with status (running|completed|failed), phase, elapsed_seconds,
++        progress, and on completion the research context and sources
++    """
++    job = research_jobs.get(research_id)
++    if not job:
++        return create_error_response(
++            "Research ID not found. It may predate a server restart; "
++            "start the research again with start_research."
++        )
++    wait = max(0, min(int(wait_seconds), 120))
++    if job["status"] == "running" and wait:
++        try:
++            await asyncio.wait_for(job["done"].wait(), timeout=wait)
++        except asyncio.TimeoutError:
++            pass
++    payload: Dict[str, Any] = {
++        "research_id": research_id,
++        "query": job["query"],
++        "status": job["status"],
++        "phase": job["phase"],
++        "elapsed_seconds": round((job["finished_at"] or time.time()) - job["started_at"], 1),
++    }
++    if job["progress"]:
++        payload["progress"] = job["progress"]
++    if job["cost_usd"] is not None:
++        try:
++            payload["cost_usd"] = round(float(job["cost_usd"]), 4)
++        except (TypeError, ValueError):
++            pass
++    if job["status"] == "running":
++        payload["next_step"] = (
++            "Still running; call research_status again (wait_seconds=90) "
++            "and tell the user the current phase."
++        )
++        return create_success_response(payload)
++    if job["status"] == "failed":
++        return create_error_response(f"Research failed: {job['error']}")
++    payload.update(job["result"])
++    return create_success_response(payload)
++
++
+ @mcp.tool()
+ async def quick_search(query: str) -> Dict[str, Any]:
+     """
