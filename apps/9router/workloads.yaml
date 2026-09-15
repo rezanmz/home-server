@@ -37,6 +37,12 @@ spec:
         - name: 9router
           image: ghcr.io/decolua/9router:0.5.75@sha256:7c893bc2c27ecea2ae337abd5eacfec9e5763091b3a3b7862fc0625b770bb156
           imagePullPolicy: IfNotPresent
+          # The image entrypoint is `chown … && su-exec node …`, which needs
+          # root (setgroups) and fails under this unprivileged pod. fsGroup
+          # already owns the Longhorn volume, so run the server process the
+          # entrypoint would exec, directly as the node user.
+          command: ["node"]
+          args: ["custom-server.js"]
           env:
             - name: DATA_DIR
               value: /app/data
