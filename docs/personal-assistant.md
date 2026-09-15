@@ -31,27 +31,6 @@ Server definitions, credentials, OAuth sessions, groups, and tool filters live
 in MCPHub's PostgreSQL database. They are changed in MCPHub and protected by
 the normal Longhorn and B2 backups. They are not reconciled from Git.
 
-## LLM Gateway
-
-The LiteLLM gateway at `llm-gateway.reza.network` is the single LLM routing
-layer. Applications reference stable tier names (`smart`, `fast`, `task`,
-`research`) through per-application virtual keys instead of concrete provider
-model IDs, so a model swap happens once in the gateway. Tier lists, fallback
-chains, provider credentials, virtual keys, and spend ceilings live in the
-gateway's own Longhorn-backed database and are edited through its admin UI;
-they are application state, not Git state.
-
-```text
-Open WebUI  ---> llm-gateway /v1  --> configured providers
-MCPHub gpt-researcher (migrates to the gateway when its provider plumbing
-                      moves out of MCPHub's per-server settings)
-```
-
-Until the gateway's provider credentials are configured, each application
-keeps its existing direct provider configuration. The cutover for Open WebUI
-is one provider base-URL/key change; deep research inside MCPHub follows when
-its stdio server environment can point at the gateway.
-
 ## Hermes Agent
 
 Hermes is the always-on companion and automation runtime. Open WebUI remains
