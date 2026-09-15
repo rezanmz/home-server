@@ -53,6 +53,14 @@ spec:
               app.kubernetes.io/component: application
       ports:
         - {port: 3000, protocol: TCP}
+    # Model calls route through the LiteLLM gateway with a virtual key.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: llm-gateway
+              app.kubernetes.io/component: application
+      ports:
+        - {port: 4000, protocol: TCP}
     # Authentik's public issuer is reached through the split-horizon Traefik
     # VIP. Include both the pre- and post-DNAT destinations used by K3s.
     - to:
