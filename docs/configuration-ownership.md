@@ -117,7 +117,7 @@ The LiteLLM gateway is the single LLM routing layer. Git owns the deployment,
 image pin, network boundary, route, forward-auth identity, storage, and the
 server config (master key and salt references, database path, safety flags).
 Everything an administrator edits in the gateway UI is application state in
-its Longhorn-backed SQLite database: tier model lists, fallback chains,
+its Longhorn-backed PostgreSQL database: tier model lists, fallback chains,
 provider credentials, virtual keys, team membership, and spend ceilings.
 Provider credentials never enter Git; they are entered through the gateway's
 own UI or CLI.

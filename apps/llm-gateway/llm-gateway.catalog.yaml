@@ -32,7 +32,7 @@ spec:
   placement:
     mode: beelink
     manifest: apps/llm-gateway/workloads.yaml
-    reason: Single writer for the SQLite datastore on the only server node.
+    reason: Single writer for the gateway database on the only server node.
   data:
     class: longhorn
     protection: longhorn-b2
