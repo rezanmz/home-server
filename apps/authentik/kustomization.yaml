@@ -4,6 +4,7 @@ resources:
   - secrets.sops.yaml
   - oidc-client-secrets.sops.yaml
   - application-blueprints.yaml
+  - saml-application-blueprints.yaml
   - pvc.yaml
   - workloads.yaml
   - services.yaml

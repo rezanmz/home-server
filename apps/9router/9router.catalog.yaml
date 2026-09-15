@@ -23,7 +23,7 @@ spec:
       splitHorizon: true
     auth:
       mode: native
-      reason: 9Router's dashboard has its own password/cookie auth (INITIAL_PASSWORD); OIDC is not supported.
+      reason: 9Router has no OIDC; its dashboard uses native SAML SSO against Authentik (hand-maintained blueprint apps/authentik/saml-application-blueprints.yaml).
   placement:
     mode: beelink
     manifest: apps/9router/workloads.yaml

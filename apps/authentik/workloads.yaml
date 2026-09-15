@@ -217,9 +217,15 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 512Mi
+        # Projected so the catalog-generated OIDC blueprints and the
+        # hand-maintained SAML blueprint share /blueprints/custom.
         - name: application-blueprints
-          configMap:
-            name: authentik-application-blueprints
+          projected:
+            sources:
+              - configMap:
+                  name: authentik-application-blueprints
+              - configMap:
+                  name: authentik-saml-application-blueprints
 ---
 apiVersion: apps/v1
 kind: StatefulSet
