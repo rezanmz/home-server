@@ -99,7 +99,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-9" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-10" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -111,6 +111,7 @@ COPY vision-guard/start-gcloud-mcp /usr/local/bin/start-gcloud-mcp
 COPY vision-guard/gcloud-mcp-allowlist.json /opt/vision-guard/gcloud-mcp-allowlist.json
 COPY jellyseerr-mcp /usr/local/bin/jellyseerr-mcp
 COPY actual-mcp-reconciliation.patch /tmp/actual-mcp-reconciliation.patch
+COPY gptr-mcp-async-research.patch /tmp/gptr-mcp-async-research.patch
 COPY --from=operations-mcp-builder /out/mcp-grafana /usr/local/bin/mcp-grafana
 COPY --from=operations-mcp-builder /out/kubernetes-mcp-server /usr/local/bin/kubernetes-mcp-server
 COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-mcp-server
@@ -139,6 +140,14 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # Researcher 0.16.0 imports three typing
 # annotations after using them, so the released dependency receives a one-line
 # import-order repair.
+# The gptr-mcp async-research patch (gptr-mcp-async-research.patch) adds
+# start_research + research_status: the research runs as a background task
+# and progress is long-polled in bounded slices. A blocking deep_research
+# commonly exceeds the 300-second silent-stream budget of downstream MCP
+# clients (Open WebUI), which orphaned completed, paid-for results; MCPHub
+# 1.0.37 registers no progress or logging pass-through for stdio children,
+# so heartbeats inside a single call cannot work. The patch also steers
+# callers away from blocking deep_research through its tool description.
 # Stdio JSON-RPC hygiene: FastMCP 3.x binds the stdio writer directly to the
 # process stdout buffer, and both gpt-researcher library code (curator.py
 # dumps the full source blob with bare print() during every curated run) and
@@ -178,6 +187,10 @@ RUN apt-get update \
     && git clone --filter=blob:none https://github.com/assafelovic/gptr-mcp.git /opt/gptr-mcp \
     && git -C /opt/gptr-mcp checkout --detach "${GPTR_MCP_REVISION}" \
     && test "$(git -C /opt/gptr-mcp rev-parse HEAD)" = "${GPTR_MCP_REVISION}" \
+    && git -C /opt/gptr-mcp apply --check /tmp/gptr-mcp-async-research.patch \
+    && git -C /opt/gptr-mcp apply /tmp/gptr-mcp-async-research.patch \
+    && grep -Fq 'async def start_research' /opt/gptr-mcp/server.py \
+    && grep -Fq 'async def research_status' /opt/gptr-mcp/server.py \
     && rm -rf /opt/gptr-mcp/.git \
     && git clone --filter=blob:none https://github.com/s-stefanov/actual-mcp.git /opt/actual-mcp \
     && git -C /opt/actual-mcp checkout --detach "${ACTUAL_MCP_REVISION}" \
@@ -262,7 +275,7 @@ RUN apt-get update \
     && sed -i '1i from typing import Any, List, Dict' \
          "${site_packages}/gpt_researcher/actions/query_processing.py" \
     && cd /opt/gptr-mcp \
-    && .venv/bin/python -c 'from server import mcp' \
+    && .venv/bin/python -c 'import asyncio; from server import mcp; names = {t.name for t in asyncio.run(mcp.list_tools())}; assert {"start_research", "research_status"} <= names, names' \
     && command -v mcp-server-filesystem \
     && command -v vikunja-mcp \
     && command -v gmail-mcp \

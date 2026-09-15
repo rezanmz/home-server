@@ -1317,11 +1317,15 @@ Server environment values are intentionally stored in MCPHub's database. Edit
 GPT Researcher models, retriever, breadth, depth, and limits there, then reload
 only that server.
 
-The official GPT Researcher server should expose `deep_research`,
-`quick_search`, `write_report`, `get_research_sources`, and
-`get_research_context`. A missing or different list indicates the wrong entry
-command or an upstream package change. Do not replace it with a local MCP
-implementation.
+The GPT Researcher server should expose `start_research`, `research_status`,
+`deep_research`, `quick_search`, `write_report`, `get_research_sources`, and
+`get_research_context`. The first two come from the repository's revision-
+pinned `images/mcphub-gptr/gptr-mcp-async-research.patch` and are the
+required path for full researches: a blocking `deep_research` longer than
+about 300 seconds is orphaned when Open WebUI's MCP client drops the silent
+response stream. A missing or different list indicates the wrong entry
+command, a dropped patch, or an upstream package change. Do not replace the
+server with a local MCP implementation.
 
 The `mcp-v8` server should expose only `run_js` in stateless mode. It is a
 calculation and small-transformation tool, not a shell. Verify a harmless

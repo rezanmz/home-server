@@ -51,12 +51,17 @@ See the personal-assistant guide for the package choices and permission model.
 
 ## Deep Research
 
-Deep Research calls the official GPT Researcher MCP server managed by MCPHub.
-The server is the upstream `assafelovic/gptr-mcp` implementation, not a local
-replacement.
+Deep Research calls the GPT Researcher MCP server managed by MCPHub. The
+server is the upstream `assafelovic/gptr-mcp` implementation plus the
+repository's revision-pinned `gptr-mcp-async-research.patch`, not a local
+replacement. The patch adds `start_research` and `research_status` so the
+profile runs long research as a background job and long-polls bounded status
+calls, relaying the current phase to the user between polls; a single
+blocking response stream is dropped by Open WebUI's MCP client once it
+stays silent for about 300 seconds.
 
 ```text
-Deep Research profile -> MCPHub -> official GPT Researcher MCP
+Deep Research profile -> MCPHub -> patched GPT Researcher MCP
                                       |-- internal SearXNG
                                       `-- configured model and embedding APIs
 ```
