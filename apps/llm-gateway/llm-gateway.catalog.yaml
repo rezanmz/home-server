@@ -22,13 +22,23 @@ spec:
       cloudflare: true
       splitHorizon: true
     auth:
-      mode: forward-auth
-      profile: authentik-forward-single-v1
-      blueprintName: LLM Gateway proxy authentication
+      mode: oidc
+      profile: authentik-oidc-v1
+      blueprintName: LLM Gateway OIDC
       application:
         slug: llm-gateway
         launchUrl: https://llm-gateway.reza.network/
-      middleware: llm-gateway-authentik
+      client:
+        type: confidential
+        id: llm-gateway
+        grantTypes: [authorization_code, refresh_token]
+        scopes: [openid, email, profile]
+        redirectUris:
+          - type: authorization
+            url: https://llm-gateway.reza.network/sso/callback
+        secret:
+          manifest: apps/llm-gateway/secrets.sops.yaml
+          key: oidc-client-secret
   placement:
     mode: beelink
     manifest: apps/llm-gateway/workloads.yaml

@@ -105,11 +105,11 @@ the administrator changes the corresponding Open WebUI or MCPHub setting.
 The LiteLLM gateway is the LLM routing layer at `llm-gateway.reza.network`. It
 is pinned to Beelink and keeps its tiers, fallback chains, provider
 credentials, virtual keys, and spend ceilings in its own Longhorn-backed
-PostgreSQL database. Git owns the server contract only: the image pin, master key
-and salt secrets, database path, and safety flags. Its admin UI is
-LAN/VPN-only behind Authentik forward-auth; in-cluster clients call `/v1`
-directly with a virtual key, and the same path stays key-authenticated rather
-than forward-authenticated when reached from LAN or VPN.
+PostgreSQL database. Git owns the server contract only: the image pin, master
+key and salt secrets, OIDC client material, database path, and safety flags.
+Its admin UI uses native Authentik OIDC (free tier permits up to five SSO
+users); the `/v1` API is authenticated separately by virtual keys and stays
+LAN/VPN-only behind the Gateway route allowlist.
 
 Hermes Agent is the persistent proactive companion runtime at
 `hermes.reza.network`; Open WebUI remains the interactive workbench. Hermes'
