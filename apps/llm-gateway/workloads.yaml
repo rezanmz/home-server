@@ -94,6 +94,13 @@ spec:
               value: email
             - name: GENERIC_USER_DISPLAY_NAME_ATTRIBUTE
               value: name
+            # Authentik sends no role claim, so every SSO user defaults to
+            # internal_user_viewer on each login. Promote this one user_id
+            # (= GENERIC_USER_ID_ATTRIBUTE, the Authentik preferred_username)
+            # to proxy_admin so the admin UI can manage credentials, models,
+            # and virtual keys. Identity selector, not a secret; Git-owned.
+            - name: PROXY_ADMIN_ID
+              value: rezanmz
           ports:
             - name: http
               containerPort: 4000
