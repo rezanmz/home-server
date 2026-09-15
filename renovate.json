@@ -173,7 +173,6 @@
         "nousresearch/hermes-agent",
         "rezanmz/mcphub-gptr",
         "rezanmz/llamacloud-mcp",
-      "ghcr.io/berriai/litellm-non_root",
         "rezanmz/mcp-v8"
       ],
       "matchUpdateTypes": ["minor", "patch"],

@@ -330,22 +330,3 @@ matching within the rollout; no config changed.
   repeated `get_outpost` warns (`... | grep -c get_outpost`), then restart
   the server deployment; confirm with a 302 to
   `/application/o/authorize?client_id=…&redirect_uri=…outpost.goauthentik.io/callback`.
-
-## 2026-09-15 — Stock LiteLLM image needs Postgres and root-owned /app
-
-Source: first deployment of `apps/llm-gateway`.
-
-`ghcr.io/berriai/litellm:*-stable` ships a Postgres-only Prisma schema
-(`provider = "postgresql"`; a `sqlite:///` `DATABASE_URL` fails schema
-validation at boot) and keeps `/app`, the generated Prisma client, and the
-UI tree root-owned, so as any non-root UID the proxy dies during startup
-with `prisma.engine.errors.NotConnectedError: Not connected to the query
-engine` after a "path is not writable" warning. The hardened
-`ghcr.io/berriai/litellm-non_root` channel mirrors the same stable releases
-(no `main-` tag prefix) with `/app` and the Prisma client owned by
-nobody:65534; pods must then run `runAsUser: 65534`. Renovate tracks
-`ghcr.io/berriai/litellm-non_root` in the AI image group.
-
-- **Watch for:** any command-args override of the LiteLLM container must
-  keep the image entrypoint (it runs `prisma migrate deploy` before the
-  proxy; overriding `command` skips migrations).

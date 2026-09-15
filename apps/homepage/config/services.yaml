@@ -143,12 +143,6 @@
         description: MCP service registry
         namespace: apps
         app: mcphub
-    - LLM Gateway:
-        icon: mdi-router-network
-        href: https://llm-gateway.reza.network/
-        description: Provider routing and virtual-key gateway
-        namespace: apps
-        app: llm-gateway
     - Hermes Agent:
         icon: mdi-robot-happy-outline
         href: https://hermes.reza.network/

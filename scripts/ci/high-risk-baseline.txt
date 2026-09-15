@@ -108,10 +108,9 @@ internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|finance
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|hermes-agent|egress/4/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|egress/1/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|llm-gateway-application|egress/4/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|maintainerr-tmdb-proxy|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-terminal|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
-internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/7/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
+internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|open-webui|egress/6/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|searxng|egress/1/peer/0/cidr/0.0.0.0/0/except/0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|apps|seerr|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 internet-wide-egress-destination|networking.k8s.io/v1/NetworkPolicy|media|audiobookshelf|egress/3/peer/0/cidr/0.0.0.0/0/except/10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -157,8 +156,6 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|hermes-a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|home-assistant|spec/sha256/5d84ba9e6d1e07cdd6757c49791625e3580e7a72ffdd9a1df508e4d3ad9a52fe
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|homepage|spec/sha256/9b0253e5979bea7de31ba64b09d70d1dfca07c897f7fc9b63478ab99127e7b27
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llamacloud-mcp|spec/sha256/5b591bf03cfc218f687e0db623c80288d4592e801fe9c052860fd3fcf3c5634e
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llm-gateway-application|spec/sha256/38e9e2d5c4e26849ce3363f02e896e4257a8c57bcaad9da210e4343cef0a4dba
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|llm-gateway-database|spec/sha256/5ce6b54007eb91a191d316b047c7d98a1a8dcf429293c8cd94aa557401755fa0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|maintainerr-tmdb-proxy|spec/sha256/3b755b29702d3eb300925299f771815316c09a5d4cdaf5853e9ff17e407441fd
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|maintainerr|spec/sha256/f5f0ae445acbc800905bf095491ec806ef42d9b603cd9caf5256ebcfd7022504
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|mcp-v8|spec/sha256/32f934c59f12825edd076b4f9137756d9088ec197f4efe3afe6f96e9a4f0eb51
@@ -222,7 +219,6 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|finance-display|spec/
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|hermes-agent|spec/sha256/bf4b001f2e7c56ac3e3f56c19edf191df1fdbfc9f71a1e8195fd6af80cf7c345
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|home-assistant|spec/sha256/b966a90e721983a97270c782f22ffc95dd88d943d934df1e58a51ad0829172b1
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|homepage|spec/sha256/a87d2f602eb818e71492cea2b879bbd48a0e50f090da6d358a0a5cd78fc030a9
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|llm-gateway|spec/sha256/e4278847fa8fa81c969ae1f203f6ff859547aad42ed0b3e7dc065c7b67578636
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|maintainerr|spec/sha256/b6a4f84d6f31e524c88c7aefab674eb582f0864f721a13d2551492a4e70253f3
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c6cb8bde71d6bed19e47c796e5c2d0adc5148549b033e8bf847cf705a18d59e
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4

@@ -36,7 +36,7 @@ class ServiceCatalogTests(unittest.TestCase):
     def test_catalog_is_decentralized_and_versioned(self) -> None:
         self.assertFalse((REPO_ROOT / "catalog" / "services.yaml").exists())
         entries = service_catalog.services(self.catalog)
-        self.assertEqual(len(entries), 42)
+        self.assertEqual(len(entries), 41)
         sources = [entry["_source"] for entry in entries]
         self.assertEqual(len(sources), len(set(sources)))
         self.assertTrue(all(source.endswith(".catalog.yaml") for source in sources))
@@ -122,7 +122,6 @@ class ServiceCatalogTests(unittest.TestCase):
                 "grafana.yaml",
                 "headlamp.yaml",
                 "hermes-agent.yaml",
-                "llm-gateway.yaml",
                 "mcphub.yaml",
                 "open-webui.yaml",
                 "stork.yaml",
@@ -461,7 +460,6 @@ class ServiceCatalogTests(unittest.TestCase):
                 "AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET",
-                "AUTHENTIK_OIDC_LLM_GATEWAY_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_MCPHUB_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_VIKUNJA_CLIENT_SECRET",
@@ -506,7 +504,7 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["AI & Data"],
-            ["Open WebUI", "MCPHub", "LLM Gateway", "Hermes Agent"],
+            ["Open WebUI", "MCPHub", "Hermes Agent"],
         )
         self.assertEqual(groups["Productivity"], ["Vikunja"])
         self.assertEqual(
