@@ -21,8 +21,7 @@ data:
           name: "Provider for 9Router"
         attrs:
           acs_url: "https://router.reza.network/api/auth/saml/acs"
-          audience: "urn:9router:sp"
-          sp_binding: redirect
+          sp_binding: post
           sign_assertion: true
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
