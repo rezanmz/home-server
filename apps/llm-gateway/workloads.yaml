@@ -27,15 +27,18 @@ spec:
       terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: litellm
-          image: ghcr.io/berriai/litellm:main-v1.83.14-stable@sha256:c81eb79cd4333c6cfe374c0ec929110fd23f0ee5f7fd198855a6fbddc77b83ba
+          # Hardened upstream build: /app and the Prisma client tree are owned
+          # by nobody (65534) and the engine binaries under /opt/prisma are
+          # world-readable, so the proxy starts without any root-owned writes.
+          image: ghcr.io/berriai/litellm-non_root:v1.83.14-stable@sha256:5bb1d45eefe9b8bdc8d1b34617b8112d03bfc78fc247bea62d7ebd89918c875c
           imagePullPolicy: IfNotPresent
           args: ["--config", "/app/config.yaml", "--port", "4000"]
           env:
