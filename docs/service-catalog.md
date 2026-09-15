@@ -187,8 +187,10 @@ An unauthenticated public route is rejected.
 
 ## Native OIDC
 
-Use native OIDC whenever the application supports it. A confidential-client
-example is:
+Native OIDC is **mandatory** whenever the application supports it (AGENTS rule 13 —
+verify current upstream documentation before choosing any other mode); use
+forward-auth only after that check proves native login unavailable. A
+confidential-client example is:
 
 ```yaml
 auth:

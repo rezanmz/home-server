@@ -153,6 +153,14 @@ Start topology, traffic, placement, storage, and trust-boundary work in
     place deployment credentials in GitHub Actions.
 12. **Evidence precedes completion claims.** A render or narrow test alone does
     not prove a production change. State exactly what was and was not verified.
+13. **Native OIDC wins when the application supports it.** Before selecting
+    an authentication shape, verify current upstream support. A user-facing
+    application with native OIDC/OAuth/SAML login must use it against
+    Authentik (the MCPHub and Open WebUI pattern). Traefik forward-auth is
+    reserved for applications with no usable authentication integration and
+    needs the proven browser/API/WebSocket compatibility review in
+    `skills/network-auth/SKILL.md`. API bearer-key surfaces are separate from
+    UI login and remain per-application.
 
 ## Authorization boundaries
 

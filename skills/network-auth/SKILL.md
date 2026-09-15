@@ -67,7 +67,9 @@ documented minimum path. Namespace default-deny remains in force.
 
 For a user-facing application:
 
-1. Prefer the application's supported native OIDC, OAuth2, or SAML integration.
+1. **Use** the application's supported native OIDC, OAuth2, or SAML
+   integration — mandatory when it exists (AGENTS rule 13). Verify current
+   upstream auth documentation/source before choosing any other mode.
 2. Use native application authentication when supported SSO is absent or
    unsuitable, with the narrowest practical exposure and a documented reason.
 3. Use generic forward-auth only after proving browser, API, webhook,
