@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../catalog/service.schema.json
+apiVersion: catalog.reza.network/v1alpha1
+kind: Service
+metadata:
+  name: 9router
+spec:
+  name: 9Router
+  workload:
+    namespace: apps
+    app: 9router
+  homepage:
+    order: 21
+    group: AI & Data
+    icon: mdi-router-network
+    description: AI model router with provider failover and usage tracking
+  web:
+    hostname: router.reza.network
+    route: apps/9router/route.yaml
+    visibility: private
+    accessMiddleware: lan-vpn-only
+    dns:
+      cloudflare: true
+      splitHorizon: true
+    auth:
+      mode: native
+      reason: 9Router's dashboard has its own password/cookie auth (INITIAL_PASSWORD); OIDC is not supported.
+  placement:
+    mode: beelink
+    manifest: apps/9router/workloads.yaml
+    reason: Single-writer SQLite data directory; pinned like the gateway it replaces.
+  data:
+    class: longhorn
+    protection: longhorn-b2
+    manifests: [apps/9router/pvc.yaml]
+  observability:
+    mode: kubernetes

@@ -143,6 +143,12 @@
         description: MCP service registry
         namespace: apps
         app: mcphub
+    - 9Router:
+        icon: mdi-router-network
+        href: https://router.reza.network/
+        description: AI model router with provider failover and usage tracking
+        namespace: apps
+        app: 9router
     - Hermes Agent:
         icon: mdi-robot-happy-outline
         href: https://hermes.reza.network/

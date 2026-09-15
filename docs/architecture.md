@@ -102,6 +102,17 @@ There is deliberately no startup reconciler and no repository workflow that
 rewrites the current research model. A model recommendation has no effect until
 the administrator changes the corresponding Open WebUI or MCPHub setting.
 
+9Router (`router.reza.network`) is the LLM routing layer for coding tools and
+application model calls. It is pinned to Beelink and keeps provider
+connections, router keys, OAuth sessions, and usage state in its own
+Longhorn-backed SQLite data directory. Git owns the server contract only: the
+image pin, boot secrets (initial password, JWT/API-key secrets, machine-id
+salt), route, and network boundary. The dashboard authenticates with 9Router's
+own password/cookie session (it has no OIDC support), and the `/v1` API
+requires a router key; both stay LAN/VPN-only behind the Gateway route
+allowlist. MCP access for agents remains MCPHub's responsibility; 9Router
+serves model traffic only.
+
 Hermes Agent is the persistent proactive companion runtime at
 `hermes.reza.network`; Open WebUI remains the interactive workbench. Hermes'
 dashboard uses native Authentik OIDC with a public PKCE client. Its single

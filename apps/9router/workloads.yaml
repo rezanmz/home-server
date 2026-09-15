@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 9router
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: 9router
+    app.kubernetes.io/component: application
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: 9router
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: 9router
+        app.kubernetes.io/component: application
+    spec:
+      # Single-writer SQLite data directory pinned to the server node.
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: 9router
+          image: ghcr.io/decolua/9router:0.5.75@sha256:7c893bc2c27ecea2ae337abd5eacfec9e5763091b3a3b7862fc0625b770bb156
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATA_DIR
+              value: /app/data
+            - name: PORT
+              value: "20128"
+            - name: HOSTNAME
+              value: 0.0.0.0
+            - name: NODE_ENV
+              value: production
+            - name: BASE_URL
+              value: https://router.reza.network
+            - name: NEXT_PUBLIC_BASE_URL
+              value: https://router.reza.network
+            # First-boot dashboard password; afterwards the value lives in the
+            # SQLite data directory and is changed through the dashboard.
+            - name: INITIAL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: 9router-secrets
+                  key: initial-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: 9router-secrets
+                  key: jwt-secret
+            - name: API_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: 9router-secrets
+                  key: api-key-secret
+            - name: MACHINE_ID_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: 9router-secrets
+                  key: machine-id-salt
+            # Every /v1 call must present a router key; the household then
+            # issues one key per consumer app.
+            - name: REQUIRE_API_KEY
+              value: "true"
+            - name: AUTH_COOKIE_SECURE
+              value: "true"
+            - name: ENABLE_REQUEST_LOGS
+              value: "false"
+          ports:
+            - name: http
+              containerPort: 20128
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+            # DATA_DIR above is authoritative; this fallback (~/.9router) is
+            # mounted from tmp so a read-only root filesystem cannot break the
+            # process if the code path is ever touched.
+            - name: tmp
+              mountPath: /app/data-home
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: 9router-data
+        - name: tmp
+          emptyDir: {}

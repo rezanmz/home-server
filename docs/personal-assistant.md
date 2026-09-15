@@ -31,6 +31,21 @@ Server definitions, credentials, OAuth sessions, groups, and tool filters live
 in MCPHub's PostgreSQL database. They are changed in MCPHub and protected by
 the normal Longhorn and B2 backups. They are not reconciled from Git.
 
+## 9Router
+
+9Router at `router.reza.network` is the single LLM routing layer for model
+calls: provider connections, failover, and per-app router keys live in its
+admin dashboard and SQLite data directory (application state, Longhorn+B2
+protected). MCP stays MCPHub's job; consumers call 9Router only for model
+traffic.
+
+```text
+Open WebUI  ---> 9Router /v1  ---> connected providers
+Hermes      ---> 9Router /v1
+omp/CLI     ---> 9Router /v1   (LAN/WireGuard)
+MCPHub      ---> its own provider settings today; may adopt 9Router keys
+```
+
 ## Hermes Agent
 
 Hermes is the always-on companion and automation runtime. Open WebUI remains
