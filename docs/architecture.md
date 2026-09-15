@@ -105,7 +105,7 @@ the administrator changes the corresponding Open WebUI or MCPHub setting.
 The LiteLLM gateway is the LLM routing layer at `llm-gateway.reza.network`. It
 is pinned to Beelink and keeps its tiers, fallback chains, provider
 credentials, virtual keys, and spend ceilings in its own Longhorn-backed
-SQLite database. Git owns the server contract only: the image pin, master key
+PostgreSQL database. Git owns the server contract only: the image pin, master key
 and salt secrets, database path, and safety flags. Its admin UI is
 LAN/VPN-only behind Authentik forward-auth; in-cluster clients call `/v1`
 directly with a virtual key, and the same path stays key-authenticated rather

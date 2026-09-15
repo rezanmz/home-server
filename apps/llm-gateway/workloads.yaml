@@ -20,8 +20,7 @@ spec:
         app.kubernetes.io/name: llm-gateway
         app.kubernetes.io/component: application
     spec:
-      # Single writer for the SQLite datastore; Longhorn RWO would fail over
-      # a second replica anyway.
+      # Single writer pinned to the only server node alongside its database.
       nodeSelector:
         kubernetes.io/hostname: beelink
       automountServiceAccountToken: false
@@ -47,7 +46,10 @@ spec:
             - name: LITELLM_LOCAL_MODEL_COST_MAP
               value: "True"
             - name: DATABASE_URL
-              value: sqlite:////data/litellm.db
+              valueFrom:
+                secretKeyRef:
+                  name: llm-gateway-secrets
+                  key: database-url
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
@@ -97,16 +99,123 @@ spec:
               mountPath: /app/config.yaml
               subPath: config.yaml
               readOnly: true
-            - name: data
-              mountPath: /data
             - name: tmp
               mountPath: /tmp
       volumes:
         - name: config
           configMap:
             name: llm-gateway-config
-        - name: data
-          persistentVolumeClaim:
-            claimName: llm-gateway-data
         - name: tmp
           emptyDir: {}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: llm-gateway-postgresql
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: llm-gateway
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  serviceName: llm-gateway-postgresql
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: llm-gateway
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: llm-gateway
+        app.kubernetes.io/component: database
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: beelink
+      automountServiceAccountToken: false
+      initContainers:
+        - name: prepare-postgres-data
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
+          command: [sh, -ec, "mkdir -p /var/lib/postgresql/data/pgdata && chown 999:999 /var/lib/postgresql/data/pgdata"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          image: pgvector/pgvector:pg16@sha256:1d533553fefe4f12e5d80c7b80622ba0c382abb5758856f52983d8789179f0fb
+          command: [sh, -ec]
+          args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              value: litellm
+            - name: POSTGRES_USER
+              value: litellm
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: llm-gateway-secrets
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: llm-gateway-postgresql
