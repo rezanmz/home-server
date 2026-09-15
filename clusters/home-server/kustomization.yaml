@@ -26,6 +26,7 @@ resources:
   - ../../apps/omnifin
   - ../../apps/navidrome
   - ../../apps/mcphub
+  - ../../apps/9router
   - ../../apps/hermes-agent
   - ../../apps/open-webui
   - ../../apps/vikunja

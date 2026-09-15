@@ -109,6 +109,15 @@ the Google Vision monthly page counter), but that guard must wrap a reputable
 upstream MCP package rather than replace it. Its maximum may be fixed to the
 external free tier while the active lower limit remains editable in MCPHub.
 
+## Router and gateway ownership
+
+Git owns the 9Router server contract: image pin, boot-secret references,
+route, network boundary, and storage. Everything the dashboard stores —
+provider connections and OAuth sessions, router keys, model routing, and
+usage state — is application state in its Longhorn-backed SQLite directory
+(`DATA_DIR=/app/data`), protected by the normal Longhorn and B2 backups.
+Provider credentials never enter Git.
+
 ## Backup and restore
 
 This boundary depends on application data being protected. Longhorn snapshots
