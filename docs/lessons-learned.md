@@ -330,3 +330,37 @@ matching within the rollout; no config changed.
   repeated `get_outpost` warns (`... | grep -c get_outpost`), then restart
   the server deployment; confirm with a 302 to
   `/application/o/authorize?client_id=…&redirect_uri=…outpost.goauthentik.io/callback`.
+
+## 2026-09-15 — 9Router image entrypoint needs root setgroups; unprivileged pod must bypass it
+
+Source: first deployment of `apps/9router`.
+
+The upstream image runs its server through `/entrypoint.sh` = `chown -R
+node:node /app/data; su-exec node …`, which presumes a root-start container.
+Our pod is deliberately unprivileged (`runAsUser: 1000`, `capabilities:
+drop: [ALL]`), so `su-exec` aborts with `setgroups: Operation not
+permitted` and the pod crash-loops before the process starts.
+
+- **Fix:** set `command: ["node"] args: ["custom-server.js"]` to exec the
+  same process the entrypoint would, skipping chown and `su-exec`;
+  `fsGroup: 1000` already owns the Longhorn volume, so the chown was
+  always redundant for us.
+- **Watch for:** any Node "non_root"-style image whose entrypoint chains a
+  privilege drop; the CrashLoopBackOff signature is the single line
+  `su-exec: setgroups: Operation not permitted` with no application output.
+
+## 2026-09-15 — cloudflare-ddns only deletes records that vanish mid-session
+
+Source: retiring `llm-gateway.reza.network`.
+
+`favonia/cloudflare-ddns` deletes a record when it drops out of `DOMAINS`
+during that container's uptime. When the list change also restarts the pod
+(the normal Flux path), the new session never knew the removed domain, so
+the A record persisted after merge, rollout, and several 5-minute sync
+cycles — and split-DNS removal made it *look* healthy from inside the LAN.
+
+- **Watch for:** a retired service whose route/workloads are gone but the
+  public record still answers `dig … @1.1.1.1 +tcp` / Cloudflare DoH.
+- **Recipe:** decrypt `apps/cloudflare-ddns/secrets.sops.yaml` in memory
+  only, then `DELETE /zones/{id}/dns_records?name=…` via the API; the
+  controller never recreates a name absent from its current list.
