@@ -9,7 +9,7 @@ data:
   # Hand-maintained companion to the catalog-generated
   # authentik-application-blueprints ConfigMap. The compiler only models OIDC;
   # 9Router's dashboard supports SAML SSO (and no OIDC), so its provider lives
-  # here. Both ConfigMaps are projected into /blueprints/custom on the server.
+  # here. Both ConfigMaps are projected into /blueprints/custom on the worker.
   9router-saml.yaml: |
     version: 1
     metadata:
@@ -17,12 +17,15 @@ data:
     entries:
       - model: authentik_providers_saml.samlprovider
         id: 9router-saml-provider
-        attrs:
+        identifiers:
           name: "Provider for 9Router"
+        attrs:
           acs_url: "https://router.reza.network/api/auth/saml/acs"
           audience: "urn:9router:sp"
           sp_binding: redirect
           sign_assertion: true
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_kp: !Find [authentik_crypto.certificatekeypair, ['name', 'authentik Self-signed Certificate']]
           property_mappings:
             - !Find [authentik_providers_saml.samlpropertymapping, [managed, goauthentik.io/providers/saml/email]]
