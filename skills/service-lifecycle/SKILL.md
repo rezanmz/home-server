@@ -36,7 +36,10 @@ Resolve these before implementation:
 - every state store, its authority, off-site protection, and restore test;
 - floating versus physical placement and supported image architectures;
 - internal-only, private, public, or exceptional host-network exposure;
-- native OIDC/OAuth/SAML, reviewed forward-auth, native login, or no login;
+- authentication shape: native OIDC/OAuth/SAML is mandatory when the
+  application supports it (AGENTS rule 13 — check current upstream docs
+  first); use reviewed forward-auth only when it does not, then native
+  login, then no login on a private route;
 - exact ingress and egress paths under namespace default-deny;
 - observability level and operational alerts;
 - Git-owned versus application-owned configuration;

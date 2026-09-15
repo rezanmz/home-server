@@ -58,6 +58,23 @@ spec:
               app.kubernetes.io/component: database
       ports:
         - {port: 5432, protocol: TCP}
+    # Native OIDC makes the proxy itself call the Authentik token and
+    # userinfo endpoints. The public issuer is reached through the
+    # split-horizon Traefik VIP; include both the pre- and post-DNAT
+    # destinations used by K3s, matching the Open WebUI pattern.
+    - to:
+        - ipBlock: {cidr: 192.168.1.240/32}
+      ports:
+        - {port: 443, protocol: TCP}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - {port: 8443, protocol: TCP}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
