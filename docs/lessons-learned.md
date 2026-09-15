@@ -307,3 +307,45 @@ failure family.
   LLM call (`curator.py`) on a reasoning model with a huge candidate set;
   tuning breadth or the curation model reduces duration but cannot make any
   fixed-timeout design safe for open-ended research.
+
+## 2026-09-15 — Wedged embedded outpost serves Authentik 404 for every forward-auth host
+
+Source: LLM Gateway bring-up exposed an existing Authentik fault.
+
+After the 2026.8.2 upgrade, the embedded Rust proxy outpost wedged: every
+`/outpost.goauthentik.io/auth/traefik` subrequest returned Authentik's 404
+page, so every forward-auth app (Homepage, Maintainerr, slskd, and the new
+llm-gateway) showed a Not-Found page instead of a login redirect, while
+native-OIDC apps (Open WebUI, MCPHub) and the IdP flows stayed healthy. The
+server container logged `authentik::outpost get_outpost ... 404 Not Found`
+every 5 seconds; `curl /api/` inside the pod also returned 404.
+`kubectl -n apps rollout restart deploy/authentik` restored provider
+matching within the rollout; no config changed.
+
+- **Watch for:** a *new* forward-auth service "returning 404 from the
+  identity provider" — probe an existing forward-auth host
+  (`homepage.reza.network`) first; if both 404, the shared outpost is the
+  victim, not the new manifest.
+- **Diagnostic recipe:** compare forward-auth vs native-OIDC apps, count
+  repeated `get_outpost` warns (`... | grep -c get_outpost`), then restart
+  the server deployment; confirm with a 302 to
+  `/application/o/authorize?client_id=…&redirect_uri=…outpost.goauthentik.io/callback`.
+
+## 2026-09-15 — Stock LiteLLM image needs Postgres and root-owned /app
+
+Source: first deployment of `apps/llm-gateway`.
+
+`ghcr.io/berriai/litellm:*-stable` ships a Postgres-only Prisma schema
+(`provider = "postgresql"`; a `sqlite:///` `DATABASE_URL` fails schema
+validation at boot) and keeps `/app`, the generated Prisma client, and the
+UI tree root-owned, so as any non-root UID the proxy dies during startup
+with `prisma.engine.errors.NotConnectedError: Not connected to the query
+engine` after a "path is not writable" warning. The hardened
+`ghcr.io/berriai/litellm-non_root` channel mirrors the same stable releases
+(no `main-` tag prefix) with `/app` and the Prisma client owned by
+nobody:65534; pods must then run `runAsUser: 65534`. Renovate tracks
+`ghcr.io/berriai/litellm-non_root` in the AI image group.
+
+- **Watch for:** any command-args override of the LiteLLM container must
+  keep the image entrypoint (it runs `prisma migrate deploy` before the
+  proxy; overriding `command` skips migrations).
