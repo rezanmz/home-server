@@ -89,10 +89,12 @@ separate Telegram bot from infrastructure alerts.
 
 ## Current packages
 
-GPT Researcher uses the official `assafelovic/gptr-mcp` server. It supplies
-`deep_research`, `quick_search`, report generation, and source/context lookup.
-The runtime image pins the upstream revision, but its models, retriever, limits,
-and API keys are editable in MCPHub.
+GPT Researcher uses the official `assafelovic/gptr-mcp` server with the
+repository's revision-pinned async-research patch. It supplies
+`start_research` and `research_status` (background research with bounded
+long-poll progress), plus `deep_research`, `quick_search`, report generation,
+and source/context lookup. The runtime image pins the upstream revision, but
+its models, retriever, limits, and API keys are editable in MCPHub.
 
 Obsidian uses the MCP project's reference filesystem server. The process sees
 the Syncthing vault read-only, with writable over-mounts for `Inbox` and

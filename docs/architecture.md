@@ -77,8 +77,9 @@ registry and execution boundary for Open WebUI; its browser UI is LAN/VPN-only
 and uses native Authentik OIDC.
 
 The MCPHub runtime image adds pinned, reviewed packages but no assistant
-settings. Deep research uses the official `assafelovic/gptr-mcp` server and the
-upstream GPT Researcher library. Obsidian access uses the MCP reference
+settings. Deep research uses the official `assafelovic/gptr-mcp` server plus a
+revision-pinned async-research patch, built on the upstream GPT Researcher
+library. Obsidian access uses the MCP reference
 filesystem server, with the vault mounted read-only except for writable Inbox
 and Daily submounts. Vikunja uses a focused published MCP package with
 destructive operations disabled by default. Actual Budget uses a maintained

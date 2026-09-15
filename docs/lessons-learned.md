@@ -269,3 +269,41 @@ delivery was healthy; the operator only ever saw the placeholder itself.
   alert instances per message (first 6 of N, alertname + description) — landed
   in `infrastructure/observability/alertmanager-config.sops.yaml` (#327); the
   instance-count duplication that fed the oversize was fixed by #320.
+
+## 2026-09-15 — Silent MCP response streams are dropped at 300 s; long tool work must be job-plus-poll
+
+A `deep_research` call completed successfully in 8m33s and MCPHub logged a
+valid result, yet the Open WebUI chat kept its "in progress" state forever
+and stored no answer (assistant row remained a 2-byte placeholder). The mcp
+1.27.2 Python client in Open WebUI drops any MCP stream that stays silent
+for 300 seconds — its GET stream disconnect logged at exactly +300 s after
+session init — and a streamable-HTTP `tools/call` response that produces no
+bytes until completion is exactly such a stream. MCPHub 1.0.37 registers no
+progress or logging callback for stdio children (grep `setProgressCallback`
+/ `loggingMessage` in `/app/src` returns nothing), so child-side
+notifications cannot heartbeat the call, and completed results are never
+replayed to a reconnected session. The earlier 2026-09-10 fix addressed
+frame corruption on the same path; this is the timeout leg of the same
+failure family.
+
+- **Watch for:** any MCP tool whose server-side completion log exists but
+  whose result never lands in the chat, with the call duration above
+  ~300 s. Check the client's `GET stream disconnected` timestamp against
+  session init before suspecting the LLM or retriever.
+- **Diagnostic recipe:** Open WebUI stores nothing for an unfinished
+  assistant turn — compare `chat_message` content length against the
+  MCPHub `Tool call result` log time to prove delivery loss vs. generation
+  failure.
+- **Prevention:** `assistant-suite-10` carries
+  `images/mcphub-gptr/gptr-mcp-async-research.patch`, which adds
+  `start_research` (returns a research ID immediately, runs the research as
+  a background task, records phases through the library's `log_handler`
+  contract) and `research_status` (server-side long-poll clamped to 120 s,
+  returning phase/progress/cost while running and the full deep_research
+  payload on completion). Every MCP call stays bounded, and the chat shows
+  the user periodic progress instead of silence. Do not reintroduce a
+  single blocking call for minute-scale tool work on this transport chain.
+- **Related quirk:** the run's 8-minute tail was entirely the source-curation
+  LLM call (`curator.py`) on a reasoning model with a huge candidate set;
+  tuning breadth or the curation model reduces duration but cannot make any
+  fixed-timeout design safe for open-ended research.
