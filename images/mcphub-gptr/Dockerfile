@@ -275,7 +275,7 @@ RUN apt-get update \
     && sed -i '1i from typing import Any, List, Dict' \
          "${site_packages}/gpt_researcher/actions/query_processing.py" \
     && cd /opt/gptr-mcp \
-    && .venv/bin/python -c 'import asyncio; from server import mcp; names = {t.name for t in asyncio.run(mcp.list_tools())}; assert {"start_research", "research_status"} <= names, names'
+    && .venv/bin/python -c 'import asyncio; from server import mcp; names = {t.name for t in asyncio.run(mcp.list_tools())}; assert {"start_research", "research_status"} <= names, names' \
     && command -v mcp-server-filesystem \
     && command -v vikunja-mcp \
     && command -v gmail-mcp \
