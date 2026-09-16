@@ -59,3 +59,10 @@ spec:
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
       ports:
         - {port: 443, protocol: TCP}
+    # Model traffic goes through 9Router's OpenAI-compatible /v1 surface.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: 9router
+      ports:
+        - {port: 20128, protocol: TCP}
