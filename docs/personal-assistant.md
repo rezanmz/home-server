@@ -37,12 +37,11 @@ the normal Longhorn and B2 backups. They are not reconciled from Git.
 calls: provider connections, failover, and per-app router keys live in its
 admin dashboard and SQLite data directory (application state, Longhorn+B2
 protected). MCP stays MCPHub's job; consumers call 9Router only for model
-traffic. Three model combos are served as OpenAI-compatible model IDs:
-`chat` (everyday flash tier), `smart` (heavy reasoning tier), and
-`agentic` (coding tier: kimi-k2.7-code first). Consumers receive per-app
-router keys.
+traffic. Two model combos are served as OpenAI-compatible model IDs:
+`chat` (everyday flash tier) and `smart` (heavy reasoning tier).
+Consumers receive per-app router keys.
 ```text
-Open WebUI  ---> 9Router /v1 (chat/smart/agentic combos, embeddings)
+Open WebUI  ---> 9Router /v1 (chat/smart combos, embeddings)
 Hermes      ---> 9Router /v1 (custom provider: primary=chat, MoA=smart)
 MCPHub      ---> 9Router /v1 (gpt-researcher openai: provider)
 omp/CLI     ---> 9Router /v1 (fallback chains; workstation key in
