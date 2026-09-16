@@ -44,22 +44,25 @@ Consumers receive per-app router keys.
 Open WebUI  ---> 9Router /v1 (chat/smart combos, embeddings)
 Hermes      ---> 9Router /v1 (custom provider: primary=chat, MoA=smart)
 MCPHub      ---> 9Router /v1 (gpt-researcher openai: provider)
-omp/CLI     ---> 9Router /v1 (fallback chains; workstation key in
-                             opencode auth.json, config in chezmoi)
+omp/CLI     ---> 9Router /v1 (all personal role primaries; direct
+                             providers only as fallback; models.yml)
 ```
 
 9Router's `/v1` surface is reachable over the internet at
 `router.reza.network` behind `requireApiKey` (verified 401 without a
-key); the dashboard stays behind SAML. Deliberate exceptions to the
-9Router-only boundary: Open WebUI's external reranker
+key); the dashboard stays behind SAML. The omp personal profile routes
+every role primary through the `chat`/`smart` combos (provider declared
+in `~/.omp/agent/models.yml`); the previous direct primaries head each
+fallback chain, so a router outage degrades to provider-direct
+behaviour. Note: `smart` is led by the text-only `glm-5.3`, so
+vision-bearing omp sessions answer blind while that member is healthy;
+reorder the combo or route vision through `chat` (fully vision-capable
+members) if that becomes unacceptable. Deliberate exceptions to the
+9Router-only boundary remain: Open WebUI's external reranker
 (`cohere/rerank-v3.5` — 9Router has no rerank proxy), Open WebUI speech
 (whisper STT and mai-voice TTS — 9Router's OpenRouter audio proxy
 rejects the models in its pinned catalog), and Open WebUI image
-generation (native Gemini API key). omp still calls `opencode-go` and
-`openrouter` directly as its primary models; the 9Router combos are the
-first fallback entries, so workstation fallback traffic is logged and
-cost-tracked centrally while primary direct traffic stays out of the
-router today.
+generation (native Gemini API key).
 
 ## Hermes Agent
 
