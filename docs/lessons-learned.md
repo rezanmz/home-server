@@ -364,3 +364,31 @@ cycles — and split-DNS removal made it *look* healthy from inside the LAN.
 - **Recipe:** decrypt `apps/cloudflare-ddns/secrets.sops.yaml` in memory
   only, then `DELETE /zones/{id}/dns_records?name=…` via the API; the
   controller never recreates a name absent from its current list.
+
+## 2026-09-16 — Default-deny workloads need BOTH egress and the target's ingress admission; a one-sided fix still refuses connections
+
+Source: 9Router consumer wiring (Open WebUI, Hermes, gpt-researcher → 9Router `/v1`).
+
+Adding an egress rule to a consumer's NetworkPolicy is not enough when the
+target workload is itself default-deny. 9Router's own
+`9router-application` ingress allowlist admitted only open-webui, mcphub,
+and the traefik route — so after hermes' egress was allowed, every model
+call still failed with `Connection refused` (even against the pod IP,
+not just the Service). The failure looks like an app bug or a port issue
+but is a dropped-by-policy TCP connect.
+
+- **Watch for:** `Errno 111 Connection refused` from a pod that just got a
+  new egress rule, where the target demonstrably listens on the port
+  (verified with `netstat` inside the target).
+- **Recipe:** check BOTH policies: the consumer's `egress` for the target
+  and the target's `ingress` allowlist for the consumer. Verify with a raw
+  `socket.create_connection` from the consumer pod, then confirm live
+  policy with `kubectl get netpol -o yaml | grep <port>`.
+- **Related trap:** the high-risk policy tracks some findings by egress
+  rule *index* (internet-wide egress) and by whole-`spec` *hash* (ingress
+  boundaries). Inserting an egress rule before the internet-wide rule
+  shifts indexes and reads as new constructs; adding an ingress peer
+  changes the spec hash and requires a reviewed baseline hash update.
+- **Prevention:** when wiring a new consumer to a default-deny service,
+  change both netpols in the same PR and note that mcphub deliberately
+  has `egress: - {}` (arbitrary MCP servers), so it needs no counterpart.
