@@ -37,6 +37,14 @@ spec:
       ports:
         - port: 20128
           protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: hermes-agent
+              app.kubernetes.io/component: application
+      ports:
+        - port: 20128
+          protocol: TCP
   # Upstream model providers are globally routed HTTPS endpoints. Keep
   # Kubernetes, LAN, loopback, link-local, and reserved networks unreachable,
   # matching the repository's searxng egress shape.
