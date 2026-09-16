@@ -19,17 +19,16 @@ The current profiles are ordinary application records and remain editable in
 | `Companion` | Conversation and explicitly requested personal actions |
 | `Rigorous` | Evidence-backed answers with citations and clear uncertainty |
 | `Deep Research` | Explicitly requested comprehensive research through GPT Researcher |
-| `Model Steward` | Advisory research about current model choices and prices |
 
-The raw provider model catalog remains visible. Profiles may be pinned for
-convenience, but provider models are not hidden and no particular raw model is
-treated as special.
+The three profiles are the only curated records, and each is pinned to a
+9Router combo rather than a raw model: `Companion` to `chat`, and `Rigorous`
+and `Deep Research` to `smart`. The raw provider model catalog remains
+visible, but no particular raw model is treated as special.
 
 Change a profile's base model in Open WebUI. Change GPT Researcher's internal
-fast, smart, and strategic models in MCPHub. Model Steward may recommend a
-change, but it does not apply one. Approval is the administrator making the
-change in the relevant UI after reviewing quality, context limits, features,
-and price.
+fast, smart, and strategic models in MCPHub. Approval is the administrator
+making the change in the relevant UI after reviewing quality, context limits,
+features, and price.
 
 Prompts must not include the cluster owner's name or tell a model to impersonate
 a named person. Ordinary conversation does not automatically become a task,
@@ -73,10 +72,8 @@ remain reviewed infrastructure changes.
 
 Deep Research should not duplicate work with Open WebUI's ordinary pre-search.
 The research profile uses GPT Researcher; ordinary agentic profiles use
-Open WebUI search tools. Model Steward is budgeted to six unique searches and
-eight page fetches and stops after two consecutive empty searches. Open WebUI
-limits a response to a small number of tool-call iterations rather than an
-effectively unbounded loop.
+Open WebUI search tools. Open WebUI limits a response to a small number of
+tool-call iterations rather than an effectively unbounded loop.
 
 ## Search backend
 
