@@ -392,3 +392,98 @@ but is a dropped-by-policy TCP connect.
 - **Prevention:** when wiring a new consumer to a default-deny service,
   change both netpols in the same PR and note that mcphub deliberately
   has `egress: - {}` (arbitrary MCP servers), so it needs no counterpart.
+
+## 2026-09-16 — A gateway migration can leave an embedding model id valid for one base URL and invalid for another
+
+Source: Open WebUI retrieval after the LiteLLM → 9Router cutover.
+
+Open WebUI's embedding config is split across two independent fields:
+`rag.embedding_model` (the model id) and `rag.openai.api_base_url` (where the
+request goes). 9Router spells provider-qualified models as
+`<providerAlias>/<model>`, so `openrouter/google/gemini-embedding-2` is correct
+against 9Router but is *not* a valid OpenRouter model id. Moving the chat
+connection to 9Router while `rag.openai.api_base_url` still pointed at
+`https://openrouter.ai/api/v1` left retrieval embeddings returning HTTP 400
+`"Model openrouter/google/gemini-embedding-2 does not exist"` on every new
+embed, while chat, rerank, STT, and TTS stayed healthy — so the failure is
+invisible unless retrieval is exercised.
+
+- **Watch for:** retrieval or memory that silently stops indexing or recalling
+  while chat works. Embeddings are a separate code path from chat with their
+  own base URL, key, and model id.
+- **Recipe:** call Open WebUI's own `get_embedding_function` in the pod with the
+  stored values, or `POST /api/v1/retrieval/embedding/update` and read back the
+  stored `openai_config.url`. Compare the id against the base URL's own model
+  listing: `GET <base>/v1/models`.
+- **Related trap:** `chat.context_compaction.model` must also be a model the
+  connection serves. When it is not, `_generate_summary` silently falls back to
+  the chat model (`context_compaction.py`: the configured id is used only when
+  it is already in the model map), so context compaction keeps "working" on the
+  wrong model instead of erroring.
+- **Prevention:** when repointing a consumer at 9Router, change the base URL and
+  every model id in the same operation, and verify with a real request rather
+  than the saved form values.
+
+## 2026-09-16 — 9Router's admin API needs a signed session cookie; router keys only reach /v1
+
+Source: pruning broken model ids from 9Router's catalog.
+
+9Router's `/api/*` admin routes reject both the per-app router keys used for
+`/v1` and unauthenticated requests with `401 {"error":"Unauthorized"}`. The
+dashboard authenticates with an HS256 JWT in the `auth_token` cookie, signed
+with the `JWT_SECRET` environment variable; the payload is `{authenticated:
+true, iat, exp}` and needs no server-side session row.
+
+- **Watch for:** `401` from `/api/combos`, `/api/models/disabled`, or
+  `/api/settings` while `/v1` works fine with the same key.
+- **Recipe:** mint the cookie inside the pod from `JWT_SECRET` — HMAC-SHA256
+  over `base64url(header).base64url(payload)` — then send
+  `Cookie: auth_token=…`.
+- **Related trap:** disabled models live in the `kv` table under scope
+  `disabledModels`, keyed by provider alias, with **bare** model names (the
+  `ocg/` prefix appears only when listing). `POST /api/models/disabled` unions
+  additively, so a later narrow POST can never re-enable a model; removal
+  requires the `DELETE` method.
+
+## 2026-09-16 — 9Router's container clock is UTC and its dashboard has no timezone setting
+
+Source: dashboard times reported as not EST.
+
+The 9Router image ships no tzdata and runs with an empty `TZ`, so the process
+clock is UTC. Some times are formatted server-side — the Console Log line
+prefix, and the `usageDaily` day key built from `getFullYear()`, `getMonth()`,
+and `getDate()` — and those showed UTC wall-clock. Other dashboard times are
+rendered in the browser with a bare `toLocaleString()`, so they follow the
+client. No timezone control exists in the app's settings.
+
+- **Watch for:** dashboard times that are exactly the local time plus the UTC
+  offset, while another page looks correct.
+- **Recipe:** run `date` and
+  `node -e 'console.log(Intl.DateTimeFormat().resolvedOptions().timeZone)'`
+  inside the pod. Node's bundled ICU resolves `America/New_York` even with no
+  `/usr/share/zoneinfo`, so a `TZ` environment variable is sufficient — no
+  tzdata package or zoneinfo mount is needed.
+- **Note:** the same day-key bucketing means UTC day boundaries also shift the
+  Usage page's daily totals; setting `TZ` corrects both.
+
+## 2026-09-16 — Only chat completions accept a 9Router combo; other /v1 surfaces need a raw model id
+
+Source: consolidating Open WebUI model pins onto the `chat`/`smart` combos.
+
+9Router's combos are the failover unit, but combo expansion is implemented on
+the chat route only. Probing `/v1` with `model: "chat"` gives
+`Invalid model format` on `/v1/embeddings`, `/v1/audio/transcriptions`, and
+`/v1/audio/speech` (and 404 on `/v1/rerank`, which has no route at all).
+`/v1/images/generations` does expand a combo name, but resolves it against
+image models the chat combo does not contain — `model: "smart"` returned
+`No model found for "qwen/qwen3.8-max-0902"`.
+
+- **Watch for:** a `model` pin that *looks* combo-backed but silently targets a
+  single upstream model, so it loses failover without any error.
+- **Recipe:** before pinning, send one real request with the combo name to the
+  exact surface. A combo-eligible surface accepts it; the others reject with
+  `Invalid model format`.
+- **Consequence:** Open WebUI's embedding model, speech engines, and external
+  reranker cannot be combo-backed and stay on their documented direct-provider
+  exceptions. `chat.context_compaction.model` and `task.model.*` can and should
+  name `chat`.

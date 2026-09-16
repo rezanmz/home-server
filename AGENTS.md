@@ -220,6 +220,11 @@ git log -1 --format='%H %cI %s' refs/remotes/origin/main
   slug (`feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `perf/…`,
   `test/…`). Never create tool-specific prefixes such as `codex/` for new
   branches.
+- Never commit to or push `main`. It is protected: direct pushes are rejected,
+  required status checks and linear history are enforced, and the rules apply
+  to administrators too. Every change lands through a pull request created from
+  a focused branch. Branch, push the branch, open a PR, merge it after the
+  required check is green, then delete the branch.
 - Branches are ephemeral. Default to merging the work and then deleting the
   branch — locally and remotely — as part of the same task; when a branch's
   content is already merged or superseded, delete it instead. Do not leave

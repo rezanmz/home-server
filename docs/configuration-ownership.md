@@ -116,6 +116,10 @@ route, network boundary, and storage. Everything the dashboard stores —
 provider connections and OAuth sessions, router keys, model routing, and
 usage state — is application state in its Longhorn-backed SQLite directory
 (`DATA_DIR=/app/data`), protected by the normal Longhorn and B2 backups.
+The disabled-model list is application state in that same directory, so
+pruning the model catalog uses 9Router's admin API rather than Git. The
+process timezone is Git-owned: the image ships no tzdata, so `TZ` is set on
+the workload and a change needs a manifest edit and Flux deploy.
 Provider credentials never enter Git.
 
 ## Backup and restore
