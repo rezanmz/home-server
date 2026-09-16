@@ -48,9 +48,12 @@ omp/CLI     ---> 9Router /v1 (all personal role primaries; direct
                              providers only as fallback; models.yml)
 ```
 
-9Router's `/v1` surface is reachable over the internet at
-`router.reza.network` behind `requireApiKey` (verified 401 without a
-key); the dashboard stays behind SAML. The omp personal profile routes
+9Router's `/v1` surface and dashboard are both LAN/WireGuard-only. The
+route applies the `lan-vpn-only` allowlist to the whole hostname, so an
+off-LAN client is rejected by Traefik with 403 before 9Router sees the
+request; inside the allowlist an unauthenticated `/v1` call is rejected
+by 9Router with 401 (`requireApiKey`). The dashboard stays behind SAML.
+The omp personal profile routes
 every role primary through the `chat`/`smart` combos (provider declared
 in `~/.omp/agent/models.yml`); the previous direct primaries head each
 fallback chain, so a router outage degrades to provider-direct

@@ -98,6 +98,26 @@ reconciler. Embeddings from different models are not interchangeable; changing
 the model or dimensions requires a complete, verified re-index of files,
 knowledge collections, and memory.
 
+### Model ids must name a 9Router combo wherever a combo can serve the surface
+
+9Router's combos are the failover unit: a consumer pinned to a raw model id
+gets no cross-provider fallback when that one model is retired, quota-limited,
+or failing. Prefer `chat` for anything lightweight and `smart` for heavy
+reasoning, and never leave a raw provider model id as a pin.
+
+- `chat.context_compaction.model` → `chat`.
+- `task.model.default` and `task.model.external` → `chat`.
+- `rag.embedding_model` is a raw id on purpose. 9Router's `/v1/embeddings`
+  rejects a combo name with `Invalid model format`, so the embedding model
+  cannot be a combo today.
+
+The same limit applies to Open WebUI's speech surfaces and external reranker:
+`/v1/audio/transcriptions`, `/v1/audio/speech`, and `/v1/rerank` all reject
+combo names, and `/v1/images/generations` accepts a combo name but resolves it
+against image models the combo does not contain. Those therefore stay on their
+documented direct-provider exceptions until 9Router can serve them through a
+combo.
+
 The previous Gemini embedding migration completed and was removed from the pod
 startup path. One-time migrations must not remain installed after verification.
 

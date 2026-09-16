@@ -155,7 +155,7 @@ network, and upstream-MCP capabilities, enables every available sandbox
 hardening switch, and has strict concurrency and pod resource limits. Only
 action-capable MCPHub groups receive its `run_js` tool; read-only groups do not.
 
-Open WebUI retrieval currently uses Gemini Embedding 2 through OpenRouter. Its
+Open WebUI retrieval uses the Gemini Embedding 2 model through 9Router. Its
 persisted files, knowledge, memories, and vector index were migrated and
 verified once. Future model changes and re-index operations are initiated from
 the application rather than replayed by a rollout init container. The Open
