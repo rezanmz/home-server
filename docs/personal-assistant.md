@@ -37,14 +37,23 @@ the normal Longhorn and B2 backups. They are not reconciled from Git.
 calls: provider connections, failover, and per-app router keys live in its
 admin dashboard and SQLite data directory (application state, Longhorn+B2
 protected). MCP stays MCPHub's job; consumers call 9Router only for model
-traffic.
+traffic. Two model combos are served as OpenAI-compatible model IDs:
+`chat` (everyday tier: flash models with cross-provider fallback) and
+`smart` (heavy reasoning tier). Consumers receive per-app router keys.
 
 ```text
-Open WebUI  ---> 9Router /v1  ---> connected providers
-Hermes      ---> 9Router /v1
-omp/CLI     ---> 9Router /v1   (LAN/WireGuard)
-MCPHub      ---> its own provider settings today; may adopt 9Router keys
+Open WebUI  ---> 9Router /v1 (chat/smart combos, embeddings)
+Hermes      ---> 9Router /v1 (custom provider: primary=chat, MoA=smart)
+MCPHub      ---> 9Router /v1 (gpt-researcher openai: provider)
+omp/CLI     ---> provider-direct today (deliberate exception)
 ```
+
+Deliberate exceptions to the 9Router-only boundary: Open WebUI's external
+reranker (`cohere/rerank-v3.5` — 9Router has no rerank proxy), Open WebUI
+speech (whisper STT and mai-voice TTS — 9Router's OpenRouter audio proxy
+rejects the models in its pinned catalog), Open WebUI image generation
+(native Gemini API key), and the workstation coding harness (omp), which
+the user chose to keep provider-direct.
 
 ## Hermes Agent
 
