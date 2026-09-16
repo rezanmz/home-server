@@ -37,23 +37,30 @@ the normal Longhorn and B2 backups. They are not reconciled from Git.
 calls: provider connections, failover, and per-app router keys live in its
 admin dashboard and SQLite data directory (application state, Longhorn+B2
 protected). MCP stays MCPHub's job; consumers call 9Router only for model
-traffic. Two model combos are served as OpenAI-compatible model IDs:
-`chat` (everyday tier: flash models with cross-provider fallback) and
-`smart` (heavy reasoning tier). Consumers receive per-app router keys.
-
+traffic. Three model combos are served as OpenAI-compatible model IDs:
+`chat` (everyday flash tier), `smart` (heavy reasoning tier), and
+`agentic` (coding tier: kimi-k2.7-code first). Consumers receive per-app
+router keys.
 ```text
-Open WebUI  ---> 9Router /v1 (chat/smart combos, embeddings)
+Open WebUI  ---> 9Router /v1 (chat/smart/agentic combos, embeddings)
 Hermes      ---> 9Router /v1 (custom provider: primary=chat, MoA=smart)
 MCPHub      ---> 9Router /v1 (gpt-researcher openai: provider)
-omp/CLI     ---> provider-direct today (deliberate exception)
+omp/CLI     ---> 9Router /v1 (fallback chains; workstation key in
+                             opencode auth.json, config in chezmoi)
 ```
 
-Deliberate exceptions to the 9Router-only boundary: Open WebUI's external
-reranker (`cohere/rerank-v3.5` — 9Router has no rerank proxy), Open WebUI
-speech (whisper STT and mai-voice TTS — 9Router's OpenRouter audio proxy
-rejects the models in its pinned catalog), Open WebUI image generation
-(native Gemini API key), and the workstation coding harness (omp), which
-the user chose to keep provider-direct.
+9Router's `/v1` surface is reachable over the internet at
+`router.reza.network` behind `requireApiKey` (verified 401 without a
+key); the dashboard stays behind SAML. Deliberate exceptions to the
+9Router-only boundary: Open WebUI's external reranker
+(`cohere/rerank-v3.5` — 9Router has no rerank proxy), Open WebUI speech
+(whisper STT and mai-voice TTS — 9Router's OpenRouter audio proxy
+rejects the models in its pinned catalog), and Open WebUI image
+generation (native Gemini API key). omp still calls `opencode-go` and
+`openrouter` directly as its primary models; the 9Router combos are the
+first fallback entries, so workstation fallback traffic is logged and
+cost-tracked centrally while primary direct traffic stays out of the
+router today.
 
 ## Hermes Agent
 
