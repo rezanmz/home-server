@@ -93,6 +93,14 @@ spec:
               - 240.0.0.0/4
       ports:
         - {port: 443, protocol: TCP}
+    # Model traffic goes through 9Router (combos, embeddings). Bearer-key
+    # access only; the Open WebUI key cannot reach the dashboard.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: 9router
+      ports:
+        - {port: 20128, protocol: TCP}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -160,14 +168,6 @@ spec:
               - 240.0.0.0/4
       ports:
         - {port: 443, protocol: TCP}
-    # Model traffic goes through 9Router (combos, embeddings). Bearer-key
-    # access only; the Open WebUI key cannot reach the dashboard.
-    - to:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: 9router
-      ports:
-        - {port: 20128, protocol: TCP}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
