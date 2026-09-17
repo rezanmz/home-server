@@ -160,7 +160,7 @@ spec:
               value: 127.0.0.1:9301
           resources:
             requests:
-              cpu: 200m
+              cpu: 125m
               memory: 384Mi
             limits:
               cpu: 750m

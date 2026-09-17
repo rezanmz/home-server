@@ -70,6 +70,11 @@ spec:
       createDefaultDiskLabeledNodes: "true"
       defaultDataLocality: best-effort
       defaultDataPath: /var/lib/longhorn
+      # Each instance-manager pod reserves this percentage of node allocatable
+      # CPU. The upstream default is 12% per node, which reserved 1440m on the
+      # 12-core Beelink to run at a 478m 7d peak. 6% keeps the reservation
+      # above that peak while returning ~725m per node.
+      guaranteedInstanceManagerCPU: '{"v1":"6","v2":"6"}'
       defaultReplicaCount: '{"v1":"2","v2":"2"}'
       disableSchedulingOnCordonedNode: "true"
       replicaAutoBalance: best-effort

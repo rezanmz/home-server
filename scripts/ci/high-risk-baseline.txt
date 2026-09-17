@@ -85,11 +85,11 @@ helm-externally-exposed-service|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|tr
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.web.hostPort/value-80
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.websecure.hostPort/value-443
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/5bb4ca36703dbcd5375ca8d8183c797ea9e41888d66183ec7579a6c4c9344b20
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/1b39a73e00878a413c34761d772dd9e80c07a49bf88f3844d81c0df367f6d8e2
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/f1357329293aec180c410ae80640d441d11dde948b3186baf974b893e93376f4
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/b82526ac4b69722c789fc77355adba62f178aabcedebc665e19c9d6f6f37eb76
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/98de6d557bf4259346a58740c8c01b6f67b9947f149071a163f5db0117c7f2b5
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/5bcfe477512c9ee9662f861cf276d644ae600b59444811a5296f4895381a19db
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/c3ed165698b82dc65244606a7c857d339e6ce5f98d64c087e06e98f95037b2da
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/ef3cfbc46b54b3b2fbb2c29ad60837b5e2cf01b5325d9b72bdea34745448bdac
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/31456d7b645c94024a2b61e2a8161a63752a1bcd3a04bdd5b32944b5e9afd8f2
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/c9d7ff280dfba10d6b826209a903bdcfaeeaa50a29c08c9aa73e71996e3c8e2f
 host-network|apps/v1/DaemonSet|network-services|blocky|pod-spec
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec

@@ -228,7 +228,7 @@ spec:
         externalUrl: https://grafana.reza.network/api/datasources/proxy/uid/prometheus
         routePrefix: /
         resources:
-          requests: {cpu: 500m, memory: 1Gi}
+          requests: {cpu: 350m, memory: 1Gi}
           limits: {cpu: "2", memory: 3Gi}
         storageSpec:
           volumeClaimTemplate:
@@ -390,5 +390,5 @@ spec:
         - name: nginx-cache
           emptyDir: {}
       resources:
-        requests: {cpu: 200m, memory: 256Mi}
+        requests: {cpu: 25m, memory: 256Mi}
         limits: {cpu: "1", memory: 1Gi}

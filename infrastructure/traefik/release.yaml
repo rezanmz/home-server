@@ -124,8 +124,10 @@ spec:
         externalTrafficPolicy: Local
     resources:
       requests:
+        # Single value for both DaemonSet replicas; must cover the busier
+        # raspberrypi instance (14d peak 58m), not just the Beelink one (3m).
         cpu: 100m
-        memory: 128Mi
+        memory: 96Mi
       limits:
         cpu: "1"
         memory: 512Mi
