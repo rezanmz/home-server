@@ -70,12 +70,17 @@ spec:
       createDefaultDiskLabeledNodes: "true"
       defaultDataLocality: best-effort
       defaultDataPath: /var/lib/longhorn
-      # Each instance-manager pod reserves this percentage of node allocatable
-      # CPU. The upstream default of 12% per node reserved 1440m on the
-      # 12-core Beelink to run a 478m 7d peak. 6% still covers that peak.
-      # Longhorn applies this when it creates an instance-manager pod, so an
-      # existing pod keeps its old request until Longhorn recreates it.
-      guaranteedInstanceManagerCPU: '{"v1":"6","v2":"6"}'
+      # Restored to the upstream default after a measured sizing error. The
+      # value is a percentage of EACH node's allocatable CPU, so 12% reserves
+      # 1440m on the 12-core Beelink but only 480m on the 4-core Pi, against
+      # measured 14d instance-manager peaks of 511m and 614m. No single
+      # percentage covers both: clearing the Pi's peak needs >=16%, which
+      # over-reserves the Beelink beyond the default. Set explicitly rather
+      # than omitted, because an omitted field renders nothing and would leave
+      # an already-written value armed on the live Setting. If this is
+      # revisited, use the per-node override (Longhorn
+      # Node.spec.instanceManagerCPURequest, in millicores).
+      guaranteedInstanceManagerCPU: '{"v1":"12","v2":"12"}'
       defaultReplicaCount: '{"v1":"2","v2":"2"}'
       disableSchedulingOnCordonedNode: "true"
       replicaAutoBalance: best-effort
