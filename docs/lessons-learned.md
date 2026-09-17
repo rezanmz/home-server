@@ -523,3 +523,37 @@ measured at 1-13m.
   busy pod is not competing from outside its own reservation. Reclaim capacity
   by lowering over-sized requests, not by lowering a request below the load it
   is sized to carry.
+
+## 2026-09-17 — A missing NFS subdirectory blocks pod start behind root_squash
+
+Source: MCPHub failed to start during the request right-sizing rollout.
+
+Restarting MCPHub produced `failed to create subPath directory for volumeMount
+"obsidian-vault" of container "mcphub"`, and the pod never left `Pending`.
+Hermes then failed behind it, because its `wait-for-mcphub-tools` init
+container requires MCPHub's tool registry to answer. The service-level symptom
+was "MCPHub is down", not a storage error.
+
+The cause was a missing directory on the Pi's NFS export. `apps/mcphub` mounts
+`vault`, `vault/Inbox`, and `vault/Daily` as `subPath` over-mounts, but
+`vault/Daily` did not exist. kubelet creates a missing subPath directory as
+root, and `/etc/exports.d/home-server.exports` exports the Syncthing tree with
+`root_squash`, so the creating uid maps to `nobody` and cannot write inside
+`vault/` (owned by `reza`, mode 755). Creation failed and the mount sequence
+aborted.
+
+- **Watch for:** a workload that runs fine for weeks and then cannot start
+  after an unrelated restart. The old pod had been holding its mounts since
+  before the directory disappeared, so the manifest was latent-broken the whole
+  time. A restart is a real test of a NFS subPath contract; a long-running pod
+  proves nothing about it.
+- **Recipe:** when a pod reports a subPath creation failure, check that every
+  `subPath` directory exists on the exporting host with a mode the squashed
+  uid can traverse, then recheck:
+  `sudo k3s kubectl -n apps exec deploy/mcphub -c mcphub -- sh -lc 'test -r /vault && test -w /vault/Inbox && test -w /vault/Daily'`.
+- **Cause of this instance:** `/home/reza/persistent/syncthing/data/vault/Daily`
+  was absent. It was recreated as `reza:reza` mode 700, matching `Inbox`.
+- **Consequence:** any `subPath` under a `root_squash` NFS export depends on a
+  directory that kubelet cannot create for you. Create it out of band on the
+  Pi, and treat a pod restart as the moment to verify the boundary rather than
+  assume a previously running mount still resolves.
