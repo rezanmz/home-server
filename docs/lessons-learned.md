@@ -487,3 +487,39 @@ image models the chat combo does not contain — `model: "smart"` returned
   reranker cannot be combo-backed and stay on their documented direct-provider
   exceptions. `chat.context_compaction.model` and `task.model.*` can and should
   name `chat`.
+
+## 2026-09-17 — CPU-request saturation is not CPU exhaustion
+
+Source: investigating why nothing new could be scheduled on `raspberrypi`.
+
+The Pi reported 99% of allocatable CPU *requested* while actually using about
+17% of its cores. Because the scheduler admits pods on requests, the node was
+effectively full for placement while sitting idle in reality. The cause was a
+copy-pasted `cpu: 250m` request applied to every workload, including services
+measured at 1-13m.
+
+- **Watch for:** `kubectl describe node` showing high request percentage next to
+  a low `kubectl top` figure, and a `Pending` pod with `Insufficient cpu`
+  while the node's own utilization looks low. Requests reserve scheduling
+  capacity; they do not describe load.
+- **Recipe:** size requests from a 14-day Prometheus peak per
+  `namespace/pod/container`, not from a single sample. Two aggregation bugs
+  produce false safety: grouping by container name merges unrelated pods that
+  share a name (`postgresql`, `server`, `manager`), and dead ReplicaSet
+  generations inflate the peak. Filter to pods that are currently live.
+- **Hidden coupling:** one shared Helm value can serve several pods. Traefik's
+  single `resources` block feeds both DaemonSet instances, and the
+  `raspberrypi` instance peaks higher (58m) than the Beelink one (3m) — sizing
+  from the Beelink sample would have put the internet-facing ingress below its
+  own measured peak. JuiceFS mount pods share one `mountPodPatch` the same way;
+  their measured peaks (341m CPU / 1161Mi memory) already exceed the reviewed
+  request, so that patch must not be reduced.
+- **Related setting:** Longhorn's `guaranteedInstanceManagerCPU` reserves a
+  percentage of node allocatable CPU per instance-manager pod. The upstream
+  default of 12% per node made it the largest single CPU request in this
+  cluster (1440m reserved against a 478m peak), so it is now set explicitly in
+  `infrastructure/longhorn/release.yaml`.
+- **Consequence:** requests must stay above each workload's observed peak so a
+  busy pod is not competing from outside its own reservation. Reclaim capacity
+  by lowering over-sized requests, not by lowering a request below the load it
+  is sized to carry.

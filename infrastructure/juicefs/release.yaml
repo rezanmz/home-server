@@ -56,8 +56,8 @@ spec:
       cacheClientConf: false
       resources:
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 25m
+          memory: 128Mi
         limits:
           cpu: "1"
           memory: 1Gi
@@ -66,8 +66,8 @@ spec:
       mountPodNonPreempting: true
       resources:
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 25m
+          memory: 160Mi
         limits:
           cpu: "1"
           memory: 1Gi
@@ -82,6 +82,9 @@ spec:
           labels:
             observability.reza.network/scrape: juicefs-client
           resources:
+            # Left at the reviewed values: JuiceFS mount pods share this single
+            # patch, and observed 7d peaks already exceed it (cpu 341m,
+            # memory 1161Mi), so the request must not be reduced further.
             requests:
               cpu: 250m
               memory: 512Mi

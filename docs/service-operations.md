@@ -333,6 +333,40 @@ baseline change: root, privileged mode, added capabilities, host networking,
 host paths, host ports, broad RBAC, a Kubernetes API token, unsafe sysctls, or
 unrestricted ingress/egress.
 
+### Request sizing
+
+Set a CPU request from measured peak usage, not from a uniform default. A
+cluster-wide floor applied by copy-paste (a `cpu: 250m` block on every
+workload) produces a node that reports CPU-request saturation while its
+processes use a small fraction of the reservation, and that saturation blocks
+every new pod even though the node is idle.
+
+Size a request above the workload's observed peak so a busy pod stays inside
+its own reservation, and prefer a generous limit over a generous request:
+limits cost nothing while unused and only requests affect scheduling.
+
+Two traps make a naive pass unsafe:
+
+- **A shared Helm value covers every replica.** A DaemonSet or a `mountPodPatch`
+  serves multiple pods from one value, so the request must cover the *busiest*
+  member. Traefik's single `resources` block feeds both node instances, and the
+  raspberrypi instance has measured a higher peak than the Beelink one. JuiceFS
+  mount pods share one patch. Size these for the maximum, never the sample.
+- **Container-name aggregation double-counts.** Peak queries grouped by
+  container name merge unrelated pods that happen to share a name
+  (`postgresql`, `server`, `manager`), and dead ReplicaSet generations inflate
+  the result. Group by namespace and pod, then filter to live pods.
+
+Measure from Prometheus before changing a request:
+
+    max_over_time( (sum by (namespace,pod,container)
+      (rate(container_cpu_usage_seconds_total{container!="",container!="POD"}[5m]))
+    ) [14d:5m] )
+
+Longhorn's `guaranteedInstanceManagerCPU` reserves a percentage of node
+allocatable CPU per instance-manager pod and defaults to 12% per node, which is
+usually the largest single CPU request in a small cluster.
+
 ### 3. Add secrets with SOPS
 
 Secret manifests must end in `.sops.yaml`. Edit them through SOPS so plaintext

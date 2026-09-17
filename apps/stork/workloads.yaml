@@ -80,7 +80,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 128Mi}
+            requests: {cpu: 25m, memory: 128Mi}
             limits: {cpu: 500m, memory: 512Mi}
           securityContext:
             runAsUser: 1000

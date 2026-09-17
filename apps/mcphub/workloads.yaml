@@ -114,7 +114,7 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 250m
+              cpu: 125m
               memory: 768Mi
             limits:
               cpu: "2"
@@ -293,8 +293,8 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 50m
-              memory: 128Mi
+              cpu: 25m
+              memory: 64Mi
             limits:
               cpu: 250m
               memory: 256Mi
