@@ -515,14 +515,51 @@ measured at 1-13m.
   their measured peaks (341m CPU / 1161Mi memory) already exceed the reviewed
   request, so that patch must not be reduced.
 - **Related setting:** Longhorn's `guaranteedInstanceManagerCPU` reserves a
-  percentage of node allocatable CPU per instance-manager pod. The upstream
-  default of 12% per node made it the largest single CPU request in this
-  cluster (1440m reserved against a 478m peak), so it is now set explicitly in
-  `infrastructure/longhorn/release.yaml`.
+  percentage of *each* node's allocatable CPU per instance-manager pod. A
+  percentage is not a portable unit across differently sized nodes: 12%
+  reserves 1440m on the 12-core Beelink but only 480m on the 4-core Pi. An
+  attempt to lower it to 6% was reverted after measurement; see the entry below.
 - **Consequence:** requests must stay above each workload's observed peak so a
   busy pod is not competing from outside its own reservation. Reclaim capacity
   by lowering over-sized requests, not by lowering a request below the load it
   is sized to carry.
+
+## 2026-09-17 — Longhorn records a Danger Zone setting but refuses to apply it
+
+Source: investigating why `guaranteedInstanceManagerCPU` had no live effect.
+
+`Setting/guaranteed-instance-manager-cpu` accepted `{"v1":"6","v2":"6"}` but its
+live instance-manager pods kept their original 1440m and 480m requests. The
+setting was **not ignored**: it is a Danger Zone setting that Longhorn applies
+only when the target instance-manager has no running engine or replica
+processes. `longhorn-manager` logged the refusal 40 times in six hours via
+`setting_controller.go:200`:
+
+```
+failed to sync setting for longhorn-system/guaranteed-instance-manager-cpu:
+  current state prevents this: failed to apply guaranteed-instance-manager-cpu
+  setting for data engine v1 to Longhorn components when there are running
+  engine instances. It will be eventually applied
+```
+
+- **Watch for:** a Helm value that is visibly correct in Git and in the CR, yet
+  has no effect on the running pods. Check `Setting.status.applied`, not just
+  `Setting.value`.
+- **Recipe:** `kubectl -n longhorn-system get setting <name> -o json` and read
+  `status.applied`; `kubectl get settings -n longhorn-system -o json` and filter
+  `status.applied==false` to list every unapplied Danger Zone setting at once.
+  The value becomes live at the next instance-manager recreation, e.g. a
+  Longhorn upgrade.
+- **Hidden coupling:** an unapplied setting is an *armed* change, not an inert
+  one. It applied to nobody when written, but it silently applies to every
+  instance-manager that is later recreated — typically during a Longhorn
+  upgrade, far from the original change and its review.
+- **Consequence:** treat Danger Zone settings as scheduled deployments. A
+  percentage that is safe on the largest node can under-provision a smaller
+  one; here 6% reserved 720m on the Beelink but only 240m on the Pi, whose
+  instance-manager both peaks at 614m and exceeds 240m in 6.9% of sampled
+  5-minute windows. Use the per-node millicore override
+  (`Node.spec.instanceManagerCPURequest`) when node sizes differ.
 
 ## 2026-09-17 — A missing NFS subdirectory blocks pod start behind root_squash
 
