@@ -308,28 +308,63 @@ failure family.
   tuning breadth or the curation model reduces duration but cannot make any
   fixed-timeout design safe for open-ended research.
 
+## 2026-09-18 — Shared /dev/shm lets the worker's Rust core steal the server's socket
+
+The durable root cause of the recurring "forward-auth host serves Authentik's
+404" wedge (see the superseded 2026-09-15 entry below). The image runs one
+Rust core per container: the `server` core binds `$TMPDIR/authentik.sock` to
+serve the full router, and the `worker` core binds the *same path* to serve a
+healthcheck-only router. `TMPDIR` is `/dev/shm` in this image, `run_unix()`
+unlinks the path before binding, and our manifest mounted one `emptyDir` at
+`/dev/shm` into both containers. So both binds succeeded and whichever core
+started last owned the directory entry.
+
+When the worker won, the embedded outpost's `get_outpost` call hit the
+healthcheck router (which registers only `/-/health/*` plus a 404 fallback),
+so it 404'd forever and every forward-auth host served the branded 404, while
+native-OIDC apps stayed healthy. It is a startup race, not an upgrade defect:
+the same code path exists in 2026.8.0/.8.1/.8.2, and any unrelated pod
+recreate can flip the winner — which is why an image bump and a
+`rollout restart` each appeared to "fix" it.
+
+- **Fix:** give each container its own memory-backed `emptyDir` at `/dev/shm`
+  (`server-shm` / `worker-shm`, 256Mi each so total tmpfs is unchanged). Pinned
+  by `scripts/ci/test_authentik_contract.py`.
+- **Discriminating check:** the two sockets answer differently. Probe the unix
+  socket directly — a `404` on `/api/v3/outposts/instances/` (and on
+  `/outpost.goauthentik.io/ping`) while the same path over TCP
+  `localhost:9000` returns `200` proves the worker's router owns the path.
+  `/dev/shm/authentik-mode` reading `worker` inside the `server` container is
+  the same tell, because both containers share the volume.
+- **Watch for:** do not accept "restart fixes it" as resolution. Confirm which
+  router owns the socket before declaring the incident closed.
+
 ## 2026-09-15 — Wedged embedded outpost serves Authentik 404 for every forward-auth host
 
-Source: LLM Gateway bring-up exposed an existing Authentik fault.
+**Root cause corrected by the 2026-09-18 entry above; this entry records the
+original symptom and its misleading first diagnosis.**
 
-After the 2026.8.2 upgrade, the embedded Rust proxy outpost wedged: every
-`/outpost.goauthentik.io/auth/traefik` subrequest returned Authentik's 404
-page, so every forward-auth app (Homepage, Maintainerr, slskd, and the new
+After the 2026.8.2 upgrade, the embedded Rust proxy outpost appeared to wedge:
+every `/outpost.goauthentik.io/auth/traefik` subrequest returned Authentik's
+404 page, so every forward-auth app (Homepage, Maintainerr, slskd, and the new
 llm-gateway) showed a Not-Found page instead of a login redirect, while
 native-OIDC apps (Open WebUI, MCPHub) and the IdP flows stayed healthy. The
 server container logged `authentik::outpost get_outpost ... 404 Not Found`
-every 5 seconds; `curl /api/` inside the pod also returned 404.
-`kubectl -n apps rollout restart deploy/authentik` restored provider
-matching within the rollout; no config changed.
+every 5 seconds.
+
+The 2026.8.2 upgrade was blamed and `kubectl -n apps rollout restart
+deploy/authentik` appeared to restore provider matching. Both were wrong: the
+upgrade was incidental and the restart merely re-rolled the socket race.
+`#306` (2026-09-04) had "fixed" the identical symptom the same way by bumping
+to 2026.8.1. Treat this entry's remedy as a band-aid only.
 
 - **Watch for:** a *new* forward-auth service "returning 404 from the
   identity provider" — probe an existing forward-auth host
   (`homepage.reza.network`) first; if both 404, the shared outpost is the
   victim, not the new manifest.
 - **Diagnostic recipe:** compare forward-auth vs native-OIDC apps, count
-  repeated `get_outpost` warns (`... | grep -c get_outpost`), then restart
-  the server deployment; confirm with a 302 to
-  `/application/o/authorize?client_id=…&redirect_uri=…outpost.goauthentik.io/callback`.
+  repeated `get_outpost` warns (`... | grep -c get_outpost`), then apply the
+  2026-09-18 discriminating check to identify which router owns the socket.
 
 ## 2026-09-15 — 9Router image entrypoint needs root setgroups; unprivileged pod must bypass it
 

@@ -115,7 +115,7 @@ spec:
             - name: data
               mountPath: /templates
               subPath: custom-templates
-            - name: shared-memory
+            - name: server-shm
               mountPath: /dev/shm
         - name: worker
           image: ghcr.io/goauthentik/server:2026.8.2@sha256:ff8489a5af4f4fe415ffd180a8e3c10b120bc2592d13d79dac050d977f7b9ecd
@@ -204,7 +204,7 @@ spec:
             - name: data
               mountPath: /templates
               subPath: custom-templates
-            - name: shared-memory
+            - name: worker-shm
               mountPath: /dev/shm
             - name: application-blueprints
               mountPath: /blueprints/custom
@@ -213,10 +213,22 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: authentik-data
-        - name: shared-memory
+        # Each container's Rust core binds $TMPDIR/authentik.sock (TMPDIR is
+        # /dev/shm in this image) and run_unix() unlinks that path before
+        # binding, so a /dev/shm shared by both containers lets the worker's
+        # healthcheck-only router and the server's full router race for one
+        # socket path. When the worker wins, the embedded outpost's
+        # get_outpost call 404s and every forward-auth host serves a 404.
+        # Separate memory-backed volumes keep the two sockets in distinct
+        # inodes; the size limit is halved so total tmpfs is unchanged.
+        - name: server-shm
           emptyDir:
             medium: Memory
-            sizeLimit: 512Mi
+            sizeLimit: 256Mi
+        - name: worker-shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
         # Projected so the catalog-generated OIDC blueprints and the
         # hand-maintained SAML blueprint share /blueprints/custom.
         - name: application-blueprints
