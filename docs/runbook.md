@@ -130,6 +130,55 @@ therefore receive 403, while the same request from an ordinary LAN client via
 the `.240` VIP should succeed. The high-risk policy rejects any Traefik
 IP allow-list range that contains either node address.
 
+### Forward-auth hosts serving Authentik's 404 page
+
+Every Authentik forward-auth host (Homepage, Actual Horizon, Maintainerr,
+Navidrome, slskd, Soularr) can simultaneously show the branded Not-Found page
+while native-OIDC apps stay healthy. The embedded proxy outpost inside the
+`server` container has failed to fetch its own configuration, so it matches no
+provider.
+
+A startup race causes this, not an upgrade or a manifest in the affected app.
+The `server` and `worker` containers each run a Rust core that binds
+`$TMPDIR/authentik.sock`, and `TMPDIR` is `/dev/shm` in this image. Each
+container must therefore have its **own** memory-backed `/dev/shm`
+(`server-shm` / `worker-shm`); a shared volume lets the worker's
+healthcheck-only router win the socket and answer the outpost's API call with
+404. `scripts/ci/test_authentik_contract.py` pins that split, and
+`docs/lessons-learned.md` records the full root cause.
+
+Identify which router owns the socket before acting — the two answer
+differently:
+
+```bash
+# Expect the outpost's API call to 404 when the worker's router owns the path.
+sudo k3s kubectl -n apps logs deploy/authentik -c server --tail=200 \
+  | grep -c "Failed to fetch outpost from API"
+
+# The unix socket 404s on this path. The same request over TCP answers 403
+# unauthenticated (200 with a bearer token), which is what proves the
+# worker's healthcheck router owns the socket. The image ships no curl, so
+# probe the socket with its bundled python3.
+sudo k3s kubectl -n apps exec deploy/authentik -c server -- python3 -c '
+import socket
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.settimeout(8)
+s.connect("/dev/shm/authentik.sock")
+s.sendall(b"GET /api/v3/outposts/instances/ HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+print(s.recv(64).decode().split("\r")[0])'
+
+# Reading `worker` here, inside the server container, confirms a shared volume.
+sudo k3s kubectl -n apps exec deploy/authentik -c server -- \
+  cat /dev/shm/authentik-mode
+```
+
+A `rollout restart` only re-rolls the race, so confirm the socket split in
+desired state instead of restarting until the fault clears. Provider matching
+is restored when a forward-auth host answers a request with **302** and a
+`Location` pointing at Authentik's `/application/o/authorize/` endpoint
+(`auth_start` returns `StatusCode::FOUND` with the authorize URL); the broken
+state returns 200 with Authentik's Not-Found HTML instead.
+
 ### Home Assistant recovery gate
 
 Home Assistant uses its built-in authentication and is internet-accessible at
