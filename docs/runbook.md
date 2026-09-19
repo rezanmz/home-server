@@ -1800,8 +1800,22 @@ OIDC has been verified after every authentication change.
 `apps`, `media`, `monitoring`, and `network-services`:
 `HomeServerContainerOOMKilled` (a container exceeded its memory limit),
 `HomeServerContainerRestarting` (two or more restarts in an hour), and
-`HomeServerContainerCPUThrottled` (over 25% of CPU periods throttled for
+`HomeServerContainerCPUThrottled` (throttled *and* driving the CPU limit for
 30 minutes). All three are `warning` and therefore delivered to Telegram.
+
+`HomeServerContainerOOMKilled` pairs the restart counter with the last
+termination reason, and does not use `last_terminated_reason` alone. That
+gauge holds whichever reason was *last*, so it pins at `1` for as long as a
+workload keeps dying the same way: measured on the downloads pod it stayed at
+`1` across all six OOMKills, and `increase()` over it reports only the first
+kill. When adding a similar rule, verify it against a workload that actually
+failed repeatedly rather than assuming the obvious gauge counts events.
+
+`HomeServerContainerCPUThrottled` requires load as well as throttling.
+Throttle ratio alone is noisy on this cluster: roughly 17 containers exceed 25%
+of CFS periods throttled while using only 1–17% of their CPU limit, because a
+mostly-idle cgroup misses its 100 ms quota on scheduling jitter. A ratio-only
+rule produces standing alerts that get ignored.
 
 These exist because a container can fail its real work while every probe stays
 green. The downloads pod was OOMKilled six times over a month: its `curl /ping`
