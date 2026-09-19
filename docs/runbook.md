@@ -1794,6 +1794,52 @@ blueprint status, the exact `/login/generic_oauth` redirect URI, client-secret
 equality through SOPS, and Grafana logs. Preserve the local admin path until
 OIDC has been verified after every authentication change.
 
+### Container restarts and OOMKills
+
+`home-server-workload-health` alerts on three workload-level failures across
+`apps`, `media`, `monitoring`, and `network-services`:
+`HomeServerContainerOOMKilled` (a container exceeded its memory limit),
+`HomeServerContainerRestarting` (two or more restarts in an hour), and
+`HomeServerContainerCPUThrottled` (over 25% of CPU periods throttled for
+30 minutes). All three are `warning` and therefore delivered to Telegram.
+
+These exist because a container can fail its real work while every probe stays
+green. The downloads pod was OOMKilled six times over a month: its `curl /ping`
+liveness and readiness checks cost nothing, so a container that could not finish
+a multi-indexer search still reported healthy, and callers saw only unexplained
+timeouts. Treat a throttling alert the same way as an OOM alert — both mean a
+limit does not match the workload's measured demand, and neither is visible in
+a `kubectl get pods` READY column once the restart has completed.
+
+Diagnose from the measured peak, not from the limit or a single sample:
+
+```bash
+NS=media; POD=<pod>
+sudo k3s kubectl -n $NS describe pod $POD | tail -30
+sudo k3s kubectl -n $NS get pod $POD \
+  -o jsonpath='{range .status.containerStatuses[*]}{.name}{" restarts="}{.restartCount}{" last="}{.lastState.terminated.reason}{" exit="}{.lastState.terminated.exitCode}{"\n"}{end}'
+
+# Working set and throttling against the current limits.
+sudo k3s kubectl -n $NS get pods -l app.kubernetes.io/name=media-vpn -o wide
+sudo k3s kubectl -n $NS exec $POD -c <container> -- sh -c \
+  'cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/cpu.max /sys/fs/cgroup/cpu.stat'
+```
+
+In Prometheus, compare the container's 14-day peak against its limit before
+changing either value:
+
+```promql
+max_over_time(container_memory_working_set_bytes{namespace="media",container="prowlarr"}[14d])
+max_over_time(rate(container_cpu_usage_seconds_total{namespace="media",container="prowlarr"}[2m])[24h:2m])
+```
+
+A working set that plateaus and is then killed is an undersized limit; one that
+climbs without settling is a leak, and raising the limit only delays the next
+kill. Follow the sizing rule in `docs/lessons-learned.md` (2026-09-17): keep the
+request at or above the observed peak so a busy container is not competing from
+outside its own reservation, and verify the sibling workloads that share a
+request before lowering one.
+
 ## Media VPN checks
 
 The consolidated downloads pod shares Gluetun's network namespace. A healthy

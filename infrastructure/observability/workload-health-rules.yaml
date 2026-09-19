@@ -1,0 +1,117 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: home-server-workload-health
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: home-server-workload-health
+    app.kubernetes.io/part-of: observability
+    release: observability
+spec:
+  groups:
+    # The downloads pod held six unnoticed OOMKills plus a 40%-throttled
+    # cgroup across a month. Its /ping probes stayed green because a
+    # container choking on real work answers a trivial health check fine,
+    # and no rule watched container restarts outside the `apps` namespace's
+    # AI dashboard. These rules cover the ordinary application namespaces so
+    # a container that dies or is being throttled is reported instead of
+    # being discovered by a user noticing that a feature stopped working.
+    - name: home-server.workload-health-alerting
+      rules:
+        # `OOMKilled` is the exact failure the downloads pod exhibited; it
+        # means a limit is below the workload's working set, so the workload
+        # is being killed rather than degraded and the limit needs review.
+        - alert: HomeServerContainerOOMKilled
+          expr: >-
+            increase(
+              kube_pod_container_status_last_terminated_reason{
+                namespace=~"apps|media|monitoring|network-services",
+                reason="OOMKilled"
+              }[15m]
+            ) > 0
+          for: 0m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} was OOMKilled"
+            description: >-
+              The container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }}
+              exceeded its memory limit and was killed. Compare the container's measured
+              working set against its limit before raising it; a workload that climbs
+              without settling is a leak, not an undersized request.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#container-restarts-and-oomkills
+
+        # Any non-zero exit is worth knowing about, but a single restart can be
+        # an ordinary node-level event. Two within an hour is a pattern.
+        - alert: HomeServerContainerRestarting
+          expr: >-
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace=~"apps|media|monitoring|network-services"
+              }[1h]
+            ) >= 2
+          for: 5m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} restarted repeatedly"
+            description: >-
+              The container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }}
+              restarted at least twice in the last hour. Check
+              `kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}` for the
+              last termination reason and exit code.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#container-restarts-and-oomkills
+
+        # Sustained throttling makes a container slow without ever killing it,
+        # which surfaces as unexplained timeouts in whatever calls it. The
+        # downloads pod sat at 40% of CFS periods throttled while its CPU
+        # metric looked unremarkable, and callers saw 60 s tool timeouts.
+        #
+        # Throttle *ratio* alone is not a usable signal here: measured across
+        # this cluster, ~17 containers sit above 25% throttled while using only
+        # 1-17% of their CPU limit, because a mostly-idle cgroup misses its
+        # 100 ms quota on trivial scheduling jitter. Alert only when a container
+        # is both throttled and actually driving its limit, which is the state
+        # that costs callers latency.
+        - alert: HomeServerContainerCPUThrottled
+          expr: >-
+            (
+              rate(
+                container_cpu_cfs_throttled_periods_total{
+                  namespace=~"apps|media|monitoring|network-services"
+                }[10m]
+              )
+              /
+              rate(
+                container_cpu_cfs_periods_total{
+                  namespace=~"apps|media|monitoring|network-services"
+                }[10m]
+              )
+            ) > 0.25
+            and on (namespace, pod, container)
+            (
+              rate(
+                container_cpu_usage_seconds_total{
+                  namespace=~"apps|media|monitoring|network-services"
+                }[10m]
+              )
+              / on (namespace, pod, container)
+              kube_pod_container_resource_limits{
+                namespace=~"apps|media|monitoring|network-services",
+                resource="cpu"
+              } > 0.8
+            )
+          for: 30m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} is CPU-throttled"
+            description: >-
+              The container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }}
+              spent more than 25% of its CPU periods throttled for half an hour. Callers
+              experience this as unexplained latency or timeouts rather than as a failure.
+              Compare its CPU limit with the measured peak before raising it.
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#container-restarts-and-oomkills

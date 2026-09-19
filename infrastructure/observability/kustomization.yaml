@@ -15,6 +15,7 @@ resources:
   - media-storage-exporter.yaml
   - backup-health-rules.yaml
   - node-health-rules.yaml
+  - workload-health-rules.yaml
   - rbac.yaml
   - release.yaml
   - networkpolicy.yaml
