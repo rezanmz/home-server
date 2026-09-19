@@ -18,17 +18,38 @@ spec:
     # being discovered by a user noticing that a feature stopped working.
     - name: home-server.workload-health-alerting
       rules:
-        # `OOMKilled` is the exact failure the downloads pod exhibited; it
-        # means a limit is below the workload's working set, so the workload
-        # is being killed rather than degraded and the limit needs review.
+        # `OOMKilled` means a limit sits below the working set, so the
+        # container is being killed rather than degraded and its limit needs
+        # review.
+        #
+        # Do NOT express this as `increase(last_terminated_reason{...}[15m])`.
+        # That gauge holds whichever reason was *last*, so it pins at 1 for as
+        # long as the workload keeps dying the same way: measured on the
+        # downloads pod it stayed at 1 across all six OOMKills, and the
+        # expression would have reported only the first. Pair the restart
+        # counter - which did count 2 -> 4 -> 5 -> 6 - with the last
+        # termination reason and the SIGKILL exit code, so every repeated kill
+        # fires, not just the first.
         - alert: HomeServerContainerOOMKilled
           expr: >-
-            increase(
+            (
+              increase(
+                kube_pod_container_status_restarts_total{
+                  namespace=~"apps|media|monitoring|network-services"
+                }[15m]
+              ) > 0
+            )
+            and on (namespace, pod, container)
+            (
               kube_pod_container_status_last_terminated_reason{
                 namespace=~"apps|media|monitoring|network-services",
                 reason="OOMKilled"
-              }[15m]
-            ) > 0
+              } == 1
+              or on (namespace, pod, container)
+              kube_pod_container_status_last_terminated_exitcode{
+                namespace=~"apps|media|monitoring|network-services"
+              } == 137
+            )
           for: 0m
           labels:
             severity: warning
