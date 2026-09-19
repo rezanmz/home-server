@@ -734,3 +734,61 @@ encourage, because on linuxserver a `3.1.3-develop` tag sorts *above*
   returning `allowed: true` in the DB while the same API rejects the release is
   the contradiction that identifies a binary/schema mismatch rather than a
   configuration error.
+
+## 2026-09-19 — The assistant's "missing tool access" was a turn budget and a blind read path
+
+Source: "Hermes is quite limited, it can't investigate further, the MCP servers
+don't give it the right tools" — the stated remedy being to widen its access or
+move it off-cluster with SSH.
+
+Two of the three real causes had nothing to do with permissions, and the third
+was a defect rather than a missing privilege:
+
+1. **Turn budget.** `agent.max_turns: 60` was exhausted mid-task. The log shows
+   `Turn ended: reason=max_iterations_reached(60/60) ... tool_turns=69` on three
+   separate sessions, including the music request. The deferred-tool bridge
+   charges an agent iteration for each `tool_search`/`tool_describe`/`tool_call`
+   hop, so a cap sized for direct calls starves a search-bridged turn.
+2. **Spilled results were unreadable.** A 235 KB `prowlarr_search` response was
+   persisted to `$HERMES_HOME/cache/spillover/` with a preview and a path, and
+   the only tool whose allowed roots covered that path was the Obsidian
+   filesystem MCP, which is scoped to `/vault`. The `file` toolset — which owns
+   `read_file` — was absent from the platform's toolset list. The agent obtained
+   the data and then could not open it.
+3. **The capability it was said to lack, it already had.** The read-only
+   Kubernetes MCP was exposed with `all` tools and had not been called since
+   July. The blocking application defect was a database/binary schema mismatch
+   (see the entry above), not a permission check.
+
+- **Watch for:** an operator asking for *more access* when the evidence is a
+  configuration ceiling and a blind read path. "It needed more tools to
+  investigate" is a diagnosis that deserves the same proof as any other. In this
+  case the agent called its acquisition tool successfully, held an unused
+  read-only diagnostic surface, and failed a discovery protocol 74 times with
+  `tool_call 'calls' must be a non-empty array` — none of which a new grant fixes.
+- **Recipe:** before designing any privilege grant, check the three ceilings in
+  order — turn budget (`max_iterations_reached` in the log), the deferred-tool
+  bridge settings (`tools.tool_search`), and whether every platform's toolset
+  list actually contains the tool the agent is being told to use.
+
+  ```bash
+  # Turn budget actually exhausted?
+  sudo k3s kubectl -n apps exec deploy/hermes-agent -c hermes-agent -- \
+    sh -c 'grep "max_iterations_reached" /opt/data/logs/agent.log | tail -3'
+  ```
+
+- **Hidden coupling:** `platform_toolsets` is per-platform, so a working Telegram
+  channel proved nothing about `cli` or `cron` sessions. All three needed `file`.
+  Verify tool availability by running the agent's own resolution rather than by
+  reading the YAML, and remember that `file` also brings `write_file`, `patch`,
+  and `search_files` — the read-only boundary is the environment, not the model's
+  restraint.
+- **Verification that worked:** resolving the toolset per platform and then
+  calling `read_file` against a real spillover file returned content. A toolset
+  list that *looks* right is not evidence; the same class of mistake as the
+  alert rule that loaded, evaluated to zero matches, and could never fire.
+- **Consequence for privilege requests:** the repository pattern for a genuine
+  capability gap is a reviewed design, not an SSH grant. See
+  `prompts/design-agent-action-grant.md`, which refuses generic shell or
+  arbitrary-API capability and requires the motivating failure to be classified
+  as a defect or a gap first.

@@ -130,6 +130,7 @@ the brief's acceptance evidence exists.
 | Prompt | Use it for |
 | --- | --- |
 | [design-control-plane-recovery.md](design-control-plane-recovery.md) | Designing matched SQLite/server-token, encrypted off-host, bare-metal control-plane recovery |
+| [design-agent-action-grant.md](design-agent-action-grant.md) | Designing a reviewed, narrow action grant for the assistant without shell, SSH, or cluster-admin |
 | [design-k3s-upgrade.md](design-k3s-upgrade.md) | Designing a version-specific, state-aware K3s upgrade and rollback procedure |
 | [design-syncthing-disaster-recovery.md](design-syncthing-disaster-recovery.md) | Designing joint NFS data, Syncthing identity/configuration, Restic, and network recovery |
 
