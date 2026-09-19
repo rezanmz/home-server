@@ -105,6 +105,22 @@ but Hermes must ask for confirmation immediately before destructive use.
 Calendar deletion and unrelated filesystem mutation remain absent. GPT
 Researcher is for explicit research requests, not routine pulse jobs.
 
+The grant above is the current ceiling, and it is a deliberate one. Hermes is
+prompt-injectable — it reads mail, web research, and notes — so a new capability
+is a new reachable action for anything that can put text in front of it. The pod
+holds no service-account token and cannot reach the host, which is what keeps a
+successful injection bounded to the MCPHub surface.
+
+Widening it is a reviewed design, not a configuration tweak. Use
+[`prompts/design-agent-action-grant.md`](../prompts/design-agent-action-grant.md),
+which requires the motivating failure to be classified as a defect or a genuine
+gap before any privilege is added, refuses generic shell or arbitrary-API
+capability, and treats a path to a node, a kubeconfig, or a cluster-wide write
+role as a separate elevation rather than an extension of this surface. Relocating
+the agent outside the cluster and reconnecting it over SSH is evaluated by that
+brief too, and it is not the default answer: it converts a defect into standing
+host access.
+
 For short calculations and data transformations, Hermes uses the maintained
 `r33drichards/mcp-js` (`mcp-v8`) server. It exposes one stateless `run_js` tool;
 each call starts with a fresh V8 isolate. All upstream sandbox-hardening switches
@@ -126,6 +142,63 @@ reach the host, filesystem, network, environment, or other MCP servers.
 Enable `tool_loop_guardrails.hard_stop_enabled`, cap repeated failures and
 no-progress calls, and verify unknown Telegram users are rejected. Use a
 separate Telegram bot from infrastructure alerts.
+
+### Tool budget and deferred-tool discovery
+
+Hermes exposes the MCP surface through a deferred-tool bridge: when the
+deferrable schemas exceed a share of the context window, MCP and plugin tools
+are replaced by `tool_search`, `tool_describe`, and `tool_call`, and the model
+must search before it can call. This is deliberate — it bounds schema tokens —
+but it interacts with the turn budget, because **every bridge call costs an
+agent iteration**. A turn cap that looks generous is not, once discovery is
+charged against it.
+
+`agent.max_turns` is that cap and is the limit an operator hits while doing
+multi-step work. Two configuration consequences are easy to get wrong:
+
+- A cap sized for direct tool calls starves a search-bridged turn. Check the
+  log for `reason=max_iterations_reached(N/N)` and
+  `Turn ended: reason=max_iterations_reached` before assuming a task failed for
+  a substantive reason.
+- The bridge settings live under `tools.tool_search` (`threshold_pct`,
+  `search_default_limit`, `max_search_limit`, `listing_max_tokens`). Raising
+  `search_default_limit` and the listing budget returns more of the catalog per
+  query, so fewer bridge round-trips are needed. Disabling the bridge entirely
+  trades schema tokens for iterations and is not a default.
+
+The turn limit is re-bridged from `config.yaml` on each turn, so a change takes
+effect without a pod restart; the toolset and tool-search settings are read at
+tool-assembly time.
+
+### Reading spilled tool results
+
+An oversized tool result is persisted to `$HERMES_HOME/cache/spillover/` and
+replaced by a preview plus a path. The `file` toolset's `read_file` is what
+reads it back, so **a platform whose toolset list omits `file` can be handed a
+path it cannot open**. This is the failure to look for when the agent reports
+that it obtained a large result and then could not use it, or when it falls back
+to repeatedly re-running the same search.
+
+Grant `file` to every active platform, not only the one in use. The toolset list
+is per-platform, so a working messaging channel proves nothing about `cli` or
+`cron` sessions. Verify with the same resolution the agent uses rather than by
+reading the YAML:
+
+```bash
+sudo k3s kubectl -n apps exec deploy/hermes-agent -c hermes-agent -- python3 -c '
+import sys, yaml; sys.path.insert(0, "/opt/hermes")
+from hermes_cli.config import load_config_readonly
+from hermes_cli.tools_config import _get_platform_tools
+from model_tools import _select_tool_names
+cfg = load_config_readonly()
+for p in ("cli", "telegram", "cron"):
+    n = _select_tool_names(sorted(_get_platform_tools(cfg, p)), None, True)
+    print(p, "read_file=", "read_file" in n)'
+```
+
+Note that `file` also grants `write_file`, `patch`, and `search_files`. If a
+channel should read spilled output but not modify files, the boundary belongs in
+the environment the tools resolve against, not in a hope that the model declines.
 
 ## Current packages
 
