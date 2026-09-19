@@ -109,6 +109,12 @@
       "enabled": false
     },
     {
+      "description": "linuxserver/lidarr runs on a develop build deliberately: lidarr.db was migrated by migration 043 (flexible_delay_profiles, 2026-07-22), which dropped EnableUsenet/EnableTorrent/PreferredProtocol/UsenetDelay/TorrentDelay from DelayProfiles. The 3.1.0.4875 stable channel predates that migration and still queries the dropped columns, so it reads every delay profile as both protocols disabled and rejects every release. Renovate's `allowedVersions` rule above excludes develop tags for linuxserver, and its `loose` versioning would rank the older stable tag as an upgrade. Until Lidarr ships a stable release containing migration 043, keep this pin manual.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/lidarr"],
+      "enabled": false
+    },
+    {
       "description": "The finance-display API client must track the same Actual release line as the server; schema drift breaks budget sync permanently.",
       "matchDatasources": ["docker", "npm"],
       "matchPackageNames": ["actualbudget/actual-server", "@actual-app/api"],

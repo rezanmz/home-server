@@ -666,3 +666,71 @@ separate application state seeded from the SQLite `settings` row
   is the same probe against `/v1`: it must reach 9Router and return its
   `401 API key required for remote API access`, while the dashboard path still
   returns Traefik's 403.
+
+## 2026-09-19 — A "stable channel" image bump silently downgraded Lidarr past its own DB migration
+
+Source: "Hermes can't download music" — every Lidarr release rejected with
+`Torrent is not enabled for this artist` / `Usenet is not enabled for this
+artist`, including ones with 150+ seeders.
+
+The visible symptom points at delay-profile configuration and is wrong. The
+database was migrated on 2026-07-22 by migration **043
+`flexible_delay_profiles`**, which replaced the `DelayProfiles` columns
+`EnableUsenet`, `EnableTorrent`, `PreferredProtocol`, `UsenetDelay`, and
+`TorrentDelay` with `Name` + `Items` (a JSON list carrying `allowed`/`delay`).
+The row in the DB correctly says `allowed: true` for both protocols. The
+*running binary* is `linuxserver/lidarr:3.1.0.4875-ls41` — linuxserver's
+`stable` channel, whose upstream `v3.1.0.4875` predates migration 043 and
+contains no `043` at all (its migration set stops at `080`, and
+`Lidarr.Core.dll` still carries `EnableUsenet`/`EnableTorrent` strings).
+Querying dropped columns yields defaults, so every delay profile reads as
+both-protocols-disabled and every grab is refused.
+
+The change that introduced it is commit `5fa045e` "chore(apps): upgrade stable
+releases (#219)" (2026-08-12), which moved
+`3.1.3-develop@sha256:8a0536cf…` → `3.1.0.4875-ls39@sha256:2e4cdc7c…`. The
+same commit downgraded `linuxserver/radarr:6.4.0-develop` → `6.3.0.10514-ls313`.
+Both are `develop` → `stable` transitions that Renovate's `loose` versioning
+and this repository's `allowedVersions: "!/…|develop|…/"` rule actively
+encourage, because on linuxserver a `3.1.3-develop` tag sorts *above*
+`3.1.0.4875` — so the "downgrade" is presented as an upgrade.
+
+- **Watch for:** a container whose database is *forward-migrated* by one image
+  while the running image is older than that migration. The old binary does not
+  error on startup; it silently maps missing columns to defaults and fails
+  closed on a business rule. Only the *write* path (`PUT /api/v1/delayprofile/1`)
+  surfaces the truth, as `SQLiteException: no such column: EnableUsenet`.
+- **Recipe:** compare the DB's own `VersionInfo` against the running binary.
+
+  ```bash
+  # Migrations the database has already applied.
+  python3 -c "import sqlite3;c=sqlite3.connect('/config/lidarr.db');\
+  print(c.execute('select max(Version),count(*) from VersionInfo').fetchone())"
+
+  # Does the pinned binary know that migration?
+  grep -ac flexible_delay_profiles /app/lidarr/bin/Lidarr.Core.dll   # 0 == too old
+  grep -ao 'EnableUsenet\|EnableTorrent' /app/lidarr/bin/Lidarr.Core.dll
+  ```
+
+  A migration name absent from the assembly while present in `VersionInfo` is
+  the signature. The upstream migration list for a tag can be diffed without
+  pulling the image: `GET /repos/Lidarr/Lidarr/contents/src/NzbDrone.Core/Datastore/Migration?ref=<tag>`.
+- **Prevention:** the pin is now `develop-3.1.3.4975-ls257@sha256:8a0536cf…`
+  (the exact pre-`5fa045e` reference, amd64+arm64 index verified) with a
+  `renovate.json` rule disabling automated updates for `linuxserver/lidarr`
+  until upstream ships a stable release containing migration 043. Note that
+  linuxserver can re-point a `develop` tag, so the pin is tag-*plus*-digest;
+  the digest is what guarantees the working build.
+- **Consequence for the sibling apps:** Radarr moved `6.4.0-develop` →
+  `6.3.0.10514-ls313` in the same commit, but its DB holds `max_migration=242`
+  and its own `DelayProfiles` still has the legacy columns, so that image and
+  that volume agree; Radarr and Sonarr log no schema errors and keep grabbing.
+  Do not "fix" them to match Lidarr. Apply this check to each app independently
+  before changing any image whose volume predates it.
+- **Verification that worked:** `GET /api/v1/history` showed 94 `grabbed`
+  events up to 2026-08-11 13:13 and **zero after** 2026-08-12, with 20 865
+  history rows recorded in the failing period — so the app was alive and being
+  asked, and simply refused everything. `GET /api/v1/release?albumId=<id>`
+  returning `allowed: true` in the DB while the same API rejects the release is
+  the contradiction that identifies a binary/schema mismatch rather than a
+  configuration error.

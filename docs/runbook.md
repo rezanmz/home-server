@@ -1505,6 +1505,27 @@ Configure Lidarr in its UI or API-backed application state, not in Git:
    `/media/music` with uid/gid 1000;
 6. confirm Navidrome's next bounded scan imports it.
 
+Keep the pinned image at or above the migration level of `lidarr.db`. The
+volume can be forward-migrated by an image that is later replaced by an older
+one, and the older binary then reads the dropped columns as defaults instead of
+failing loudly. linuxserver's `stable` channel currently trails the migration
+this database has already applied, so the pin is a deliberate `develop` build;
+`renovate.json` disables automated updates for it. Treat a Lidarr image change
+as a stateful change and re-run this check before accepting one:
+
+```bash
+sudo k3s kubectl -n media exec deploy/downloads -c lidarr -- sh -c '
+  python3 -c "import sqlite3;c=sqlite3.connect(\"/config/lidarr.db\");\
+print(c.execute(\"select max(Version) from VersionInfo\").fetchone()[0])";
+  grep -ac flexible_delay_profiles /app/lidarr/bin/Lidarr.Core.dll'
+```
+
+The second value must be non-zero. A zero means the running binary predates
+migration 043 (`flexible_delay_profiles`, applied 2026-07-22, which replaced the
+legacy `DelayProfiles` columns with `Name` + `Items`), and every release will be
+rejected with `Torrent|Usenet is not enabled for this artist` while the UI and
+the database both report both protocols as allowed.
+
 MCPHub owns all media MCP registrations and credentials. Recommended server
 boundaries are:
 
