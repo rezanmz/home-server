@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: open-webui
-          image: ghcr.io/open-webui/open-webui:v0.11.3@sha256:751b617714b91e4cfd0186a509c72480c858e012976103b09a30dad053c36175
+          image: ghcr.io/open-webui/open-webui:v0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
           imagePullPolicy: IfNotPresent
           command:
             - bash
@@ -468,7 +468,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: open-terminal
-          image: ghcr.io/open-webui/open-terminal@sha256:8f6d2045aa69e348e39d89bf59e6b267773532335333eed14ff16bbc7c964b73
+          image: ghcr.io/open-webui/open-terminal@sha256:3d52176700f2442e20556ef129ae980613389be773e269cf7fa0118f3b55669d
           imagePullPolicy: IfNotPresent
           env:
             - name: OPEN_TERMINAL_API_KEY

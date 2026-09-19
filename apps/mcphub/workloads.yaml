@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: prepare-data
-          image: pgvector/pgvector:pg16@sha256:1d533553fefe4f12e5d80c7b80622ba0c382abb5758856f52983d8789179f0fb
+          image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
           command:
             - sh
             - -ec
@@ -56,7 +56,7 @@ spec:
           # Extends the ordinary (not -full) MCPHub image with pinned, reviewed
           # MCP packages. Server registrations and all runtime settings remain
           # application-owned state in MCPHub's PostgreSQL database.
-          image: ghcr.io/rezanmz/mcphub-gptr:1.0.37-63884773685b-actual-9c64ad232448-assistant-suite-10@sha256:38921e0a63266faa6518b332b0af7f9419c4733ad304d0b9fda151304b7755d2
+          image: ghcr.io/rezanmz/mcphub-gptr:1.0.37-63884773685b-actual-9c64ad232448-assistant-suite-10@sha256:cc5a1e92bdcfec5592cfe588fc13ae43a0488c3cdf7696db52391629701e2167
           imagePullPolicy: IfNotPresent
           env:
             - name: HOME
@@ -172,7 +172,7 @@ spec:
               mountPath: /var/run/secrets/kubernetes.io/serviceaccount
               readOnly: true
         - name: access-proxy
-          image: nginx:1.31.5-alpine@sha256:34f40471dea485273c5e2a04dd5e97a682332ceb4a9adecd67de450dcb2fb390
+          image: nginx:1.31.5-alpine@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
@@ -271,7 +271,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgresql
-          image: pgvector/pgvector:pg16@sha256:1d533553fefe4f12e5d80c7b80622ba0c382abb5758856f52983d8789179f0fb
+          image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
           command: [sh, -ec]
           args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
           imagePullPolicy: IfNotPresent

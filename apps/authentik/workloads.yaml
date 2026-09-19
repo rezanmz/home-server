@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: prepare-data
-          image: docker.io/library/postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+          image: docker.io/library/postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
           command:
             - sh
             - -ec
@@ -271,7 +271,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgresql
-          image: docker.io/library/postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+          image: docker.io/library/postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
           command: [sh, -ec]
           args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
           imagePullPolicy: IfNotPresent
