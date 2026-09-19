@@ -48,16 +48,20 @@ omp/CLI     ---> 9Router /v1 (all personal role primaries; direct
                              providers only as fallback; models.yml)
 ```
 
-9Router's `/v1` surface and dashboard are both LAN/WireGuard-only. The
-route applies the `lan-vpn-only` allowlist to the whole hostname, so an
-off-LAN client is rejected by Traefik with 403 before 9Router sees the
-request; inside the allowlist an unauthenticated `/v1` call is rejected
-by 9Router with 401 (`requireApiKey`). The dashboard stays behind SAML.
-The omp personal profile routes
-every role primary through the `chat`/`smart` combos (provider declared
-in `~/.omp/agent/models.yml`); the previous direct primaries head each
-fallback chain, so a router outage degrades to provider-direct
-behaviour. Note: `smart` is led by the text-only `glm-5.3`, so
+9Router's dashboard is LAN/WireGuard-only: the route applies the `lan-vpn-only`
+allow-list to the whole hostname, so an off-LAN browser is rejected by Traefik
+with 403 before 9Router sees the request, and the dashboard stays behind SAML.
+The `/v1` prefix is the one deliberate exception, declared as `publicPaths` in
+the descriptor, so remote model clients reach it from any network; there
+9Router authenticates each request with a per-app router key and rejects an
+unkeyed or invalid-key call with 401 before any provider is contacted. A
+remote client therefore never needs the VPN, and an off-LAN caller without a
+key learns nothing beyond that 401.
+
+The omp personal profile routes every role primary through the `chat`/`smart`
+combos (provider declared in `~/.omp/agent/models.yml`); the previous direct
+primaries head each fallback chain, so a router outage degrades to
+provider-direct behaviour. Note: `smart` is led by the text-only `glm-5.3`, so
 vision-bearing omp sessions answer blind while that member is healthy;
 reorder the combo or route vision through `chat` (fully vision-capable
 members) if that becomes unacceptable. Deliberate exceptions to the

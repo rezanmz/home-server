@@ -44,7 +44,10 @@ authorization, application bootstrap, and secret values stay explicit.
 1. Confirm the service path is active through Kustomization traversal.
 2. Make explicit decisions for Homepage, route visibility, both DNS systems,
    authentication, placement, data/protection, and observability. Do not infer a
-   public route, backup promise, node pin, role mapping, or callback.
+   public route, backup promise, node pin, role mapping, or callback. A private
+   route that must serve one Internet-reachable API prefix declares it in
+   `publicPaths` with the authentication that replaces the network boundary; the
+   compiler then proves the exemption matches the rendered route exactly.
 3. Preserve stable identities: metadata.name, Authentik slug, OIDC client ID,
    provider/application identifiers, and the provider secret key derived from
    metadata.name. Treat changes as migrations.

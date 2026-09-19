@@ -78,8 +78,11 @@ spec:
                 secretKeyRef:
                   name: 9router-secrets
                   key: machine-id-salt
-            # Every /v1 call must present a router key; the household then
-            # issues one key per consumer app.
+            # Inert upstream: 0.5.75 reads REQUIRE_API_KEY only in its docs,
+            # never in code. The real per-request gate is dashboardGuard, which
+            # demands a router key for any non-loopback /v1 call regardless of
+            # this variable. Kept only so a future image that does read it
+            # cannot silently start unauthenticated; see docs/lessons-learned.md.
             - name: REQUIRE_API_KEY
               value: "true"
             - name: AUTH_COOKIE_SECURE

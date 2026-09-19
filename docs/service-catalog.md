@@ -163,9 +163,24 @@ homepage:
 `visibility` has no default:
 
 - `private` requires the named IP allow-list middleware and means LAN or
-  WireGuard only.
+  WireGuard only;
 - `public` means Internet-reachable and forbids an IP allow-list on the rendered
-  route.
+  route; and
+- a `private` route may additionally declare `publicPaths`, an explicit list of
+  exact path prefixes that are deliberately exempt from the allow-list while the
+  rest of the hostname stays LAN/WireGuard-only.
+
+`publicPaths` is for a hostname that serves two different trust levels at once —
+the usual case is an application whose API authenticates per-request with a key
+while its dashboard is administrative. Each entry needs a `path` and a `reason`,
+and the reason must name the authentication that replaces the network boundary.
+The compiler proves the exemption is real in both directions: an undeclared
+ungated rule fails, a declared prefix with no ungated rule fails, and an ungated
+rule that matches every path fails because that would expose the whole
+hostname. Only an exact `PathPrefix` value earns the exemption, so a broader or
+narrower rule cannot pass as the declared exception. Reachability is still
+reported as private, so `publicPaths` never silently upgrades a route to
+`public`.
 
 Every web entry explicitly says whether Cloudflare and Blocky own its DNS. This
 is a policy decision, not an implementation list. The compiler turns those two

@@ -110,10 +110,12 @@ image pin, boot secrets (initial password, JWT/API-key secrets, machine-id
 salt), route, and network boundary. The dashboard authenticates with 9Router's
 own SAML SSO against Authentik (no OIDC support exists upstream; the SAML
 provider is a hand-maintained blueprint beside the catalog-generated OIDC
-ones) with a password fallback for break-glass, and the `/v1` API
-requires a router key; both stay LAN/VPN-only behind the Gateway route
-allowlist. MCP access for agents remains MCPHub's responsibility; 9Router
-serves model traffic only.
+ones) with a password fallback for break-glass. The `/v1` API is
+Internet-reachable so remote model clients can use it, and 9Router itself
+authenticates every `/v1` request with a per-app router key (401 without one);
+the dashboard, `/api/*`, and every other path remain LAN/VPN-only behind the
+Gateway route allow-list. MCP access for agents remains MCPHub's responsibility;
+9Router serves model traffic only.
 
 Hermes Agent is the persistent proactive companion runtime at
 `hermes.reza.network`; Open WebUI remains the interactive workbench. Hermes'

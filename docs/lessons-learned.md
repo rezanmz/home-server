@@ -629,3 +629,40 @@ aborted.
   directory that kubelet cannot create for you. Create it out of band on the
   Pi, and treat a pod restart as the moment to verify the boundary rather than
   assume a previously running mount still resolves.
+
+## 2026-09-18 — 9Router's REQUIRE_API_KEY env var is inert; the guard is what enforces keys
+
+Source: making `router.reza.network/v1` reachable from outside the LAN.
+
+The workload sets `REQUIRE_API_KEY=true` and its comment claims that "every /v1
+call must present a router key". The deployed image never reads that variable.
+Grepping the pinned tag (`v0.5.75`) finds `REQUIRE_API_KEY` only in `README.md`,
+the translated READMEs, and `.env.example` — never in `src/`, `open-sse/`, or
+`custom-server.js`. Key enforcement lives in `dashboardGuard.js`, whose
+`canAccessPublicLlmApi` requires a valid key for every request that is not
+loopback or carrying the machine-id CLI token, **independent of any setting**.
+The `settings.requireApiKey` field that `src/sse/handlers/*.js` reads is
+separate application state seeded from the SQLite `settings` row
+(`DEFAULT_SETTINGS.requireApiKey: true`), not from the environment.
+
+- **Watch for:** a manifest env var that looks like a security control, is
+  copy-pasted into a comment as though it were one, and appears in no code path.
+  A key whose name matches a documented feature is not evidence the feature reads
+  it.
+- **Recipe:** `grep -rn "<VAR>" .` inside the *pinned tag*, excluding
+  `node_modules`, `README*`, `i18n/`, and `.env*`. A hit only in docs means the
+  variable is documentation, not configuration.
+- **Consequence for exposure:** the effective gate for a remote `/v1` request is
+  `dashboardGuard`, so exposing the prefix to the Internet is still key-gated
+  even though the manifest's declared control is inert. Verify enforcement at the
+  guard, not at the env var, before widening any route that depends on it. The
+  stale env var and its misleading comment were left in place because removing
+  them is a workload change unrelated to the exposure fix; treat the manifest
+  comment as wrong until then.
+- **Verification that worked:** from an off-LAN vantage (a third-party fetch
+  proxy, since the workstation is on the LAN), an unkeyed request returned the
+  cluster's own error page — Traefik's 403, proving the `lan-vpn-only` boundary —
+  while the same fetcher reached public hostnames normally. The post-merge check
+  is the same probe against `/v1`: it must reach 9Router and return its
+  `401 API key required for remote API access`, while the dashboard path still
+  returns Traefik's 403.

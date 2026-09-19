@@ -18,6 +18,14 @@ spec:
     route: apps/9router/route.yaml
     visibility: private
     accessMiddleware: lan-vpn-only
+    # The OpenAI-compatible surface is Internet-reachable so remote LLM clients
+    # (the workstation omp/CLI profile, and any future off-LAN consumer) can use
+    # it; 9Router authenticates every /v1 request itself with a per-app router
+    # key and answers 401 without one. Dashboard, /api/*, and all other paths
+    # stay behind the LAN/WireGuard allow-list.
+    publicPaths:
+      - path: /v1
+        reason: Remote model clients call the OpenAI-compatible API with a per-app router key; 9Router rejects an unkeyed request with 401 before any provider is reached.
     dns:
       cloudflare: true
       splitHorizon: true
