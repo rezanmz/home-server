@@ -759,6 +759,237 @@ spec:
             any("cataloged public" in item and "lan-only" in item for item in errors)
         )
 
+    def test_public_path_carve_out_requires_a_matching_ungated_rule(self) -> None:
+        def catalog_with(public_paths):
+            return {
+                "services": [
+                    {
+                        "web": {
+                            "hostname": "example.reza.network",
+                            "visibility": "private",
+                            "accessMiddleware": "lan-only",
+                            "publicPaths": public_paths,
+                            "auth": {"mode": "native"},
+                        }
+                    }
+                ]
+            }
+
+        rendered = """
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: example, namespace: apps}
+spec:
+  hostnames: [example.reza.network]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /v1}
+      filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: lan-only}
+"""
+        # Declared as public but still gated: the exemption is not real.
+        stale = self.validate_rendered_text(
+            catalog_with([{"path": "/v1", "reason": "remote model clients"}]), rendered
+        )
+        self.assertTrue(
+            any("declared public path /v1 is not rendered without" in item for item in stale)
+        )
+
+        # Ungated without declaring it: an undeclared hole in the allow-list.
+        ungated = rendered.replace(
+            "        - type: ExtensionRef\n"
+            "          extensionRef: {group: traefik.io, kind: Middleware, name: lan-only}\n",
+            "",
+        )
+        undeclared = self.validate_rendered_text(catalog_with(None), ungated)
+        self.assertTrue(
+            any(
+                "does not apply access middleware lan-only" in item
+                for item in undeclared
+            )
+        )
+        undeclared_other = self.validate_rendered_text(
+            catalog_with([{"path": "/other", "reason": "unrelated path"}]), ungated
+        )
+        self.assertTrue(
+            any("exposes undeclared public path /v1" in item for item in undeclared_other)
+        )
+
+    def test_public_path_carve_out_accepts_the_declared_rule(self) -> None:
+        catalog = {
+            "services": [
+                {
+                    "web": {
+                        "hostname": "example.reza.network",
+                        "visibility": "private",
+                        "accessMiddleware": "lan-only",
+                        "publicPaths": [
+                            {"path": "/v1", "reason": "remote model clients"}
+                        ],
+                        "auth": {"mode": "native"},
+                    }
+                }
+            ]
+        }
+        rendered = """
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata: {name: lan-only, namespace: apps}
+spec:
+  ipAllowList:
+    sourceRange: [192.168.1.0/24]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: example, namespace: apps}
+spec:
+  hostnames: [example.reza.network]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /v1}
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: lan-only}
+"""
+        self.assertEqual(self.validate_rendered_text(catalog, rendered), [])
+
+    def test_catch_all_rule_cannot_be_a_public_carve_out(self) -> None:
+        catalog = {
+            "services": [
+                {
+                    "web": {
+                        "hostname": "example.reza.network",
+                        "visibility": "private",
+                        "accessMiddleware": "lan-only",
+                        "publicPaths": [
+                            {"path": "/v1", "reason": "remote model clients"}
+                        ],
+                        "auth": {"mode": "native"},
+                    }
+                }
+            ]
+        }
+        # An ungated catch-all would make the whole hostname public.
+        rendered = """
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: example, namespace: apps}
+spec:
+  hostnames: [example.reza.network]
+  rules:
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: custom-errors}
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: lan-only}
+"""
+        errors = self.validate_rendered_text(catalog, rendered)
+        self.assertTrue(
+            any(
+                "matches every path and cannot be an Internet-reachable public path"
+                in item
+                for item in errors
+            )
+        )
+
+    def test_public_paths_rejected_on_a_public_route(self) -> None:
+        catalog = {
+            "services": [
+                {
+                    "web": {
+                        "hostname": "example.reza.network",
+                        "visibility": "public",
+                        "publicPaths": [
+                            {"path": "/v1", "reason": "remote model clients"}
+                        ],
+                        "auth": {"mode": "native"},
+                    }
+                }
+            ]
+        }
+        rendered = """
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: example, namespace: apps}
+spec:
+  hostnames: [example.reza.network]
+  rules:
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: custom-errors}
+"""
+        errors = self.validate_rendered_text(catalog, rendered)
+        self.assertTrue(
+            any("is cataloged public and cannot declare publicPaths" in item for item in errors)
+        )
+
+    def test_public_paths_structural_validation(self) -> None:
+        def errors_for(entry):
+            catalog = copy.deepcopy(self.catalog)
+            service = next(
+                item for item in catalog["services"] if item["id"] == "9router"
+            )
+            service["web"]["publicPaths"] = [entry]
+            found: list[str] = []
+            service_catalog.validate_catalog_structure(catalog, found)
+            return found
+
+        self.assertTrue(
+            any("must be an absolute path prefix" in item for item in errors_for(
+                {"path": "/", "reason": "root is not a carve-out"}
+            ))
+        )
+        self.assertTrue(
+            any("must not have a trailing or doubled slash" in item for item in errors_for(
+                {"path": "/v1/", "reason": "trailing slash"}
+            ))
+        )
+        self.assertTrue(
+            any("publicPaths[0].reason" in item for item in errors_for({"path": "/v1"}))
+        )
+        self.assertTrue(
+            any("publicPaths[0]" in item and "unknown" in item.lower() for item in
+                errors_for({"path": "/v1", "reason": "has an extra field", "extra": 1}))
+        )
+
+        catalog = copy.deepcopy(self.catalog)
+        service = next(item for item in catalog["services"] if item["id"] == "9router")
+        service["web"]["visibility"] = "public"
+        found: list[str] = []
+        service_catalog.validate_catalog_structure(catalog, found)
+        self.assertTrue(
+            any("only valid for private routes" in item for item in found)
+        )
+
+    def test_9router_declares_its_internet_reachable_api_path(self) -> None:
+        service = next(
+            item
+            for item in service_catalog.services(self.catalog)
+            if item["id"] == "9router"
+        )
+        web = service["web"]
+        self.assertEqual(web["visibility"], "private")
+        self.assertEqual(web["accessMiddleware"], "lan-vpn-only")
+        self.assertEqual(
+            [entry["path"] for entry in web["publicPaths"]],
+            ["/v1"],
+        )
+
+    def test_explain_reports_public_paths_for_a_private_route(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            service_catalog.explain(self.catalog, "9router")
+        text = output.getvalue()
+        self.assertIn("the public Internet on declared paths", text)
+        self.assertIn("Public path: /v1", text)
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            service_catalog.explain(self.catalog, "actual-budget")
+        self.assertNotIn("Public path", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

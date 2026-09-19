@@ -185,6 +185,14 @@ Choose one of these deliberately:
   proxy; the Service targets the proxy, not the application directly.
 - **Public route:** no LAN middleware. The application must supply suitable
   authentication and the public exposure must be explicitly reviewed.
+- **Mixed route:** a `private` route whose descriptor also declares
+  `publicPaths`, an exact list of path prefixes exempted from the allow-list.
+  Use it when one hostname serves an IP-reachable API next to an administrative
+  UI — the API authenticates per request (a key, token, or signature), the UI
+  keeps the network boundary. Declare each prefix with the authentication that
+  replaces that boundary, and prove the exemption is real rather than assumed.
+  9Router is the current example: `/v1` is Internet-reachable and key-gated,
+  while its dashboard and `/api/*` stay LAN/WireGuard-only.
 - **Host-network admin UI:** use Syncthing's loopback and backend-mTLS pattern.
   Do not expose the loopback service through an ordinary pod Service. Blocky
   and Kea deliberately have no HTTP route; do not add one merely for convenience.

@@ -10,9 +10,28 @@ spec:
   hostnames:
     - router.reza.network
   rules:
-    # The dashboard authenticates with 9Router's own password/cookie session;
-    # the /v1 API authenticates separately with router keys. Both stay inside
-    # the LAN/WireGuard allowlist, matching the gateway it replaces.
+    # OpenAI-compatible surface for remote LLM clients. It is deliberately
+    # Internet-reachable, so it has no LAN/VPN allow-list; 9Router authenticates
+    # every request itself (dashboardGuard requires a router key for any
+    # non-loopback /v1 call) and answers 401 without one. Only this exact path
+    # prefix is exempt: Gateway API PathPrefix matches whole segments, so
+    # /v1beta and /v1foo stay gated.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: custom-errors
+      backendRefs:
+        - name: 9router
+          port: 20128
+    # Dashboard, admin API (/api/*), CLI-tool surface, and every other path keep
+    # the LAN/WireGuard allow-list. The dashboard signs in with 9Router's own
+    # SAML SSO against Authentik with a password fallback for break-glass.
     - filters:
         - type: ExtensionRef
           extensionRef:

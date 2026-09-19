@@ -29,6 +29,12 @@ integration. Do not assume an old native-auth exception remains necessary.
 - Private/admin: require the named LAN/WireGuard allow-list middleware and, for
   the normal pattern, a colocated access proxy. Point the Service at the proxy.
 - Public: no IP allow-list; explicitly review initialization and authentication.
+- Mixed: a private route may exempt exact path prefixes through `publicPaths`
+  when one hostname serves a per-request-authenticated API beside an
+  administrative UI. Declare the authentication that replaces the boundary, keep
+  the prefix as narrow as the application's routing allows, and remember a
+  Gateway `PathPrefix` matches whole segments. Never exempt a prefix the
+  application serves unauthenticated, and never exempt `/`.
 - Host-network UI: use only a documented protocol-specific pattern, such as
   Syncthing's loopback plus backend mTLS. Do not add a convenient route to Blocky
   or Kea management listeners.

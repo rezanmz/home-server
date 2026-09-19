@@ -1092,6 +1092,7 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                     "auth",
                     "dns",
                     "hostname",
+                    "publicPaths",
                     "route",
                     "visibility",
                 },
@@ -1143,6 +1144,46 @@ def validate_catalog_structure(catalog: dict[str, Any], errors: list[str]) -> No
                     f"{label}.web.accessMiddleware is only valid for private routes"
                 )
 
+            public_paths = web.get("publicPaths")
+            if public_paths is not None:
+                if visibility != "private":
+                    errors.append(
+                        f"{label}.web.publicPaths is only valid for private routes; "
+                        "a public route is already Internet-reachable"
+                    )
+                if not isinstance(public_paths, list) or not public_paths:
+                    errors.append(
+                        f"{label}.web.publicPaths must be a non-empty list"
+                    )
+                else:
+                    seen_paths: set[str] = set()
+                    for path_index, entry in enumerate(public_paths):
+                        entry_label = f"{label}.web.publicPaths[{path_index}]"
+                        if not isinstance(entry, dict):
+                            errors.append(f"{entry_label} must be a mapping")
+                            continue
+                        reject_unknown(entry, {"path", "reason"}, entry_label, errors)
+                        value = require_nonempty_string(
+                            entry.get("path"), f"{entry_label}.path", errors
+                        )
+                        require_nonempty_string(
+                            entry.get("reason"), f"{entry_label}.reason", errors
+                        )
+                        if value is not None:
+                            if not value.startswith("/") or value == "/":
+                                errors.append(
+                                    f"{entry_label}.path must be an absolute path "
+                                    "prefix such as /v1"
+                                )
+                            elif value.endswith("/") or "//" in value:
+                                errors.append(
+                                    f"{entry_label}.path must not have a trailing "
+                                    "or doubled slash"
+                                )
+                            elif value in seen_paths:
+                                errors.append(f"duplicate public path: {value}")
+                            else:
+                                seen_paths.add(value)
             web_dns = require_mapping(web.get("dns"), f"{label}.web.dns", errors)
             if web_dns is not None:
                 reject_unknown(
@@ -1762,16 +1803,30 @@ def rendered_routes(
         metadata = document.get("metadata", {})
         namespace = metadata.get("namespace", "default")
         name = metadata.get("name")
-        filters: set[str] = set()
+        rules: list[dict[str, Any]] = []
         for rule in document.get("spec", {}).get("rules", []):
             if not isinstance(rule, dict):
                 continue
-            for item in rule.get("filters", []):
+            filters: set[str] = set()
+            for item in rule.get("filters") or []:
                 if not isinstance(item, dict):
                     continue
                 extension = item.get("extensionRef")
                 if isinstance(extension, dict) and isinstance(extension.get("name"), str):
                     filters.add(extension["name"])
+            paths: list[str] = []
+            matches = rule.get("matches")
+            if isinstance(matches, list):
+                for match in matches:
+                    path_value = match.get("path") if isinstance(match, dict) else None
+                    value = (
+                        path_value.get("value")
+                        if isinstance(path_value, dict)
+                        else None
+                    )
+                    if isinstance(value, str):
+                        paths.append(value)
+            rules.append({"paths": paths, "filters": filters})
         for hostname in document.get("spec", {}).get("hostnames", []):
             if not isinstance(hostname, str) or not hostname.endswith(f".{domain}"):
                 continue
@@ -1780,7 +1835,7 @@ def rendered_routes(
             result[hostname] = {
                 "route": f"{namespace}/{name}",
                 "namespace": namespace,
-                "filters": filters,
+                "rules": rules,
             }
     return result, ip_allowlists
 
@@ -1812,13 +1867,14 @@ def validate_rendered_cluster(
     for hostname in sorted(set(actual) & set(expected)):
         web = expected[hostname]
         namespace = actual[hostname]["namespace"]
-        filters = actual[hostname]["filters"]
+        rules = actual[hostname]["rules"]
+        all_filters = {name for rule in rules for name in rule["filters"]}
         route_ip_allowlists = {
-            name for name in filters if f"{namespace}/{name}" in ip_allowlists
+            name for name in all_filters if f"{namespace}/{name}" in ip_allowlists
         }
         if web.get("visibility") == "private":
             middleware = web.get("accessMiddleware")
-            if middleware not in filters:
+            if middleware not in all_filters:
                 errors.append(
                     f"{hostname} private route does not reference access middleware "
                     f"{middleware}"
@@ -1828,21 +1884,85 @@ def validate_rendered_cluster(
                     f"{hostname} declared access middleware {middleware} is not an "
                     "IP allow-list"
                 )
-        elif route_ip_allowlists:
-            errors.append(
-                f"{hostname} is cataloged public but its rendered route uses IP "
-                f"allow-list(s): {sorted(route_ip_allowlists)}"
+            validate_public_path_carve_outs(
+                hostname, middleware, rules, web, errors
             )
+        else:
+            if route_ip_allowlists:
+                errors.append(
+                    f"{hostname} is cataloged public but its rendered route uses IP "
+                    f"allow-list(s): {sorted(route_ip_allowlists)}"
+                )
+            if web.get("publicPaths"):
+                errors.append(
+                    f"{hostname} is cataloged public and cannot declare publicPaths; "
+                    "the whole route is already Internet-reachable"
+                )
 
         auth = web.get("auth", {})
         if auth.get("mode") == "forward-auth":
             middleware = auth.get("middleware")
-            if middleware not in filters:
+            if middleware not in all_filters:
                 errors.append(
                     f"{hostname} forward-auth route does not reference middleware "
                     f"{middleware}"
                 )
 
+
+def validate_public_path_carve_outs(
+    hostname: str,
+    middleware: Any,
+    rules: list[dict[str, Any]],
+    web: dict[str, Any],
+    errors: list[str],
+) -> None:
+    """Prove each declared Internet-reachable prefix is really ungated.
+
+    A private route may name exact path prefixes that are deliberately exempt
+    from its LAN/VPN allow-list. The exemption is only credible if the rendered
+    route matches that declaration exactly in both directions: no rule may be
+    ungated without being declared, and no declared prefix may be missing an
+    ungated rule. Matching is exact path equality so a broader or narrower rule
+    cannot silently pass as the declared exception.
+    """
+    public_paths = web.get("publicPaths")
+    if public_paths is None:
+        public_paths = []
+    if not isinstance(public_paths, list):
+        return
+    declared = [
+        item.get("path") for item in public_paths if isinstance(item, dict)
+    ]
+    ungated_paths: list[str] = []
+    for index, rule in enumerate(rules):
+        if middleware in rule["filters"]:
+            continue
+        if not declared:
+            errors.append(
+                f"{hostname} private route rule {index} does not apply access "
+                f"middleware {middleware}"
+            )
+            continue
+        if not rule["paths"]:
+            errors.append(
+                f"{hostname} private route rule {index} matches every path and "
+                "cannot be an Internet-reachable public path"
+            )
+            continue
+        for value in rule["paths"]:
+            if value not in declared:
+                errors.append(
+                    f"{hostname} private route rule {index} exposes undeclared "
+                    f"public path {value}"
+                )
+            else:
+                ungated_paths.append(value)
+    for value in declared:
+        if value not in ungated_paths:
+            errors.append(
+                f"{hostname} declared public path {value} is not rendered without "
+                "the LAN/VPN allow-list"
+            )
 
 def render_cluster() -> Path:
     if shutil.which("kubectl") is None:
@@ -1944,13 +2064,23 @@ def explain(catalog: dict[str, Any], service_id: str) -> None:
     print(f"  Descriptor: {service.get('_source')}")
     if isinstance(web, dict):
         visibility = web.get("visibility")
-        reachability = (
-            "LAN and WireGuard only"
-            if visibility == "private"
-            else "the public Internet"
-        )
+        public_paths = web.get("publicPaths")
+        if visibility == "private":
+            reachability = "LAN and WireGuard only"
+            if isinstance(public_paths, list) and public_paths:
+                reachability = "the public Internet on declared paths; LAN and WireGuard only everywhere else"
+        else:
+            reachability = "the public Internet"
         print(f"  Reachable from: {reachability}")
         print(f"  Address: https://{web.get('hostname')}/")
+        if isinstance(public_paths, list):
+            for entry in public_paths:
+                if isinstance(entry, dict):
+                    print(
+                        f"  Public path: {entry.get('path')} — "
+                        f"Internet-reachable without the {web.get('accessMiddleware')} "
+                        "allow-list"
+                    )
         mode = auth.get("mode")
         if mode == "oidc":
             client = auth.get("client", {})

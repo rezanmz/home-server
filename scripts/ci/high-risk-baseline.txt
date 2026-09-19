@@ -214,7 +214,7 @@ privileged-namespace|v1/Namespace|default|media|pod-security-enforce
 privileged-namespace|v1/Namespace|default|metallb-system|pod-security-enforce
 privileged-namespace|v1/Namespace|default|network-services|pod-security-enforce
 privileged-namespace|v1/Namespace|default|traefik|pod-security-enforce
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|9router|spec/sha256/7c8b08d5ae5a6dd7ee7fb8821736f009cd36ee85f04b013713096c64795b4403
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|9router|spec/sha256/aa395004596fb26d318c4a616849a0d68e0ef68020f2cc23480a0b8a364dd802
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-budget|spec/sha256/684ed87d74c289c7e268d472759cfc44852498dc9f3bff89a993b1d034778a3c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|actual-horizon|spec/sha256/50e85fbf5d8dc0baa11e3f0104aaeb98b881858f6fcf735ce2acad6dfdf2e431
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|authentik|spec/sha256/a68303017aa042969ba9eb139f6227fb3e3e67b477e1dd6c376c964d2808a6bb
