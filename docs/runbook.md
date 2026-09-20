@@ -1870,6 +1870,66 @@ If Gluetun is unhealthy, keep the download clients stopped or unready until its
 tunnel and firewall are healthy. Do not bypass the sidecar with an ordinary
 pod-level egress route.
 
+### Usenet throughput collapse
+
+SABnzbd runs as its own pod (`sabnzbd-vpn`) with the same Gluetun sidecar
+pattern. Throughput can collapse with **every health signal still green**: the
+pod is Ready, the tunnel carries 0% packet loss at ~14 ms RTT, no cgroup is
+throttled, and the NFS write path is fast. The measured case is an exit-server
+problem, not a local one.
+
+Work the layers in this order, because the first three are cheap and the fourth
+is the one that actually failed:
+
+```bash
+POD=$(sudo k3s kubectl -n media get pod -l app.kubernetes.io/name=sabnzbd-vpn -o jsonpath='{.items[0].metadata.name}')
+
+# 1. Which exit are we on? Compare against the pinned SERVER_HOSTNAMES.
+sudo k3s kubectl -n media exec $POD -c gluetun -- \
+  wget -qO- http://127.0.0.1:8000/v1/publicip/ip
+
+# 2. Is the tunnel itself healthy? Loss and RTT, not throughput.
+sudo k3s kubectl -n media exec $POD -c sabnzbd -- ping -c 8 -W 2 news.eweka.nl
+
+# 3. Is the local disk the ceiling? Article-sized writes, not one big dd.
+sudo k3s kubectl -n media exec $POD -c sabnzbd -- sh -c \
+  'df -h /media/downloads; cd /media/downloads/usenet && mkdir -p .t && cd .t && \
+   for i in $(seq 1 500); do head -c 750000 /dev/zero > f$i; done; sync; echo done; cd ..; rm -rf .t'
+
+# 4. Measure the exit against the direct path. This is the decisive test.
+#    Pause SABnzbd first so the test is not competing with real downloads:
+sudo k3s kubectl -n media exec $POD -c sabnzbd -- sh -c \
+  'wget -qO- "http://127.0.0.1:8080/api?mode=pause&apikey=<key>"'
+#    ...then fetch ~100 MB from any large host through the tunnel, and the same
+#    from the Beelink host directly (not through the VPN) for the baseline.
+```
+
+**Measured 2026-09-19.** The ISP direct path ran 142 Mbps. The same host through
+the then-active exit `node-ca-31` (149.22.82.2) ran **0.31 MB/s (~2.5 Mbps)** —
+a 45x loss — while four other Toronto exits on the identical image, ISP, and
+node measured **6-14 MB/s**. The exit was the fault; nothing local was.
+
+Two signatures distinguish this from a local stall:
+
+- **Bursts then collapse.** SABnzbd's own log showed steady ~2.5 MB/s, a spike
+  to 23 MB/s, then a fall to 0.2-0.5 MB/s repeating. A local CPU or disk ceiling
+  *caps* throughput; it does not let it reach 23 MB/s and then take it away.
+- **Mass simultaneous resets.** `grep "Server closed connection"` showed all 32
+  Eweka connections dropped within ~1 s of each other, 211 times over, with
+  Gluetun logging nothing. That is provider-side, not a client or tunnel fault.
+
+Do not confuse the connection count with the fix. Raising `connections` beyond
+32 changes nothing: every usenet connection shares **one** WireGuard UDP flow,
+so eight parallel HTTPS streams measured the same 0.65 MB/s as one stream. The
+bottleneck is the flow, not the socket count.
+
+The durable fix is endpoint pinning. `SERVER_HOSTNAMES` in the deployment lists
+measured-good exits; if throughput collapses again, first confirm the current
+exit is still in that list and re-measure it before changing any SABnzbd
+setting. Note that this is exactly the class of failure that a *previous*
+incident misattributed to `bandwidth_max`; check both, because that setting is
+sensitive to unit interpretation and is currently empty (unlimited).
+
 qBittorrent's operational share policy lives in its backed-up application
 volume rather than in the infrastructure manifests. The global ratio limit is
 disabled. The global seeding-time limit is one minute and its action is

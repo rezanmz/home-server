@@ -40,6 +40,13 @@ spec:
           env:
             - {name: VPN_SERVICE_PROVIDER, value: protonvpn}
             - {name: VPN_TYPE, value: wireguard}
+            # Pin the endpoint. Without this, gluetun picks any CA/Toronto
+            # server and, measured 2026-09-19, landed on node-ca-31
+            # (149.22.82.2) whose egress ran at 0.31 MB/s while the ISP direct
+            # path and every other tested Toronto exit ran 6-17 MB/s. Pin to
+            # endpoints measured at ~14 MB/s so a provider-side placement
+            # choice cannot silently collapse download throughput again.
+            - {name: SERVER_HOSTNAMES, value: "node-ca-51.protonvpn.net,node-ca-40.protonvpn.net,node-ca-43.protonvpn.net"}
             - name: WIREGUARD_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
