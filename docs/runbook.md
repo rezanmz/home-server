@@ -1956,6 +1956,54 @@ if the event count is still increasing or the corresponding Longhorn volume is
 not `attached` and `healthy`; verify the database or application health before
 restarting anything.
 
+### Beelink shared-disk budget
+
+Beelink's root filesystem (`/dev/mapper/ubuntu--vg-lv--0`, 466 GiB) is not just
+the OS disk. Three independent consumers share it, and each one believes it may
+grow to its own limit:
+
+| Consumer | Path | Bound |
+|---|---|---|
+| JuiceFS client cache | `/var/lib/juicefs-cache` | `cache-size` and `free-space-ratio` |
+| Longhorn replicas | `/var/lib/longhorn` | `storageMinimalAvailablePercentage: 25` |
+| kubelet image store | `/var/lib/rancher/k3s/agent` | `image-gc-high-threshold=70` |
+
+`HomeServerNodeFilesystemBudgetLow` warns below 30% free. The upstream
+`NodeFilesystemSpaceFillingUp` and `NodeFilesystemAlmostOutOfSpace` rules do
+**not** cover this case: they require under 15% and under 5% free respectively,
+so a node parked at 25% by a shared cache raises nothing while kubelet's image GC
+is already failing every cycle. Treat a `FreeDiskSpaceFailed` event — especially
+one reporting `freed 0 bytes` — as this signal, not as an image-store problem:
+it means GC found no unused image to reclaim because a non-image consumer holds
+the space.
+
+Diagnose before deleting anything:
+
+```bash
+ssh beelink "df -h /; sudo du -xh --max-depth=1 /var 2>/dev/null | sort -rh | head"
+ssh beelink "sudo du -xh --max-depth=2 /var/lib/juicefs-cache /var/lib/longhorn /var/lib/rancher 2>/dev/null | sort -rh | head -20"
+```
+
+The JuiceFS cache is the usual largest and the only **disposable** one; it is not
+authoritative and not backed up. Clear it only with the cordon procedure in the
+[JuiceFS manual](juicefs-media.md#cache-clearing), never underneath a live mount.
+
+An oversized Longhorn replica is a different problem: compare each replica's
+allocated size against its PVC request, because a volume can occupy far more disk
+than it requests once Longhorn snapshots accumulate on top of the live head file.
+Longhorn garbage-collects snapshots per the volume's `retain` count, so check the
+volume's recurring job **group membership** before assuming the nightly job
+covers it. The three observability volumes are deliberately excluded from
+`b2-nightly` via the `observability-local` group (see the Prometheus section
+above) and therefore keep whatever snapshots they create.
+
+Kubelet's own thresholds are visible read-only:
+
+```bash
+ssh beelink 'sudo k3s kubectl get --raw "/api/v1/nodes/beelink/proxy/configz"' \
+  | python3 -c 'import json,sys; kc=json.load(sys.stdin)["kubeletconfig"]; print({k: kc.get(k) for k in ("evictionHard","imageGCHighThresholdPercent","imageGCLowThresholdPercent")})'
+```
+
 Calibre-Web and the downloads pod are independently floating workloads. Their
 Shelfmark handoff uses `calibre-web-ingest-rwx`; do not replace it with an RWO
 claim or pod affinity. Pod affinity is evaluated only when scheduling and can

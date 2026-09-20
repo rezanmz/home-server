@@ -101,9 +101,22 @@ spec:
             failureThreshold: 6
           mountOptions:
             - cache-dir=/var/lib/juicefs-cache
-            # Lowered from 400G after the Pi root filled past 70%.
-            - cache-size=256000
-            - free-space-ratio=0.25
+            # Bounded by BOTH an absolute cap and an adaptive one, because this
+            # cache shares the root filesystem with the kubelet image store and
+            # the Longhorn data path on Beelink. Three independent limits collide
+            # on that disk: kubelet image-gc-high-threshold=70%, JuiceFS
+            # free-space-ratio, and Longhorn storageMinimalAvailablePercentage=25.
+            # At 0.25 the cache grew to 129 GiB and parked the node at 75% used,
+            # so kubelet's image GC fired on every cycle and freed 0 bytes (there
+            # were no unused images to reclaim). That is the same shape as the
+            # 2026-09-11 incident, where a full disk made the Longhorn disk
+            # unschedulable and left sonarr-config degraded for days. 0.35 keeps
+            # ~163 GiB free on a 466 GiB disk, which is below kubelet's 70% GC
+            # trip and above Longhorn's 25% scheduling floor. The cap is the
+            # backstop if the filesystem is ever resized. Lowered from 400G, then
+            # 250000: both were still more disk than the smallest shared node has.
+            - cache-size=100000
+            - free-space-ratio=0.35
             - cache-eviction=lru
             - cache-expire=0
             - cache-large-write
