@@ -5,6 +5,14 @@ metadata:
   namespace: apps
   labels:
     home-server.reza.network/retention: speedtest-tracker-retirement
+    # Retired application; frozen recovery artifact with its final off-site
+    # backups already taken. Excluding it from the default recurring job both
+    # stops nightly snapshots of unchanged data and removes it from
+    # home_server_longhorn_backup_eligible_pvc_info, which is what keeps the
+    # 36h LonghornBackupStale alert meaningful. Same exclusion as Argilla,
+    # Duplicati, and the observability volumes.
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
   annotations:
     home-server.reza.network/review-after: "2026-12-01"
 spec:
