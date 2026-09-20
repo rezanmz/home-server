@@ -137,6 +137,27 @@ class SabnzbdContractTests(unittest.TestCase):
         self.assertEqual(env["VPN_TYPE"]["value"], "wireguard")
         self.assertEqual(env["PORT_FORWARD_ONLY"]["value"], "off")
         self.assertEqual(env["VPN_PORT_FORWARDING"]["value"], "off")
+        # The exit must stay pinned. An unpinned country selection let the
+        # provider place this tunnel on node-ca-31, whose egress measured
+        # 0.31 MB/s against 6-14 MB/s from every other tested Toronto exit on
+        # the same node, ISP, and image. Nothing else in the cluster can detect
+        # that: the pod stays Ready and the tunnel stays loss-free.
+        self.assertIn("SERVER_HOSTNAMES", env)
+        pinned = [h.strip() for h in env["SERVER_HOSTNAMES"]["value"].split(",")]
+        self.assertGreaterEqual(
+            len(pinned),
+            2,
+            "keep at least two pinned exits so one degraded server is not a single point of failure",
+        )
+        self.assertTrue(
+            all(host.endswith(".protonvpn.net") for host in pinned),
+            f"pinned exits must be ProtonVPN hostnames gluetun accepts, got {pinned}",
+        )
+        self.assertNotIn(
+            "SERVER_COUNTRIES",
+            env,
+            "a country selector would let the provider re-place the tunnel on an unmeasured exit",
+        )
         self.assertEqual(env["FIREWALL_INPUT_PORTS"]["value"], "8080,18081")
         self.assertEqual(
             env["FIREWALL_OUTBOUND_SUBNETS"]["value"], "10.42.0.0/16,10.43.0.0/16"

@@ -850,3 +850,59 @@ only signal.
   `node=beelink free=25.2% would_fire=True`. Writing the PromQL and assuming it
   fires is not evidence; node-exporter metrics carry no `node` label, so the
   enrichment is required or the summary renders an empty node name.
+
+## 2026-09-19 — A VPN exit degraded 45x while every health signal stayed green
+
+Source: "sabnzbd is not downloading at its full speed, it maxes from time to
+time then goes down again."
+
+The exit server was the fault and nothing local was, but every layer that looks
+like a health check reported healthy. This is the hard part: there is no failing
+component to find, only a degraded one.
+
+- **Measured.** ISP direct path 142 Mbps. The same node, same ISP, same image
+  through exit `node-ca-31` (149.22.82.2): **0.31 MB/s (~2.5 Mbps)** — a 45x
+  loss. Four other Toronto exits measured 6-14 MB/s. Gluetun reported 0% packet
+  loss at 14 ms RTT to both Cloudflare and the exit; no cgroup was throttled
+  (gluetun peaked at 0.0035 of its 0.25 limit); NFS wrote 45-95 MB/s.
+- **Two signatures that separate this from a local stall:**
+  - *Bursts then collapse*, not a flat ceiling. A local CPU or disk limit
+    **caps** throughput; it cannot let it reach 23 MB/s and then take it away.
+    The log ran steady ~2.5, spiked to 23, then fell to 0.2-0.5, repeating.
+  - *Mass simultaneous resets.* All 32 usenet connections dropped within ~1 s of
+    each other, 211 times, with Gluetun logging nothing. Provider-side.
+- **Watch for a misleading counter.** Connection count is not the lever: every
+  usenet connection shares **one** WireGuard UDP flow, so 8 parallel HTTPS
+  streams measured 0.65 MB/s against 1 stream's 0.62. Raising `connections`
+  cannot help. Measure the flow, not the sockets.
+- **Do not trust the first plausible cause.** A previous incident with the same
+  user-visible symptom was root-caused to `bandwidth_max = 20000` being read as
+  bytes/s (~20 KB/s). That setting is empty now, so the same symptom had a
+  different cause. Read the earlier entry, then re-measure rather than assuming
+  the familiar answer.
+- **Pin what you measure.** `SERVER_HOSTNAMES` now lists measured-good exits. An
+  unpinned `SERVER_COUNTRIES` selection lets the provider silently place the
+  tunnel on a bad host, and nothing in the cluster can see the difference.
+- **A rule that cannot fire is worse than no rule.** The alert intended to catch
+  this was written against `sabnzbd_speed_mbps` and `sabnzbd_queue_remaining_mb`
+  before checking: SABnzbd exposes no `/metrics`, has no ServiceMonitor, and
+  those series do not exist in Prometheus. It was deleted rather than shipped.
+  Verify the metric name against the live `/api/v1/label/__name__/values` before
+  writing an expression — the same class of error as the OOM rule that read a
+  gauge which pins at 1, and the throttle rule that matched 17 idle containers.
+- **Diagnostic order that worked:** exit IP → tunnel loss/RTT → local disk →
+  measured exit throughput against the direct baseline. The first three were
+  clean and the fourth was conclusive.
+
+  ```bash
+  POD=$(sudo k3s kubectl -n media get pod -l app.kubernetes.io/name=sabnzbd-vpn -o jsonpath='{.items[0].metadata.name}')
+  sudo k3s kubectl -n media exec $POD -c gluetun -- wget -qO- http://127.0.0.1:8000/v1/publicip/ip
+  sudo k3s kubectl -n media exec $POD -c sabnzbd -- ping -c 8 -W 2 news.eweka.nl
+  ```
+
+- **Reusable technique:** to attribute a path problem, run the identical
+  measurement from inside the tunnel and from the host directly, with the
+  workload paused so the test is not racing it. Comparing 0.31 MB/s against
+  142 Mbps on the same hardware removed every local variable at once. A first
+  attempt that skipped the pause measured 0.62 MB/s and would have understated
+  the gap by half.
