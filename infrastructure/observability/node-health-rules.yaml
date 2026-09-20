@@ -140,3 +140,44 @@ spec:
             summary: Node {{ $labels.node }} has sustained {{ $labels.resource }} pressure
             description: "Node {{ $labels.node }} has reported {{ $value | humanize }} {{ $labels.unit }} of sustained {{ $labels.resource }} pressure. Reduce concurrent downloads/imports first, then inspect PSI, swap, Longhorn, and kubelet latency."
             runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#node-resource-pressure
+        # Upstream Kubernetes filesystem alerts do not cover this failure mode.
+        # NodeFilesystemSpaceFillingUp needs <15% free AND a negative 24h
+        # prediction, and NodeFilesystemAlmostOutOfSpace needs <5%, so a node
+        # parked at 25% free by a shared cache raises nothing at all. On Beelink
+        # that band is exactly where kubelet's image GC already fires:
+        # image-gc-high-threshold=70 means 70% USED (30% free), and once the
+        # shared JuiceFS cache filled the disk, every GC cycle logged
+        # FreeDiskSpaceFailed "freed 0 bytes" because no unused image remained.
+        # The node stayed Ready and the only signal was a Kubernetes event.
+        # This warns at the 30%-free line instead, before GC starts failing.
+        - alert: HomeServerNodeFilesystemBudgetLow
+          expr: |
+            (
+              100
+              * node_filesystem_avail_bytes{
+                  job="observability-prometheus-node-exporter",
+                  fstype!="",
+                  mountpoint="/"
+                }
+              / node_filesystem_size_bytes{
+                  job="observability-prometheus-node-exporter",
+                  fstype!="",
+                  mountpoint="/"
+                }
+            )
+            * on (namespace, pod) group_left (node)
+              max by (namespace, pod, node) (
+                kube_pod_info{
+                  namespace="kube-system",
+                  pod=~"observability-prometheus-node-exporter-.*"
+                }
+              )
+            < 30
+          for: 30m
+          labels:
+            severity: warning
+            cluster: home-server
+          annotations:
+            summary: Node {{ $labels.node }} root filesystem is {{ $value | printf "%.1f" }}% free
+            description: "Node {{ $labels.node }} is below 30% free on the root filesystem that backs the kubelet image store AND the Longhorn disk. kubelet image GC trips at 70% used, and Longhorn stops scheduling below 25% (storageMinimalAvailablePercentage). On Beelink the largest consumer is the disposable JuiceFS cache under /var/lib/juicefs-cache, which is bounded by cache-size and free-space-ratio. Check which is largest before deleting anything."
+            runbook_url: https://github.com/rezanmz/home-server/blob/main/docs/runbook.md#node-resource-pressure

@@ -792,3 +792,61 @@ was a defect rather than a missing privilege:
   `prompts/design-agent-action-grant.md`, which refuses generic shell or
   arbitrary-API capability and requires the motivating failure to be classified
   as a defect or a gap first.
+
+## 2026-09-19 — kubelet's image GC cannot reclaim space held by a non-image consumer
+
+Source: a Telegram `FreeDiskSpaceFailed` event for `default/beelink`,
+"Insufficient free disk space on the node's image filesystem (75% of 465.4 GiB
+used). Failed to free sufficient space by deleting unused images (freed 0
+bytes)."
+
+The message names the image filesystem and the failing action, which points at
+images. The cause was the opposite: there were no unused images to delete,
+because the space was held by a JuiceFS client cache on the same filesystem. The
+node was `Ready=True` with `DiskPressure=False` throughout, so the event was the
+only signal.
+
+- **The mechanism.** Beelink's imagefs is the root LV, shared by three consumers
+  that each enforce only their own limit: the JuiceFS cache
+  (`cache-size=256000` with `free-space-ratio=0.25`), Longhorn
+  (`storageMinimalAvailablePercentage: 25`), and kubelet image GC
+  (`image-gc-high-threshold=70`). Measured: `/var/lib` 304 GiB of 325 GiB, split
+  129 GiB JuiceFS cache, 116 GiB Longhorn, 53 GiB k3s. The cache's
+  `free-space-ratio=0.25` capped it at roughly 350 GiB on a 466 GiB disk, so it
+  could comfortably fill past the 70%-used line where kubelet GC begins.
+- **The alerting gap, measured.** `NodeFilesystemSpaceFillingUp` needs <15% free
+  *and* a negative 24h prediction; `NodeFilesystemAlmostOutOfSpace` needs <5%.
+  Beelink sat at 25% free, so **no alert existed anywhere in the 5–30% band**,
+  and kubelet's 70%-used GC trip is inside that silent band. An event was the
+  first sign. `HomeServerNodeFilesystemBudgetLow` now warns below 30%.
+- **Watch for:** a `freed 0 bytes` reclaim result. It does not mean GC is broken;
+  it means every byte of imagefs is held by something GC does not own. Diagnose
+  the largest `/var` consumer before touching images.
+- **Recipe:**
+
+  ```bash
+  ssh beelink 'df -h /; sudo du -xh --max-depth=1 /var 2>/dev/null | sort -rh | head'
+  ssh beelink 'sudo du -xh --max-depth=2 /var/lib/juicefs-cache /var/lib/longhorn /var/lib/rancher 2>/dev/null | sort -rh | head -20'
+  ssh beelink 'sudo du -s -B1 /var/lib/longhorn/replicas/* | sort -rn | head'
+  ```
+
+- **Hidden coupling:** a Longhorn replica can occupy several times its PVC
+  request. The Prometheus claim requests 30 GiB and its replica directory was
+  78 GB: 25 GB live head plus 53 GB in two snapshot files, one created 52 days
+  earlier. Both belonged to the volume that is *deliberately* excluded from
+  `b2-nightly` by the `observability-local` recurring-job group, so no retention
+  policy was going to collect them. Check a volume's recurring-job **group
+  membership**, not just the existence of a nightly job, before assuming a
+  snapshot is managed.
+- **Cross-check the config, not the label.** `free-space-ratio=0.25` looks
+  conservative but is a fraction of a *shared* disk, so it is not a bound at all
+  once other consumers grow. A cache bound must be sized against the smallest
+  node that shares the filesystem, and paired with an absolute `cache-size` as a
+  backstop.
+- **Verification that worked:** the new rule was evaluated against live
+  Prometheus before being trusted, and it returns both nodes correctly labelled
+  through the same `kube_pod_info` enrichment the recording rules use —
+  `node=raspberrypi free=40.8% would_fire=False`,
+  `node=beelink free=25.2% would_fire=True`. Writing the PromQL and assuming it
+  fires is not evidence; node-exporter metrics carry no `node` label, so the
+  enrichment is required or the summary renders an empty node name.
