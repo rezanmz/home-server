@@ -5,6 +5,14 @@ metadata:
   namespace: apps
   labels:
     home-server.reza.network/retention: omnifin-retirement
+    # The application is retired and this volume is a frozen recovery artifact.
+    # Its final backups already exist off-site, so it must not keep producing
+    # nightly snapshots of unchanged data. Carrying this label is also what
+    # removes it from home_server_longhorn_backup_eligible_pvc_info; without it
+    # the volume ages past 36h and LonghornBackupStale fires critical forever.
+    # Argilla, Duplicati, and the observability volumes use the same exclusion.
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: disabled
   annotations:
     home-server.reza.network/review-after: "2026-12-01"
 spec:
