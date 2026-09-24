@@ -115,6 +115,12 @@
       "enabled": false
     },
     {
+      "description": "Kea 3.2.0 is the latest *stable* release, so there is no stable upgrade to propose. ISC's own release notes call 3.2.0 \"a new stable release\" and every 3.3.x release \"a release of the 3.3 development series ... development releases are not recommended for production use\", and the release list contains no 3.2.1 or later. Upgrading would move the LAN's DHCP server onto a channel its maintainer says not to run in production, and 3.3.0 separately disables UDP/IPv4 IP fragmentation and makes packet parsing strict enough to drop clients unless lenient-option-parsing is set - failures that only surface as devices failing to obtain leases. Reviewed 2026-09-24 and decided to stay on stable; re-enable only when ISC ships a 3.4.0 stable release, and then read its incompatible-changes section first.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["docker.cloudsmith.io/isc/docker/kea-dhcp4"],
+      "enabled": false
+    },
+    {
       "description": "The finance-display API client must track the same Actual release line as the server; schema drift breaks budget sync permanently.",
       "matchDatasources": ["docker", "npm"],
       "matchPackageNames": ["actualbudget/actual-server", "@actual-app/api"],
