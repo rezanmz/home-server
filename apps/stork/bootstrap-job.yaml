@@ -24,6 +24,13 @@ spec:
         runAsGroup: 999
         seccompProfile:
           type: RuntimeDefault
+      # This postgres:16-alpine pin is deliberately OLDER than the same tag in
+      # apps/stork/workloads.yaml, and must stay that way. A completed Job's
+      # spec.template is immutable: refreshing only this digest makes Flux fail
+      # with `Job.batch "stork-lockdown-v1" is invalid: spec.template`. This Job
+      # ran once during Stork adoption and will never run again, so its pin is
+      # historical. To refresh it, delete the live Job object inside the same
+      # reviewed change; never edit the digest alone.
       containers:
         - name: lockdown
           image: docker.io/library/postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
