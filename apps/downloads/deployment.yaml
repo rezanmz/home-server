@@ -340,7 +340,7 @@ spec:
               readOnly: true
               mountPropagation: HostToContainer
         - name: flaresolverr
-          image: flaresolverr/flaresolverr:v3.5.0@sha256:139dfee1c6f89249c8d665d1333a42e8ec74ec0a86bc6bb1c8461e10d3a66a47
+          image: flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
           imagePullPolicy: IfNotPresent
           env:
             - {name: LOG_LEVEL, value: info}
@@ -626,7 +626,7 @@ spec:
             - {name: media-downloads, mountPath: /media/downloads}
         - &access-proxy
           name: qbittorrent-access-proxy
-          image: nginx:1.31.5-alpine@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
+          image: nginx:1.31.6-alpine@sha256:d10753d9289b8e3f884386351f73554ce72b631378949deddd75e83ee296c427
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
