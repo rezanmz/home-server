@@ -69,7 +69,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: postgresql
-          image: docker.io/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+          image: docker.io/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
