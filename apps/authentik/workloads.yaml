@@ -46,7 +46,7 @@ spec:
               mountPath: /state
       containers:
         - name: server
-          image: ghcr.io/goauthentik/server:2026.8.2@sha256:ff8489a5af4f4fe415ffd180a8e3c10b120bc2592d13d79dac050d977f7b9ecd
+          image: ghcr.io/goauthentik/server:2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849
           imagePullPolicy: IfNotPresent
           args:
             - server
@@ -118,7 +118,7 @@ spec:
             - name: server-shm
               mountPath: /dev/shm
         - name: worker
-          image: ghcr.io/goauthentik/server:2026.8.2@sha256:ff8489a5af4f4fe415ffd180a8e3c10b120bc2592d13d79dac050d977f7b9ecd
+          image: ghcr.io/goauthentik/server:2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849
           imagePullPolicy: IfNotPresent
           args:
             - worker
