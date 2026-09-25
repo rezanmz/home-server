@@ -18,6 +18,15 @@ spec:
         app.kubernetes.io/name: cyd-dashboard-ota
     spec:
       automountServiceAccountToken: false
+      # The image is amd64-only (a two-entry index whose only architecture is
+      # amd64), and this Deployment had no placement at all. With
+      # strategy: Recreate the pod is deleted before its replacement is created,
+      # so a single scheduling decision onto the arm64 Pi would have taken device
+      # OTAs down with `no match for platform in manifest` and nothing would
+      # have replaced it. Pin the same way the other amd64-only image here,
+      # apps/actual-horizon, is pinned.
+      nodeSelector:
+        kubernetes.io/hostname: beelink
       terminationGracePeriodSeconds: 10
       securityContext:
         runAsNonRoot: true
