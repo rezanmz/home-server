@@ -35,7 +35,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: 9router
-          image: ghcr.io/decolua/9router:0.5.75@sha256:7c893bc2c27ecea2ae337abd5eacfec9e5763091b3a3b7862fc0625b770bb156
+          image: ghcr.io/decolua/9router:0.5.86@sha256:a2968fcbaa4ff4bf2d6dcdb09e0cacb67832d8959441bc1bcc75da401f8ae72c
           imagePullPolicy: IfNotPresent
           # The image entrypoint is `chown … && su-exec node …`, which needs
           # root (setgroups) and fails under this unprivileged pod. fsGroup

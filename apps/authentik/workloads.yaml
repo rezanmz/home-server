@@ -21,6 +21,20 @@ spec:
         app.kubernetes.io/component: application
     spec:
       automountServiceAccountToken: false
+      # Pinned off Beelink: Beelink holds a zombie iSCSI session (sid 25,
+      # session25, state FREE) bound to a portal IP that no longer exists
+      # (10.42.0.213, an old instance-manager). Longhorn's frontend init calls
+      # iscsiadm logout first, and because `IsTargetLoggedIn` only greps
+      # `iscsiadm -m session` for the target name, the dead entry makes it look
+      # logged in; the logout then fails with error 32 and the engine exits 1 in
+      # a loop, so this PVC can never attach on Beelink. The session cannot be
+      # removed: node-record delete is blocked by the session, session delete is
+      # blocked by the node record, and a restart of iscsid (which has no
+      # ExecStop, unlike open-iscsi's logout-all.sh) leaves it in sysfs. The Pi's
+      # initiator is untouched, so scheduling here avoids it entirely. Remove this
+      # pin once Beelink's session25 is cleared.
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
