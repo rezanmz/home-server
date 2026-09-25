@@ -906,3 +906,56 @@ component to find, only a degraded one.
   142 Mbps on the same hardware removed every local variable at once. A first
   attempt that skipped the pause measured 0.62 MB/s and would have understated
   the gap by half.
+
+## 2026-09-24 — A zombie iSCSI session made one PVC permanently unattachable
+
+Source: `auth.reza.network` returned 503 while the Authentik app pod was
+recreated every ~30 s, each attempt failing `FailedAttachVolume`.
+
+- **The mechanism.** Beelink held `tcp: [25] 10.42.0.213:3260` in session state
+  `FREE`. That portal IP belonged to an old instance-manager; no pod held it and
+  ping was 100% loss, while all 26 healthy sessions targeted `10.42.0.153`.
+  Longhorn's frontend init calls `go-iscsi-helper`'s `LogoutTarget` first, and
+  that only acts when `IsTargetLoggedIn` returns true — which is *just a grep of
+  `iscsiadm -m session` for the target name*, with no state check. A dead `FREE`
+  entry therefore reads as logged in, the real logout fails `error 32 - target
+  likely not connected`, and the engine exits 1. Measured **43 starts / 112
+  stops** while live.
+- **Watch for:** `Failed to init frontend` → `failed to stop iSCSI device` →
+  `failed to logout target` in longhorn-manager, with a pod recreating on a ~30 s
+  cycle. The engine CR showing `Starting: true` / `Started: false` with a healthy
+  `Snapshots Error:` field is the signature — the data is fine, the *frontend*
+  is stuck.
+- **It cannot be cleared with iscsiadm.** Every path dead-ends against itself:
+  node-record delete says *"a session is using it"*; session delete says the same;
+  `-R` rescans but leaves `FREE`; deleting the record directory from disk leaves
+  the session in sysfs; restarting `iscsid` leaves it in sysfs. All five were
+  tried under explicit authority, backing up the record first
+  (`/tmp/iscsi-node-backup.tgz`) and confirming `0` mount refs, `0` loopback refs
+  and no `/dev/longhorn/` node before touching anything.
+- **Do not restart `open-iscsi.service`.** Its `ExecStop` is
+  `/usr/lib/open-iscsi/logout-all.sh` — it would detach **all 26 live volumes**
+  under running pods. `iscsid.service` is a *separate* unit with no `ExecStop`;
+  restarting it is safe and was verified afterwards (53 mounted Longhorn devices
+  before and after). It does not clear the session either.
+- **The fix that worked was routing, not repair:** pin the workload to the other
+  node with `nodeSelector`, whose initiator is untainted. The Pi had been running
+  Authentik cleanly for six hours before the pin. Multi-arch image confirmed
+  first (`INDEX(4)`, amd64 + arm64) so the move could not break on platform.
+- **Left behind, deliberately:** Beelink's `session25` and Prometheus's `sid 95`
+  are the same defect for a different volume. Clearing a `FREE`-state session
+  needs an upstream Longhorn or open-iscsi answer; until then, any volume that
+  next needs to attach on Beelink can hit it. Record the pin as temporary and
+  remove it only once `session25` is gone.
+
+  ```bash
+  # Does this node hold a stale session pointing at a dead portal?
+  ssh beelink 'sudo iscsiadm -m session | sort -k2'
+  ssh beelink 'sudo k3s kubectl get pods -A -o wide | grep -c <portal-ip>'
+  ```
+
+- **Verification that worked:** reading Longhorn's own source
+  (`longhorn/go-iscsi-helper`, `iscsi/initiator.go` → `IsTargetLoggedIn`,
+  `iscsidev/iscsi.go` → `LogoutTarget`) settled it in one step. Guessing at
+  iscsiadm semantics cost four failed attempts — the error strings alone don't
+  say that `IsTargetLoggedIn` ignores session state.

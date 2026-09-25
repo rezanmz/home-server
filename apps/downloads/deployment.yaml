@@ -19,17 +19,21 @@ spec:
         home-server.reza.network/internal-client: "true"
     spec:
       automountServiceAccountToken: false
-      # Keep acquisition work away from the single control-plane node when a
-      # worker has capacity, without making any physical node mandatory. The
-      # Pi-hosted NFS claim remains reachable from either node.
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: node-role.kubernetes.io/control-plane
-                    operator: DoesNotExist
+      # Pinned to Beelink because the Pi is full: 4 cores with 3950m already
+      # requested, leaving 50m against authentik's 375m requirement. This stack
+      # is 885m of that total, so moving it is what lets the identity provider
+      # schedule at all.
+      # Beelink is the single K3s server, so a cluster that cannot place this
+      # pod there is down regardless of where it would otherwise float, and the
+      # Pi-hosted NFS claim is mounted by IP so it resolves from either node.
+      #
+      # This replaces a soft `nodeAffinity` preference that kept acquisition
+      # work off the control-plane node while a worker had capacity. Once the
+      # pin above existed that preference was inert - it asked for the opposite
+      # of the only node the pod could run on - so it was removed rather than
+      # left contradicting the nodeSelector. Restore it if the pin comes off.
+      nodeSelector:
+        kubernetes.io/hostname: beelink
       # Keep service-name URLs in the migrated application databases working.
       # These names all resolved to Gluetun's shared namespace in Docker.
       hostAliases:
