@@ -65,20 +65,22 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         resource = deployment("apps/downloads/deployment.yaml", "downloads")
         self.assertEqual(resource["spec"]["replicas"], 1)
         spec = pod_spec(resource)
-        self.assertNotIn("nodeSelector", spec)
-        worker_preference = spec["affinity"]["nodeAffinity"][
-            "preferredDuringSchedulingIgnoredDuringExecution"
-        ][0]
-        self.assertEqual(worker_preference["weight"], 100)
+        # Pinned to Beelink. This used to assert there was no nodeSelector at
+        # all, keeping the stack floating so it could survive losing a node. The
+        # Pi could not hold both this stack and Authentik - 4 cores with 3950m
+        # requested left 50m free against the identity provider's 375m - so the
+        # identity provider went Unschedulable and auth.reza.network returned 503
+        # while the download stack held the room. Beelink is the single K3s
+        # server, so a cluster that cannot place itself there is down anyway, and
+        # it had 6.36 cores idle against this stack's 885m.
         self.assertEqual(
-            worker_preference["preference"]["matchExpressions"],
-            [
-                {
-                    "key": "node-role.kubernetes.io/control-plane",
-                    "operator": "DoesNotExist",
-                }
-            ],
+            spec["nodeSelector"],
+            {"kubernetes.io/hostname": "beelink"},
         )
+        # The old soft preference asked for a node other than the control plane,
+        # which is the opposite of where the pin allows it to run, so it was
+        # removed rather than left contradicting the nodeSelector.
+        self.assertNotIn("affinity", spec)
         volumes = {item["name"]: item for item in spec["volumes"]}
         self.assertEqual(
             volumes["media-library"]["persistentVolumeClaim"]["claimName"],
