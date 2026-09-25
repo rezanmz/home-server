@@ -46,10 +46,29 @@ spec:
               cp /inputs/dashboard.yaml /work/dashboard.yaml
               cp /inputs/secrets.yaml /work/secrets.yaml
               esphome compile /work/dashboard.yaml
-              upload_status=0
-              esphome upload /work/dashboard.yaml --device 192.168.1.18 || upload_status=$?
-              esphome upload /work/dashboard.yaml --device 192.168.1.21 || upload_status=$?
-              exit "$upload_status"
+              # Upload to each board independently and only fail when neither
+              # took the image. The previous form set upload_status on failure
+              # and never cleared it on success, so `exit "$upload_status"`
+              # let one powered-off board discard another board's completed
+              # OTA and leave this controller crash-looping. It ran fine for
+              # ten days because both boards were up; any restart while one is
+              # off would have broken it, not this change to placement.
+              uploaded=0
+              if esphome upload /work/dashboard.yaml --device 192.168.1.18; then
+                uploaded=$((uploaded + 1))
+              else
+                echo "WARN: 192.168.1.18 did not accept the firmware" >&2
+              fi
+              if esphome upload /work/dashboard.yaml --device 192.168.1.21; then
+                uploaded=$((uploaded + 1))
+              else
+                echo "WARN: 192.168.1.21 did not accept the firmware" >&2
+              fi
+              if [ "$uploaded" -eq 0 ]; then
+                echo "ERROR: no board accepted the firmware" >&2
+                exit 1
+              fi
+              echo "firmware delivered to $uploaded board(s)"
           env:
             - {name: HOME, value: /work}
             - {name: XDG_CACHE_HOME, value: /work/.cache}
