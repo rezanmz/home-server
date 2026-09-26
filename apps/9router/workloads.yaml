@@ -35,7 +35,16 @@ spec:
           type: RuntimeDefault
       containers:
         - name: 9router
-          image: ghcr.io/decolua/9router:0.5.86@sha256:a2968fcbaa4ff4bf2d6dcdb09e0cacb67832d8959441bc1bcc75da401f8ae72c
+          # 0.5.86 routed the chat/smart aliases to Xiaomi MiMo (new in that
+          # release) and Hermes' cron runs began failing with
+          # `Streaming response failed: [400] Invalid request parameters`; the
+          # Morning Briefing succeeded the morning before that merge and failed
+          # from the morning after, which is what isolated this upgrade. Its
+          # notes name no MiMo or streaming fix, so 0.5.91 is being tested rather
+          # than assumed. If cron still returns 400, revert to
+          # 0.5.75@sha256:7c893bc2c27ecea2ae337abd5eacfec9e5763091b3a3b7862fc0625b770bb156,
+          # the last version proven working.
+          image: ghcr.io/decolua/9router:0.5.91@sha256:efc6e88c963ddb035f8da26a74e156b927863cd05625b47f3587972bc865bd25
           imagePullPolicy: IfNotPresent
           # The image entrypoint is `chown … && su-exec node …`, which needs
           # root (setgroups) and fails under this unprivileged pod. fsGroup
