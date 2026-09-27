@@ -959,3 +959,37 @@ recreated every ~30 s, each attempt failing `FailedAttachVolume`.
   `iscsidev/iscsi.go` → `LogoutTarget`) settled it in one step. Guessing at
   iscsiadm semantics cost four failed attempts — the error strings alone don't
   say that `IsTargetLoggedIn` ignores session state.
+
+## 2026-09-27 — A container can be OOMKilled while every memory metric reads below its limit
+
+Source: `finance-display` was OOMKilled at 2026-09-27T00:00:12Z (`exit 137`)
+against a `256Mi` limit, yet its `container_memory_working_set_bytes` peak
+across the whole 7-day life was **173.3 MiB** — 68% of the limit.
+
+- **The mechanism.** The cgroup limit applies to `memory.current`, which
+  includes inactive file cache, while `container_memory_working_set_bytes` is
+  `usage − inactive_file`. A container crosses the limit on *total* memory
+  while the metric every dashboard plots still reads well below it. The pod's
+  life was flat (`144.3 → 149.8 MiB` over 7 days, `+0.78 MiB/day`, oscillating
+  127–164), so this was not a leak — a spike landed on top of an already-high
+  cache footprint and the metric never observed the crossing.
+- **Do not conclude "not an OOM" from a memory graph.** The authoritative signal
+  is the container's own termination record:
+
+  ```bash
+  # Which container died, how, and when?
+  ssh beelink 'sudo k3s kubectl -n apps get pod <name> -o json' \
+    | jq -r '.status.containerStatuses[]
+        | "\(.name) restarts=\(.restartCount) last=\(.lastState.terminated.reason) exit=\(.lastState.terminated.exitCode) at \(.lastState.terminated.finishedAt)"'
+  ```
+
+- **The mechanical prevention already exists.** `HomeServerContainerOOMKilled`
+  keys on `last_terminated_reason=OOMKilled` or `exitCode=137`, *not* on the
+  memory metric — exactly why it caught this event when the metrics did not. It
+  fired `00:02:00 → 00:15:00 UTC` (14 points) and auto-resolved when the
+  ReplicaSet replaced the pod 14 s later. Rewriting that alert to use a memory
+  threshold would make it blind to this entire class.
+- **Fix applied:** memory limit `256Mi → 512Mi` in
+  `apps/finance-display/deployment.yaml` (#386). Stateless dashboard, so the
+  rollout cost nothing; no request or placement change.
+
