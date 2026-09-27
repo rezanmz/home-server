@@ -71,7 +71,7 @@ spec:
             failureThreshold: 3
           resources:
             requests: {cpu: 25m, memory: 96Mi}
-            limits: {cpu: 250m, memory: 256Mi}
+            limits: {cpu: 250m, memory: 512Mi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
