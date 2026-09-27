@@ -65,22 +65,27 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         resource = deployment("apps/downloads/deployment.yaml", "downloads")
         self.assertEqual(resource["spec"]["replicas"], 1)
         spec = pod_spec(resource)
-        # Pinned to Beelink. This used to assert there was no nodeSelector at
-        # all, keeping the stack floating so it could survive losing a node. The
-        # Pi could not hold both this stack and Authentik - 4 cores with 3950m
-        # requested left 50m free against the identity provider's 375m - so the
-        # identity provider went Unschedulable and auth.reza.network returned 503
-        # while the download stack held the room. Beelink is the single K3s
-        # server, so a cluster that cannot place itself there is down anyway, and
-        # it had 6.36 cores idle against this stack's 885m.
+        # Deliberately floating: a soft worker preference, never a nodeSelector,
+        # so the stack survives losing a node. It was pinned to Beelink by
+        # PR #382 when the Pi had 3950m of 4000m requested and this stack's 885m
+        # left 50m against authentik's 375m, which sent auth.reza.network to 503.
+        # The pin is off again because the CPU requests were right-sized from
+        # measured usage (885m -> 525m), leaving the Pi ~560m free for a pod the
+        # size of the identity provider.
+        self.assertNotIn("nodeSelector", spec)
+        worker_preference = spec["affinity"]["nodeAffinity"][
+            "preferredDuringSchedulingIgnoredDuringExecution"
+        ][0]
+        self.assertEqual(worker_preference["weight"], 100)
         self.assertEqual(
-            spec["nodeSelector"],
-            {"kubernetes.io/hostname": "beelink"},
+            worker_preference["preference"]["matchExpressions"],
+            [
+                {
+                    "key": "node-role.kubernetes.io/control-plane",
+                    "operator": "DoesNotExist",
+                }
+            ],
         )
-        # The old soft preference asked for a node other than the control plane,
-        # which is the opposite of where the pin allows it to run, so it was
-        # removed rather than left contradicting the nodeSelector.
-        self.assertNotIn("affinity", spec)
         volumes = {item["name"]: item for item in spec["volumes"]}
         self.assertEqual(
             volumes["media-library"]["persistentVolumeClaim"]["claimName"],
