@@ -19,21 +19,26 @@ spec:
         home-server.reza.network/internal-client: "true"
     spec:
       automountServiceAccountToken: false
-      # Pinned to Beelink because the Pi is full: 4 cores with 3950m already
-      # requested, leaving 50m against authentik's 375m requirement. This stack
-      # is 885m of that total, so moving it is what lets the identity provider
-      # schedule at all.
-      # Beelink is the single K3s server, so a cluster that cannot place this
-      # pod there is down regardless of where it would otherwise float, and the
-      # Pi-hosted NFS claim is mounted by IP so it resolves from either node.
+      # Deliberately floating: a soft preference, never a pin, so the stack
+      # survives losing a node. It prefers the Pi (a worker) while that node has
+      # capacity and can fall back to Beelink. The Pi-hosted NFS claim is
+      # mounted by IP, so it resolves from either node.
       #
-      # This replaces a soft `nodeAffinity` preference that kept acquisition
-      # work off the control-plane node while a worker had capacity. Once the
-      # pin above existed that preference was inert - it asked for the opposite
-      # of the only node the pod could run on - so it was removed rather than
-      # left contradicting the nodeSelector. Restore it if the pin comes off.
-      nodeSelector:
-        kubernetes.io/hostname: beelink
+      # PR #382 pinned this to Beelink because the Pi had 3950m of 4000m
+      # requested and this stack's 885m left 50m against authentik's 375m, which
+      # sent auth.reza.network to 503. The pin is off again because the CPU
+      # requests below were right-sized from measured usage (885m -> 525m),
+      # leaving the Pi ~560m free, and because holding this stack's 1.3GiB on
+      # the single control-plane node had driven its MemAvailable under the 15%
+      # floor Hermes warns on.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       # Keep service-name URLs in the migrated application databases working.
       # These names all resolved to Gluetun's shared namespace in Docker.
       hostAliases:
@@ -215,7 +220,7 @@ spec:
           resources:
             # Hundreds of unrestricted torrents can push libtorrent above the
             # old 512 MiB cgroup ceiling even while the node has ample memory.
-            requests: {cpu: 100m, memory: 512Mi}
+            requests: {cpu: 40m, memory: 512Mi}
             limits: {cpu: 500m, memory: 3Gi}
           securityContext:
             allowPrivilegeEscalation: false
@@ -281,7 +286,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
           resources:
-            requests: {cpu: 10m, memory: 16Mi}
+            requests: {cpu: 5m, memory: 16Mi}
             limits: {cpu: 100m, memory: 64Mi}
           securityContext:
             runAsNonRoot: false
@@ -312,7 +317,7 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 2
           resources:
-            requests: {cpu: 10m, memory: 32Mi}
+            requests: {cpu: 5m, memory: 32Mi}
             limits: {cpu: 200m, memory: 128Mi}
           securityContext:
             runAsNonRoot: true
@@ -366,7 +371,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 256Mi}
+            requests: {cpu: 40m, memory: 256Mi}
             limits: {cpu: 500m, memory: 512Mi}
           securityContext:
             allowPrivilegeEscalation: false
@@ -435,7 +440,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 256Mi}
+            requests: {cpu: 25m, memory: 256Mi}
             limits: {cpu: 500m, memory: 512Mi}
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
@@ -467,7 +472,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 256Mi}
+            requests: {cpu: 25m, memory: 256Mi}
             limits: {cpu: 500m, memory: 512Mi}
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
@@ -588,7 +593,7 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           resources:
-            requests: {cpu: 50m, memory: 128Mi}
+            requests: {cpu: 25m, memory: 128Mi}
             limits: {cpu: 500m, memory: 384Mi}
           securityContext:
             runAsNonRoot: true
@@ -621,7 +626,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 50m, memory: 128Mi}
+            requests: {cpu: 25m, memory: 128Mi}
             limits: {cpu: 250m, memory: 256Mi}
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
@@ -644,7 +649,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
           resources:
-            requests: {cpu: 10m, memory: 16Mi}
+            requests: {cpu: 5m, memory: 16Mi}
             limits: {cpu: 100m, memory: 64Mi}
           securityContext: &access-proxy-security
             runAsNonRoot: true
