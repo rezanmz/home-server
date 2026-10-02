@@ -7,5 +7,8 @@ spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn
   resources:
+    # Jellyfin refuses to start when /config/data has less than 2GiB free,
+    # and its metadata (People images, library cache) plus cached subtitles
+    # had grown to 2.9G of a 5Gi volume. 10Gi leaves ~7GiB headroom.
     requests:
-      storage: 5Gi
+      storage: 10Gi
