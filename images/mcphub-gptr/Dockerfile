@@ -79,9 +79,9 @@ ARG ACTUAL_MCP_HONO_VERSION=4.13.7
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
 ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.1
 # renovate: datasource=npm packageName=fast-uri versioning=semver
-ARG ACTUAL_MCP_FAST_URI_VERSION=4.1.3
+ARG ACTUAL_MCP_FAST_URI_VERSION=4.2.1
 # renovate: datasource=npm packageName=ip-address versioning=semver
-ARG ACTUAL_MCP_IP_ADDRESS_VERSION=10.5.0
+ARG ACTUAL_MCP_IP_ADDRESS_VERSION=10.7.3
 # renovate: datasource=npm packageName=body-parser versioning=semver
 ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
 # renovate: datasource=npm packageName=qs versioning=semver
