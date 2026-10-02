@@ -993,3 +993,33 @@ across the whole 7-day life was **173.3 MiB** — 68% of the limit.
   `apps/finance-display/deployment.yaml` (#386). Stateless dashboard, so the
   rollout cost nothing; no request or placement change.
 
+## 2026-10-02 — The Actual Budget client coupling has a second failure mode
+
+Source: Actual Budget 26.10.0 upgrade. Two things were learned beyond the
+`invalid-schema` incident above.
+
+- **A schema-moving server release also moves the native dependency.**
+  26.10.0 adds budget-file migration `1788468782000_add_messages_pending.js`
+  and upgrades `better-sqlite3` to v13. `better-sqlite3` v13 releases ship
+  **no prebuilt binaries** (v12.12.0 shipped 145 assets; every v13.0.x release
+  has zero), so `@actual-app/api` 26.10.0 compiles the module from source. The
+  `finance-display` image is `node:24-bookworm-slim`, which has no Python or
+  compiler, so `npm ci` died with
+  `gyp ERR! find Python … Could not find any Python installation to use`.
+  Fix: `images/finance-display/Dockerfile` is now multi-stage — a build stage
+  installs `python3 make g++`, and only `node_modules` and the app sources are
+  copied into the shipped `node:24-bookworm-slim` stage. Never add a toolchain
+  to the runtime stage; the MCPHub image only works because its `samanhappy`
+  base already carries python3/make/g++.
+- **A `--platform` override cannot test a multi-arch push helper's success
+  path.** The finance-display/mcphub helpers always `--push`, and the
+  workstation's GHCR credential is a pull-only token — publication is denied
+  with `permission_denied: The token provided does not match expected scopes`.
+  Publish through the `workflow_dispatch` path (Actions `GITHUB_TOKEN` carries
+  `packages: write`), not the local helper. Local builds are validation only.
+- **Prevention:** `scripts/ci/test_actual_coupling_contract.py` now fails
+  whenever `actualbudget/actual-server`, `finance-display/package.json`, the
+  lockfile, `images/mcphub-gptr/Dockerfile` `ACTUAL_API_VERSION`, or the
+  suite/O CI-version tag drift apart. Renovate groups the packages but will not
+  move every consumer; the test makes the coupling mechanical.
+

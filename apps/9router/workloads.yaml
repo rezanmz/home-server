@@ -40,11 +40,13 @@ spec:
           # `Streaming response failed: [400] Invalid request parameters`; the
           # Morning Briefing succeeded the morning before that merge and failed
           # from the morning after, which is what isolated this upgrade. Its
-          # notes name no MiMo or streaming fix, so 0.5.91 is being tested rather
-          # than assumed. If cron still returns 400, revert to
+          # notes name no MiMo or streaming fix, so 0.5.91 was shipped rather
+          # than assumed. 0.5.95's changelog names only provider/model-registry,
+          # Claude/Codex, and proxy TLS-fallback changes — no alias-routing
+          # edits. If cron returns 400 again, revert to
           # 0.5.75@sha256:7c893bc2c27ecea2ae337abd5eacfec9e5763091b3a3b7862fc0625b770bb156,
           # the last version proven working.
-          image: ghcr.io/decolua/9router:0.5.91@sha256:efc6e88c963ddb035f8da26a74e156b927863cd05625b47f3587972bc865bd25
+          image: ghcr.io/decolua/9router:0.5.95@sha256:4316fefb95ea642d57db885d906b1227b1768b15ac5def314621fd781da7b3f1
           imagePullPolicy: IfNotPresent
           # The image entrypoint is `chown … && su-exec node …`, which needs
           # root (setgroups) and fails under this unprivileged pod. fsGroup
