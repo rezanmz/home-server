@@ -1023,3 +1023,37 @@ Source: Actual Budget 26.10.0 upgrade. Two things were learned beyond the
   suite/O CI-version tag drift apart. Renovate groups the packages but will not
   move every consumer; the test makes the coupling mechanical.
 
+## 2026-10-02 — Jellyfin's startup space check is a latent restart landmine
+
+Source: the sixteen-service image refresh (#389) recreated `media/jellyfin`
+for the first time since its `/config` volume had grown past the threshold.
+
+- **Failure signature.** Jellyfin 10.11.11 aborts startup with
+  `System.InvalidOperationException: The path /config/data has insufficient
+  free space. Available: 2GiB, Required: 2GiB.` The check only runs during
+  startup, so a long-running pod hides it. The 5Gi `jellyfin-config` volume had
+  reached 2.9G used / 1.98GiB free (`metadata/People` 1.1G, `metadata/library`
+  777M, and `data/subtitles` 998M — the last is regenerable). Any image bump,
+  node reboot, or OOM restart would have produced the same outage.
+- **A PVC expansion does not finish on a live volume.** Longhorn grew
+  `Volume.spec.size` to 10G and expanded the backend engine, but the frontend
+  expansion failed with
+  `fail to refresh iSCSI initiator: nsenter --mount=/host/proc/1898217/ns/mnt … No such file or directory`
+  — the engine's device manager cached a host PID that no longer existed, and
+  the volume stayed `attached` with no consumer (`attachmentTickets: null` and
+  a stale `kubernetesStatus.workloadsStatus` pointing at a deleted `Failed`
+  pod). The controller then looped on
+  `expansion is not allowable since current size 10737418240 >= 10737418240`.
+  Deleting the pod does not help: the volume never detaches while
+  `spec.nodeID` is set.
+- **What actually recovered it.** Patch only the attachment owner —
+  `kubectl -n longhorn-system patch volumes.longhorn.io <vol> --type=merge -p '{"spec":{"nodeID":""}}'`
+  — which detaches the volume, then scale the Deployment back so it re-attaches
+  fresh (`blockdev` 10G, engine `currentSize` 10G, `resize2fs` ran on mount,
+  `df` showed 9.8G with 6.9G free, pod 2/2). Never patch Engine/Replica
+  metadata; the volume's `spec.nodeID` is the documented detach lever.
+- **Prevention:** treat a Jellyfin `/config` under ~2.5GiB free as a pending
+  outage, and size the volume with headroom rather than to current usage. A
+  stale `attached` Longhorn volume with no attachment ticket is a distinct
+  failure from longhorn/longhorn#8072's FailedMount retry storm.
+
