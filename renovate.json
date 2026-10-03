@@ -28,6 +28,10 @@
       "/^(?:clusters|infrastructure)/.+\\.ya?ml$/"
     ]
   },
+  "ignorePaths": [
+    "apps/argilla/workloads.yaml",
+    "apps/duplicati/deployment.yaml"
+  ],
   "customManagers": [
     {
       "customType": "regex",
