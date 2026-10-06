@@ -13,7 +13,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CLUSTER_KUSTOMIZATION = REPO_ROOT / "clusters" / "home-server" / "kustomization.yaml"
 COREDNS_SPLIT_DNS = REPO_ROOT / "infrastructure" / "coredns" / "split-dns.yaml"
 AUTHENTIK_WORKLOADS = REPO_ROOT / "apps" / "authentik" / "workloads.yaml"
-HERMES_DEPLOYMENT = REPO_ROOT / "apps" / "hermes-agent" / "deployment.yaml"
 KEA_DEPLOYMENT = REPO_ROOT / "apps" / "kea" / "deployment.yaml"
 
 
@@ -66,19 +65,6 @@ class RebootRecoveryContractTests(unittest.TestCase):
 
         self.assertEqual(postgresql["resources"]["requests"]["memory"], "256Mi")
         self.assertEqual(postgresql["resources"]["limits"]["memory"], "512Mi")
-
-    def test_hermes_waits_for_a_stable_nonempty_mcp_registry(self) -> None:
-        deployment = load_object(HERMES_DEPLOYMENT, "Deployment", "hermes-agent")
-        pod_spec = deployment["spec"]["template"]["spec"]
-        wait = named(pod_spec["initContainers"], "wait-for-mcphub-tools")
-        command = wait["args"][0]
-
-        self.assertIn("hermes mcp test mcphub", command)
-        self.assertIn("Tools discovered:", command)
-        self.assertIn('count" = "$previous_count', command)
-        self.assertNotIn("gmail", command.lower())
-        self.assertNotIn("authorization", command.lower())
-        self.assertEqual(named(wait["volumeMounts"], "data")["mountPath"], "/opt/data")
 
     def test_stork_agent_probes_require_the_grpc_listener(self) -> None:
         deployment = load_object(KEA_DEPLOYMENT, "Deployment", "kea-dhcp4")

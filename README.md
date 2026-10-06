@@ -79,7 +79,7 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Area | Workloads | Entry points |
 | --- | --- | --- |
 | Identity and home | Authentik, Homepage, Home Assistant | `auth.reza.network`, `homepage.reza.network`, `homeassistant.reza.network` |
-| Personal apps | Actual Budget, Vikunja, MCPHub, Hermes Agent, Open WebUI, internal SearXNG, MCP-managed research/Google/Obsidian tools | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `hermes.reza.network`, `chat.reza.network` |
+| Personal apps | Actual Budget, Vikunja, MCPHub, Open WebUI, internal SearXNG, MCP-managed research/Google/Obsidian tools | `budget.reza.network`, `tasks.reza.network`, `mcphub.reza.network`, `chat.reza.network` |
 | Media | Jellyfin, Seerr, Navidrome | `jellyfin.reza.network`, `seerr.reza.network`, `music.reza.network` |
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Soularr, slskd | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network`, `lidarr.reza.network`, `soularr.reza.network`, `slskd.reza.network` |
 | Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
@@ -111,7 +111,8 @@ logs, or application data and cannot mutate cluster resources.
 
 AnythingLLM and the former Gemini Telegram bot are intentionally excluded from
 the cluster. Open WebUI remains the interactive LLM workbench; Hermes Agent is
-the separate always-on companion runtime. Open WebUI's profiles, model approval
+the separate always-on companion runtime, hosted on the external `hermes-vm`
+ops host over the WireGuard tunnel. Open WebUI's profiles, model approval
 cycle, GPT Researcher integration, retrieval model, and personal-memory
 boundaries are documented in the [Open WebUI operating model](docs/open-webui.md).
 Hermes and the shared personal-tool boundary are documented in the

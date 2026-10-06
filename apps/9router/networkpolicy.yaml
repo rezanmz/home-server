@@ -40,14 +40,6 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: hermes-agent
-              app.kubernetes.io/component: application
-      ports:
-        - port: 20128
-          protocol: TCP
-    - from:
-        - podSelector:
-            matchLabels:
               app.kubernetes.io/name: hindsight
               app.kubernetes.io/component: application
       ports:

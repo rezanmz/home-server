@@ -117,17 +117,21 @@ the dashboard, `/api/*`, and every other path remain LAN/VPN-only behind the
 Gateway route allow-list. MCP access for agents remains MCPHub's responsibility;
 9Router serves model traffic only.
 
-Hermes Agent is the persistent proactive companion runtime at
-`hermes.reza.network`; Open WebUI remains the interactive workbench. Hermes'
-dashboard uses native Authentik OIDC with a public PKCE client. Its single
-Longhorn volume contains models, credentials, personality, memory, sessions,
-skills, MCP registrations, schedules, and audit output, and is covered by the
-normal B2 policy. Git owns only the workload, route, identity trust, storage,
-network boundary, and observability declaration. Hermes has no service account,
-Docker socket, host mount, or private-network egress. It reaches personal tools
-through one bearer-authenticated, least-privilege MCPHub group. The OpenAI API
-server is disabled so the dashboard and approved messaging gateway are the
-only agent entry points.
+Hermes Agent is the persistent proactive companion runtime on the external
+`hermes-vm` host; Open WebUI remains the interactive workbench. The VM joins
+the home WireGuard VPN, so the boundaries it had in-cluster are preserved
+over routed endpoints: personal tools only through its bearer-authenticated,
+least-privilege MCPHub group at `mcphub.reza.network`, model traffic only
+through 9Router's `/v1` with a per-app router key, and the OpenAI API server
+disabled so the dashboard and approved messaging gateway are the only agent
+entry points. Its state directory (`/home/agent/.hermes`: models,
+credentials, personality, memory, sessions, skills, MCP registrations,
+schedules, audit output) lives on the VM and is protected by a nightly restic
+backup to Backblaze B2 instead of Longhorn. The dashboard binds loopback on
+the VM and is reached through an SSH tunnel; the former
+`hermes.reza.network` route, workload, and in-cluster volume are retired,
+with `apps/hermes-agent/pvc.yaml` retained only as an unreferenced recovery
+manifest.
 
 The shared memory layer is Hindsight at `memory.reza.network`, a
 LAN/VPN-only MCP and REST API in front of its own PostgreSQL/pgvector

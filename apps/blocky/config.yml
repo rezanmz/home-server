@@ -23,7 +23,6 @@ customDNS:
     finance-display.reza.network: 192.168.1.240
     grafana.reza.network: 192.168.1.240
     headlamp.reza.network: 192.168.1.240
-    hermes.reza.network: 192.168.1.240
     homeassistant.reza.network: 192.168.1.240
     homepage.reza.network: 192.168.1.240
     horizon.reza.network: 192.168.1.240
