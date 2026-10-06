@@ -136,6 +136,11 @@ spec:
               value: same-origin
             - name: ENABLE_OLLAMA_API
               value: "False"
+            # Built-in per-user memories would compete with the shared
+            # Hindsight bank (memory.reza.network) used by Hermes, omp, and
+            # Open WebUI; keep one source of truth for agent-visible memory.
+            - name: ENABLE_MEMORIES
+              value: "False"
             # Every authenticated Open WebUI user may invoke every provider model.
             # Upstream provider availability, credit, privacy, and API-mode constraints
             # remain authoritative and are returned directly to the caller.
