@@ -1057,3 +1057,83 @@ for the first time since its `/config` volume had grown past the threshold.
   stale `attached` Longhorn volume with no attachment ticket is a distinct
   failure from longhorn/longhorn#8072's FailedMount retry storm.
 
+## 2026-10-06 — Shells re-expand your data on the way into a remote command
+
+Source: hermes-vm migration, wg-easy admin password rotation
+(`local://hermes-vm-shared-memory-plan.md`).
+
+The rotation hashed a new password locally and shipped the argon2id hash to
+the wg-easy pod inside `node -e "…run('$HASH',…)"` over an unquoted heredoc.
+The pod's shell expanded `$argon2id`, `$v`, and `$m` as variables before Node
+ever saw them, storing a 24-character mangled fragment instead of the
+97-character hash. wg-easy then failed login with HTTP 500 and
+`argon2…deserialize` (`@phc/format`) — a verifier error that looks like a
+corrupt database but is corrupt *input*. A second trap on the same path: the
+pod's 128 MiB limit OOM-kills Node plus argon2 (exit 137), so hashing belongs
+in a local venv and only the hash should travel.
+
+- **Watch for:** any HTTP 500 from a password verify endpoint immediately
+  after writing a hash, and `kill`/OOM surprises when running Node inside
+  small pods. Compare the stored hash length against what you wrote.
+- **Diagnostic recipe:** read back only `substr(password,1,30)` (prefix is
+  enough to spot mangling), verify locally with the same argon2 parameters,
+  and never print the value.
+- **Prevention:** transport any payload containing `$`, backslashes, or
+  quotes to a remote shell base64-encoded; generate hashes where the memory
+  budget allows. Related wg-easy v15.4 API facts: login is
+  `POST /api/auth/password` with `{username,password,remember}`; the create
+  client endpoint silently ignores `allowedIps` (set `clients_table.allowed_ips`
+  and `.dns` directly); there is no generic `PATCH /api/client/:id`; the
+  config download is `GET /api/client/:id/configuration`.
+
+## 2026-10-06 — Root without CAP_KILL cannot stop anything but its own uid
+
+Source: hermes-vm migration, quiescing the in-cluster gateway before the
+state export.
+
+Inside the `hermes-agent` container, exec lands as root but the pod drops all
+capabilities, so `kill -TERM <pid-of-hermes>` returns `Operation not
+permitted` (uid 10000's process, no CAP_KILL). `s6-svc -d` records
+`want down` yet the process keeps running indefinitely, which means the
+"quiesced" gateway was still writing during the first tar export — the
+`file changed as we read it` and removed-shm warnings were the visible
+symptom of an inconsistent snapshot. Signalling as the owning uid works
+without CAP_KILL: `su -s /bin/sh hermes -c 'kill -TERM <pid>'`.
+
+- **Watch for:** `want down` in `s6-svstat` that never transitions, and
+  `Operation not permitted` from `kill` when running as root in a Kubernetes
+  container.
+- **Diagnostic recipe:** confirm the writer PID is actually gone
+  (`ps -p <pid>`) before trusting any data export; tar warnings about changed
+  files mean the consistency point was not reached.
+- **Prevention:** for stateful exports, stop writers by signalling as the
+  owning uid and verify PID disappearance, not supervisor intent.
+
+## 2026-10-06 — Longhorn 1.12 ignores the restore PVC annotation and silently provisions empty
+
+Source: hermes-vm migration, the `hindsight-postgresql` first-backup read
+test (Phase F recovery gate).
+
+Creating a PVC with `longhorn.io/restore-from-backup: <backup>` in 1.12 does
+not restore anything: the annotation is not interpreted, so normal
+provisioning created a *fresh empty volume*. The pod then ran perfectly,
+`pg_isready` passed, and `SELECT 1` returned — against a freshly initdb'd
+database with 0 tables (db_size ~7.5 MiB is the fresh-initdb signature).
+Every healthy signal was green while the restore had silently done nothing.
+The supported mechanism is a temporary StorageClass with
+`parameters.fromBackup: <backup-url>` (`volumeBindingMode: Immediate`), with
+the URL from the Backup CR's `status.url`. Creating the Backup itself also
+has two non-obvious prerequisites: the REST `snapshotBackup` action only
+works with a *pre-existing* snapshot (`POST /v1/snapshots` does not exist;
+use `?action=snapshotCreate` first), and a hand-made Backup CR needs
+`metadata.labels.backup-volume` or the admission webhook rejects it.
+
+- **Watch for:** a "restored" PVC that binds and runs but shows an empty
+  schema, or `spec.fromBackup` empty on the Longhorn volume. Green
+  readiness probes prove nothing about restore success.
+- **Diagnostic recipe:** `SELECT count(*) FROM pg_tables` plus
+  `pg_database_size` on the restored database, and
+  `kubectl get volume <pvc-uid> -o jsonpath='{.spec.fromBackup}'`.
+- **Prevention:** after any Longhorn restore, assert row/table counts
+  against the source before declaring the drill passed; drive restores
+  through a `fromBackup` StorageClass, never an annotation.
