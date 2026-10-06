@@ -1,0 +1,15 @@
+# Genuinely new empty claim: there is no prior data. Its first independent
+# Longhorn B2 backup + read test (see docs/runbook.md) completes the
+# recovery contract before this service is called initialized.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hindsight-postgresql
+  namespace: apps
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: longhorn

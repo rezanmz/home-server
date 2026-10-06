@@ -155,6 +155,12 @@
         description: Proactive personal companion
         namespace: apps
         app: hermes-agent
+    - Shared Memory:
+        icon: mdi-database-search-outline
+        href: https://memory.reza.network/
+        description: Shared long-term memory for all agents
+        namespace: apps
+        app: hindsight
 - Operations:
     - Grafana:
         icon: grafana.png

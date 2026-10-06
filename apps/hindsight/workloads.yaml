@@ -1,0 +1,224 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/component: application
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight
+        app.kubernetes.io/component: application
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # The image defines only uid 1000 (hindsight) and crashes under any
+      # other uid with `getpwuid(): uid not found` (upstream docs).
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: hindsight
+          # v0.10.2 release 2026-09-29; OCI multi-arch index (linux/amd64 + linux/arm64).
+          image: ghcr.io/vectorize-io/hindsight:0.10.2@sha256:d1840062a5b79940ab7a9f4809ceb90fc776d4ad737cd9329e9b5836cc64ab70
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: api
+              containerPort: 8888
+              protocol: TCP
+            - name: cp
+              containerPort: 9999
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/Toronto
+            - name: HINDSIGHT_API_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-secrets
+                  key: database-url
+            - name: HINDSIGHT_API_VECTOR_EXTENSION
+              value: pgvector
+            - name: HINDSIGHT_API_LLM_PROVIDER
+              value: openai
+            # In-cluster 9Router /v1 surface (OpenAI-compatible).
+            - name: HINDSIGHT_API_LLM_BASE_URL
+              value: http://9router.apps.svc.cluster.local:20128/v1
+            - name: HINDSIGHT_API_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-secrets
+                  key: llm-api-key
+            # 9Router serves the `chat`/`smart` combos as OpenAI-compatible
+            # model ids; do not change without checking the 9Router dashboard.
+            - name: HINDSIGHT_API_LLM_MODEL
+              value: chat
+            # Stable worker identity across restarts (upstream requirement).
+            - name: HINDSIGHT_API_WORKER_ID
+              value: hindsight-prod
+            - name: HINDSIGHT_API_TENANT_EXTENSION
+              value: hindsight_api.extensions.builtin.tenant:ApiKeyTenantExtension
+            - name: HINDSIGHT_API_TENANT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-secrets
+                  key: tenant-api-key
+            - name: HINDSIGHT_API_MCP_INSTRUCTIONS
+              value: "This is the shared long-term memory for all of Reza's agents (Hermes, omp, Open WebUI). Before answering, recall for task-relevant context. After learning anything durable (environment facts, preferences, decisions, incident lessons), retain it with a short `source:<client>` tag. Store facts, not transcripts."
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2.5Gi
+          startupProbe:
+            tcpSocket:
+              port: api
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: api
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: api
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hindsight-postgresql
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  serviceName: hindsight-postgresql
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight
+        app.kubernetes.io/component: database
+    spec:
+      automountServiceAccountToken: false
+      initContainers:
+        - name: prepare-postgres-data
+          image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          command: [sh, -ec, "mkdir -p /var/lib/postgresql/data/pgdata && chown 999:999 /var/lib/postgresql/data/pgdata"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+          command: [sh, -ec]
+          args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              value: hindsight
+            - name: POSTGRES_USER
+              value: hindsight
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-secrets
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 25m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hindsight-postgresql

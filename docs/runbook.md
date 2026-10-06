@@ -1474,6 +1474,46 @@ review the group's exact tool list, and perform one harmless call through Open
 WebUI. Never print server environment values, OAuth tokens, bearer keys, or API
 keys while troubleshooting.
 
+### Hindsight shared memory
+
+Hindsight serves the shared memory bank at `memory.reza.network` with its
+own PostgreSQL/pgvector StatefulSet. Check the API, database, and recent
+logs:
+
+```bash
+sudo k3s kubectl -n apps get deploy,pod,svc,pvc -l app.kubernetes.io/name=hindsight
+sudo k3s kubectl -n apps logs deploy/hindsight --tail=150
+sudo k3s kubectl -n apps logs statefulset/hindsight-postgresql --tail=150
+```
+
+Exercise the MCP endpoint from the LAN with the tenant API key (never
+print the key):
+
+```bash
+curl -fsS -H "Authorization: Bearer $HINDSIGHT_TENANT_KEY" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -X POST https://memory.reza.network/mcp/shared/ \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+A missing or wrong key must return 401. Verify one retain followed by one
+recall through the same endpoint before treating a memory change as
+healthy.
+
+If application state must be restored, restore the `hindsight-postgresql`
+Longhorn volume from B2, start the StatefulSet first and confirm
+`pg_isready`, then start the API deployment; afterwards run `SELECT 1`
+inside the database, one retain/recall round-trip through the MCP
+endpoint, and one recall from another client (omp or the Hermes provider)
+to prove cross-client readability. Git recreates the workload, not the
+bank contents.
+
+This volume is new since the shared memory layer landed: its recovery
+contract is complete only after the first nightly Longhorn B2 backup has
+been read-tested (restore into an isolated namespace and query the
+database).
+
 ### Navidrome and Lidarr
 
 Navidrome streams the music library at `music.reza.network`; Lidarr manages
