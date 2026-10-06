@@ -186,7 +186,6 @@
       "matchPackageNames": [
         "ghcr.io/open-webui/open-webui",
         "ghcr.io/searxng/searxng",
-        "nousresearch/hermes-agent",
         "ghcr.io/vectorize-io/hindsight",
         "rezanmz/mcphub-gptr",
         "rezanmz/llamacloud-mcp",

@@ -1,3 +1,7 @@
+# RECOVERY MANIFEST — not applied: apps/hermes-agent is deliberately absent
+# from clusters/home-server/kustomization.yaml. The live PVC hermes-agent-data
+# (Longhorn, retained) is the in-cluster copy of the Hermes state migrated to
+# the hermes-vm host. Review-after: 2027-01-05.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

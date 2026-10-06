@@ -28,12 +28,15 @@ an operator expects to happen after changing it in the application. If the
 answer is “this choice should survive the next unrelated deployment,” it is
 application state.
 
-For Hermes Agent, Git owns the image, pod security context, route, native OIDC
-trust, PVC, backup classification, and NetworkPolicy. Its `/opt/data` volume
-owns provider credentials, models, `SOUL.md`, memory, sessions, skills, MCP
-registration, Telegram configuration, allowlists, cron jobs, Kanban state, and
-tool selection. Do not add a ConfigMap or init container that seeds or resets
-those operational choices.
+For Hermes Agent, the application owns its runtime state directory
+(`/home/agent/.hermes` on the external `hermes-vm` host): provider
+credentials, models, `SOUL.md`, memory, sessions, skills, MCP registration,
+Telegram configuration, allowlists, cron jobs, Kanban state, and tool
+selection. That directory is protected by the VM's nightly restic backup to
+Backblaze B2, not by Git. The `hermes-agent-data` PVC manifest retained in
+this repository documents the pre-migration recovery copy only. Do not add a
+ConfigMap or init container anywhere that seeds or resets those operational
+choices.
 
 For the Hindsight shared memory layer, Git owns the workload, route, PVC
 shape, backup classification, and NetworkPolicy. The memory bank contents

@@ -95,20 +95,27 @@ Kanban dispatcher, not an unbounded magic heartbeat. A bounded recurring
 "pulse" may inspect changes and decide whether to stay silent, but it must have
 an explicit schedule, tool budget, quiet hours, and mutation limits.
 
-The dashboard is public at `hermes.reza.network` only behind Hermes' native
-Authentik OIDC/PKCE gate. The OpenAI-compatible API server is disabled. The
-container receives no Kubernetes service-account token, Docker socket, host
-filesystem mount, or route to private address space. Upstream requires root PID
-1 for its s6 bootstrap; the supervised agent and dashboard processes run as uid
-10000, the root filesystem is read-only, and only the capabilities required for
-ownership repair and privilege drop remain.
+The dashboard binds loopback on `hermes-vm` and is reached through an SSH
+port-forward (`ssh -L 9119:127.0.0.1:9119 <vm>`); the former public
+`hermes.reza.network` route and its OIDC client are retired. The
+OpenAI-compatible API server stays disabled. Hermes runs as a non-root
+`agent` account under its upstream-managed gateway service; it holds no
+Kubernetes service-account token, Docker socket, or host filesystem mount,
+and its only inbound surfaces are the WireGuard tunnel and the loopback
+dashboard.
 
-All mutable Hermes state lives on `apps/hermes-agent-data` under `/opt/data` and
-is protected by Longhorn's nightly B2 backup. Configure models, provider keys,
-Telegram, allowlisted user IDs, `SOUL.md`, memory, skills, MCP connections,
-toolsets, schedules, and pulse behavior in Hermes. Do not put them in this
-repository. In particular, do not put a person's name in the companion prompt
-or `SOUL.md` unless they explicitly ask for it.
+All mutable Hermes state lives on `hermes-vm` under `/home/agent/.hermes`
+and is protected by a nightly restic backup to Backblaze B2; the retired
+in-cluster `hermes-agent-data` volume survives only as an unreferenced
+recovery copy in this repository. Configure models, provider keys, Telegram,
+allowlisted user IDs, `SOUL.md`, memory, skills, MCP connections (now
+`https://mcphub.reza.network` over the WireGuard tunnel), toolsets,
+schedules, and pulse behavior in Hermes. Do not put them in this repository.
+In particular, do not put a person's name in the companion prompt or
+`SOUL.md` unless they explicitly ask for it. Hermes' long-term memory is the
+shared Hindsight bank (`memory.reza.network`, bank `shared`) with
+auto-recall and auto-retain; its bounded `MEMORY.md`/`USER.md` stay as the
+always-on notes layer.
 
 Hermes connects only to a dedicated MCPHub group and bearer key. Start from the
 same safe capabilities as **Assistant actions**: Gmail read-only, Actual
@@ -120,20 +127,26 @@ Calendar deletion and unrelated filesystem mutation remain absent. GPT
 Researcher is for explicit research requests, not routine pulse jobs.
 
 The grant above is the current ceiling, and it is a deliberate one. Hermes is
-prompt-injectable — it reads mail, web research, and notes — so a new capability
-is a new reachable action for anything that can put text in front of it. The pod
-holds no service-account token and cannot reach the host, which is what keeps a
-successful injection bounded to the MCPHub surface.
+prompt-injectable — it reads mail, web research, and notes — so a new
+capability is a new reachable action for anything that can put text in front
+of it. On `hermes-vm` the containment differs from the old pod: the runtime
+holds no Kubernetes identity at all, and its cluster/tool reach is still
+exactly the bearer-authenticated MCPHub group over the WireGuard tunnel. What
+changed is that the VM itself carries SSH access to both nodes — the
+relocation evaluated below — so an injected turn that escapes the MCPHub
+ceiling reaches standing host access. That trade-off was accepted explicitly
+for this design; treat every further widening as a separate reviewed
+elevation.
 
 Widening it is a reviewed design, not a configuration tweak. Use
 [`prompts/design-agent-action-grant.md`](../prompts/design-agent-action-grant.md),
 which requires the motivating failure to be classified as a defect or a genuine
 gap before any privilege is added, refuses generic shell or arbitrary-API
 capability, and treats a path to a node, a kubeconfig, or a cluster-wide write
-role as a separate elevation rather than an extension of this surface. Relocating
-the agent outside the cluster and reconnecting it over SSH is evaluated by that
-brief too, and it is not the default answer: it converts a defect into standing
-host access.
+role as a separate elevation rather than an extension of this surface. The
+relocation that produced this layout was evaluated under that brief; it
+remains the standing-host-access outcome the brief warns about, kept as an
+approved exception rather than a new default.
 
 For short calculations and data transformations, Hermes uses the maintained
 `r33drichards/mcp-js` (`mcp-v8`) server. It exposes one stateless `run_js` tool;
@@ -181,7 +194,7 @@ multi-step work. Two configuration consequences are easy to get wrong:
   trades schema tokens for iterations and is not a default.
 
 The turn limit is re-bridged from `config.yaml` on each turn, so a change takes
-effect without a pod restart; the toolset and tool-search settings are read at
+effect without a gateway restart; the toolset and tool-search settings are read at
 tool-assembly time.
 
 ### Reading spilled tool results
@@ -199,8 +212,10 @@ is per-platform, so a working messaging channel proves nothing about `cli` or
 reading the YAML:
 
 ```bash
-sudo k3s kubectl -n apps exec deploy/hermes-agent -c hermes-agent -- python3 -c '
-import sys, yaml; sys.path.insert(0, "/opt/hermes")
+ssh hermes-vm bash -s <<'EOF'
+HP="$HOME/.hermes/hermes-agent/.hermes/bin/python"
+"$HP" -c '
+import yaml
 from hermes_cli.config import load_config_readonly
 from hermes_cli.tools_config import _get_platform_tools
 from model_tools import _select_tool_names
@@ -208,6 +223,7 @@ cfg = load_config_readonly()
 for p in ("cli", "telegram", "cron"):
     n = _select_tool_names(sorted(_get_platform_tools(cfg, p)), None, True)
     print(p, "read_file=", "read_file" in n)'
+EOF
 ```
 
 Note that `file` also grants `write_file`, `patch`, and `search_files`. If a
