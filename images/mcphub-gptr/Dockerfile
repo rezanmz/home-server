@@ -99,7 +99,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-11" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-12" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
@@ -112,6 +112,8 @@ COPY vision-guard/gcloud-mcp-allowlist.json /opt/vision-guard/gcloud-mcp-allowli
 COPY jellyseerr-mcp /usr/local/bin/jellyseerr-mcp
 COPY actual-mcp-reconciliation.patch /tmp/actual-mcp-reconciliation.patch
 COPY gptr-mcp-async-research.patch /tmp/gptr-mcp-async-research.patch
+COPY home-server-sse-keepalive.js /app/dist/middlewares/home-server-sse-keepalive.js
+COPY sse-keepalive.test.mjs /app/dist/middlewares/sse-keepalive.test.mjs
 COPY --from=operations-mcp-builder /out/mcp-grafana /usr/local/bin/mcp-grafana
 COPY --from=operations-mcp-builder /out/kubernetes-mcp-server /usr/local/bin/kubernetes-mcp-server
 COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-mcp-server
@@ -157,6 +159,21 @@ COPY --from=operations-mcp-builder /out/github-mcp-server /usr/local/bin/github-
 # Two sed patches keep stdout protocol-only: the server entry redirects
 # sys.stdout to stderr at import time, and the pinned mcp SDK's stdio_server
 # binds its writer to fd 1 explicitly. Both are grep-verified fail-closed.
+# HTTP SSE hygiene: stdio heartbeats cannot cross MCPHub into a child's
+# single blocking call, but the downstream HTTP hop had no traffic at all
+# during one. Open WebUI's MCP client reads the MCP SSE streams with a
+# 300-second read timeout while a blocking gptr write_report takes about
+# five minutes, so both streams went silent, the client dropped them, and
+# the completed, paid-for report was orphaned while the chat hung on an
+# empty message (docs/lessons-learned.md, 2026-10-06). The home-server
+# keepalive middleware wraps MCPHub's Express response and writes SSE
+# comment lines (": keepalive") on an idle text/event-stream response every
+# 15 seconds. Comment lines are ignored by conforming SSE parsers but count
+# as received bytes, so they reset every hop's read timeout. The two sed
+# steps below install it at the front of initMiddlewares and are
+# grep-verified fail-closed; node --check proves the patched module still
+# parses, and the smoke test drives both the explicit-writeHead and
+# implicit-header paths over a real socket before the test file is removed.
 # Jellyseerr's upstream Rich console defaults to stdout. The small sed below
 # preserves the upstream server while moving logs off the stdio JSON-RPC stream.
 # The base image preinstalls the same MCP server packages globally at older
@@ -294,5 +311,21 @@ RUN apt-get update \
     && chmod 0755 /opt/vision-guard/bin/gcloud /usr/local/bin/start-gcloud-mcp /usr/local/bin/jellyseerr-mcp \
     && test -x /opt/actual-mcp/build/index.js \
     && chown -R 1000:1000 /opt/gptr-mcp /opt/actual-mcp /opt/jellyseerr-mcp
+
+# Patch: install home-server-sse-keepalive.js at the front of MCPHub's
+# initMiddlewares so every text/event-stream response keeps ticking while a
+# long tool call runs. Both sed substitutions are grep-verified fail-closed,
+# node --check proves the patched module still parses, and the smoke test
+# exercises the middleware over a real socket before the test file is removed.
+RUN sed -i "s|import { i18nMiddleware } from './i18n.js';|import { i18nMiddleware } from './i18n.js';\nimport { sseKeepaliveMiddleware } from './home-server-sse-keepalive.js';|" \
+        /app/dist/middlewares/index.js \
+    && grep -Fq "import { sseKeepaliveMiddleware } from './home-server-sse-keepalive.js';" \
+        /app/dist/middlewares/index.js \
+    && sed -i "s|export const initMiddlewares = (app) => {|export const initMiddlewares = (app) => {\n    app.use(sseKeepaliveMiddleware);|" \
+        /app/dist/middlewares/index.js \
+    && grep -Fq "app.use(sseKeepaliveMiddleware);" /app/dist/middlewares/index.js \
+    && node --check /app/dist/middlewares/index.js \
+    && node /app/dist/middlewares/sse-keepalive.test.mjs \
+    && rm /app/dist/middlewares/sse-keepalive.test.mjs
 
 USER 1000:1000
