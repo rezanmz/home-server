@@ -47,6 +47,13 @@ spec:
           env:
             - name: TZ
               value: America/Toronto
+            # Both local models are baked into the image, but
+            # sentence-transformers still queries HuggingFace for hub
+            # metadata at startup. The NetworkPolicy deliberately has no
+            # internet egress, so run fully offline against the bundled
+            # cache instead of waiting on a dropped connection.
+            - name: HF_HUB_OFFLINE
+              value: "1"
             - name: HINDSIGHT_API_DATABASE_URL
               valueFrom:
                 secretKeyRef:
