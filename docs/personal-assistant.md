@@ -24,12 +24,26 @@ Hermes Agent ----> MCPHub
                 |-- GitHub MCP -> personal repository context, read only
                 |-- mcp-v8 -> stateless, isolated JavaScript calculations
                 |-- LlamaCloud MCP -> LlamaParse Agentic document parsing
-                `-- Google gcloud MCP -> quota-guarded Vision PDF OCR
+                |-- Google gcloud MCP -> quota-guarded Vision PDF OCR
+                `-- Hindsight MCP -> shared memory bank (memory.reza.network)
 ```
 
 Server definitions, credentials, OAuth sessions, groups, and tool filters live
 in MCPHub's PostgreSQL database. They are changed in MCPHub and protected by
 the normal Longhorn and B2 backups. They are not reconciled from Git.
+
+## Shared memory
+
+Hindsight at `memory.reza.network` is the shared long-term memory layer. One
+bank (`shared`) holds durable facts from every client: Hermes retains and
+recalls through its first-party provider plugin (tagged `source:hermes`),
+omp through its MCP configuration (`source:omp`), and Open WebUI through
+MCPHub's remote server registration (`source:openwebui`). The server's MCP
+instructions push every MCP client to recall before answering and retain
+only durable facts after learning them. The MCP and REST API require the
+bearer tenant API key, and the route is LAN/VPN-only. The workload and its
+storage are Git-owned; the bank contents are Longhorn+B2-protected
+application state (restore procedure: docs/runbook.md).
 
 ## 9Router
 

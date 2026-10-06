@@ -28,6 +28,7 @@ resources:
   - ../../apps/mcphub
   - ../../apps/9router
   - ../../apps/hermes-agent
+  - ../../apps/hindsight
   - ../../apps/open-webui
   - ../../apps/vikunja
   - ../../apps/speedtest-tracker

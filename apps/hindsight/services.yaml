@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/component: application
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/component: application
+  ports:
+    - name: api
+      port: 8888
+      targetPort: api
+      protocol: TCP
+    # Control plane UI stays unrouted; reach it via kubectl port-forward.
+    - name: cp
+      port: 9999
+      targetPort: cp
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-postgresql
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hindsight
+    app.kubernetes.io/component: database
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP

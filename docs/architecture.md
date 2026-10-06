@@ -129,6 +129,20 @@ through one bearer-authenticated, least-privilege MCPHub group. The OpenAI API
 server is disabled so the dashboard and approved messaging gateway are the
 only agent entry points.
 
+The shared memory layer is Hindsight at `memory.reza.network`, a
+LAN/VPN-only MCP and REST API in front of its own PostgreSQL/pgvector
+StatefulSet. Every agent reads and writes one shared memory bank
+(`shared`): Hermes connects through its first-party Hindsight provider
+plugin with automatic recall and retain, omp connects through its
+streamable-HTTP MCP configuration, and Open WebUI reaches the server only
+through a remote MCP registration in MCPHub. The API authenticates callers
+with a bearer tenant API key and routes no browser login surface; the
+control plane UI stays unrouted behind `kubectl port-forward`. Fact
+extraction runs through 9Router's `/v1` with a per-app router key. Git owns
+the workload, route, storage claim, and network boundary; the bank
+contents in PostgreSQL are application state on a Longhorn volume covered
+by the normal B2 policy.
+
 Vikunja is the task system at `tasks.reza.network`, with native Authentik OIDC
 and a Longhorn volume covered by the normal B2 backup policy. Reviewed published
 MCP packages provide Gmail and Google Calendar access: Gmail is limited by OAuth

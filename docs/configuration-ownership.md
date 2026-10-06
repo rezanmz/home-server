@@ -35,6 +35,12 @@ registration, Telegram configuration, allowlists, cron jobs, Kanban state, and
 tool selection. Do not add a ConfigMap or init container that seeds or resets
 those operational choices.
 
+For the Hindsight shared memory layer, Git owns the workload, route, PVC
+shape, backup classification, and NetworkPolicy. The memory bank contents
+in its PostgreSQL database are application state: changed only through the
+memory API, never seeded by Git, and protected by the normal Longhorn and
+B2 backup policy.
+
 ## What this forbids
 
 Do not add a recurring init container, post-start hook, sidecar, CronJob, or
