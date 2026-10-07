@@ -1181,3 +1181,43 @@ different lost frame.
   unaffected; only single blocking calls longer than the client's read
   timeout are at risk, so prefer the `start_research`/`research_status`
   pair (or `quick_search`) for anything that can exceed a few minutes.
+## 2026-10-07 — A 2 AM WAN blip cascaded into twelve alerts and a half-dead VPN
+
+Source: PR #399 (the seerr resource fix from the same incident).
+
+The Bell WAN bounced around 02:05 America/Toronto and churned the home public
+IP (142.189.98.48 → 142.198.34.89, republished by `cloudflare-ddns` within
+minutes). One event produced the whole alert wall: CoreDNS marked every
+upstream unhealthy (`server misbehaving`), Blocky query errors, seerr looping
+on `getaddrinfo EAI_AGAIN`, FlareSolverr readiness timeouts in `media/downloads`,
+PrometheusRuleFailures, and AlertmanagerFailedToSendAlerts — Alertmanager's own
+Telegram notifications resolve `api.telegram.org` through the same broken
+cluster DNS, and its retries flushed the RESOLVED batch late, making the storm
+look like it was still growing after recovery.
+
+- **Failure signature.** Many heterogeneous FIRING alerts inside one 30-minute
+  window are one upstream event; start at WAN and upstream DNS, not at the
+  individual workloads. `AlertmanagerFailedToSendAlerts` appearing alongside
+  other alerts is a DNS-degradation signature, not a Telegram outage.
+- **Why the VPN died for four hours.** The off-prem VPS (`hermes-vm`) runs
+  `wg-quick` with `Endpoint = vpn.reza.network:1234`, which resolves the
+  hostname once at interface setup; after the IP churn it kept handshaking a
+  dead address. wg-easy v15 renders server-side peers without `Endpoint` or
+  `PersistentKeepalive` (runtime keepalive is `off`; per-client settings live in
+  its database, as `apps/vpn/deployment.yaml` documents), so nothing on the
+  home side re-establishes either.
+- **The self-heal trap.** WireGuard endpoint roaming silently repairs the VPS
+  side whenever *any* home→VPS packet arrives at the new source address. The
+  assistant gateway holds a long-lived connection to a home service behind the
+  Traefik VIP that pushes every ~15s, so the tunnel looks self-healing while
+  that session is alive — and stays dead through quiet hours when it is not
+  (02:05–05:56 here). Never take "it recovered on its own" as resilience
+  evidence for this link.
+- **Prevention:** the VPS now runs `wg-endpoint-refresh.timer` (systemd, 60s)
+  that re-resolves `vpn.reza.network` and updates the endpoint when DDNS
+  publishes a new IP — recovery is bounded by DDNS propagation (~5 min) and is
+  independent of any session. seerr's limits are raised in PR #399 so liveness
+  probes cannot starve the app during sync bursts (24 restarts at 250m CPU).
+- **What actually recovered it.** `dig +short vpn.reza.network`, then on the
+  VPS `sudo wg set wg0 peer <hermes-vm key> endpoint <ip>:1234`; verify with
+  `sudo wg show wg0` (handshake age) before trusting the link.
