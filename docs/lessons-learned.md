@@ -1137,3 +1137,47 @@ use `?action=snapshotCreate` first), and a hand-made Backup CR needs
 - **Prevention:** after any Longhorn restore, assert row/table counts
   against the source before declaring the drill passed; drive restores
   through a `fromBackup` StorageClass, never an annotation.
+
+## 2026-10-06 — A silent MCP SSE stream drops a completed, paid-for tool call
+
+Source: GPT Researcher `write_report` hanging in Open WebUI chat
+`f48cb800` (gpt-researcher `assistant-suite-12` fix).
+
+Open WebUI's chat sat forever on an empty assistant message while MCPHub's
+upstream log showed `Tool call result … isError: false, 19104 chars` for the
+same `write_report` call. The loss was on the MCPHub → Open WebUI HTTP hop,
+not in the child: `write_report` took 308 s, and the Python MCP SDK reads
+Streamable-HTTP SSE with `sse_read_timeout=300` (`streamable_http.py`,
+`httpx.Timeout(..., read=…)`), with no client traffic to reset it. Both SSE
+streams went silent for the whole call — the GET streams died at exactly
++300.000 s (opened 10:56:34.168/.262, dropped 11:01:34.169/.263) and the
+tools/call POST stream would hit its read timeout at 11:01:53, 8 seconds
+before the result arrived at 11:02:01. The pending `call_tool` future never
+resolves; MCPHub is healthy, gpt-researcher is healthy, and no error is
+logged anywhere. This is the HTTP-side sibling of the 2026-09-10 FastMCP
+stdio lesson: same signature (server-side completion logged, no `Tool call
+result` delivery in the client, `done: false` in the chat DB forever), a
+different lost frame.
+
+- **Watch for:** any MCP tool whose upstream completion exists but whose
+  consumer hangs without an error. For SSE consumers, compare stream-open
+  timestamps against read-timeout defaults — a disconnect at exactly
+  +300.000 s identifies the Python SDK default immediately.
+- **Diagnostic recipe:** grep MCPHub for `Tool call result` with the
+  research/call ID, grep Open WebUI's MCP client log for
+  `GET stream disconnected` timestamps, read the stuck message from
+  `/app/backend/data/webui.db` (`history.messages`, `done: false`), and read
+  the timeout default straight from the installed SDK
+  (`mcp/client/streamable_http.py`).
+- **Prevention:** `images/mcphub-gptr/home-server-sse-keepalive.js` wraps
+  MCPHub's Express responses and writes SSE comment lines (`: keepalive`)
+  on an idle `text/event-stream` response every 15 s. SSE comments are
+  ignored by conforming parsers (`httpx_sse/_decoders.py` skips `:` lines)
+  but count as received bytes, so they reset every hop's read timeout. The
+  image build installs it with grep-verified seds, `node --check`, and a
+  socket-level smoke test (`sse-keepalive.test.mjs`), and bumps the image to
+  `assistant-suite-12`.
+- **Related quirk:** `research_status` long-polls in ≤120 s slices and is
+  unaffected; only single blocking calls longer than the client's read
+  timeout are at risk, so prefer the `start_research`/`research_status`
+  pair (or `quick_search`) for anything that can exceed a few minutes.

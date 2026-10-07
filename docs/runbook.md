@@ -1370,11 +1370,17 @@ The GPT Researcher server should expose `start_research`, `research_status`,
 `deep_research`, `quick_search`, `write_report`, `get_research_sources`, and
 `get_research_context`. The first two come from the repository's revision-
 pinned `images/mcphub-gptr/gptr-mcp-async-research.patch` and are the
-required path for full researches: a blocking `deep_research` longer than
-about 300 seconds is orphaned when Open WebUI's MCP client drops the silent
-response stream. A missing or different list indicates the wrong entry
-command, a dropped patch, or an upstream package change. Do not replace the
-server with a local MCP implementation.
+required path for full researches: they long-poll in bounded slices, so the
+caller can report progress between polls instead of waiting minutes for one
+blocking response. MCPHub also bundles
+`images/mcphub-gptr/home-server-sse-keepalive.js`, which writes SSE comment
+lines on an idle MCP stream every 15 seconds so a genuinely blocking call
+can no longer be orphaned when Open WebUI's MCP client hits its 300-second
+read timeout (see `docs/lessons-learned.md`, 2026-10-06) — but the async
+pair remains the preferred path because it reports progress. A missing or
+different list indicates the wrong entry command, a dropped patch, or an
+upstream package change. Do not replace the server with a local MCP
+implementation.
 
 The `mcp-v8` server should expose only `run_js` in stateless mode. It is a
 calculation and small-transformation tool, not a shell. Verify a harmless
