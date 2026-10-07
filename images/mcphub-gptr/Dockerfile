@@ -94,6 +94,16 @@ ARG ACTUAL_MCP_UA_PARSER_VERSION=2.0.10
 ARG ACTUAL_MCP_ADM_ZIP_VERSION=0.6.0
 # renovate: datasource=npm packageName=better-sqlite3 versioning=semver
 ARG ACTUAL_MCP_BETTER_SQLITE_VERSION=12.11.1
+# Audit-gate pins: @modelcontextprotocol/sdk 1.27.1 and the express-borne
+# proxy-addr 2.0.7 are hit by GHSA-6qxp-vccf-f47h (published 2026-10-06)
+# and GHSA-jqcg-44mw-7w3h (published 2026-10-05), which fail this image's
+# `npm audit --audit-level=low` gate. Upstream actual-mcp still pins the
+# vulnerable SDK, so override here; the build compiles and unit-tests
+# actual-mcp against the bumped SDK before the audit runs.
+# renovate: datasource=npm packageName=@modelcontextprotocol/sdk versioning=semver
+ARG ACTUAL_MCP_SDK_VERSION=1.32.1
+# renovate: datasource=npm packageName=proxy-addr versioning=semver
+ARG ACTUAL_MCP_PROXY_ADDR_VERSION=2.0.8
 
 LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
@@ -226,6 +236,7 @@ RUN apt-get update \
     && npm --prefix /opt/actual-mcp pkg set \
          "dependencies.@actual-app/api=${ACTUAL_API_VERSION}" \
          "dependencies.@actual-app/core=${ACTUAL_API_VERSION}" \
+         "dependencies.@modelcontextprotocol/sdk=${ACTUAL_MCP_SDK_VERSION}" \
          "overrides.hono=${ACTUAL_MCP_HONO_VERSION}" \
          "overrides.@hono/node-server=${ACTUAL_MCP_HONO_NODE_SERVER_VERSION}" \
          "overrides.fast-uri=${ACTUAL_MCP_FAST_URI_VERSION}" \
@@ -236,6 +247,7 @@ RUN apt-get update \
          "overrides.ua-parser-js=${ACTUAL_MCP_UA_PARSER_VERSION}" \
          "overrides.adm-zip=${ACTUAL_MCP_ADM_ZIP_VERSION}" \
          "overrides.better-sqlite3=${ACTUAL_MCP_BETTER_SQLITE_VERSION}" \
+         "overrides.proxy-addr=${ACTUAL_MCP_PROXY_ADDR_VERSION}" \
     && npm --prefix /opt/actual-mcp install --no-fund \
     && npm --prefix /opt/actual-mcp run build \
     && npm --prefix /opt/actual-mcp run test:unit \
