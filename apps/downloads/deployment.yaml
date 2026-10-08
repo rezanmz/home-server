@@ -169,8 +169,8 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           resources:
-            requests: {cpu: 50m, memory: 64Mi}
-            limits: {cpu: 250m, memory: 128Mi}
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 250m, memory: 256Mi}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
