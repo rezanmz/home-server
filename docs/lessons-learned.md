@@ -1221,3 +1221,32 @@ look like it was still growing after recovery.
 - **What actually recovered it.** `dig +short vpn.reza.network`, then on the
   VPS `sudo wg set wg0 peer <hermes-vm key> endpoint <ip>:1234`; verify with
   `sudo wg show wg0` (handshake age) before trusting the link.
+
+## 2026-10-08 — The shared Gluetun sidecar OOM-killed itself at the same wall clock two nights running
+
+Source: `downloads` pod container `gluetun` (native sidecar,
+`restartPolicy: Always`) — `reason: OOMKilled`, `exitCode: 137`,
+`startedAt 2026-10-07T06:34:01Z` → `finishedAt 2026-10-08T06:34:09Z`, with the
+previous instance killed at the same 02:34 America/Toronto minute 24 hours
+earlier (`restartCount: 2`). Steady-state usage was ~32 Mi — a quarter of the
+`128Mi` limit — so no dashboard showed an impending kill.
+
+- **The blast radius is the whole pod, not the container.** Gluetun is the
+  network gateway every app container in the `downloads` pod shares
+  (`docs/architecture.md`, `docs/runbook.md`). Its OOMKill takes the VPN path
+  down for the entire downloads stack while the pod still reports `Running`
+  and the app containers stay ready — a memory-limit incident that presents as
+  "all downloads apps lost network", not as a crashloop.
+- **Same-clock recurrence means a scheduled trigger, not drift.** Two kills at
+  the identical minute, 24 hours apart, rule out a slow leak or random spike;
+  something deterministic in gluetun's nightly routine crossed the limit. Do
+  not treat the automatic sidecar restart as recovery — it re-arms the same
+  kill the next night.
+- **A memory graph at 25 % of the limit proves nothing.** The
+  cgroup-vs-metrics trap and the `HomeServerContainerOOMKilled` alert (which
+  keys on the termination record, not on metrics) are documented in the
+  2026-09-27 entry above; both apply unchanged here. No new prevention was
+  needed — only headroom.
+- **Fix applied:** gluetun's `requests.memory` `64Mi → 128Mi` and
+  `limits.memory` `128Mi → 256Mi` in `apps/downloads/deployment.yaml`; CPU
+  values and every other container's resources are unchanged.
