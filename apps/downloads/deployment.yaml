@@ -519,8 +519,13 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 256Mi}
-            limits: {cpu: 750m, memory: 768Mi}
+            # 2026-10-08: 768Mi OOM-killed lidarr during a music-sweeper run
+            # that combined bulk artist adds (metadata refresh) with large
+            # API reads; spikes exceeded the old limit and restarted the
+            # container mid-search. 2Gi matches slskd's headroom so refresh
+            # bursts and API queries cannot kill it.
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {cpu: 750m, memory: 2Gi}
           securityContext: {allowPrivilegeEscalation: false}
           volumeMounts:
             - {name: lidarr-config, mountPath: /config}
