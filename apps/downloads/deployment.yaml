@@ -388,7 +388,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: prowlarr
-          image: linuxserver/prowlarr:2.6.5.5623-ls162@sha256:f2b26429893d4c4cb71941b7ee50b1bdecd9d5f9f9e02d5410615e9f4f7c8d95
+          image: linuxserver/prowlarr:2.6.5.5623-ls163@sha256:f9151e5bc1025c6d0a630d503210cdcb6bb55a7cc098562609d96a408d838902
           imagePullPolicy: IfNotPresent
           env: &linuxserver-env
             - {name: PUID, value: "1000"}
@@ -429,7 +429,7 @@ spec:
           volumeMounts:
             - {name: prowlarr-config, mountPath: /config}
         - name: radarr
-          image: linuxserver/radarr:6.4.4.10685-ls318@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f
+          image: linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
