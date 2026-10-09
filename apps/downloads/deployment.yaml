@@ -371,8 +371,18 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
+            # Chromium sits exactly at the old 512 MiB ceiling while solving a
+            # Cloudflare challenge (cgroup memory.peak 536887296 B == memory.max
+            # during a 45 s bt.etree challenge) and the 500m cap throttled 263
+            # of ~450 CFS periods in that same window, so /health stopped
+            # answering within the 5 s probe timeout and kubelet restarted the
+            # container on the liveness probe (2026-10-08 21:01). A challenge
+            # session then failed with "Error solving the challenge", leaving
+            # Prowlarr's Cloudflare-backed indexers (BT.etree, EZTV) unable to
+            # fetch. 1Gi/1000m keeps that session off both caps; steady usage
+            # was 161Mi/2m and the Pi allocates 4 CPU / 16Gi.
             requests: {cpu: 40m, memory: 256Mi}
-            limits: {cpu: 500m, memory: 512Mi}
+            limits: {cpu: 1000m, memory: 1Gi}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
