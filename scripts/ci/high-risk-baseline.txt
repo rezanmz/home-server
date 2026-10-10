@@ -83,7 +83,7 @@ helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/e86df9451a2a1f3c78bcdf1b054e2b60b9a0db2c19921fcbd75e233c9fc1438e
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/5bcfe477512c9ee9662f861cf276d644ae600b59444811a5296f4895381a19db
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/31456d7b645c94024a2b61e2a8161a63752a1bcd3a04bdd5b32944b5e9afd8f2
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/c9d7ff280dfba10d6b826209a903bdcfaeeaa50a29c08c9aa73e71996e3c8e2f
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/b89655b1519457e90894e1a5de95083beae757ca2029a96453dc4a6326c44761
 host-network|apps/v1/DaemonSet|network-services|blocky|pod-spec
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
 host-network|apps/v1/Deployment|network-services|kea-dhcp4|pod-spec

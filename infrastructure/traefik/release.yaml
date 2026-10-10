@@ -21,8 +21,8 @@ spec:
       strategy: rollback
   values:
     image:
-      digest: sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
-    versionOverride: v3.7.13
+      digest: sha256:575fa15b135078fe5e50aa847987d96dbddd7b093c172429618404df73f3fa7c
+    versionOverride: v3.7.14
     deployment:
       kind: DaemonSet
     # Traefik binds host ports 80/443 on every node, so a surge pod cannot be
