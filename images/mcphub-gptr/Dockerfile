@@ -43,7 +43,7 @@ ARG FASTMCP_VERSION=3.4.7
 # renovate: datasource=npm packageName=@modelcontextprotocol/server-filesystem versioning=semver
 ARG FILESYSTEM_MCP_VERSION=2026.7.10
 # renovate: datasource=npm packageName=@eargollo/vikunja-mcp versioning=semver
-ARG VIKUNJA_MCP_VERSION=1.2.1
+ARG VIKUNJA_MCP_VERSION=1.2.3
 # renovate: datasource=npm packageName=@klodr/gmail-mcp versioning=semver
 ARG GMAIL_MCP_VERSION=1.3.3
 # renovate: datasource=npm packageName=@cocal/google-calendar-mcp versioning=semver
