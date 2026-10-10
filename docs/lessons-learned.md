@@ -1250,3 +1250,38 @@ earlier (`restartCount: 2`). Steady-state usage was ~32 Mi — a quarter of the
 - **Fix applied:** gluetun's `requests.memory` `64Mi → 128Mi` and
   `limits.memory` `128Mi → 256Mi` in `apps/downloads/deployment.yaml`; CPU
   values and every other container's resources are unchanged.
+
+## 2026-10-10 — A digest resolved from the wrong registry validated green and still failed to pull
+
+Source: `monitoring/loggifly` rollout during the 2026-10-10 dependency sweep
+(`apps/loggifly/deployment.yaml`). Bumping
+`resmoio/kubernetes-event-exporter` `v1.1 → v1.7` kept the image reference
+unprefixed, which kubelet resolves against `docker.io`. Upstream publishes
+`v1.7` only on GHCR — Docker Hub stopped at `v1.1` — so the pod failed with
+`NotFound: docker.io/resmoio/kubernetes-event-exporter@sha256:8abb52b6…` while
+every local gate stayed green.
+
+- **An unprefixed image name is a registry pin, not just a name.** Kubernetes
+  defaults a bare `repo:tag@digest` to `docker.io`. The digest existed and was
+  multi-arch — on `ghcr.io`. Digest resolution, architecture proof, and the
+  manifest diff were all correct for the wrong registry, so CI could never
+  have caught this; only the live pull could.
+- **The failure is silent until the rollout, and the old pods mask it.** The
+  previous ReplicaSet kept serving (no alert outage), the Deployment stayed
+  `Available`, and the only visible symptom was `ImagePullBackOff` on the new
+  ReplicaSet plus a `kubectl get pods` grep. A "shipped and merged" claim based
+  on Flux readiness alone would have been wrong; the sweep caught it only by
+  checking the pod events after merge.
+- **Release channels move registries without changing the project name.**
+  `resmoio/kubernetes-event-exporter` publishes `v1.0`/`v1.1` on Docker Hub and
+  everything newer on GHCR. Any bump across that boundary must change the
+  reference prefix to `ghcr.io/` in the same edit — the digest stays identical
+  because it addresses the same index.
+- **Prevention:** when resolving a digest for a pin, resolve it against the
+  registry the *manifest's* prefix selects (implicit `docker.io` for bare
+  names), not against whichever registry happens to publish the tag. This
+  sweep now records the resolved registry alongside every proposed digest.
+- **Fix applied:** `apps/loggifly/deployment.yaml` image reference changed to
+  `ghcr.io/resmoio/kubernetes-event-exporter:v1.7@sha256:8abb52b6…`
+  (PR #409); the new ReplicaSet rolled to 1/1 Running with zero restarts, and
+  the digest was re-verified as an amd64+arm64 OCI index on GHCR.
