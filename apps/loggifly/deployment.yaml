@@ -20,7 +20,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: event-exporter
-          image: resmoio/kubernetes-event-exporter:v1.7@sha256:8abb52b66557d3333f9e473e0eff2951309abfd018bd8d7fcfd86c4ecce6b9cf
+          image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7@sha256:8abb52b66557d3333f9e473e0eff2951309abfd018bd8d7fcfd86c4ecce6b9cf
           imagePullPolicy: IfNotPresent
           args: [-conf=/data/config.yaml]
           env:
