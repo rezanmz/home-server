@@ -77,7 +77,7 @@ ARG ACTUAL_API_VERSION=26.10.0
 # renovate: datasource=npm packageName=hono versioning=semver
 ARG ACTUAL_MCP_HONO_VERSION=4.13.7
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
-ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.1
+ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.4
 # renovate: datasource=npm packageName=fast-uri versioning=semver
 ARG ACTUAL_MCP_FAST_URI_VERSION=4.2.1
 # renovate: datasource=npm packageName=ip-address versioning=semver
