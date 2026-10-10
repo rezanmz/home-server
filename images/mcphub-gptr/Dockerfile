@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.25
 ARG MCPHUB_IMAGE=samanhappy/mcphub:1.0.37@sha256:f3ee4b211e288ce74a32e79a898009cc2054392fa2a00aeb9adf26c99d81765e
 ARG GCLOUD_IMAGE=gcr.io/google.com/cloudsdktool/google-cloud-cli:582.0.0-slim@sha256:14026c08cf391812086012d6c5f14078221ce1b46be0df419f7f31ec9f69c712
-ARG GO_IMAGE=golang:1.26.7-bookworm@sha256:6ef6e30f0ea5c384f6d111cf856e024e3086bbdcb1779da3f3b3fbba0aea53d2
+ARG GO_IMAGE=golang:1.26.7-bookworm@sha256:e8c859f5632dcfde7b32d2012b4351728f6437930887c2f6a91ea242459e5514
 
 FROM ${GCLOUD_IMAGE} AS gcloud
 FROM ${GO_IMAGE} AS operations-mcp-builder
