@@ -3,8 +3,10 @@ kind: Kustomization
 resources:
   - source.yaml
   - storage-class.yaml
-  - grafana-access-proxy.yaml
-  - grafana-secrets.sops.yaml
+  # Grafana is retired (2026-10-11): its descriptor, route, access proxy,
+  # OIDC client secret, and dashboard-reader Role are removed. The five
+  # dashboard ConfigMaps below are deliberately KEPT so the UI can be restored
+  # from Git by re-adding `grafana:` values, a route, and a secret.
   - alertmanager-config.sops.yaml
   - dashboard.yaml
   - network-services-dashboard.yaml
@@ -16,7 +18,5 @@ resources:
   - backup-health-rules.yaml
   - node-health-rules.yaml
   - workload-health-rules.yaml
-  - rbac.yaml
   - release.yaml
   - networkpolicy.yaml
-  - route.yaml

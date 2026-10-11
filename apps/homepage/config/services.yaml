@@ -156,12 +156,6 @@
         namespace: apps
         app: hindsight
 - Operations:
-    - Grafana:
-        icon: grafana.png
-        href: https://grafana.reza.network/
-        description: Metrics, alerts, and backup health
-        namespace: monitoring
-        app: grafana
     - Headlamp:
         icon: headlamp.png
         href: https://headlamp.reza.network/

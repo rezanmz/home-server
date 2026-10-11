@@ -36,7 +36,7 @@ class ServiceCatalogTests(unittest.TestCase):
     def test_catalog_is_decentralized_and_versioned(self) -> None:
         self.assertFalse((REPO_ROOT / "catalog" / "services.yaml").exists())
         entries = service_catalog.services(self.catalog)
-        self.assertEqual(len(entries), 42)
+        self.assertEqual(len(entries), 41)
         sources = [entry["_source"] for entry in entries]
         self.assertEqual(len(sources), len(set(sources)))
         self.assertTrue(all(source.endswith(".catalog.yaml") for source in sources))
@@ -119,7 +119,6 @@ class ServiceCatalogTests(unittest.TestCase):
                 "actual-budget.yaml",
                 "audiobookshelf.yaml",
                 "forward-auth.yaml",
-                "grafana.yaml",
                 "headlamp.yaml",
                 "mcphub.yaml",
                 "open-webui.yaml",
@@ -457,7 +456,6 @@ class ServiceCatalogTests(unittest.TestCase):
             [
                 "AUTHENTIK_OIDC_ACTUAL_BUDGET_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET",
-                "AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_MCPHUB_CLIENT_SECRET",
                 "AUTHENTIK_OIDC_OPEN_WEBUI_CLIENT_SECRET",
@@ -534,7 +532,7 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["Operations"],
-            ["Grafana", "Headlamp", "ISC Stork", "Syncthing", "WireGuard"],
+            ["Headlamp", "ISC Stork", "Syncthing", "WireGuard"],
         )
 
     def test_seerr_identity_has_no_retired_jellyseerr_integration(self) -> None:
