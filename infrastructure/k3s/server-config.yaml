@@ -19,6 +19,22 @@ write-kubeconfig-mode: "0600"
 kubelet-arg:
   - image-gc-high-threshold=70
   - image-gc-low-threshold=50
+  # Memory floor. K3s 1.36's defaults on this node cover only disk (imagefs
+  # 5%, nodefs 5%), so a memory squeeze reclaims nothing and instead pages the
+  # k3s server process itself out to swap; the API server then stops answering
+  # and every Gateway-fronted service looks down at once (2026-10-10 incident,
+  # 3 h of frozen control plane with no OOM kill and no failed unit). 500Mi is
+  # deliberately much higher than the Pi's 100Mi floor: the k3s server working
+  # set on this node is 1.7-4 GiB, so a 100Mi floor would let it be pushed into
+  # swap again before the kubelet acts. Keep the disk thresholds at the current
+  # live values so this arg does not loosen the 2026-09-11 imagefs guard.
+  - eviction-hard=memory.available<500Mi,nodefs.available<5%,imagefs.available<5%
+  # Longhorn exposes no chart value for instance-manager memory (verified in
+  # chart/values.yaml at the pinned commit: only longhornManager.resources
+  # exists, plus the guaranteedInstanceManagerCPU setting). The instance
+  # managers therefore remain invisible to the scheduler on purpose until
+  # upstream supports it; record that in docs/cluster-operations.md rather
+  # than inventing a value.
 # Never make pod recovery depend on Blocky. Kubelet copies these independent
 # host upstreams into dnsPolicy=Default pods such as CoreDNS.
 resolv-conf: /run/systemd/resolve/resolv.conf

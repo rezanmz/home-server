@@ -958,6 +958,25 @@ listed here so accepted risk does not turn into forgotten risk:
 - Periodically restore JuiceFS metadata into an isolated PostgreSQL instance
   and mount the media filesystem from that restored metadata. B2 chunks alone
   are not a usable recovery path.
+- Keep memory headroom on the Beelink above the k3s server working set
+  (~4 GB resident plus swapped pages). On 2026-10-10 the API server froze
+  under swap thrash (load 33, ~100 MB/s swap-in/out, no OOM kill) and every
+  Traefik-fronted service, including 9Router, appeared down at once. Temporary
+  relief came from stopping the three largest `apps` pods via `crictl` and
+  letting the control plane page back in. See
+  `docs/lessons-learned.md` (2026-10-10) for the diagnostic recipe. The
+  durable floor is now `eviction-hard=memory.available<500Mi` in
+  `infrastructure/k3s/server-config.yaml` (Git records it; the host applies it);
+  a further fix needs workload rebalancing or a Beelink memory increase.
+- **Instance-manager memory is still invisible to the scheduler.** Longhorn
+  1.12 exposes no chart value for instance-manager memory: the pinned
+  `chart/values.yaml` has `longhornManager.resources` as its only `resources`
+  key, plus the `guaranteedInstanceManagerCPU` setting (CPU only). The two
+  instance managers measured ~1.6 GiB and ~1.2 GiB peaks with no memory
+  request, so the scheduler cannot account for them and no limit protects the
+  storage data path. Treat this as an accepted blind spot: keep the Beelink
+  budget check conservative, and revisit if upstream adds the value. Do not
+  hand-patch generated instance-manager pods.
 
 ## Related material
 
