@@ -1285,3 +1285,44 @@ every local gate stayed green.
   `ghcr.io/resmoio/kubernetes-event-exporter:v1.7@sha256:8abb52b6…`
   (PR #409); the new ReplicaSet rolled to 1/1 Running with zero restarts, and
   the digest was re-verified as an amd64+arm64 OCI index on GHCR.
+
+## 2026-10-10 — A swapped-out k3s API server looks like "one service is down"
+
+Reported symptom: `router.reza.network` (9Router) unreachable. Actual state: the
+Beelink was in total swap thrash (14.9 GB RAM fully committed, 3.7 GB of 4 GB
+swap in use, ~100 MB/s swap-in + ~90 MB/s swap-out, 53–59% iowait, load 33) and
+the k3s server's ~4 GB working set had paged out. With no OOM kill and a clean
+`k3s.service` status (`Result=success`), the API server answered nothing — even
+`get nodes` timed out over SSH — while 9Router, cert-manager, CSI sidecars
+(attempts 15–21), and Flux all crash-restarted or waited on the dead datastore.
+A service-level diagnosis of 9Router would have found nothing wrong with
+9Router itself.
+
+- **Watch for:** any "single service is down" report alongside `kubectl`
+  hanging over SSH with no error. `dmesg` may show no OOM (ring buffer had
+  wrapped after 60 days of uptime) and `systemctl status k3s` stays green.
+  kine logs fill with `Slow SQL` lines and the kubelet logs
+  `Housekeeping took longer than expected`.
+- **Diagnostic recipe that bypassed the dead API:** `ssh beelink` +
+  `sudo k3s crictl ps -a` / `crictl pods` for real workload state; per-process
+  `grep VmSwap /proc/*/status` (the k3s server held ~3 GB swapped);
+  `vmstat 2 3` for swap-in/out and iowait rates. Identity the thrash before
+  touching the service that appears down.
+- **Remedy that worked (no Git drift, reversible):** stop the largest memory
+  holders (`hindsight`, `open-webui`, `home-assistant` pod sandboxes) via
+  `crictl stopp`; the API server paged back in within ~90 s (swap 3.7 GB →
+  0.9 GB, kubectl 16 s timeout → 3.5 s response); the kubelet then recreated
+  everything it had been throttling, including the 9Router replacement pod.
+  Do not restart k3s first — a restart on a thrashing node replays the same
+  storm with worse cold-start pressure.
+- **Root conditions, not fixed in this incident:** the node's committed memory
+  exceeds physical RAM (14.9 GB committed vs 14.9 GB RAM + 4 GB swap before
+  counting k3s), so any large transient workload can re-trigger it. Durable
+  fixes (resource requests/limits on the big `apps` pods, API-server memory
+  isolation, more RAM) are tracked in
+  `docs/cluster-operations.md` ("Keep memory headroom on the Beelink").
+- **Aftermath that looks like a separate outage:** post-recovery the kubelet
+  recreated ~40 pods at once; expect minutes of startup-probe warnings,
+  Longhorn `FailedMount` noise (see 2026-09-13 lesson), and a high load
+  average while everything warms. Confirm with `kubectl get pods -A` before
+  declaring a second incident.
