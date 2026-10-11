@@ -118,7 +118,7 @@ spec:
                   namespace=~"apps|media|monitoring|network-services"
                 }[10m]
               )
-              / on (namespace, pod, container)
+              / on (namespace, pod, container) group_left()
               kube_pod_container_resource_limits{
                 namespace=~"apps|media|monitoring|network-services",
                 resource="cpu"
