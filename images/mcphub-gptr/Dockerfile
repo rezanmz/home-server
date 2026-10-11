@@ -43,7 +43,7 @@ ARG FASTMCP_VERSION=3.4.7
 # renovate: datasource=npm packageName=@modelcontextprotocol/server-filesystem versioning=semver
 ARG FILESYSTEM_MCP_VERSION=2026.7.10
 # renovate: datasource=npm packageName=@eargollo/vikunja-mcp versioning=semver
-ARG VIKUNJA_MCP_VERSION=1.2.1
+ARG VIKUNJA_MCP_VERSION=1.2.3
 # renovate: datasource=npm packageName=@klodr/gmail-mcp versioning=semver
 ARG GMAIL_MCP_VERSION=1.3.3
 # renovate: datasource=npm packageName=@cocal/google-calendar-mcp versioning=semver
@@ -77,7 +77,7 @@ ARG ACTUAL_API_VERSION=26.10.0
 # renovate: datasource=npm packageName=hono versioning=semver
 ARG ACTUAL_MCP_HONO_VERSION=4.13.7
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
-ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.1
+ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.4
 # renovate: datasource=npm packageName=fast-uri versioning=semver
 ARG ACTUAL_MCP_FAST_URI_VERSION=4.2.1
 # renovate: datasource=npm packageName=ip-address versioning=semver
@@ -109,7 +109,7 @@ LABEL org.opencontainers.image.title="MCPHub with reviewed MCP packages" \
       org.opencontainers.image.description="MCPHub plus pinned personal-assistant, podcast, media, home, and read-only operations MCP packages" \
       org.opencontainers.image.source="https://github.com/rezanmz/home-server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT AND AGPL-3.0" \
-      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-12" \
+      org.opencontainers.image.version="${MCPHUB_VERSION}-assistant-suite-13" \
       org.opencontainers.image.revision="${GPTR_MCP_REVISION}"
 
 USER 0:0
