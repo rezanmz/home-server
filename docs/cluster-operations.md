@@ -914,8 +914,10 @@ listed here so accepted risk does not turn into forgotten risk:
   repository's bootstrap/join/install helpers now deliberately refuse existing
   nodes; they are not an upgrade mechanism.
 - Observe and record the first clock-triggered Longhorn and Syncthing runs
-  after deployment, then add an external dead-man monitor independent of this
-  cluster and its Telegram exporter. Also add an automated per-volume Longhorn
+  after deployment. An in-cluster `Watchdog` heartbeat now reaches Telegram once
+  a day (2026-10-11), which proves the Prometheus-to-Telegram path but cannot
+  detect the whole cluster being down; an independent external dead-man monitor
+  is still required. Also add an automated per-volume Longhorn
   freshness/coverage check; a reachable BackupTarget alone does not prove that
   every volume is current.
 - Add recurring native database/application exports for active multi-PVC or

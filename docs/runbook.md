@@ -2132,6 +2132,42 @@ leave the two controllers on different nodes after a later move. The obsolete
 `calibre-web-ingest` RWO claim may be deleted only after the RWX claim is mounted
 by both workloads and the old claim is confirmed to contain no pending books.
 
+### Beelink memory budget and the daily watcher
+
+`HomeServerNodeMemoryRequestBudgetHigh` warns when a node's scheduled pod memory
+requests exceed **75% of allocatable** for 30 minutes (`kube_pod_container_resource_requests`
+over `kube_node_status_allocatable`). The 2026-10-10 incident ran at 86%, so
+treat a firing as a capacity decision rather than noise: the scheduler cannot
+see the k3s server working set (1.7-4 GiB) or the Longhorn instance managers
+(upstream exposes no memory request for them), so the visible ratio understates
+the real commitment by roughly 4-6 GiB on Beelink.
+
+```bash
+ssh beelink 'sudo k3s kubectl describe node beelink | sed -n "/Allocated resources/,/Events/p"'
+ssh beelink 'sudo k3s kubectl top pods -A --sort-by=memory | head -20'
+```
+
+Remedies in order of preference: move a large floating workload to the peer
+node, correct a request that no longer matches reality, or add memory. Do not
+raise a limit to silence the alert, and do not restart k3s to "clear" pressure:
+the 2026-10-10 lesson is that a restart on a thrashing node replays the same
+storm.
+
+**Alert delivery is itself monitored.** The chart's `Watchdog` rule is routed to
+the Telegram receiver with a 24-hour repeat interval, so one "Watchdog" message
+per day is the expected heartbeat. If that message stops arriving while the
+cluster is otherwise healthy, treat it as an alerting-path failure (Prometheus,
+Alertmanager, or the Telegram credential) and check:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n monitoring get prometheus,alertmanager,pods'
+ssh beelink 'sudo k3s kubectl -n monitoring logs statefulset/alertmanager-observability-alertmanager --tail=100'
+ssh beelink 'sudo k3s kubectl -n monitoring port-forward svc/observability-prometheus 9090:9090'
+```
+
+An in-cluster heartbeat cannot detect the whole cluster being down; an external
+dead-man service remains a tracked gap.
+
 ## Secrets and recovery identities
 
 Only SOPS ciphertext belongs in Git. The age public recipient is in the SOPS

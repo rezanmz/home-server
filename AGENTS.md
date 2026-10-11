@@ -280,9 +280,12 @@ prompts/                 reusable operator task briefs
 
 `clusters/home-server/kustomization.yaml` is the root reachability list. Follow
 each referenced `kustomization.yaml`, generator, and Flux child. Directories can
-contain deliberately unreferenced recovery manifests; Argilla and Duplicati are
-current examples of why filenames and directory presence are not activation
-evidence.
+contain deliberately unreferenced runtime manifests; Argilla and Duplicati are
+current examples, and each still references *only* its frozen state (an
+encrypted Secret plus retained PVCs) while its runtime YAML sits unreferenced
+beside it. Directory presence, and even directory reference, is therefore not
+runtime-activation evidence: read the directory's `kustomization.yaml` to see
+exactly which objects are still reconciled.
 
 Before modifying or retiring a resource, establish all three views:
 
