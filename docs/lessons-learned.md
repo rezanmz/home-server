@@ -1326,3 +1326,38 @@ A service-level diagnosis of 9Router would have found nothing wrong with
   Longhorn `FailedMount` noise (see 2026-09-13 lesson), and a high load
   average while everything warms. Confirm with `kubectl get pods -A` before
   declaring a second incident.
+
+## 2026-10-11 — A Renovate ARG bump silently forges repo-built image identity
+
+Source: PRs #406/#411 (superseded by #419, `mcphub-gptr` assistant-suite-13).
+
+Both Renovate drafts changed exactly one line each in
+`images/mcphub-gptr/Dockerfile` — a Dockerfile `ARG` npm pin
+(`VIKUNJA_MCP_VERSION` 1.2.1→1.2.3, `ACTUAL_MCP_HONO_NODE_SERVER_VERSION`
+2.1.1→2.1.4) — with no other edits and a green `validate` run. Merging either
+as-is would have been a silent identity forgery: `build-mcphub-image.yml`
+fires on `images/mcphub-gptr/**` pushes to main and republishes the *same*
+`…-assistant-suite-12` tag with different bytes, so the mutable tag and the
+digest-pinned workload stop describing the same image and the next digest
+refresh adopts unreviewable content. Renovate's regex managers update the
+Dockerfile ARGs but cannot increment the manual `assistant-suite-N` counter,
+which is the only tag component that represents in-image package changes.
+
+- **Watch for:** any dependency PR that edits `images/**/Dockerfile` (or a
+  build helper's package pins) without also moving the image's identifying
+  tag/revision component. Green CI does not help: the coupling test only
+  asserts the OCI label and the helper tag agree, not that the counter moved.
+- **Diagnostic recipe:** `rg -n 'assistant-suite-|IMAGE_TAG|FINANCE_DISPLAY_VERSION|IMAGE_REVISION' scripts/build-*.sh images/*/Dockerfile`, then ask whether the diff changes installed content while every identity component stays put. Check
+  `.github/workflows/build-*-image.yml` path filters to see which merge
+  would publish.
+- **Prevention:** combine the ARG bump with the counter bump in one change
+  (`assistant-suite-12 → 13` in both the helper `IMAGE_TAG` and the Dockerfile
+  `org.opencontainers.image.version` label, which
+  `scripts/ci/test_actual_coupling_contract.py` keeps in step), close the
+  bot PRs with a link, and use the two-step publish-then-pin sequence so the
+  workload only ever pins a digest that exists.
+- **Gap still open:** nothing mechanically fails a PR that changes a content
+  ARG *without* bumping the counter. A cheap CI guard would diff the PR base
+  against the head for `images/**` content inputs and require the identity
+  component to change in the same diff. Recorded here as the design sketch; a
+  separate change can implement it.
