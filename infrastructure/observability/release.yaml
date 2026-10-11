@@ -233,6 +233,22 @@ spec:
         resources:
           requests: {cpu: 350m, memory: 1Gi}
           limits: {cpu: "2", memory: 3Gi}
+        # Prometheus is the largest single observability consumer (measured
+        # 1.05 GiB working set) and its Longhorn volume is the one named in the
+        # 2026-09-24 lesson: Beelink holds a zombie FREE-state iSCSI session
+        # (`session25`, and `sid 95` for this very volume) that reads as logged
+        # in to go-iscsi-helper, so the frontend logout fails and any attach of
+        # this volume on Beelink times out with FailedAttachVolume. That is what
+        # happened when this StatefulSet was recreated on 2026-10-11: the pod
+        # landed on Beelink and could not attach.
+        #
+        # The documented remedy is routing, not repair: pin the workload to the
+        # node whose initiator is untainted. This is deliberately a HARD pin,
+        # unlike a preference, because a preference can still place the pod on
+        # Beelink where the attach is known-broken. Remove the pin only once
+        # `session25`/`sid 95` are gone from Beelink's `iscsiadm -m session`.
+        nodeSelector:
+          kubernetes.io/hostname: raspberrypi
         storageSpec:
           volumeClaimTemplate:
             spec:
