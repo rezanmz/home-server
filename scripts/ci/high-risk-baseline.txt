@@ -81,7 +81,7 @@ helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-ma
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/c7d10d52f773e4fb1074ba2637e5e642643ac0ac17ccc4510cb7d625b6b5afc2
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/612efc63d2fc69a203276b133bd5c62421735bdc2841c287111250870454fa4e
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/5bcfe477512c9ee9662f861cf276d644ae600b59444811a5296f4895381a19db
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/7839f9acd483788ee9201d0681151f95ff945b204e694375f52771a618fdd98f
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/a373c3fe2b77a24567f5fd36feeb0e5cdc371f500d244cdc0eabd22d9a9691f1
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/b89655b1519457e90894e1a5de95083beae757ca2029a96453dc4a6326c44761
 host-network|apps/v1/DaemonSet|network-services|blocky|pod-spec
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
