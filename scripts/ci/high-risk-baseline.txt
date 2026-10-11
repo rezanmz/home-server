@@ -17,6 +17,7 @@ access-proxy-boundary|v1/ConfigMap|media|radarr-access-proxy|data/sha256/a7d22dd
 access-proxy-boundary|v1/ConfigMap|media|sabnzbd-access-proxy|data/sha256/52d000db0e7068b32a1f32c85554c0b110d6f300d0af79a0af3c39eb632cf29c
 access-proxy-boundary|v1/ConfigMap|media|shelfmark-access-proxy|data/sha256/13e3c13fe00a3b87131dbc35513b247de506dc915eed6431b436dd8ee330ce5c
 access-proxy-boundary|v1/ConfigMap|media|sonarr-access-proxy|data/sha256/4ef931967e6a9ad696b2b2792e56e310a2c28631196d5404263756a745e29e24
+access-proxy-boundary|v1/ConfigMap|monitoring|grafana-access-proxy|data/sha256/4db29e6b7de30c467ff9baaa4d31f8897e37e43486b17787fb9aa2122a65694f
 access-proxy-boundary|v1/ConfigMap|monitoring|headlamp-access-proxy|data/sha256/6624020b5e14dec81f49a62c7fea34313e6ab670a33df38a59b520335ffb0e5b
 access-proxy-boundary|v1/ConfigMap|network-services|syncthing-access-proxy-kchm4kb2hk|data/sha256/8512bd9fee0a65638c8a90cb4635bebe18cac10e69c07d3b4e93c1254ca88b8d
 added-capability|apps/v1/DaemonSet|network-services|blocky|container/blocky/NET_BIND_SERVICE
@@ -79,9 +80,9 @@ helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values
 helm-host-port|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec.values.ports.websecure.hostPort/value-443
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|cert-manager|cert-manager|spec/sha256/5bb4ca36703dbcd5375ca8d8183c797ea9e41888d66183ec7579a6c4c9344b20
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|kube-system|juicefs-csi-driver|spec/sha256/c7d10d52f773e4fb1074ba2637e5e642643ac0ac17ccc4510cb7d625b6b5afc2
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/612efc63d2fc69a203276b133bd5c62421735bdc2841c287111250870454fa4e
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|longhorn-system|longhorn|spec/sha256/e86df9451a2a1f3c78bcdf1b054e2b60b9a0db2c19921fcbd75e233c9fc1438e
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|metallb-system|metallb|spec/sha256/5bcfe477512c9ee9662f861cf276d644ae600b59444811a5296f4895381a19db
-helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/aaa70a77e527aee0cd372f36ac3db24023936b0a70d1c6368d9e558b247893c6
+helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|monitoring|observability|spec/sha256/4ff615403467649f8da2f58c41f4c290dc5bca73bb5f532c812dcc34049fa32b
 helm-release-boundary|helm.toolkit.fluxcd.io/v2/HelmRelease|traefik|traefik|spec/sha256/b89655b1519457e90894e1a5de95083beae757ca2029a96453dc4a6326c44761
 host-network|apps/v1/DaemonSet|network-services|blocky|pod-spec
 host-network|apps/v1/Deployment|media|jellyfin|pod-spec
@@ -130,6 +131,7 @@ middleware-boundary|traefik.io/v1alpha1/Middleware|media|navidrome-authentik|spe
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|slskd-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|media|soularr-authentik|spec/sha256/17efdf50a8520975012fa858ab827a660d995f9f5218da25d5bde7051e30ab51
 middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
+middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|grafana-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|monitoring|headlamp-lan-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|custom-errors|spec/sha256/c0ca00146588387d673ab3f0c4347add3fab1c8538330eb8e90c24fff4b379d0
 middleware-boundary|traefik.io/v1alpha1/Middleware|network-services|lan-vpn-only|spec/sha256/60699c44d7be2a0c0f224801a5fe296e1259a432e4e587b30c73e04a28433990
@@ -176,10 +178,11 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|media|sabnzbd
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|headlamp|spec/sha256/fbaaab3b824f555210904d901563dfd819c64780409edf377784091588d6ada5
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|loggifly|spec/sha256/205cfdf9d6a5ddd33e48f1fc6948b41348941475a62a0a351a429dc6091fd157
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|spec/sha256/37d8351c0577991ed3b443e9309e2fff000f9d17af5d03dbc1634e2d922aadd2
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-alertmanager|spec/sha256/4957b6343fe2d1983d0cda3f0145ccbbaff5b57d2c2ee139e5d420c3811d6470
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-grafana|spec/sha256/5a6acc836d87fb8f70abcdd2d2ed9bff76a6026278b5819bf9648c8a515f09c5
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-kube-state-metrics|spec/sha256/568e4e3adc59dee5d715cfbbc7a0bff80b3a6100a2650817ed97e704ce8da22a
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-operator|spec/sha256/ea0634a480229e2a6326b2550d7102cd2c5e6767e09383fc8a2d53cbac34dead
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-prometheus|spec/sha256/80afd9eebac8a72c6f236413d6d2189ee66fbd1e720bdd8e276acc17abf3ca49
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|monitoring|observability-prometheus|spec/sha256/b7ebb5cda7c3367b90b7ddbd1219c81337c968cb08ef963bb5b01ab2c01f59cc
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|blocky|spec/sha256/72f927fba1a7f00de534e1caa09d548123a4311b49edc5d3666656b3156a4b5d
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|kea-dhcp4|spec/sha256/20665a0849ab03882c9efac31966bc5ff04655291f1a47f121041a87940f2301
@@ -192,6 +195,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-servi
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|network-services|wg-easy|spec/sha256/99f89f695d3a2c52a8771f0802b302040c0a349151e7c8f60440bc6287f648e2
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|apps|lan-vpn-only|spec.ipAllowList.sourceRange/10.42.1.0/24
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|media|lan-vpn-only|spec.ipAllowList.sourceRange/10.42.1.0/24
+pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|monitoring|grafana-lan-only|spec.ipAllowList.sourceRange/10.42.1.0/24
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|monitoring|headlamp-lan-only|spec.ipAllowList.sourceRange/10.42.1.0/24
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|network-services|lan-vpn-only|spec.ipAllowList.sourceRange/10.42.1.0/24
 pod-cidr-ip-allowlist|traefik.io/v1alpha1/Middleware|network-services|syncthing-lan-only|spec.ipAllowList.sourceRange/10.42.1.0/24
@@ -231,6 +235,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|shelfmark|spec/sha25
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|slskd|spec/sha256/a06a6ac4af98a6fe51f3aab6c1d4b2c377b6f46e8139cacf2e592f5efc2f1838
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|sonarr|spec/sha256/3cf356d1d8a89de253764c39db9d9049474a79c86769f6f760189d381be7389a
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|soularr|spec/sha256/d998e1ce59c41150c14e032dabd409dcaf76d9c2e65190e95e340b4637ac4df6
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|monitoring|grafana|spec/sha256/78696ebd688166f52e501db0de487180e2ae579b9d3df13a39e9792084e1c511
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|monitoring|headlamp|spec/sha256/529f435b352be73ee21faf1097292ddaa76138c7cf93f6e0b30705ed3f8cc895
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|stork|spec/sha256/f6846bc2b09ff806a3d636ecdb997bafc2f32c8dd5d677e1fca92969b2cdf052
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|network-services|syncthing|spec/sha256/329e9cfeec289d0e3f3cd83f118ef271337f1da1e07336fa5cfbb910369b6a70
