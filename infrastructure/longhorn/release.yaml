@@ -94,6 +94,18 @@ spec:
       backupTarget: s3://rezanmz-home-server-longhorn-backups@ca-east-006/
       backupTargetCredentialSecret: longhorn-backblaze-b2
       pollInterval: 300
+    # The only resource knob the chart exposes (verified against
+    # chart/values.yaml at the pinned v1.12.0 commit: longhornManager.resources
+    # is the sole `resources` key; longhornDriver/longhornUI/csi have none, and
+    # instance managers are not configurable at all - see the note in
+    # infrastructure/k3s/server-config.yaml). longhorn-manager pods measured
+    # ~230Mi each on both nodes. Requests make them visible to the scheduler
+    # instead of BestEffort; limits stop a manager leak from becoming a
+    # node-wide memory event.
+    longhornManager:
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {cpu: 500m, memory: 768Mi}
     csi:
       attacherReplicaCount: 2
       provisionerReplicaCount: 2
