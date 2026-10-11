@@ -85,7 +85,8 @@ These remain explicit because their behavior is service-specific:
 - PVCs, NFS volumes, backup jobs, and restore procedures;
 - the relying application's OIDC environment and authorization/role rules;
 - SOPS-encrypted secret values;
-- ServiceMonitors, PrometheusRules, alerts, and Grafana dashboards; and
+- ServiceMonitors, PrometheusRules, alerts, and the retained dashboard
+  ConfigMaps; and
 - application bootstrap, mobile-client, webhook, API, and logout behavior.
 
 The descriptor references these resources. CI proves that the referenced files,
@@ -283,9 +284,9 @@ claimMappings:
 
 The reason is mandatory because the expression is executable Authentik policy.
 Actual Budget and Headlamp are the current examples. Audiobookshelf demonstrates
-multiple authorization and logout callbacks. Grafana role mapping remains in
-Grafana's own configuration because it is relying-party authorization, not
-identity-provider plumbing.
+multiple authorization and logout callbacks. Grafana role mapping was relying-
+party authorization rather than identity-provider plumbing; that client and its
+blueprint entry were removed when Grafana was retired on 2026-10-11.
 
 ## Forward-auth
 

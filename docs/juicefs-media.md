@@ -129,7 +129,9 @@ ssh beelink 'sudo k3s kubectl -n juicefs-system get pod,pvc,service -o wide'
 ssh beelink 'sudo k3s kubectl -n longhorn-system get volumes.longhorn.io | grep juicefs-postgresql'
 ```
 
-Then check the Grafana Media Storage dashboard. The important independent
+Then check the retained `grafana-dashboard-media-storage` ConfigMap in Git and
+query the same PromQL through the Prometheus port forward (Grafana was retired
+on 2026-10-11). The important independent
 signals are:
 
 - CSI path health and mount-error counter growth;
@@ -378,8 +380,8 @@ Remove obsolete PV/PVCs only after proving that no live Pod references them.
 - PostgreSQL accepts port 5432 only from kube-system mount/CSI pods. Prometheus
   alone can reach exporter port 9187. The `juicefs-system` namespace otherwise
   default-denies ingress and egress.
-- The CSI dashboard is disabled and has no HTTP route. Use Grafana and
-  `kubectl` through SSH.
+- The CSI dashboard is disabled and has no HTTP route. Use Prometheus and
+  `kubectl` through SSH (Grafana was retired on 2026-10-11).
 - The B2 key is bucket-scoped. The Longhorn and Syncthing buckets and keys are
   not valid JuiceFS recovery material.
 - B2 is the authoritative media payload store, not a second media backup.

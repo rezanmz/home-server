@@ -30,7 +30,7 @@ Fill every line. Blank or ambiguous means no.
 - Registry or artifact publication: [yes/no; exact registry/repository/tag or artifact]
 - Read-only cluster/host access: [yes/no; targets, queries, bounded logs]
 - Live cluster/host mutation: [yes/no; port-forward, silence, restart, test scope]
-- Application-state mutation: [yes/no; exact Grafana UI/dashboard/preferences objects]
+- Application-state mutation: [yes/no; exact MCPHub/Open WebUI objects; Grafana retired 2026-10-11 so it has no UI state]
 - External/provider mutation: [yes/no; Telegram or credential/provider objects]
 - Credential or secret-material action: [yes/no; exact create/read/write/rotate/revoke scope; never include values]
 - Destructive actions: [yes/no; exact dashboards, series/storage, silences]
@@ -76,9 +76,9 @@ observability HelmRelease and monitoring resources.
    evaluations, meaningful duration, recovery behavior, summary, description,
    and runbook link. Only routed warning/critical severities should notify;
    informational/unknown signals must not accidentally page.
-7. Add important dashboards through the existing Git-provisioned ConfigMap and
-   sidecar contract. Treat Grafana preferences or incidental UI dashboards as
-   application state; export anything recovery-critical into reviewed Git.
+7. Add important dashboards as reviewed Git ConfigMaps; the historic Grafana
+   sidecar no longer runs (Grafana retired 2026-10-11), so there is no UI state
+   to export and the ConfigMap is the runtime artifact.
 8. Update the descriptor mode and manifest references only after the metric path
    is real. Render catalog output and verify the mode against actual resources.
 9. Run the complete validation bundle. If Helm values/chart resources change,
@@ -96,7 +96,8 @@ misclassified as metrics, selector mismatch, sensitive/high-cardinality labels,
 unbounded NetworkPolicy, unactionable alert, human notification without
 authority, or chart/high-risk diff not independently reviewed.
 
-Do not add HTTPRoutes for Prometheus or Alertmanager, expose Grafana publicly,
+Do not add HTTPRoutes for Prometheus or Alertmanager, reintroduce a Grafana
+route without a reviewed restoration plan,
 claim Loki/central log search exists, increase storage to mask cardinality, or
 claim observability volumes have ordinary B2 backup coverage. Their state is
 deliberately treated as reproducible.
@@ -110,8 +111,8 @@ deliberately treated as reproducible.
 - Runtime: remove exact temporary port-forwards, test targets, and silences;
   never leave a global suppression behind.
 - Notification/provider: reverse Telegram or credential changes separately.
-- Grafana application state: restore UI-only preferences/dashboard exports
-  separately; Git does not contain them unless explicitly provisioned.
+- Application state: restore MCPHub/Open WebUI-owned settings only from their
+  own backups (Grafana was retired on 2026-10-11 and keeps no UI state).
 - Storage: restore retention/class only from a reviewed capacity plan, not by
   deleting time series as an improvised rollback.
 

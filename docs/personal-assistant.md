@@ -19,7 +19,7 @@ Hermes Agent ----> MCPHub
                 |-- mcp-arr -> Radarr/Sonarr/Prowlarr reads + Lidarr music actions
                 |-- Navidrome MCP -> library reads and playlist actions
                 |-- Audiobookshelf MCP -> podcast feeds, subscriptions, and downloads
-                |-- Grafana MCP -> dashboards, metrics, logs, and alerts, read only
+                |-- Grafana MCP -> inert: Grafana retired 2026-10-11
                 |-- Kubernetes MCP -> cluster diagnostics, read only
                 |-- GitHub MCP -> personal repository context, read only
                 |-- mcp-v8 -> stateless, isolated JavaScript calculations
@@ -324,7 +324,9 @@ Audiobookshelf URL, token, and tool allow-list are application state in MCPHub;
 the repository owns only the pinned executable and network boundary.
 
 Operations tools are read-only at more than one layer. Grafana's official MCP
-server starts with `--disable-write` and a Viewer service-account token. The
+server starts with `--disable-write` and a Viewer service-account token, but
+**Grafana itself was retired on 2026-10-11**, so that registration is inert
+until the UI returns; the pinned binary remains in the image. The
 official Kubernetes MCP server starts with `--read-only` and a dedicated
 service account that cannot read Secrets, exec into pods, or mutate resources.
 The official GitHub MCP server starts with `--read-only`; use a fine-grained
@@ -397,7 +399,7 @@ Use separate MCPHub groups for different risk levels:
 
 - **Assistant read** contains Gmail read-only, calendar reads, Vikunja reads,
   vault reads, Actual Budget reads, media/library reads, Home Assistant state,
-  read-only Grafana/Kubernetes/GitHub diagnostics, web research, and both
+  read-only Kubernetes/GitHub diagnostics, web research, and both
   document-reading providers.
 - **Assistant actions** adds calendar event creation/update, Vikunja additive
   task tools, note creation in Inbox or Daily, reviewed Home Assistant control,
@@ -408,7 +410,7 @@ Use separate MCPHub groups for different risk levels:
 - Calendar deletion and destructive filesystem tools stay out of both groups.
   Vikunja task deletion is the single reviewed exception in action-capable
   groups and requires explicit confirmation immediately before the call.
-  Generic HTTP escape hatches, Arr deletion/queue mutation, Kubernetes/Grafana
+  Generic HTTP escape hatches, Arr deletion/queue mutation, Kubernetes
   writes, and GitHub writes stay out of every group.
 
 Open WebUI should use the smallest group that fits a profile. A rigorous

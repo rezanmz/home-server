@@ -164,9 +164,10 @@ official read-only Grafana, Kubernetes, and GitHub servers, and a stateless
 executables and establishes network/RBAC ceilings. MCPHub's backed-up database
 owns endpoints, credentials, enabled tools, and group membership. Kubernetes
 diagnostics are independently constrained by a read-only flag and an RBAC role
-that excludes Secrets, pod exec, and all mutation. Grafana uses a Viewer token
-with server-side writes disabled; GitHub uses read-only mode and a
-repository-scoped token.
+that excludes Secrets, pod exec, and all mutation. GitHub uses read-only mode
+and a repository-scoped token. **The Grafana MCP entry is inert since Grafana
+was retired on 2026-10-11** (the pinned binary remains in the image; the
+registration is application state and can be removed in the MCPHub UI).
 
 The code evaluator is a separate non-root pod with a read-only root filesystem,
 no service-account token, no persistent volume, and deny-all egress. It accepts
@@ -228,8 +229,10 @@ administrator role is granted.
 Neither service has an application web route. Prometheus reaches their
 cluster-only metrics through selectorless Services with static Endpoints for
 the current discovery role and matching EndpointSlices for a future migration.
-The `DNS and DHCP` Grafana dashboard provides query, blocking, lease-pool, and
-packet views. Host-network listeners, rather than NetworkPolicy alone, are the
+Query, blocking, lease-pool, and packet views are declared in the retained
+`grafana-dashboard-network-services` ConfigMap; with Grafana retired
+(2026-10-11) those panels are read as PromQL through the Prometheus port
+forward. Host-network listeners, rather than NetworkPolicy alone, are the
 management-plane boundary.
 
 Samba and Syncthing also use the Pi host network for LAN discovery. Syncthing's
@@ -456,7 +459,7 @@ Applications are separated into four operational namespaces:
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
 - `network-services` for Blocky, Kea, Stork, WireGuard, Samba, Syncthing, and
   backups;
-- `monitoring` for Prometheus, Alertmanager, Grafana, Headlamp, and Kubernetes
+- `monitoring` for Prometheus, Alertmanager, Headlamp, and Kubernetes
   event export.
 
 Namespace default-deny policies and workload-specific rules permit only the
@@ -494,15 +497,14 @@ notifications to the existing Telegram destination. The event exporter still
 sends noteworthy Kubernetes events directly, so a failed Prometheus scrape is
 not the only signal available during an incident.
 
-Only Grafana has a Gateway API route. The route and an in-pod access proxy both
-enforce the LAN/WireGuard boundary, and Grafana performs native Authentik OIDC
-with `home-admins` mapped to Grafana administrators. Prometheus and Alertmanager
-remain ClusterIP-only and require a deliberate `kubectl port-forward` for direct
-access to their diagnostic UIs. Alert GeneratorURLs use Grafana's authenticated
-Prometheus datasource proxy. This lets Telegram recipients investigate the exact
-query without creating another external service. Prometheus retains at most 14 days
+No service in `monitoring` has a Gateway API route. Prometheus and Alertmanager
+are ClusterIP-only and require a deliberate `kubectl port-forward` for their
+diagnostic UIs, and Grafana was retired on 2026-10-11: its dashboards remain in
+Git as ConfigMaps, but the UI is not deployed. Alert GeneratorURLs therefore
+point at `http://localhost:9090`, so a Telegram recipient opens the documented
+port forward and clicks straight into the exact query. Prometheus retains at most 14 days
 or 20 GB in a 30 GiB PVC;
-Grafana and Alertmanager use smaller persistent volumes. These three volumes
+Alertmanager uses a smaller persistent volume. Both volumes
 use `longhorn-observability`, whose non-default recurring-job selector keeps
 reproducible metrics data out of the nightly Backblaze backup set.
 

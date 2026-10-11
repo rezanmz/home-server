@@ -63,7 +63,7 @@ Some behavior is inherently part of the cluster and remains declarative:
 - Authentik application/provider definitions describe trust between services.
 - Homepage is intentionally a YAML-configured directory rather than a database
   application.
-- Grafana provisioning, Prometheus rules, DNS, DHCP, routes, and network policy
+- Prometheus rules, DNS, DHCP, routes, and network policy
   are shared infrastructure.
 - Config-file-only helpers such as the internal search backend have no separate
   administration database; their reviewed file is their runtime contract.

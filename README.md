@@ -84,13 +84,15 @@ each directory's `kustomization.yaml` defines the desired resources.
 | Downloads | Gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Soularr, slskd | `qbittorrent.reza.network`, `prowlarr.reza.network`, `radarr.reza.network`, `sonarr.reza.network`, `lidarr.reza.network`, `soularr.reza.network`, `slskd.reza.network` |
 | Books | Audiobookshelf, Calibre-Web, Shelfmark | `audiobooks.reza.network`, `library.reza.network`, `shelfmark.reza.network` |
 | Network services | Blocky DNS, Kea DHCP, ISC Stork, wg-easy, Samba, Syncthing | DNS at `192.168.1.2` and `192.168.1.3`, DHCP from `192.168.1.3`, read-only `stork.reza.network`, `vpn.reza.network`, SMB on the Pi, `syncthing.reza.network` |
-| Operations | Grafana, Prometheus, Alertmanager, Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | `grafana.reza.network`, scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
+| Operations | Prometheus, Alertmanager, Syncthing Restic backups, Headlamp, Kubernetes event exporter, Cloudflare DDNS | scheduled B2 backups, `headlamp.reza.network`, Telegram alerts, background DNS updates |
 
 Headlamp is the read-only Kubernetes dashboard at `headlamp.reza.network`;
-Stork is the read-only Kea dashboard at `stork.reza.network`; Grafana is the
-metrics dashboard at `grafana.reza.network`. All three are limited to the LAN
-or WireGuard and use native Authentik OIDC where supported. Prometheus and
-Alertmanager have no external routes. Glances is no longer deployed. The
+Stork is the read-only Kea dashboard at `stork.reza.network`. Grafana was
+retired on 2026-10-11 — its dashboards are kept in Git but the UI is not
+deployed, so metrics are inspected through a Prometheus port forward. Both
+remaining dashboards are limited to the LAN or WireGuard and use native
+Authentik OIDC where supported. Prometheus and Alertmanager have no external
+routes. Glances is no longer deployed. The
 former Loggifly function is now a Kubernetes event exporter that sends warning
 events to Telegram. Its historical application name is retained in the
 manifests.
