@@ -21,11 +21,6 @@ spec:
                 secretKeyRef:
                   name: authentik-oidc-client-secrets
                   key: AUTHENTIK_OIDC_AUDIOBOOKSHELF_CLIENT_SECRET
-            - name: AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-oidc-client-secrets
-                  key: AUTHENTIK_OIDC_GRAFANA_CLIENT_SECRET
             - name: AUTHENTIK_OIDC_HEADLAMP_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:

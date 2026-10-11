@@ -1,6 +1,6 @@
 ---
 name: observability
-description: Add, change, or diagnose Prometheus scraping, alerts, Grafana dashboards, Telegram alert routing, and repository observability declarations. Use for monitoring truth, not as a substitute for service acceptance or log aggregation.
+description: Add, change, or diagnose Prometheus scraping, alerts, dashboard ConfigMaps, Telegram alert routing, and repository observability declarations. Use for monitoring truth, not as a substitute for service acceptance or log aggregation.
 ---
 
 # Operate observability
@@ -38,9 +38,10 @@ Do not declare `metrics` because kube-state-metrics can see a pod. Do not claim
 logs are centrally searchable: no Loki deployment is part of the desired state;
 use bounded `kubectl logs` and host logs.
 
-Important repository dashboards are Git-provisioned and non-editable. Grafana
-UI preferences and incidental UI-created dashboards live on its PVC; export an
-important dashboard into reviewed Git rather than relying on that local copy.
+Important dashboards are Git-provisioned ConfigMaps and non-editable. Grafana
+was retired on 2026-10-11, so there is no UI and no UI-created state: the
+dashboard JSON in Git is the only source, and panels are read as PromQL through
+a Prometheus port forward. Export anything recovery-critical into reviewed Git.
 
 ## Authorization and read-only discovery
 
@@ -57,8 +58,9 @@ ssh beelink 'sudo k3s kubectl -n monitoring get prometheus,alertmanager'
 ```
 
 Prometheus and Alertmanager intentionally have no HTTPRoute. Use short-lived
-operator port forwards when their UIs or APIs are needed. Grafana is the only
-routed observability UI and remains LAN/WireGuard-only with Authentik.
+operator port forwards when their UIs or APIs are needed. No observability UI is
+routed: Grafana was retired on 2026-10-11 and the `monitoring` namespace has no
+HTTPRoute.
 
 For a missing signal, distinguish:
 
@@ -126,7 +128,7 @@ recovery source.
 Do not:
 
 - publish Prometheus or Alertmanager through a route for convenience;
-- expose the Grafana break-glass credential or make its login public;
+- reintroduce a Grafana route or login without a reviewed restoration plan;
 - label Kubernetes-only visibility as application metrics;
 - widen scrape egress/ingress without proving the endpoint;
 - raise storage to mask cardinality growth;
@@ -140,8 +142,7 @@ Do not:
 
 Rollback rules, monitors, dashboards, and chart values through reviewed Git.
 Remove temporary silences and test resources by exact identity. A Git revert
-does not reverse a Telegram credential rotation or restore UI-only Grafana
-state.
+does not reverse a Telegram credential rotation.
 
 Report the descriptor mode, metric provenance, target state, sample query and
 cardinality, alert healthy/failing evaluations, dashboard provisioning,

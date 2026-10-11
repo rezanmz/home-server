@@ -159,7 +159,7 @@ existing security policy is not acceptable.
 | Incomplete downloads and active seeding torrents | Static Pi NFS claim for the exact downloads export | None; transient/reproducible | Pi failure interrupts downloads; importing to JuiceFS copies rather than hardlinks, temporarily consuming both local and cloud space |
 | Syncthing file data | Pi NFS plus the dedicated Syncthing PVC | Daily encrypted Restic B2 backup | Live-file scan, not an atomic filesystem snapshot |
 | Stateless/cache data | `emptyDir` or no PVC | Not backed up | Lost on pod replacement |
-| Reproducible observability state | `longhorn-observability` RWO PVC | Deliberately excluded from the default B2 recurring job | Grafana preferences and recent metrics can be lost; dashboards and configuration remain in Git |
+| Reproducible observability state | `longhorn-observability` RWO PVC | Deliberately excluded from the default B2 recurring job | Recent metrics can be lost; alerting rules, dashboards, and configuration remain in Git (Grafana itself retired 2026-10-11) |
 
 A newly added NFS path is **not** automatically covered by either Longhorn or
 the Syncthing backup. Do not put application databases or ordinary persistent

@@ -168,7 +168,7 @@ allow it.
 | `apps` | Cloudflare DDNS | Stateless; Cloudflare API dependency |
 | `monitoring` | Headlamp | Stateless; Kubernetes API and Authentik dependencies |
 | `monitoring` | Loggifly/event-exporter | Stateless; Kubernetes API and Telegram dependency |
-| `monitoring` | Grafana, Prometheus, Alertmanager, Prometheus Operator, kube-state-metrics | Floating multi-architecture workloads; Longhorn observability PVCs; Authentik and Telegram dependencies |
+| `monitoring` | Prometheus, Alertmanager, Prometheus Operator, kube-state-metrics | Floating multi-architecture workloads; Longhorn observability PVCs; Authentik and Telegram dependencies |
 | `traefik` | Shared error-pages Deployment | Stateless |
 
 Prowlarr, Radarr, Sonarr, and Lidarr directories contain their PVCs, routes, Services,

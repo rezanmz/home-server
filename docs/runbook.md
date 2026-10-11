@@ -386,9 +386,11 @@ There is no Blocky administration route or LAN-facing HTTP API. Its management
 and metrics endpoints bind only to the node CNI gateways at
 `10.42.0.1:4000` and `10.42.1.1:4000`.
 Kea exposes a Unix control socket shared only with the exporter, whose metrics
-bind to the Beelink CNI gateway at `10.42.0.1:9547`. The `DNS and DHCP` Grafana
-dashboard shows availability, query results, denylist state, DHCP traffic, and
-pool usage. Warning and critical alerts are `BlockyUnavailable`,
+bind to the Beelink CNI gateway at `10.42.0.1:9547`. The `DNS and DHCP`
+dashboard is retained in Git as the `grafana-dashboard-network-services`
+ConfigMap and is not deployed since Grafana retired on 2026-10-11, so query the
+same availability, query-result, denylist, DHCP-traffic, and pool-usage PromQL
+through the Prometheus port forward. Warning and critical alerts are `BlockyUnavailable`,
 `BlockyQueryErrors`, `BlockyDenylistStale`, `KeaDHCPUnavailable`,
 `KeaDHCPPoolNearlyFull`, and `KeaDHCPAllocationFailures`.
 
@@ -745,7 +747,10 @@ in B2. Do not treat Longhorn replicas as copies of NFS or JuiceFS payload data.
 
 ### Media storage inventory
 
-The **Media Storage** Grafana dashboard separates three storage layers: the
+The **Media Storage** dashboard is retained in Git as the
+`grafana-dashboard-media-storage` ConfigMap and is not deployed since Grafana
+retired on 2026-10-11: read its panels through the Prometheus port forward. It
+separates three storage layers: the
 10 TiB logical JuiceFS/B2 library (whose static Kubernetes binding metadata
 remains 2 TiB), the Pi filesystem holding active downloads and K3s, and each
 node's disposable JuiceFS cache. Category figures cover
@@ -770,8 +775,9 @@ sudo k3s kubectl -n monitoring exec statefulset/prometheus-observability-prometh
 ```
 
 Homepage deliberately shows separate minimal summaries for the cloud library
-and local downloads. Use Grafana for category history, file counts, cache hit
-ratio, B2 traffic, health, and the largest-file list.
+and local downloads. Query category history, file counts, cache hit
+ratio, B2 traffic, health, and the largest-file list from the retained
+dashboard's PromQL through the Prometheus port forward.
 
 The local pre-migration recovery set is on the Beelink:
 
@@ -944,8 +950,9 @@ after the active-job check above returns zero.
 
 ### Backup observability
 
-Grafana provisions the **Backup Health and Integrity** dashboard in the
-**Home Server** folder. It combines Longhorn's backup metrics with
+The **Backup Health and Integrity** dashboard is retained in Git as the
+`grafana-dashboard-backups` ConfigMap (not deployed since Grafana retired on
+2026-10-11). It combines Longhorn's backup metrics with
 kube-state-metrics for the two Syncthing Restic CronJobs. The top row answers
 the operational questions first: whether every eligible PVC is covered,
 whether any backup is stale, and how old the oldest Longhorn, Restic, and
@@ -985,9 +992,11 @@ sudo k3s kubectl -n monitoring port-forward \
   service/observability-prometheus 9090:9090
 ```
 
-Then open the LAN/WireGuard-only, Authentik-protected Grafana dashboard or
-inspect the Prometheus **Alerts** page through Grafana's Prometheus datasource.
-For a stale or missing Longhorn PVC, open the per-PVC table, confirm the PVC and
+Then use the port-forwarded Prometheus UI: open `http://localhost:9090/alerts`
+and, for a stale or missing Longhorn PVC, switch to the Graph tab and query
+`longhorn_backup_state` / `longhorn_volume_robustness` (the retired Grafana
+dashboards' PromQL is readable from the `grafana-dashboard-*` ConfigMaps in
+`infrastructure/observability/`). Confirm the PVC and
 StorageClass, then inspect the `b2-nightly` recurring-job history and backup
 target. For a Syncthing alert,
 inspect the newest retained Jobs and logs using the commands in the previous
@@ -1322,7 +1331,9 @@ Inspect the search-provider adapter and paid-fallback counters:
 sudo k3s kubectl -n apps logs deploy/searxng -c search-provider-proxy --tail=150
 ```
 
-The **AI Services** Grafana dashboard shows SearXNG failures, provider outcomes,
+The **AI Services** dashboard is retained in Git as the
+`grafana-dashboard-ai-services` ConfigMap (not deployed since Grafana retired
+on 2026-10-11). It shows SearXNG failures, provider outcomes,
 paid fallback attempts, pod availability, restarts, CPU, and memory. A failed
 free provider is not an outage when a later provider succeeds.
 
@@ -1667,9 +1678,11 @@ queue, Soularr's failed-import list, and NFS permissions in that order.
 
 ### Assistant operations MCP
 
-Grafana, Kubernetes, and GitHub are diagnostic context, not an administrative
-back door. Grafana uses a dedicated Viewer service account and its official MCP
-server's `--disable-write` mode. Kubernetes uses the projected token for
+Kubernetes and GitHub are diagnostic context, not an administrative
+back door. The Grafana MCP server remains pinned in the image with
+`--disable-write` and a Viewer service-account token, but Grafana was retired on
+2026-10-11, so that registration returns nothing until the UI is restored.
+Kubernetes uses the projected token for
 `mcphub-observer`, the official server's `--read-only` mode, and RBAC that
 excludes Secrets, exec, ConfigMaps, and every write verb. GitHub uses the
 official server's `--read-only` mode and a fine-grained token restricted to the
@@ -1767,12 +1780,14 @@ enumerate.
 
 ## Observability and alerting
 
-Grafana is available at `https://grafana.reza.network` only from the LAN or
-WireGuard. Choose **Sign in with Authentik**. Membership in `home-admins` maps
-to the Grafana Admin role; other authenticated users are Viewers. The local
-`reza` account is a break-glass path whose generated password is stored only in
-the SOPS-encrypted `monitoring/grafana-secrets` Secret. Do not expose the login
-form publicly or copy that password into documentation.
+**Grafana was retired on 2026-10-11.** There is now no Gateway route in the
+`monitoring` namespace. Its five dashboards
+(`grafana-dashboard-homelab`, `-backups`, `-media-storage`, `-network-services`,
+`-ai-services`) remain in Git as ConfigMaps so the UI can be restored by
+re-adding the `grafana:` values block in
+`infrastructure/observability/release.yaml`, an `HTTPRoute`, and an OIDC client
+secret. Until then, dashboard JSON is readable directly from those ConfigMaps,
+and every metric below is reachable through the Prometheus port forward.
 
 Prometheus and Alertmanager intentionally have no HTTPRoute. Inspect them from
 an operator workstation through short-lived port forwards:
@@ -1796,7 +1811,7 @@ sudo k3s kubectl -n monitoring logs statefulset/alertmanager-observability-alert
 
 In Prometheus, `/targets` must show the API server, kubelets, both node
 exporters, CoreDNS, kube-state-metrics, Longhorn managers, Traefik,
-cert-manager, Flux controllers, Grafana, Headlamp, Loggifly, Alertmanager,
+cert-manager, Flux controllers, Headlamp, Loggifly, Alertmanager,
 Prometheus, and the operator as healthy. A target that is absent usually means
 its ServiceMonitor selector does not match; a present but down target usually
 means the endpoint, TLS setting, or NetworkPolicy path is wrong. Check the
@@ -1808,8 +1823,8 @@ Alertmanager is fail-closed for Telegram: only alerts explicitly labeled
 alerts, and unknown or missing severities go to the null receiver. The canonical
 `InfoInhibitor` rule also inhibits informational alerts in the same namespace.
 Notifications are grouped by namespace and alert name and include resolved
-messages. Their `Source` link uses Grafana's Authentik-protected Prometheus
-datasource proxy, so it requires a Grafana session and LAN or WireGuard access;
+messages. Their `Source` link points at `http://localhost:9090`, so it opens the
+exact query once the documented Prometheus port forward is running;
 Prometheus itself remains ClusterIP-only. Use the Alertmanager UI through the
 port-forward to create a time-bounded silence during planned work. Never disable
 a rule or route globally merely to hide an unexplained alert. The Kubernetes

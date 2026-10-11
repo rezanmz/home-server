@@ -54,7 +54,7 @@ is temporary release work: verify it, record completion in the data, and remove
 it from normal startup. It must not become a permanent policy engine.
 
 Legitimate declarative exceptions include Authentik trust definitions, Homepage
-inventory, shared Grafana/Prometheus provisioning, DNS/DHCP, routes and network
+inventory, shared Prometheus provisioning, DNS/DHCP, routes and network
 policy, and config-file-only helpers with no administration database. Keep each
 exception narrow.
 

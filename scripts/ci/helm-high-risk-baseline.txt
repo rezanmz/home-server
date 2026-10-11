@@ -111,7 +111,6 @@ service-account-token-mounted|apps/v1/Deployment|cert-manager|cert-manager|pod-s
 service-account-token-mounted|apps/v1/Deployment|longhorn-system|longhorn-driver-deployer|pod-spec
 service-account-token-mounted|apps/v1/Deployment|longhorn-system|longhorn-ui|pod-spec
 service-account-token-mounted|apps/v1/Deployment|metallb-system|metallb-controller|pod-spec
-service-account-token-mounted|apps/v1/Deployment|monitoring|observability-grafana|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|observability-kube-state-metrics|pod-spec
 service-account-token-mounted|apps/v1/Deployment|monitoring|observability-operator|pod-spec
 service-account-token-mounted|apps/v1/StatefulSet|kube-system|juicefs-csi-controller|pod-spec
