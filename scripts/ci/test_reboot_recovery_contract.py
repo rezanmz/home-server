@@ -13,7 +13,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CLUSTER_KUSTOMIZATION = REPO_ROOT / "clusters" / "home-server" / "kustomization.yaml"
 COREDNS_SPLIT_DNS = REPO_ROOT / "infrastructure" / "coredns" / "split-dns.yaml"
 AUTHENTIK_WORKLOADS = REPO_ROOT / "apps" / "authentik" / "workloads.yaml"
-KEA_DEPLOYMENT = REPO_ROOT / "apps" / "kea" / "deployment.yaml"
 
 
 def load_object(path: Path, kind: str, name: str) -> dict:
@@ -65,17 +64,6 @@ class RebootRecoveryContractTests(unittest.TestCase):
 
         self.assertEqual(postgresql["resources"]["requests"]["memory"], "256Mi")
         self.assertEqual(postgresql["resources"]["limits"]["memory"], "512Mi")
-
-    def test_stork_agent_probes_require_the_grpc_listener(self) -> None:
-        deployment = load_object(KEA_DEPLOYMENT, "Deployment", "kea-dhcp4")
-        agent = named(deployment["spec"]["template"]["spec"]["containers"], "stork-agent")
-
-        for probe_name in ("startupProbe", "readinessProbe", "livenessProbe"):
-            command = agent[probe_name]["exec"]["command"][-1]
-            self.assertIn("/proc/net/tcp", command)
-            self.assertIn('01002A0A:1F90', command)
-            self.assertIn('$4 == "0A"', command)
-
 
 if __name__ == "__main__":
     unittest.main()

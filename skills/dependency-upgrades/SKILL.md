@@ -108,12 +108,12 @@ newest version. Cross-check GHCR-published apps against the upstream GitHub
 release.
 
 Never change the pod template of an existing Kubernetes `Job` — including only
-its image digest — unless the Job object is removed first. Jobs are immutable;
-a digest bump on `apps/stork/bootstrap-job.yaml` (the `stork-lockdown-v1`
-Job) fails Flux dry-run with `Job.batch ... is invalid: spec.template ...`
-(commit 57e810e, PRs #293/#295). If an update touches an immutable Job, delete
-the live Job in the same reviewed change, or leave the Job's pin unchanged
-until a deliberate retirement or recreation plan is authorized.
+its image digest — unless the Job object is removed first. Jobs are immutable:
+a digest bump that changes the pod template fails Flux dry-run with
+`Job.batch ... is invalid: spec.template ...`. If an update touches an
+immutable Job, delete the live Job in the same reviewed change, or leave the
+Job's pin unchanged until a deliberate retirement or recreation plan is
+authorized.
 
 ### Flux Git sources
 

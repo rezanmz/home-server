@@ -1,6 +1,6 @@
 # Task brief: change a physical network service
 
-Change or diagnose `[BLOCKY/KEA/STORK/WIREGUARD/NFS/SAMBA/SYNCTHING]` without
+Change or diagnose `[BLOCKY/KEA/WIREGUARD/NFS/SAMBA/SYNCTHING]` without
 collapsing Kubernetes, host, application, router, and provider ownership into
 one operation. Preserve the service's physical failure domain and real-client
 recovery path.
@@ -67,8 +67,7 @@ operations, and JuiceFS operations when Samba or media mounts are involved.
    - Blocky serves node-address DNS; split-horizon application records are
      catalog-generated, no management route is allowed, and node resolvers stay
      independent of Blocky.
-   - Kea remains tied to the Beelink interface and durable lease state. Stork is
-     read-only monitoring and cannot become a DHCP availability dependency.
+   - Kea remains tied to the Beelink interface and durable lease state.
    - WireGuard remains tied to the Pi router target and exact Pi PodCIDR trust
      exception; never broaden it to the cluster PodCIDR.
    - NFS uses exact child exports with root_squash. A new path has no backup

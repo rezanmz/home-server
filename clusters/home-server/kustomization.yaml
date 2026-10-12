@@ -45,7 +45,6 @@ resources:
   - ../../apps/soulseek
   - ../../apps/blocky
   - ../../apps/kea
-  - ../../apps/stork
   - ../../apps/samba
   - ../../apps/syncthing
   - ../../apps/vpn

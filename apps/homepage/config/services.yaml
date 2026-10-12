@@ -162,12 +162,6 @@
         description: Read-only Kubernetes dashboard
         namespace: monitoring
         app: headlamp
-    - ISC Stork:
-        icon: mdi-bird
-        href: https://stork.reza.network/
-        description: Read-only DHCP inventory
-        namespace: network-services
-        podSelector: app.kubernetes.io/name=stork, app.kubernetes.io/component in (server,database)
     - Syncthing:
         icon: syncthing.png
         href: https://syncthing.reza.network/

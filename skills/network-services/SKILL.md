@@ -1,6 +1,6 @@
 ---
 name: network-services
-description: Operate or diagnose Blocky DNS, Kea DHCP, Stork, WireGuard, Samba, Syncthing, and Pi-hosted NFS. Use for LAN protocol and physical network-service work, not ordinary HTTPRoute or OIDC changes.
+description: Operate or diagnose Blocky DNS, Kea DHCP, WireGuard, Samba, Syncthing, and Pi-hosted NFS. Use for LAN protocol and physical network-service work, not ordinary HTTPRoute or OIDC changes.
 ---
 
 # Operate LAN and Pi network services
@@ -25,7 +25,7 @@ Classify every requested change:
 
 | Plane | Examples |
 | --- | --- |
-| Root Flux | Blocky, Kea, Stork, WireGuard, Samba, Syncthing workloads and policies |
+| Root Flux | Blocky, Kea, WireGuard, Samba, Syncthing workloads and policies |
 | Pruning Flux child | Syncthing backup Secret, policy, CronJobs, and NetworkPolicy |
 | Pi/Beelink host | NFS exports, host resolvers, listeners, package/network policy |
 | Application state | Syncthing identity/folders, WireGuard peers, service settings |
@@ -47,13 +47,10 @@ Cluster nodes use independent public host resolvers, not Blocky. This prevents
 recovery from depending on the DNS workload whose image may need to be pulled.
 Do not point node resolvers back at Blocky.
 
-### Kea DHCP and Stork
+### Kea DHCP
 
 Kea is tied to the Beelink host network, physical LAN interface, architecture,
-and Longhorn lease state. Stork is a read-only monitoring UI and database; DHCP
-must continue when Stork is unavailable. Preserve the Stork lockdown and
-read-only role rather than granting an administrator account to repair UI
-access.
+and Longhorn lease state.
 
 Never run a retired DHCP service in parallel with Kea. During DHCP failure,
 existing leases may continue while new or renewing clients fail; preserve that

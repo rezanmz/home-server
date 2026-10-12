@@ -106,7 +106,7 @@ remain separate permissions.
 | [move-workload.md](move-workload.md) | Moving or repinning a workload across architecture, storage, and physical dependencies |
 | [planned-node-maintenance.md](planned-node-maintenance.md) | Cordon, drain, reboot, or other bounded node maintenance |
 | [change-host-configuration.md](change-host-configuration.md) | Changing tracked K3s, NFS, SSH, package, or JuiceFS host policy and applying it separately |
-| [change-network-service.md](change-network-service.md) | Changing Blocky, Kea, Stork, WireGuard, Samba, Syncthing, or Pi NFS behavior |
+| [change-network-service.md](change-network-service.md) | Changing Blocky, Kea, WireGuard, Samba, Syncthing, or Pi NFS behavior |
 
 ### Verification, recovery, and incidents
 

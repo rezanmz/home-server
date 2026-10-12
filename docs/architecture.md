@@ -209,23 +209,6 @@ two-replica Longhorn volume included in nightly B2 backups. Kea exposes only a
 group-protected Unix control socket to its exporter; no HTTP control agent is
 enabled. Exporter metrics bind only to `10.42.0.1:9547`.
 
-ISC Stork provides the LAN/WireGuard-only DHCP inventory and health UI at
-`stork.reza.network`. Its agent is a non-root sidecar in Kea's pod so it can
-see the Kea process, read the same immutable configuration, and use the
-group-protected Unix control socket. The agent's certificate state and Stork's
-PostgreSQL database are separate default-class Longhorn volumes included in
-nightly B2 backups. Stork 2.5's native OIDC support uses an Authentik public
-client with authorization code plus PKCE. OIDC group mapping is deliberately
-disabled, which makes every OIDC user a built-in Stork `read-only` user. A
-one-time Job authorizes only the Kea agent, invalidates Stork's default
-`admin/admin` account and bootstrap registration token, and disables later
-machine registration. The configuration remains mounted read-only, so Stork
-cannot persist a Kea configuration even if its application authorization
-regresses. A repository-owned patch permits the otherwise admin-only lease-list
-GET for the read-only role; the agent reads the Kea memfile through a read-only
-PVC mount with lease tracking explicitly enabled. No write method or Stork
-administrator role is granted.
-
 Neither service has an application web route. Prometheus reaches their
 cluster-only metrics through selectorless Services with static Endpoints for
 the current discovery role and matching EndpointSlices for a future migration.
@@ -457,7 +440,7 @@ Applications are separated into four operational namespaces:
 
 - `apps` for identity, personal, home-automation, and general web applications;
 - `media` for Jellyfin, books, download automation, and VPN-isolated egress;
-- `network-services` for Blocky, Kea, Stork, WireGuard, Samba, Syncthing, and
+- `network-services` for Blocky, Kea, WireGuard, Samba, Syncthing, and
   backups;
 - `monitoring` for Prometheus, Alertmanager, Headlamp, and Kubernetes
   event export.
@@ -473,7 +456,7 @@ blueprint document for each relying application, while one aggregate SOPS
 Secret supplies confidential clients' provider-side secrets to the worker.
 The catalog also generates the worker's exact `secretKeyRef` patch, so adding a
 confidential client rolls the pod and a missing key fails visibly. PKCE-capable
-public clients such as Stork deliberately have no shared secret. The relying
+public clients deliberately have no shared secret. The relying
 application's own OIDC configuration and authorization rules remain explicit.
 
 Cross-service integration intent is decentralized into versioned
