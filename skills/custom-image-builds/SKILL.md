@@ -31,7 +31,6 @@ image with `rg`. Current build entry points include:
   [Dockerfile](../../images/mcp-v8/Dockerfile)
 - [MCPHub/GPTR helper](../../scripts/build-mcphub-gptr-image.sh) and
   [Dockerfile](../../images/mcphub-gptr/Dockerfile)
-- [Stork helper](../../scripts/build-stork-images.sh) and its reviewed patches
 
 Some helpers have GitHub workflows and some are manual-only. Read the actual
 workflow path filters, branch filters, registry login, permissions, platforms,
@@ -117,13 +116,6 @@ platform in the manifest index rather than only the top-level digest.
 These may lack an automated publishing workflow. Do not interpret “manual-only”
 as permission to use default registry credentials. For architecture-specific
 assets and checksums, verify each platform independently.
-
-### Stork
-
-The helper clones an upstream tag, verifies its exact commit, applies repository
-patches, and publishes selected components. Review the tag/commit pair, patch
-application, component selection, target platform, and all resulting digests.
-Do not use an upstream tag alone as identity.
 
 ### MCPHub/GPTR coupling gate
 

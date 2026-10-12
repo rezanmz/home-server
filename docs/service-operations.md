@@ -262,22 +262,6 @@ with the supported UI/API operation; a pull request cannot complete that half.
 In either case, keep the old value valid until Authentik and the relying
 application have both been proven when overlap is supported.
 
-ISC does not publish supported production Stork container images. Rebuild the
-pinned Stork server, non-root agent, and web UI targets only from the reviewed
-upstream tag and commit with:
-
-```bash
-scripts/build-stork-images.sh
-```
-
-The helper refuses a moved tag, applies the repository's minimal non-root
-sidecar and read-only lease-list patches, and imports the exact pinned Kea
-runtime that Stork must execute to identify the colocated daemon's version. Pass
-`server`, `agent`, or `webui` to rebuild one target, or omit the argument to
-rebuild all three. It publishes SBOM/provenance attestations and prints the
-resulting manifest digests. Review upstream's development-release status and
-update the Stork and Kea pins together.
-
 If native integration is unavailable or unsuitable, record what upstream
 capability was checked, why it cannot be used, the chosen authentication
 boundary, and the narrowest practical exposure. Revisit that exception when
@@ -755,9 +739,9 @@ flow. Add these precautions based on the change type.
   truncated and unsorted. Cross-check GHCR-published apps against the upstream
   GitHub release.
 - A digest bump that changes the pod template of an existing Kubernetes `Job`
-  fails Flux dry-run: Jobs are immutable (stork-lockdown-v1, PRs #293/#295).
-  Delete the live Job in the same reviewed change or leave the Job's pin until
-  a recreation plan is authorized.
+  fails Flux dry-run because Jobs are immutable. Delete the live Job in the
+  same reviewed change or leave the Job's pin unchanged until a recreation
+  plan is authorized.
 - Preserve the previous digest for a Git revert.
 - Treat an application schema migration as a storage change, not a routine
   image update.

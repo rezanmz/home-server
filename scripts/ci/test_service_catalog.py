@@ -36,7 +36,7 @@ class ServiceCatalogTests(unittest.TestCase):
     def test_catalog_is_decentralized_and_versioned(self) -> None:
         self.assertFalse((REPO_ROOT / "catalog" / "services.yaml").exists())
         entries = service_catalog.services(self.catalog)
-        self.assertEqual(len(entries), 41)
+        self.assertEqual(len(entries), 40)
         sources = [entry["_source"] for entry in entries]
         self.assertEqual(len(sources), len(set(sources)))
         self.assertTrue(all(source.endswith(".catalog.yaml") for source in sources))
@@ -122,7 +122,6 @@ class ServiceCatalogTests(unittest.TestCase):
                 "headlamp.yaml",
                 "mcphub.yaml",
                 "open-webui.yaml",
-                "stork.yaml",
                 "vikunja.yaml",
             ],
         )
@@ -462,18 +461,14 @@ class ServiceCatalogTests(unittest.TestCase):
                 "AUTHENTIK_OIDC_VIKUNJA_CLIENT_SECRET",
             ],
         )
-        self.assertNotIn("AUTHENTIK_OIDC_STORK_CLIENT_SECRET", names)
 
-    def test_public_oidc_client_requires_verified_pkce(self) -> None:
-        stork = next(
-            service
-            for service in service_catalog.services(self.catalog)
-            if service["id"] == "stork"
-        )
-        client = stork["web"]["auth"]["client"]
-        self.assertEqual(client["type"], "public")
-        self.assertTrue(client["pkce"]["verified"])
-        self.assertNotIn("secret", client)
+    def test_public_oidc_clients_require_verified_pkce(self) -> None:
+        for service in service_catalog.services(self.catalog):
+            client = service.get("web", {}).get("auth", {}).get("client")
+            if not client or client["type"] != "public":
+                continue
+            self.assertTrue(client["pkce"]["verified"])
+            self.assertNotIn("secret", client)
 
     def test_authentik_profile_is_version_pinned(self) -> None:
         for service in service_catalog.services(self.catalog):
@@ -532,7 +527,7 @@ class ServiceCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             groups["Operations"],
-            ["Headlamp", "ISC Stork", "Syncthing", "WireGuard"],
+            ["Headlamp", "Syncthing", "WireGuard"],
         )
 
     def test_seerr_identity_has_no_retired_jellyseerr_integration(self) -> None:

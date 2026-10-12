@@ -223,8 +223,13 @@ ongoing protection still comes from the configured Longhorn B2 backups.
 
 Stable addresses live in the single
 `apps/kea/iot-reservations.json` inventory. To add a device, first provision it
-on the IoT SSID, find its current address and MAC in Stork or
-`/var/lib/kea/kea-leases4.csv`, add one unique reservation in ascending address
+on the IoT SSID, then find its current address and MAC:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n network-services exec deploy/kea-dhcp4 -c kea-dhcp4 -- cat /var/lib/kea/kea-leases4.csv'
+```
+
+Add one unique reservation in ascending address
 order, and validate before merging. A new TP-Link device does not require a
 Home Assistant NetworkPolicy change. A non-TP-Link integration still requires
 review of its exact destinations and ports.
@@ -476,60 +481,6 @@ has `recurring-job.longhorn.io/source=enabled` and
 `recurring-job-group.longhorn.io/default=disabled`; its named final B2 backup
 remains the off-node recovery point. Re-enable recurring backups only if the
 Pi-hole archive is intentionally brought back into writable service.
-
-### ISC Stork
-
-Stork is available at `https://stork.reza.network/` only from the LAN or
-WireGuard. Login uses the native Authentik OIDC provider. Group mapping must
-remain disabled: that is what assigns every OIDC account Stork's built-in
-`read-only` role. Do not assign `admin` or `super-admin` to an OIDC account and
-do not restore the built-in local administrator.
-
-Stork 2.5 normally withholds its lease-list GET endpoint from the `read-only`
-role even though the general authorization middleware permits other GET
-endpoints. The pinned home-server server image carries the narrow
-`scripts/stork-read-only-lease-list.patch`: it permits that one read operation
-and does not grant any create, update, or delete permission. Do not replace the
-patch by promoting an OIDC user to `admin`.
-
-The Kea pod has three containers: Kea, the existing Prometheus exporter, and
-the Stork agent. The agent binds only to the Beelink CNI gateway at
-`10.42.0.1:8080`; it is not a LAN or Gateway listener. Stork's PostgreSQL
-database and agent certificates are on `stork-postgresql` and
-`stork-agent-data` Longhorn PVCs, both covered by nightly B2 backups. DHCP does
-not depend on the Stork server, UI, or database and continues if they fail.
-The agent mounts the Kea lease PVC at `/var/lib/kea` read-only and tracks its
-memfile for the lease-list page. Failure to read that file makes the agent
-unready but never grants it write access to the DHCP lease database.
-
-Check the complete path with:
-
-```bash
-ssh beelink 'sudo k3s kubectl -n network-services get deploy/stork-server statefulset/stork-postgresql job/stork-lockdown-v1'
-ssh beelink 'sudo k3s kubectl -n network-services get pods,pvc -l app.kubernetes.io/name=stork'
-ssh beelink 'sudo k3s kubectl -n network-services logs deploy/kea-dhcp4 -c stork-agent --tail=100'
-ssh beelink 'sudo k3s kubectl -n network-services logs deploy/stork-server -c server --tail=100'
-ssh beelink 'sudo k3s kubectl -n network-services logs job/stork-lockdown-v1'
-ssh beelink 'sudo ss -lntp | grep "10.42.0.1:8080"'
-```
-
-`stork-lockdown-v1` must finish exactly once. It replaces Stork's generated
-registration token with the encrypted bootstrap token, waits for the Kea agent
-to register, then replaces that token with an unknown random value, randomizes
-the default `admin/admin` login and password, and stores
-`enable_machine_registration=false`. Restart `stork-server` after a clean
-bootstrap so the in-memory endpoint control reloads that final setting:
-
-```bash
-ssh beelink 'sudo k3s kubectl -n network-services rollout restart deployment/stork-server && sudo k3s kubectl -n network-services rollout status deployment/stork-server --timeout=180s'
-```
-
-If both Stork PVCs are restored together, the existing mTLS identity should
-continue to work. If only `stork-agent-data` is lost, do not re-enable
-registration casually: verify the old machine record, rotate the SOPS bootstrap
-token, create a versioned replacement lockdown Job, and review the exact agent
-address before reconciling. A read-only UI does not make a forged monitoring
-agent trustworthy.
 
 ## Other Pi network services
 

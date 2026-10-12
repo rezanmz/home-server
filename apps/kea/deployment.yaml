@@ -21,9 +21,6 @@ spec:
       # ISC's official image is amd64-only. Kea listens for broadcasts on the
       # Beelink's physical Ethernet interface while Blocky retains DNS on .2.
       hostNetwork: true
-      # Stork's colocated agent discovers Kea by inspecting the real daemon
-      # process. This is deliberately limited to this one pod.
-      shareProcessNamespace: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/hostname: beelink
@@ -149,85 +146,6 @@ spec:
           volumeMounts:
             - {name: runtime, mountPath: /var/run/kea}
             - {name: tmp, mountPath: /tmp}
-        - name: stork-agent
-          image: docker.io/rezanmz/isc-stork-agent:2.5.0-kea3.2.0@sha256:89711766cbe99b268dfe937297c3d4c07f6d3ff722e66137df44072384a88fcb
-          imagePullPolicy: IfNotPresent
-          command: [/bin/sh, -ec]
-          args:
-            - |-
-              until [ -S /var/run/kea/kea4-ctrl-socket ]; do sleep 1; done
-              if [ ! -s /var/lib/stork-agent/certs/cert.pem ]; then
-                until stork-agent register --non-interactive; do sleep 5; done
-              fi
-              exec stork-agent
-          env:
-            - {name: CLICOLOR, value: "0"}
-            - {name: HOME, value: /var/lib/stork-agent}
-            - {name: STORK_AGENT_HOST, value: 10.42.0.1}
-            - {name: STORK_AGENT_PORT, value: "8080"}
-            - {name: STORK_AGENT_LISTEN_STORK_ONLY, value: "true"}
-            - {name: STORK_AGENT_SERVER_URL, value: http://stork-server.network-services.svc.cluster.local:8080}
-            - {name: STORK_AGENT_ENABLE_LEASE_TRACKING, value: "1"}
-            - name: STORK_AGENT_SERVER_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: stork-secrets
-                  key: bootstrap-server-token
-          ports:
-            - {name: stork-agent, containerPort: 8080, protocol: TCP}
-          startupProbe:
-            exec:
-              command:
-                - sh
-                - -ec
-                - >-
-                  test -s /var/lib/stork-agent/certs/cert.pem &&
-                  test -r /var/lib/kea/kea-leases4.csv &&
-                  pgrep -x stork-agent >/dev/null &&
-                  awk '$2 == "01002A0A:1F90" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 60
-          readinessProbe:
-            exec:
-              command:
-                - sh
-                - -ec
-                - >-
-                  test -s /var/lib/stork-agent/certs/cert.pem &&
-                  test -r /var/lib/kea/kea-leases4.csv &&
-                  pgrep -x stork-agent >/dev/null &&
-                  awk '$2 == "01002A0A:1F90" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 3
-          livenessProbe:
-            exec:
-              command:
-                - sh
-                - -ec
-                - >-
-                  pgrep -x stork-agent >/dev/null &&
-                  awk '$2 == "01002A0A:1F90" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp
-            periodSeconds: 30
-            timeoutSeconds: 3
-            failureThreshold: 3
-          resources:
-            requests: {cpu: 25m, memory: 64Mi}
-            limits: {cpu: 250m, memory: 256Mi}
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: {drop: [ALL]}
-          volumeMounts:
-            - {name: config, mountPath: /etc/kea, readOnly: true}
-            - {name: leases, mountPath: /var/lib/kea, readOnly: true}
-            - {name: runtime, mountPath: /var/run/kea}
-            - {name: stork-agent-data, mountPath: /var/lib/stork-agent}
-            - {name: tmp, mountPath: /tmp}
       volumes:
         - name: config
           configMap:
@@ -236,8 +154,5 @@ spec:
         - name: leases
           persistentVolumeClaim:
             claimName: kea-leases
-        - name: stork-agent-data
-          persistentVolumeClaim:
-            claimName: stork-agent-data
         - {name: runtime, emptyDir: {}}
         - {name: tmp, emptyDir: {}}
