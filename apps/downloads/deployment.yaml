@@ -181,7 +181,7 @@ spec:
             - {name: gluetun-config, mountPath: /gluetun}
       containers:
         - name: qbittorrent
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls479@sha256:b522f9f4b769f8f36d49d22d5eb6a92e9aa18904c6a1830b1439df511ec21983
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
@@ -230,7 +230,7 @@ spec:
             # can cover a nested NFS mount and make torrents write to B2 or fail.
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-storage-guard
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls479@sha256:b522f9f4b769f8f36d49d22d5eb6a92e9aa18904c6a1830b1439df511ec21983
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/storage-guard/storage-guard.sh]
           env:
@@ -273,7 +273,7 @@ spec:
             - {name: import-cleaner-state, mountPath: /import-cleaner-state, readOnly: true}
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-mediacover-pruner
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls479@sha256:b522f9f4b769f8f36d49d22d5eb6a92e9aa18904c6a1830b1439df511ec21983
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/mediacover-pruner/mediacover-pruner.sh]
           env:
@@ -297,7 +297,7 @@ spec:
             - {name: pruner-state, mountPath: /tmp}
             - {name: lidarr-config, mountPath: /config}
         - name: downloads-import-cleaner
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls479@sha256:b522f9f4b769f8f36d49d22d5eb6a92e9aa18904c6a1830b1439df511ec21983
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/import-cleaner/import-cleaner.sh]
           env:
@@ -429,7 +429,7 @@ spec:
           volumeMounts:
             - {name: prowlarr-config, mountPath: /config}
         - name: radarr
-          image: linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
+          image: linuxserver/radarr:6.4.4.10685-ls320@sha256:cfbc4fa09dc9d78f7cedc898f4ec48c6277cacedc523c4e159db6ff1c741959c
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
