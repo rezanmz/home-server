@@ -381,8 +381,11 @@ spec:
             # Prowlarr's Cloudflare-backed indexers (BT.etree, EZTV) unable to
             # fetch. 1Gi/1000m keeps that session off both caps; steady usage
             # was 161Mi/2m and the Pi allocates 4 CPU / 16Gi.
+            # 2026-10-11 23:40–00:40 ET: OOMKilled twice at the 1Gi ceiling
+            # during a hard Cloudflare challenge; raised to 2Gi (sweep fix,
+            # 2026-10-12).
             requests: {cpu: 40m, memory: 256Mi}
-            limits: {cpu: 1000m, memory: 1Gi}
+            limits: {cpu: 1000m, memory: 2Gi}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
