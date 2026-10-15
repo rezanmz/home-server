@@ -16,8 +16,8 @@ MAINTAINERR_IMAGE = (
     "sha256:8251a1f0ba5d71acc878846a727fba566ec87cbfbf6a914fb881a5953af53d46"
 )
 NGINX_IMAGE = (
-    "nginx:1.31.6-alpine@"
-    "sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2"
+    "nginx:1.31.7-alpine@"
+    "sha256:42c36dfd0b3503b7966771550a91521262b4750665929821abf5069715610e20"
 )
 PROXY_IMAGE = (
     "ubuntu/squid:6.6-24.04_beta@"
