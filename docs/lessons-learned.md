@@ -1123,10 +1123,11 @@ Every healthy signal was green while the restore had silently done nothing.
 The supported mechanism is a temporary StorageClass with
 `parameters.fromBackup: <backup-url>` (`volumeBindingMode: Immediate`), with
 the URL from the Backup CR's `status.url`. Creating the Backup itself also
-has two non-obvious prerequisites: the REST `snapshotBackup` action only
-works with a *pre-existing* snapshot (`POST /v1/snapshots` does not exist;
-use `?action=snapshotCreate` first), and a hand-made Backup CR needs
-`metadata.labels.backup-volume` or the admission webhook rejects it.
+has non-obvious prerequisites: a hand-made Backup CR needs
+`metadata.labels.backup-volume` or the admission webhook rejects it, and the
+REST `snapshotBackup` action needs a pre-existing **Snapshot CR**, not an
+engine snapshot — see the 2026-10-16 entry below, which corrects the
+`?action=snapshotCreate` recipe that originally appeared here.
 
 - **Watch for:** a "restored" PVC that binds and runs but shows an empty
   schema, or `spec.fromBackup` empty on the Longhorn volume. Green
@@ -1361,3 +1362,46 @@ which is the only tag component that represents in-image package changes.
   against the head for `images/**` content inputs and require the identity
   component to change in the same diff. Recorded here as the design sketch; a
   separate change can implement it.
+
+## 2026-10-16 — The REST route to a Longhorn backup needs a Snapshot **CR**, not an engine snapshot
+
+Source: open-webui v0.12.3 stateful gate (PR #437) — a fresh on-demand backup
+of `apps/open-webui-data` had to be created from the command line rather than
+the UI.
+
+The 2026-10-06 Longhorn restore lesson above says the REST `snapshotBackup`
+action "only works with a *pre-existing* snapshot … use
+`?action=snapshotCreate` first". Following that literally **fails** on
+Longhorn 1.12: `snapshotCreate` produces an engine-side snapshot, and the
+admission webhook then rejects the backup with
+`failed to backup snapshot: admission webhook "validator.longhorn.io" denied
+the request: snapshot <nil> is invalid`. The validator resolves
+`spec.snapshotName` through `GetSnapshotRO`, i.e. it requires a **Snapshot CR**
+(`snapshots.longhorn.io`), which the engine snapshot is not. The working
+sequence is `snapshotCRCreate` (which sets `spec.createSnapshot: true`) → poll
+the CR until `status.readyToUse=true` → `snapshotBackup` with the same name;
+the resulting Backup CR carries the CR's labels, so a `change-id` label given
+at `snapshotCRCreate` time is what makes the on-demand backup findable
+afterwards. Two further traps in the same call path: `snapshotCRCreate`
+rejects any name that is not an RFC-1123 subdomain (an `owui-gate-<iso8601>`
+name with an uppercase `T`/`Z` fails validation), and the volume-scoped
+`/v1/volumes/<name>?action=snapshotList` response has no `snapshots` field —
+read snapshots from the engine/replica CRs (`get engines.longhorn.io -l
+longhornvolume=<vol>`) or from `snapshots.longhorn.io`, not from that endpoint.
+
+- **Watch for:** an on-demand backup described as created but absent from
+  `backups.longhorn.io`, and a webhook error naming `snapshot <nil>`, which
+  reads like a missing-snapshot problem rather than a wrong-object-kind
+  problem.
+- **Diagnostic recipe:** `sudo k3s kubectl -n longhorn-system get
+  snapshots.longhorn.io -o custom-columns=NAME:.metadata.name,VOL:.spec.volume,READY:.status.readyToUse`,
+  then confirm the Backup CR exists with the expected label:
+  `get backups.longhorn.io -o json | jq '[.items[] | select(.status.labels["change-id"]=="<id>")]'`.
+  The Longhorn CRs, not the `/v1` JSON, are authoritative for whether a
+  snapshot or backup exists.
+- **Prevention:** drive a one-off backup through the CR sequence above, or use
+  the Longhorn UI as `docs/service-operations.md` already prescribes; and
+  validate an RFC-1123 name before the first call. The read-test half of the
+  same gate is unchanged — restore through a `fromBackup` StorageClass and
+  assert `spec.fromBackup` plus `restoreRequired=false` on the new volume
+  before trusting it.
