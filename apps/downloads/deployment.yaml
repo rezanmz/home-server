@@ -181,7 +181,7 @@ spec:
             - {name: gluetun-config, mountPath: /gluetun}
       containers:
         - name: qbittorrent
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls481@sha256:1ea873647c43d566f251a7122aee330b184509c57ee3257ed19f62dac0f8f24b
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
@@ -230,7 +230,7 @@ spec:
             # can cover a nested NFS mount and make torrents write to B2 or fail.
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-storage-guard
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls481@sha256:1ea873647c43d566f251a7122aee330b184509c57ee3257ed19f62dac0f8f24b
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/storage-guard/storage-guard.sh]
           env:
@@ -273,7 +273,7 @@ spec:
             - {name: import-cleaner-state, mountPath: /import-cleaner-state, readOnly: true}
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-mediacover-pruner
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls481@sha256:1ea873647c43d566f251a7122aee330b184509c57ee3257ed19f62dac0f8f24b
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/mediacover-pruner/mediacover-pruner.sh]
           env:
@@ -297,7 +297,7 @@ spec:
             - {name: pruner-state, mountPath: /tmp}
             - {name: lidarr-config, mountPath: /config}
         - name: downloads-import-cleaner
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls481@sha256:1ea873647c43d566f251a7122aee330b184509c57ee3257ed19f62dac0f8f24b
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/import-cleaner/import-cleaner.sh]
           env:
