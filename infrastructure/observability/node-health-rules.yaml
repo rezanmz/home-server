@@ -97,6 +97,11 @@ spec:
                   pod=~"observability-prometheus-node-exporter-.*"
                 }
               )
+        # Unlike io-wait, memory-used must NOT be PSI-gated: the PSI memory
+        # metric is a stall *rate*, not a memory-usage percentage, so it has no
+        # counterpart to this rule. Gating on it would drop the metric for
+        # exactly the nodes that report PSI (Beelink), leaving memory pressure
+        # there unalerted.
         - record: home_server_node_resource_pressure
           labels: {resource: memory-used, unit: percent}
           expr: |
@@ -111,10 +116,6 @@ spec:
                         job="observability-prometheus-node-exporter"
                       }
                 )
-              unless on (instance)
-                node_pressure_memory_stalled_seconds_total{
-                  job="observability-prometheus-node-exporter"
-                }
             )
             * on (namespace, pod) group_left (node)
               max by (namespace, pod, node) (
