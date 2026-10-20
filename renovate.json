@@ -125,6 +125,19 @@
       "enabled": false
     },
     {
+      "description": "Ubuntu Squid base updates stay manual. The maintainerr-tmdb-proxy sidecar's ubuntu/squid tag names the *Ubuntu* release, not the Squid version, so the apparent freshness gap is illusory and the obvious 'newer' tags are traps. Verified 2026-10-20 against Docker Hub, the OCI manifests and the live pod: (1) the pinned `6.6-24.04_beta` index digest sha256:6a097f68... is byte-identical to the `latest` and `edge` tags, i.e. it is already the newest 24.04 LTS build - the tag prefix 6.6 was frozen when the tag was created on 2025-11-24, and the image actually ships squid 6.13-0ubuntu0.24.04.3 from noble; (2) the 'newer' beta tags 6.10-24.10_beta and 6.13-25.04_beta target interim Ubuntu releases that are now EOL (24.10 on 2025-07-10, 25.04 on 2026-01-17), so moving to them trades an LTS base for an unpatched one; (3) 7.2-26.04_edge is not a drop-in at all - it is a rockcraft/pebble image with no /usr/sbin/squid, Entrypoint ['/usr/bin/pebble','enter'] and User 584792, which would break this pod's command [/usr/sbin/squid], runAsUser 13 and read-only-rootfs contract. Independently, every squid CVE that would motivate a bump sits in a code path this proxy disables: the ICP DoS family (CVE-2026-32748/-33515/-33526) needs icp_port, CVE-2026-47729 needs the FTP gateway, CVE-2026-50012 needs cache_peer plus a cache_digest reply, and CVE-2026-61642 request smuggling needs plain forwarded HTTP/1.1 while squid.conf denies !CONNECT and allows only CONNECT to port 443. Note for the next rebuilder: Ubuntu published squid 6.14-0ubuntu0.24.04.5 to noble-security on 2026-10-20, so a same-tag digest rebuild is the correct and safe way to pick up LTS fixes - never a tag/codename change. Keep disabled; re-enable only if upstream ubuntu/squid ships a 24.04 image whose tag actually encodes a newer LTS squid build.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ubuntu/squid"],
+      "enabled": false
+    },
+    {
+      "description": "K3s version bumps stay manual: this repository has no state-aware in-place upgrade procedure. The install/join helpers are fresh-host-only and deliberately refuse existing K3s state, and AGENTS.md lists a state-aware in-place K3s upgrade as an unsupported operation. v1.36.5+k3s1 additionally carries 'Bump google.golang.org/grpc to v1.83.2 for CVE-2026-84445' (a gRPC-Go xDS DoS). Verified 2026-10-20: that CVE lives in xds.NewGRPCServer's routing interceptor, and both the pinned v1.36.2 binary and the v1.36.5 binary contain zero grpc/xds, cncf/xds or envoy go-control-plane symbols, so the CVE is not reachable in this cluster's linked code paths - but moving the pin still requires the upgrade and control-plane-recovery designs (prompts/design-k3s-upgrade.md, prompts/design-control-plane-recovery.md) plus a resolution of the live-only CoreDNS hostname selector, because a K3s upgrade re-applies the packaged AddOn manifests. No bot may move this pin; a human with a rehearsed procedure must.",
+      "matchManagers": ["custom"],
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["k3s-io/k3s"],
+      "enabled": false
+    },
+    {
       "description": "The finance-display API client must track the same Actual release line as the server; schema drift breaks budget sync permanently.",
       "matchDatasources": ["docker", "npm"],
       "matchPackageNames": ["actualbudget/actual-server", "@actual-app/api"],

@@ -30,6 +30,19 @@ spec:
           type: RuntimeDefault
       containers:
         - name: maintainerr-tmdb-proxy
+          # Deliberately pinned, and NOT a stale version. The ubuntu/squid tag
+          # encodes the Ubuntu release, not the Squid version: this 6.6 tag was
+          # created 2025-11-24 and ships squid 6.13-0ubuntu0.24.04.3 from
+          # noble. Its index digest is byte-identical to Docker Hub's `latest`
+          # and `edge`, so it is already the newest 24.04 LTS build. The
+          # apparently newer 6.10-24.10_beta / 6.13-25.04_beta tags target
+          # interim Ubuntu releases that are now EOL, and 7.2-26.04_edge is a
+          # rockcraft/pebble image with no /usr/sbin/squid at all - it would
+          # break this pod's command, runAsUser 13 and read-only-rootfs
+          # contract. A same-tag digest rebuild is the safe way to take
+          # upstream LTS fixes (Ubuntu shipped 6.14-0ubuntu0.24.04.5 to
+          # noble-security on 2026-10-20); never move the tag. Renovate keeps
+          # ubuntu/squid manual - see the matching packageRule in renovate.json.
           image: ubuntu/squid:6.6-24.04_beta@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
           imagePullPolicy: IfNotPresent
           command: ["/usr/sbin/squid"]
