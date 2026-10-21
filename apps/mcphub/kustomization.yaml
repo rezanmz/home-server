@@ -11,3 +11,6 @@ resources:
   - services.yaml
   - networkpolicy.yaml
   - route.yaml
+  - memory-guardrail-rbac.yaml
+  - memory-guardrail-configmap.yaml
+  - memory-guardrail.yaml

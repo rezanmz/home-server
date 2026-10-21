@@ -1054,6 +1054,52 @@ listed here so accepted risk does not turn into forgotten risk:
   budget check conservative, and revisit if upstream adds the value. Do not
   hand-patch generated instance-manager pods.
 
+### MCPHub memory guardrail
+
+MCPHub's application container leaks memory. Its working set climbed from
+~813 MiB to ~1522 MiB over 2026-10-15 to 2026-10-21, which matters because
+MCPHub is one of the largest memory consumers on the Beelink control plane and
+Beelink itself is tight.
+
+`apps/mcphub/memory-guardrail.yaml` runs a CronJob every 30 minutes that
+recycles the MCPHub application pod when the container's memory use exceeds
+`threshold-mib` (default 1536 MiB). The pod is recreated by the Deployment
+controller from the git-defined template, so no state is lost: the database,
+PVCs, and Secrets are never touched.
+
+**The guardrail deletes the pod, not the Deployment.** Do not "simplify" it to
+`kubectl rollout restart deployment/mcphub`: that writes
+`kubectl.kubernetes.io/restartedAt` onto the Deployment's pod template, and
+Flux's server-side apply strips it on the next reconcile because the git
+template carries no such annotation. That was observed on 2026-10-21 — the
+annotation set at 09:57 ET was gone by 14:06Z and the Deployment had rolled
+back to its previous ReplicaSet.
+
+`threshold-mib` is a recycle trigger, **not** a cgroup limit. The container's
+own `limits.memory` stays at `3Gi`. Lowering the limit to 1.5 GiB would
+OOM-kill the container rather than recycle it: the pod already peaked above
+1.5 GiB working set. `min-age-seconds` (default 600) stops a crash-loop from
+turning into a delete loop.
+
+Changing the threshold or disabling the guardrail is a ConfigMap edit, which
+Flux applies on its normal reconcile:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n apps edit configmap mcphub-memory-guardrail'
+```
+
+To tell a guardrail recycle apart from a crash, read the CronJob's pod logs
+before restarting anything:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n apps logs job -l app.kubernetes.io/component=memory-guardrail --tail=20'
+```
+
+A guardrail run logs `below threshold; no action` or
+`over threshold; deleting pod ...`. The script exits non-zero only when it
+could not read the API or the metrics, so a failed run means the guardrail is
+blind, not that it recycled anything.
+
 ## Related material
 
 - [Cluster architecture](architecture.md)

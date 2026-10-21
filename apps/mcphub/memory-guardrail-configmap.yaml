@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcphub-memory-guardrail
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: memory-guardrail
+data:
+  # Recycle MCPHub when its container memory use exceeds this many MiB.
+  #
+  # 1536 MiB (1.5 GiB) is a TRIGGER, not a cgroup limit. The container's own
+  # memory limit stays at 3Gi: the pod already peaked at ~1591 MiB working set
+  # on 2026-10-21, so lowering the limit to 1.5 GiB would OOM-kill it
+  # instead of recycling it. Recycling below the limit keeps the Beelink
+  # control plane's free memory from collapsing.
+  threshold-mib: "1536"
+  # Never recycle a pod younger than this many seconds. This stops a
+  # crash-loop from escalating into a delete loop.
+  min-age-seconds: "600"
+  memory-guardrail.sh: |
+    #!/bin/sh
+    # Recycle the MCPHub application pod when its memory use crosses the
+    # configured threshold.
+    #
+    # Why the POD and not the Deployment:
+    #   `kubectl rollout restart deployment/mcphub` writes
+    #   `kubectl.kubernetes.io/restartedAt` onto the Deployment's pod
+    #   template. Flux reconciles this manifest with server-side apply and
+    #   the git template carries no such annotation, so Flux strips it on the
+    #   next reconcile (observed 2026-10-21: the annotation set at 09:57 ET
+    #   was gone by 14:06Z and the Deployment rolled back to its previous
+    #   ReplicaSet). Deleting the pod mutates no Deployment state, so Flux
+    #   has nothing to revert, and the Deployment controller recreates the
+    #   pod from the git-defined template.
+    #
+    # The guardrail must never touch the MCPHub database, its PVCs, or any
+    # Secret.
+
+    set -eu
+
+    NAMESPACE="${GUARDRAIL_NAMESPACE:-apps}"
+    DEPLOYMENT="${GUARDRAIL_DEPLOYMENT:-mcphub}"
+    CONTAINER="${GUARDRAIL_CONTAINER:-mcphub}"
+    THRESHOLD_MIB="${GUARDRAIL_THRESHOLD_MIB:-1536}"
+    MIN_AGE_SECONDS="${GUARDRAIL_MIN_AGE_SECONDS:-600}"
+    API_SERVER="${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS:-443}"
+    SA_DIR="${SA_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}"
+    CACERT="${CACERT:-${SA_DIR}/ca.crt}"
+    TOKEN="${TOKEN:-${SA_DIR}/token}"
+    RUNTIME="${RUNTIME:-https}"
+    TIMEOUT="${TIMEOUT:-15}"
+
+    log() {
+      printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+    }
+
+    fail() {
+      log "ERROR: $*"
+      exit 1
+    }
+
+    [ -r "$TOKEN" ] || fail "service account token not readable at ${TOKEN}"
+    [ -r "$CACERT" ] || fail "cluster CA bundle not readable at ${CACERT}"
+
+    api() {
+      # api <path> [method] [body]
+      path="$1"
+      method="${2:-GET}"
+      body="${3:-}"
+      if [ -n "$body" ]; then
+        curl --silent --show-error --fail --max-time "$TIMEOUT" \
+          --cacert "$CACERT" -H "Authorization: Bearer $(cat "$TOKEN")" \
+          -X "$method" -H 'Content-Type: application/json' -d "$body" \
+          "${RUNTIME}://${API_SERVER}${path}"
+      else
+        curl --silent --show-error --fail --max-time "$TIMEOUT" \
+          --cacert "$CACERT" -H "Authorization: Bearer $(cat "$TOKEN")" \
+          "${RUNTIME}://${API_SERVER}${path}"
+      fi
+    }
+
+    # --- 1. find the current application pod -----------------------------
+    pods_json=$(api "/api/v1/namespaces/${NAMESPACE}/pods?labelSelector=app.kubernetes.io/name%3Dmcphub,app.kubernetes.io/component%3Dapplication")
+    echo "$pods_json" | grep -q '"items"' || fail "no pod list returned for ${NAMESPACE}"
+
+    names=$(echo "$pods_json" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p' | grep "^${DEPLOYMENT}-" | head -5)
+    [ -n "$names" ] || fail "no ${DEPLOYMENT} pod found in namespace ${NAMESPACE}"
+
+    # Pick the newest running pod.
+    best_epoch=0
+    pod_name=""
+    pod_start=""
+    for name in $names; do
+      pod_json=$(api "/api/v1/namespaces/${NAMESPACE}/pods/${name}")
+      phase=$(echo "$pod_json" | sed -n 's/.*"phase":"\([^"]*\)".*/\1/p' | head -1)
+      [ "$phase" = "Running" ] || { log "skip ${name}: phase=${phase}"; continue; }
+      start=$(echo "$pod_json" | sed -n 's/.*"startTime":"\([^"]*\)".*/\1/p' | head -1)
+      [ -n "$start" ] || continue
+      epoch=$(date -u -d "$start" +%s 2>/dev/null || echo 0)
+      [ "$epoch" -gt 0 ] || continue
+      if [ "$epoch" -gt "$best_epoch" ]; then
+        best_epoch="$epoch"
+        pod_name="$name"
+        pod_start="$start"
+      fi
+    done
+
+    if [ -z "$pod_name" ]; then
+      log "no Running ${DEPLOYMENT} pod to evaluate; nothing to do"
+      exit 0
+    fi
+
+    log "evaluating pod=${pod_name} start=${pod_start} threshold=${THRESHOLD_MIB}MiB"
+
+    # --- 2. minimum age guard --------------------------------------------
+    now_epoch=$(date -u +%s)
+    age_seconds=$((now_epoch - best_epoch))
+    if [ "$age_seconds" -lt "$MIN_AGE_SECONDS" ]; then
+      log "pod age ${age_seconds}s < ${MIN_AGE_SECONDS}s minimum; skipping (avoid recycle loops)"
+      exit 0
+    fi
+
+    # --- 3. read the container's current memory ---------------------------
+    metrics=$(api "/apis/metrics.k8s.io/v1beta1/namespaces/${NAMESPACE}/pods/${pod_name}")
+    mem_field=$(echo "$metrics" | tr ',' '\n' | grep -A2 "\"name\":\"${CONTAINER}\"" | grep '"memory"' | head -1 | sed -E 's/.*"memory":"([^"]*)".*/\1/')
+    if [ -z "$mem_field" ]; then
+      log "no memory reading for container ${CONTAINER}; skipping"
+      exit 0
+    fi
+
+    case "$mem_field" in
+      *Ki) usage_mib=$(( $(echo "$mem_field" | tr -dc '0-9') / 1024 )) ;;
+      *Mi) usage_mib=$(echo "$mem_field" | tr -dc '0-9') ;;
+      *Gi) usage_mib=$(( $(echo "$mem_field" | tr -dc '0-9') * 1024 )) ;;
+      *)   log "unrecognised memory unit '${mem_field}'; skipping"; exit 0 ;;
+    esac
+
+    log "container ${CONTAINER} memory = ${usage_mib} MiB (threshold ${THRESHOLD_MIB} MiB)"
+
+    # --- 4. act only when over the threshold -----------------------------
+    if [ "$usage_mib" -le "$THRESHOLD_MIB" ]; then
+      log "below threshold; no action"
+      exit 0
+    fi
+
+    log "over threshold; deleting pod ${pod_name} so the Deployment recreates it"
+    if api "/api/v1/namespaces/${NAMESPACE}/pods/${pod_name}" DELETE >/dev/null 2>&1; then
+      log "recycled pod ${pod_name}"
+      exit 0
+    fi
+
+    log "delete request failed; will retry on the next scheduled run"
+    exit 1
