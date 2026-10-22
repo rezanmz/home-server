@@ -42,17 +42,27 @@ data:
     NAMESPACE="${GUARDRAIL_NAMESPACE:-apps}"
     DEPLOYMENT="${GUARDRAIL_DEPLOYMENT:-mcphub}"
     CONTAINER="${GUARDRAIL_CONTAINER:-mcphub}"
+    # URL-encoded label selector for the pods this guardrail manages.
+    LABEL_SELECTOR="${GUARDRAIL_LABEL_SELECTOR:-app.kubernetes.io/name%3Dmcphub,app.kubernetes.io/component%3Dapplication}"
     THRESHOLD_MIB="${GUARDRAIL_THRESHOLD_MIB:-1536}"
     MIN_AGE_SECONDS="${GUARDRAIL_MIN_AGE_SECONDS:-600}"
-    API_SERVER="${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS:-443}"
+    # Prefer the injected service env vars. K3s sets KUBERNETES_SERVICE_PORT,
+    # not KUBERNETES_SERVICE_PORT_HTTPS, so fall back to the standard 443.
+    API_PORT="${KUBERNETES_SERVICE_PORT_HTTPS:-${KUBERNETES_SERVICE_PORT:-443}}"
+    API_SERVER="${KUBERNETES_SERVICE_HOST}:${API_PORT}"
     SA_DIR="${SA_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}"
     CACERT="${CACERT:-${SA_DIR}/ca.crt}"
     TOKEN="${TOKEN:-${SA_DIR}/token}"
     RUNTIME="${RUNTIME:-https}"
     TIMEOUT="${TIMEOUT:-15}"
+    RETRIES="${GUARDRAIL_RETRIES:-3}"
+    RETRY_DELAY="${GUARDRAIL_RETRY_DELAY:-5}"
 
     log() {
-      printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+      # Log to stderr so that a log line can never end up inside a value
+      # captured by a command substitution (the api helper returns its
+      # response on stdout).
+      printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2
     }
 
     fail() {
@@ -65,26 +75,81 @@ data:
 
     api() {
       # api <path> [method] [body]
+      # Prints the response body, or an empty string if every attempt failed.
+      #
+      # The retry matters because the guardrail pod is created moments before
+      # it runs: the network-policy controller programs the pod's egress
+      # rules asynchronously, so the first connection from a brand-new pod can
+      # be refused. One retry after a short pause is enough to cover that
+      # window, and a failed run simply tries again at the next schedule.
       path="$1"
       method="${2:-GET}"
       body="${3:-}"
-      if [ -n "$body" ]; then
-        curl --silent --show-error --fail --max-time "$TIMEOUT" \
-          --cacert "$CACERT" -H "Authorization: Bearer $(cat "$TOKEN")" \
-          -X "$method" -H 'Content-Type: application/json' -d "$body" \
-          "${RUNTIME}://${API_SERVER}${path}"
-      else
-        curl --silent --show-error --fail --max-time "$TIMEOUT" \
-          --cacert "$CACERT" -H "Authorization: Bearer $(cat "$TOKEN")" \
-          "${RUNTIME}://${API_SERVER}${path}"
-      fi
+      attempt=1
+      while [ "$attempt" -le "$RETRIES" ]; do
+        if [ -n "$body" ]; then
+          response=$(curl --silent --show-error --fail --max-time "$TIMEOUT" \
+            --cacert "$CACERT" -H "Authorization: Bearer $(cat "$TOKEN")" \
+            -X "$method" -H 'Content-Type: application/json' -d "$body" \
+            "${RUNTIME}://${API_SERVER}${path}" 2>/dev/null) && {
+            printf '%s' "$response"
+            return 0
+          }
+        else
+          response=$(curl --silent --show-error --fail --max-time "$TIMEOUT" \
+            --cacert "$CACERT" -H "Authorization: Bearer $(cat "$TOKEN")" \
+            "${RUNTIME}://${API_SERVER}${path}" 2>/dev/null) && {
+            printf '%s' "$response"
+            return 0
+          }
+        fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -le "$RETRIES" ] && sleep "$RETRY_DELAY"
+      done
+      log "WARNING: API call failed after ${RETRIES} attempts: ${path}"
+      return 1
     }
 
     # --- 1. find the current application pod -----------------------------
-    pods_json=$(api "/api/v1/namespaces/${NAMESPACE}/pods?labelSelector=app.kubernetes.io/name%3Dmcphub,app.kubernetes.io/component%3Dapplication")
+    pods_json=$(api "/api/v1/namespaces/${NAMESPACE}/pods?labelSelector=${LABEL_SELECTOR}") \
+      || fail "cannot list pods in ${NAMESPACE}"
     echo "$pods_json" | grep -q '"items"' || fail "no pod list returned for ${NAMESPACE}"
 
-    names=$(echo "$pods_json" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p' | grep "^${DEPLOYMENT}-" | head -5)
+    # The API pretty-prints its JSON. Each list item is a Pod object; its
+    # metadata block holds the pod's own "name" (the FIRST "name" in the
+    # document is the pod's, since the list's own metadata has no name).
+    # Later "name" fields belong to volumes, env vars, and Secrets inside
+    # the same pod, so only the first one counts.
+    #
+    # Take the first "name" in the whole document, then any additional pods
+    # by looking for each item's "kind":"Pod" marker followed by its name.
+    names=$(printf '%s\n' "$pods_json" \
+      | tr -d ' \t' \
+      | tr ',' '\n' \
+      | awk '
+          # A list item starts with its own kind marker.
+          /"kind":"Pod"/ { inpod = 1; next }
+          inpod && /"name":/ {
+            value = $0
+            sub(/^"name":"/, "", value)
+            sub(/".*/, "", value)
+            print value
+            inpod = 0
+          }
+        ' \
+      | grep -E "^${DEPLOYMENT}-" | head -5)
+
+    if [ -z "$names" ]; then
+      # Fallback for a single-pod response that carries no per-item kind
+      # marker: the first "name" in the document is the pod itself.
+      first_name=$(printf '%s\n' "$pods_json" \
+        | tr -d ' \t' \
+        | tr ',' '\n' \
+        | sed -n 's/.*"name":"\([^"]*\)".*/\1/p' | head -1)
+      case "$first_name" in
+        "${DEPLOYMENT}-"*) names="$first_name" ;;
+      esac
+    fi
     [ -n "$names" ] || fail "no ${DEPLOYMENT} pod found in namespace ${NAMESPACE}"
 
     # Pick the newest running pod.
@@ -92,12 +157,14 @@ data:
     pod_name=""
     pod_start=""
     for name in $names; do
-      pod_json=$(api "/api/v1/namespaces/${NAMESPACE}/pods/${name}")
-      phase=$(echo "$pod_json" | sed -n 's/.*"phase":"\([^"]*\)".*/\1/p' | head -1)
-      [ "$phase" = "Running" ] || { log "skip ${name}: phase=${phase}"; continue; }
-      start=$(echo "$pod_json" | sed -n 's/.*"startTime":"\([^"]*\)".*/\1/p' | head -1)
+      pod_json=$(api "/api/v1/namespaces/${NAMESPACE}/pods/${name}" || true)
+      phase=$(printf '%s\n' "$pod_json" | tr -d ' \t' | sed -n 's/.*"phase":"\([^"]*\)".*/\1/p' | head -1)
+      [ "$phase" = "Running" ] || { log "skip ${name}: phase=${phase:-unknown}"; continue; }
+      start=$(printf '%s\n' "$pod_json" | tr -d ' \t' | sed -n 's/.*"startTime":"\([^"]*\)".*/\1/p' | head -1)
       [ -n "$start" ] || continue
-      epoch=$(date -u -d "$start" +%s 2>/dev/null || echo 0)
+      # busybox `date -d` rejects the ISO-8601 "T"/"Z" form, so convert
+      # 2026-10-21T14:06:18Z into "2026-10-21 14:06:18" first.
+      epoch=$(date -u -d "$(printf '%s' "$start" | cut -dT -f1) $(printf '%s' "$start" | cut -dT -f2 | cut -dZ -f1)" +%s 2>/dev/null || echo 0)
       [ "$epoch" -gt 0 ] || continue
       if [ "$epoch" -gt "$best_epoch" ]; then
         best_epoch="$epoch"
@@ -122,24 +189,54 @@ data:
     fi
 
     # --- 3. read the container's current memory ---------------------------
-    metrics=$(api "/apis/metrics.k8s.io/v1beta1/namespaces/${NAMESPACE}/pods/${pod_name}")
-    mem_field=$(echo "$metrics" | tr ',' '\n' | grep -A2 "\"name\":\"${CONTAINER}\"" | grep '"memory"' | head -1 | sed -E 's/.*"memory":"([^"]*)".*/\1/')
+    metrics=$(api "/apis/metrics.k8s.io/v1beta1/namespaces/${NAMESPACE}/pods/${pod_name}" || true)
+    # PodMetrics pretty-prints and the containers are listed in no guaranteed
+    # order, so the container's "name" and its "memory" are NOT adjacent.
+    # Collapse the document to one field per line, then take the first
+    # "memory" that follows the target container's "name" and precedes the
+    # next container's "name".
+    #
+    # The pod's own name is also a "name" field and comes first, so the
+    # container name must be matched exactly: a substring match would let
+    # "mcphub" match "mcphub-7b755c5d5f-tlwtr" and read the wrong value.
+    mem_field=$(printf '%s\n' "$metrics" \
+      | tr -d ' \t' \
+      | tr ',' '\n' \
+      | grep -E '"name":"|"memory":' \
+      | awk -v want="\"name\":\"${CONTAINER}\"" '
+          $0 == want { found = 1; next }
+          found && /"memory":/ {
+            # Strip the key prefix and the closing quote. sub() removes one
+            # occurrence, unlike a gsub pattern that would also swallow the
+            # value.
+            value = $0
+            sub(/^"memory":"/, "", value)
+            sub(/"$/, "", value)
+            print value
+            exit
+          }
+          found && /"name":"/ { exit }
+        ')
     if [ -z "$mem_field" ]; then
       log "no memory reading for container ${CONTAINER}; skipping"
       exit 0
     fi
 
     case "$mem_field" in
-      *Ki) usage_mib=$(( $(echo "$mem_field" | tr -dc '0-9') / 1024 )) ;;
-      *Mi) usage_mib=$(echo "$mem_field" | tr -dc '0-9') ;;
-      *Gi) usage_mib=$(( $(echo "$mem_field" | tr -dc '0-9') * 1024 )) ;;
+      *Ki) usage_kib=$(echo "$mem_field" | tr -dc '0-9') ;;
+      *Mi) usage_kib=$(( $(echo "$mem_field" | tr -dc '0-9') * 1024 )) ;;
+      *Gi) usage_kib=$(( $(echo "$mem_field" | tr -dc '0-9') * 1024 * 1024 )) ;;
       *)   log "unrecognised memory unit '${mem_field}'; skipping"; exit 0 ;;
     esac
 
-    log "container ${CONTAINER} memory = ${usage_mib} MiB (threshold ${THRESHOLD_MIB} MiB)"
+    # Compare in KiB, not MiB: converting to MiB with integer division would
+    # truncate a sub-MiB reading to 0 and make the threshold comparison
+    # meaningless for small values.
+    threshold_kib=$((THRESHOLD_MIB * 1024))
+    log "container ${CONTAINER} memory = ${usage_kib} KiB (threshold ${THRESHOLD_MIB} MiB / ${threshold_kib} KiB)"
 
     # --- 4. act only when over the threshold -----------------------------
-    if [ "$usage_mib" -le "$THRESHOLD_MIB" ]; then
+    if [ "$usage_kib" -le "$threshold_kib" ]; then
       log "below threshold; no action"
       exit 0
     fi
