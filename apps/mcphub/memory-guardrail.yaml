@@ -1,0 +1,168 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mcphub-memory-guardrail
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: memory-guardrail
+spec:
+  # Every 30 minutes. The guardrail only acts when MCPHub's memory use is
+  # above the threshold AND the pod is older than the minimum age, so this
+  # cadence is a safety net, not a recycle schedule.
+  schedule: "*/30 * * * *"
+  timeZone: "America/Toronto"
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: mcphub
+            app.kubernetes.io/component: memory-guardrail
+        spec:
+          # The token is projected rather than auto-mounted: the guardrail
+          # needs the API, but nothing else in the pod does.
+          automountServiceAccountToken: false
+          serviceAccountName: mcphub-memory-guardrail
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: guardrail
+              # The image runs as uid 100 by default; pin it explicitly so the
+              # pod does not depend on the image's default user.
+              image: docker.io/curlimages/curl:8.14.1@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
+              imagePullPolicy: IfNotPresent
+              # curlimages/curl ships an OpenSSL-linked curl, so the API call
+              # validates the cluster CA instead of trusting it blindly.
+              command: [/bin/sh, /opt/guardrail/memory-guardrail.sh]
+              env:
+                - name: GUARDRAIL_NAMESPACE
+                  value: apps
+                - name: GUARDRAIL_DEPLOYMENT
+                  value: mcphub
+                - name: GUARDRAIL_CONTAINER
+                  value: mcphub
+                # Recycle MCPHub when it crosses 1.5 GiB. This is a trigger,
+                # not a cgroup limit: the container's own memory limit stays
+                # at 3Gi, and today's pod already peaked above 1.5 GiB, so a
+                # 1.5 GiB limit would OOM-kill it.
+                - name: GUARDRAIL_THRESHOLD_MIB
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcphub-memory-guardrail
+                      key: threshold-mib
+                # Never recycle a pod younger than this: it prevents a
+                # crash-loop from turning into a delete loop.
+                - name: GUARDRAIL_MIN_AGE_SECONDS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcphub-memory-guardrail
+                      key: min-age-seconds
+                - name: SA_DIR
+                  value: /var/run/secrets/kubernetes.io/serviceaccount
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: script
+                  mountPath: /opt/guardrail
+                  readOnly: true
+                - name: token
+                  mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: script
+              configMap:
+                name: mcphub-memory-guardrail
+                defaultMode: 0444
+                items:
+                  - key: memory-guardrail.sh
+                    path: memory-guardrail.sh
+            - name: token
+              projected:
+                defaultMode: 0444
+                sources:
+                  - serviceAccountToken:
+                      path: token
+                      expirationSeconds: 900
+                  - configMap:
+                      name: kube-root-ca.crt
+                      items:
+                        - key: ca.crt
+                          path: ca.crt
+            - name: tmp
+              emptyDir:
+                sizeLimit: 16Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcphub-memory-guardrail
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: memory-guardrail
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcphub
+      app.kubernetes.io/component: memory-guardrail
+  # Egress only. The namespace-wide default-deny in
+  # infrastructure/namespaces/apps-default-deny.yaml already denies all
+  # ingress to every pod in this namespace, so this policy only needs to
+  # narrow what the guardrail can reach outbound.
+  policyTypes:
+    - Egress
+  egress:
+    # Only the Kubernetes API server is reachable.
+    - to:
+        - ipBlock:
+            cidr: 10.43.0.1/32
+      ports:
+        - port: 443
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.3/32
+      ports:
+        - port: 6443
+          protocol: TCP
+    # DNS resolution for the API service name.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
