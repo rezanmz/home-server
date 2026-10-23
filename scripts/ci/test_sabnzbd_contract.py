@@ -23,8 +23,8 @@ BUSYBOX_IMAGE = (
     "sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
 )
 NGINX_IMAGE = (
-    "nginx:1.31.7-alpine@"
-    "sha256:42c36dfd0b3503b7966771550a91521262b4750665929821abf5069715610e20"
+    "nginx:1.31.8-alpine@"
+    "sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60"
 )
 
 
