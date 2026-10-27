@@ -60,7 +60,18 @@ spec:
           # OpenCode's glm-5.3-flash-free" (we run exactly that model), and
           # "fix(db): strip NUL bytes from bound strings". Revert path above
           # still applies.
-          image: ghcr.io/decolua/9router:0.5.109@sha256:28474ba417ac76198abce43b6758b187201e0acac364f72ff3918b0f7e11b040
+          #
+          # 0.5.111 is a 2-patch hop (0.5.110 was never published — 404 on
+          # GHCR, same phantom-tag pattern as 0.5.99). It adds OpenCode Go
+          # Kimi K3.1 Pro (chat lane, vision/video, 1,048,576 context,
+          # 131,072 max output) and fixes DeepSeek's upstream id mapping:
+          # "send deepseek-flash upstream for deepseek-v4.1-flash, whose
+          # catalog id the API rejects". Our Deepseek-Flash chain starts with
+          # ds/deepseek-flash so it is already on the corrected id, and the
+          # ocg/deepseek-v4.1-flash entry in slot 3 benefits from the mapping.
+          # Same post-rollout gate as 0.5.109: chat/auto/smart must answer and
+          # the :high streaming path must return 200.
+          image: ghcr.io/decolua/9router:0.5.111@sha256:48f570f929a6f0c4c1763befe5432beba0310a6c03cfde7cf197f436daf7ccaa
           imagePullPolicy: IfNotPresent
           # The image entrypoint is `chown … && su-exec node …`, which needs
           # root (setgroups) and fails under this unprivileged pod. fsGroup
