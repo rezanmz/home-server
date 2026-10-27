@@ -75,15 +75,17 @@ ARG ACTUAL_MCP_REVISION=9c64ad232448b47146a2e35f7ffaa6eefeb816bb
 # renovate: datasource=npm packageName=@actual-app/api versioning=semver
 ARG ACTUAL_API_VERSION=26.10.0
 # renovate: datasource=npm packageName=hono versioning=semver
-ARG ACTUAL_MCP_HONO_VERSION=4.13.7
+ARG ACTUAL_MCP_HONO_VERSION=4.13.14
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
-ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.4
+ARG ACTUAL_MCP_HONO_NODE_SERVER_VERSION=2.1.5
 # renovate: datasource=npm packageName=fast-uri versioning=semver
-ARG ACTUAL_MCP_FAST_URI_VERSION=4.2.1
+ARG ACTUAL_MCP_FAST_URI_VERSION=4.2.3
 # renovate: datasource=npm packageName=ip-address versioning=semver
-ARG ACTUAL_MCP_IP_ADDRESS_VERSION=10.7.3
+ARG ACTUAL_MCP_IP_ADDRESS_VERSION=10.7.5
 # renovate: datasource=npm packageName=body-parser versioning=semver
-ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.3.0
+ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.4.0
+# renovate: datasource=npm packageName=zod versioning=semver
+ARG ACTUAL_MCP_ZOD_VERSION=4.6.7
 # renovate: datasource=npm packageName=qs versioning=semver
 ARG ACTUAL_MCP_QS_VERSION=6.16.0
 # renovate: datasource=npm packageName=brace-expansion versioning=semver
@@ -100,6 +102,25 @@ ARG ACTUAL_MCP_BETTER_SQLITE_VERSION=12.11.1
 # `npm audit --audit-level=low` gate. Upstream actual-mcp still pins the
 # vulnerable SDK, so override here; the build compiles and unit-tests
 # actual-mcp against the bumped SDK before the audit runs.
+#
+# Second round, 2026-10-27: the gate went red again after 16 days without a
+# build (last green 2026-10-11), because new advisories landed against the
+# versions pinned above. Bumped to close them:
+#   hono 4.13.7 -> 4.13.14          (serveStatic double-decodes the path,
+#                                    bypassing middleware on static routes)
+#   @hono/node-server 2.1.4 -> 2.1.5
+#   fast-uri 4.2.1 -> 4.2.3         (URI scheme spoofing via percent-encoding;
+#                                    improper path equivalence)
+#   ip-address 10.7.3 -> 10.7.5     (Address6 zone identifier quadratic blowup)
+#   body-parser 2.3.0 -> 2.4.0      (DoS via trailing bytes after a compressed
+#                                    body)
+#   zod 4.4.3 -> 4.6.7              (memory exhaustion validating oversized
+#                                    constrained collections) -- upstream pins
+#                                    the vulnerable range, so this one is a
+#                                    direct dependency override, not `overrides`.
+# Verified locally against actual-mcp @9c64ad23 with the same override set:
+# `npm audit --omit=dev --audit-level=low` -> found 0 vulnerabilities,
+# tsc build clean, 165/165 unit tests passing.
 # renovate: datasource=npm packageName=@modelcontextprotocol/sdk versioning=semver
 ARG ACTUAL_MCP_SDK_VERSION=1.32.1
 # renovate: datasource=npm packageName=proxy-addr versioning=semver
@@ -237,6 +258,7 @@ RUN apt-get update \
          "dependencies.@actual-app/api=${ACTUAL_API_VERSION}" \
          "dependencies.@actual-app/core=${ACTUAL_API_VERSION}" \
          "dependencies.@modelcontextprotocol/sdk=${ACTUAL_MCP_SDK_VERSION}" \
+         "dependencies.zod=${ACTUAL_MCP_ZOD_VERSION}" \
          "overrides.hono=${ACTUAL_MCP_HONO_VERSION}" \
          "overrides.@hono/node-server=${ACTUAL_MCP_HONO_NODE_SERVER_VERSION}" \
          "overrides.fast-uri=${ACTUAL_MCP_FAST_URI_VERSION}" \
