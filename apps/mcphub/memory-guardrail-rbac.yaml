@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcphub-memory-guardrail
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: memory-guardrail
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcphub-memory-guardrail
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: memory-guardrail
+rules:
+  # Read the MCPHub application pod and its live usage.
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - delete
+  # Read the container's current memory from metrics-server.
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcphub-memory-guardrail
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: mcphub
+    app.kubernetes.io/component: memory-guardrail
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mcphub-memory-guardrail
+subjects:
+  - kind: ServiceAccount
+    name: mcphub-memory-guardrail
+    namespace: apps

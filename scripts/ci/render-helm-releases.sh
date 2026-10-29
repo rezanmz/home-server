@@ -176,7 +176,7 @@ validate_release_reference \
   "${cert_manager_release}" OCIRepository flux-system cert-manager
 cert_manager_chart="$(pull_oci_chart \
   "${cert_manager_source}" \
-  73a56e1728edd6c99f1f31082618c3259d279a76b7ebd3d4bdc5475c2442d34a)"
+  9ec67938b2981d8b333af61b3fcf53e26b4f6f5deb7ccda3de4ea116bb373a17)"
 render_release \
   "${cert_manager_release}" \
   "${cert_manager_chart}"
@@ -188,7 +188,7 @@ extract_resource OCIRepository flux-system traefik "${traefik_source}"
 validate_release_reference "${traefik_release}" OCIRepository flux-system traefik
 traefik_chart="$(pull_oci_chart \
   "${traefik_source}" \
-  43bcdc4302f627fcce94316e810b674fc8033112860462cc5f2127ff2f6042d8)"
+  a80d0b95dcda07ee427bd669128d9f7f220ac4ef4cf911084a8ea320ead2b392)"
 render_release "${traefik_release}" "${traefik_chart}"
 
 metallb_release="${tmp}/metallb-release.yaml"

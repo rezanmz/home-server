@@ -214,8 +214,8 @@ spec:
             - {port: http-prom, path: /metrics, interval: 30s, scrapeTimeout: 10s}
       prometheusSpec:
         image:
-          tag: v3.14.0-distroless
-          sha: 50c707e96da5ade383cb1707790576480485e93de06aa60ad8802cb5f744bd0a
+          tag: v3.15.1-distroless
+          sha: 451a845bae1d51622b41af1780eb2ad911bbb79a9855bc8e9bb67fabbc03f934
         scrapeInterval: 30s
         evaluationInterval: 30s
         retention: 14d
@@ -263,8 +263,8 @@ spec:
         configSecret: observability-alertmanager
         automountServiceAccountToken: false
         image:
-          tag: v0.34.0
-          sha: 690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
+          tag: v0.34.1
+          sha: e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
         retention: 120h
         resources:
           requests: {cpu: 50m, memory: 64Mi}

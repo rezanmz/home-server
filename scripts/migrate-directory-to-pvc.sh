@@ -66,7 +66,7 @@ done
 # A deterministic name acts as a migration lock. A stale pod must be inspected
 # and removed deliberately rather than silently replaced.
 pod="pvc-migrate-${pvc:0:42}"
-migration_image="busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
+migration_image="busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
 pod_created=false
 copy_pid=""
 monitor_pid=""

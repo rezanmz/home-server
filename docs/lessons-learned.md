@@ -1405,3 +1405,68 @@ longhornvolume=<vol>`) or from `snapshots.longhorn.io`, not from that endpoint.
   same gate is unchanged — restore through a `fromBackup` StorageClass and
   assert `spec.fromBackup` plus `restoreRequired=false` on the new volume
   before trusting it.
+
+## 2026-10-20 — An Ubuntu image tag can encode the distro, not the app version
+
+Source: updates sweep 2026-10-20 — the `ubuntu/squid:6.6-24.04_beta` pin in
+`apps/maintainerr-tmdb-proxy/deployment.yaml` was re-flagged as an outdated
+base image on 10/14, 10/17, and 10/18.
+
+Three separate facts had to be combined to see the real state, and each one
+alone supports the wrong conclusion:
+
+1. **The tag prefix is not the package version.** `ubuntu/squid:6.6-24.04_beta`
+   looks like "Squid 6.6" but the tag prefix is frozen at the moment the tag
+   was created. The image actually ships `squid 6.13-0ubuntu0.24.04.3` from
+   noble — confirmed live via `dpkg -l squid` inside the running pod. The
+   index digest `sha256:6a097f68...` is **byte-identical** to Docker Hub's
+   `latest` and `edge` tags, so the "old" pin was already the newest 24.04
+   LTS build.
+2. **A numerically newer tag can be a strictly worse base.** `6.10-24.10_beta`
+   and `6.13-25.04_beta` target interim Ubuntu releases that are now EOL
+   (24.10 on 2025-07-10, 25.04 on 2026-01-17). "Upgrading" would trade a
+   supported LTS base for an unpatched one — the version number goes up while
+   the security posture goes down.
+3. **A newer major can be a different application.** `7.2-26.04_edge` is a
+   rockcraft/**pebble** image: no `/usr/sbin/squid` at all, `Entrypoint
+   ['/usr/bin/pebble','enter']`, `User 584792`. It would break the pod's
+   `command: ["/usr/sbin/squid"]`, `runAsUser: 13`, and read-only-rootfs
+   contract, and the repo's own `scripts/ci/test_maintainerr_contract.py`
+   asserts that command string.
+
+- **Watch for:** a "newer" tag whose *codename* is an EOL interim release, or
+  whose major version changes the packaging model (pebble/rockcraft) rather
+  than just the app version. Check `dpkg -l <pkg>` inside the running
+  container and compare the **index digest** against `latest`/`edge` before
+  believing a freshness gap.
+- **Diagnostic recipe:** `docker-content-digest` for the pinned tag versus
+  `latest`/`edge`; then read the tag's layers for `var/lib/dpkg/status` to get
+  the real package version; then confirm `Entrypoint`, `User`, and the
+  presence of the binary the workload's `command:` invokes.
+- **Prevention:** `renovate.json` now keeps `ubuntu/squid` manual
+  (`enabled: false`) with the reasoning recorded, and the pin site carries an
+  inline comment. The correct way to take upstream LTS fixes is a **same-tag
+  digest rebuild** — Ubuntu published `6.14-0ubuntu0.24.04.5` to
+  noble-security on 2026-10-20, which is a rebuild of the 24.04 base, never a
+  codename change. Re-enable the rule only when upstream publishes a 24.04
+  image whose tag actually encodes a newer LTS Squid build.
+
+### The same sweep's K3s finding had the mirror-image trap
+
+`v1.36.5+k3s1` carries "Bump google.golang.org/grpc to v1.83.2 for
+CVE-2026-84445". The advisory's vulnerable path is
+`xds.NewGRPCServer()`'s routing interceptor, and reading only the release-note
+line suggests "we are vulnerable". Reading the binary settles it: the pinned
+`v1.36.2+k3s1` binary carries grpc `v1.81.1` and has **zero** occurrences of
+`google.golang.org/grpc/xds`, `xds.NewGRPCServer`, `cncf/xds/go`, or
+`envoyproxy/go-control-plane`; `kube-apiserver` v1.36.5 links gRPC transport
+but also has zero xDS symbols. A dependency-version bump in a release note is
+not the same thing as the vulnerable code being linked in.
+
+- **Watch for:** a CVE-fix line in a release note whose affected symbol never
+  appears in the binary you actually run. `strings` on the binary is cheap and
+  decisive; the advisory's "vulnerable functions" list is not always empty.
+- **Prevention:** the decision and its evidence are recorded in
+  `docs/cluster-operations.md` ("Current live deviations requiring follow-up"
+  #3), and `renovate.json` keeps the K3s custom-manager dependency manual so
+  no bot can move the pin.

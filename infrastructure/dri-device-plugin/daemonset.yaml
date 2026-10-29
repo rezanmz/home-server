@@ -21,7 +21,7 @@ spec:
         homelab.rezan.dev/gpu: amd
       containers:
         - name: generic-device-plugin
-          image: squat/generic-device-plugin@sha256:dc192e164c69b03f156765793a1be62ca437709ae477b27ca7d8f3dcf5021576
+          image: squat/generic-device-plugin@sha256:5c48f7a16cfb37c4e07731bfa384b9dba6e12d2b0fb4350d8a321d49f12ac494
           imagePullPolicy: IfNotPresent
           args:
             - --device

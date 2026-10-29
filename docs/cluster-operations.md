@@ -895,6 +895,81 @@ Do not simply describe the live pin as desired state. Before changing it,
 capture the Deployment, confirm the CoreDNS image supports arm64, verify the Pi
 can run it, and prepare DNS tests from both nodes and an ordinary LAN client.
 
+### 3. The K3s version pin is deliberate, and the gap is the procedure, not the CVE
+
+The repository pins `v1.36.2+k3s1` in `scripts/install-k3s.sh`,
+`scripts/join-k3s-agent.sh`, `scripts/bootstrap-k3s-server.sh`, and
+`docs/cluster-operations.md`. Upstream is now at `v1.37.1+k3s1`; the same
+minor line also offers `v1.36.3`, `v1.36.4`, and `v1.36.5+k3s1`.
+
+**Why the pin stays.** `v1.36.5+k3s1` is the release that carries
+"Bump google.golang.org/grpc to v1.83.2 for CVE-2026-84445"
+(k3s-io/k3s#14620), a gRPC-Go DoS in which an xDS server panics on a request
+missing both `:authority` and `Host` and takes the process down. Verified
+2026-10-20 against the primary advisory (GHSA-2v4p-qf9q-27wj / GO-2026-6443):
+the vulnerable code path is `xds.NewGRPCServer()` and the xDS routing
+interceptor. The pinned binary does **not** contain it:
+
+- the live `v1.36.2+k3s1` binary (both nodes) carries grpc `v1.81.1` in its
+  build info and has **zero** occurrences of `google.golang.org/grpc/xds`,
+  `xds.NewGRPCServer`, `cncf/xds/go`, or `envoyproxy/go-control-plane`;
+- the `v1.36.5+k3s1` binary carries grpc `v1.83.2` and is identical on this
+  point, so the bump is a dependency refresh, not the introduction of xDS;
+- `kube-apiserver` v1.36.5 does link gRPC transport
+  (`google.golang.org/grpc/internal/transport`) but likewise has zero xDS
+  symbols;
+- a code search across `k3s-io/k3s`, `kubernetes/kubernetes`,
+  `kubernetes/apiserver`, and `kubernetes/kube-aggregator` for
+  `google.golang.org/grpc/xds` returns zero hits.
+
+So the CVE is not reachable in this cluster's code paths, independently of
+network exposure. Exposure is also bounded: the K3s API server listens on TCP
+6443, the supervisor on 6444, and the kubelet on 10250; the public address
+`142.198.34.89` is the WireGuard endpoint on the router, and 6443/6444/10250
+were all unreachable from outside the LAN (TCP timeouts, not refusals), while
+the supervisor's `/metrics` and `/pprof/` return 401 to an anonymous caller.
+`v1.36.5` also carries no Kubernetes CVE of its own — the k8s 1.36 changelog
+contains **zero** CVE references in total, and its own release notes carry
+none.
+
+**Why the pin still does not move.** The blocker is not the CVE, it is the
+absence of a state-aware in-place upgrade path. `scripts/install-k3s.sh` and
+`scripts/join-k3s-agent.sh` are fresh-host-only by design and refuse any node
+with existing K3s state; `AGENTS.md` lists a state-aware in-place K3s upgrade
+as an unsupported operation and points at `prompts/design-k3s-upgrade.md` for
+the version-specific design. Two further upgrade hazards are already visible
+in the repository and must be part of that design:
+
+- **K3s-packaged AddOns are not Flux resources.** `docs/cluster-operations.md`
+  already records that CoreDNS, Metrics Server, and other packaged components
+  come from K3s Addon manifests on the Beelink and are not reconciled by
+  Flux. A K3s upgrade re-applies the packaged `manifests/coredns.yaml`
+  through the K3s Addon controller (`pkg/deploy/controller.go`), and the
+  live CoreDNS carries the undocumented `kubernetes.io/hostname=beelink`
+  selector described in deviation 2 above. The K3s applied set contains only
+  `kubernetes.io/os: linux`, and the `kubectl-patch` manager entry owns the
+  `nodeSelector` field — so the packaged manifest does not currently record
+  the hostname selector, and any AddOn re-apply is a chance to drop or
+  restore it. Resolve deviation 2 **before** designing the upgrade.
+- **The packaged CoreDNS image moves with the release.** The `v1.36.2`
+  manifest pins `rancher/mirrored-coredns-coredns:1.14.4`; `v1.36.5` pins
+  `1.14.7` and adds a "DO NOT EDIT" banner to the generated Corefile. Both
+  tags are multi-arch (amd64, arm64, arm, ppc64le, s390x, riscv64, loong64),
+  so architecture is not the problem — but a CoreDNS restart is a cluster-wide
+  DNS event, and the repo's split-DNS Corefile lives in a Flux-managed
+  `coredns-custom` ConfigMap that the packaged manifest only *mounts* as
+  optional.
+
+**Decision.** Keep the pin frozen. The CVE is not applicable to this
+cluster's linked code paths and the version is not internet-reachable, so
+there is no security urgency; the real gap is the missing upgrade and
+control-plane recovery procedure, which is the highest-priority item in
+"Remaining resilience and hardening options" below. Use
+`prompts/design-k3s-upgrade.md` for the version-specific design and
+`prompts/design-control-plane-recovery.md` for the datastore/token restore
+set. `renovate.json` deliberately keeps the K3s custom-manager dependency
+manual for the same reason — no bot may move this pin.
+
 ## Remaining resilience and hardening options
 
 Control-plane recovery is the highest-priority gap. The remaining items are
@@ -978,6 +1053,52 @@ listed here so accepted risk does not turn into forgotten risk:
   storage data path. Treat this as an accepted blind spot: keep the Beelink
   budget check conservative, and revisit if upstream adds the value. Do not
   hand-patch generated instance-manager pods.
+
+### MCPHub memory guardrail
+
+MCPHub's application container leaks memory. Its working set climbed from
+~813 MiB to ~1522 MiB over 2026-10-15 to 2026-10-21, which matters because
+MCPHub is one of the largest memory consumers on the Beelink control plane and
+Beelink itself is tight.
+
+`apps/mcphub/memory-guardrail.yaml` runs a CronJob every 30 minutes that
+recycles the MCPHub application pod when the container's memory use exceeds
+`threshold-mib` (default 1536 MiB). The pod is recreated by the Deployment
+controller from the git-defined template, so no state is lost: the database,
+PVCs, and Secrets are never touched.
+
+**The guardrail deletes the pod, not the Deployment.** Do not "simplify" it to
+`kubectl rollout restart deployment/mcphub`: that writes
+`kubectl.kubernetes.io/restartedAt` onto the Deployment's pod template, and
+Flux's server-side apply strips it on the next reconcile because the git
+template carries no such annotation. That was observed on 2026-10-21 — the
+annotation set at 09:57 ET was gone by 14:06Z and the Deployment had rolled
+back to its previous ReplicaSet.
+
+`threshold-mib` is a recycle trigger, **not** a cgroup limit. The container's
+own `limits.memory` stays at `3Gi`. Lowering the limit to 1.5 GiB would
+OOM-kill the container rather than recycle it: the pod already peaked above
+1.5 GiB working set. `min-age-seconds` (default 600) stops a crash-loop from
+turning into a delete loop.
+
+Changing the threshold or disabling the guardrail is a ConfigMap edit, which
+Flux applies on its normal reconcile:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n apps edit configmap mcphub-memory-guardrail'
+```
+
+To tell a guardrail recycle apart from a crash, read the CronJob's pod logs
+before restarting anything:
+
+```bash
+ssh beelink 'sudo k3s kubectl -n apps logs job -l app.kubernetes.io/component=memory-guardrail --tail=20'
+```
+
+A guardrail run logs `below threshold; no action` or
+`over threshold; deleting pod ...`. The script exits non-zero only when it
+could not read the API or the metrics, so a failed run means the guardrail is
+blind, not that it recycled anything.
 
 ## Related material
 

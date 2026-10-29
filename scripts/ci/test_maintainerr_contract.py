@@ -12,12 +12,12 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAINTAINERR_IMAGE = (
-    "ghcr.io/maintainerr/maintainerr:3.30.1@"
-    "sha256:8251a1f0ba5d71acc878846a727fba566ec87cbfbf6a914fb881a5953af53d46"
+    "ghcr.io/maintainerr/maintainerr:3.31.0@"
+    "sha256:33d86e5f03ed25204788b1e9cd9a2b3f0299cf49fae968220484b57008962399"
 )
 NGINX_IMAGE = (
-    "nginx:1.31.7-alpine@"
-    "sha256:42c36dfd0b3503b7966771550a91521262b4750665929821abf5069715610e20"
+    "nginx:1.31.8-alpine@"
+    "sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60"
 )
 PROXY_IMAGE = (
     "ubuntu/squid:6.6-24.04_beta@"

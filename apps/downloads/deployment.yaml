@@ -181,7 +181,7 @@ spec:
             - {name: gluetun-config, mountPath: /gluetun}
       containers:
         - name: qbittorrent
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.3.0_v2.0.15-ls482@sha256:745260e962c5f2ce6976550214f70a1c5f319bb4cecb07957365f2653b0506ab
           imagePullPolicy: IfNotPresent
           env:
             - {name: PUID, value: "1000"}
@@ -230,7 +230,7 @@ spec:
             # can cover a nested NFS mount and make torrents write to B2 or fail.
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-storage-guard
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.3.0_v2.0.15-ls482@sha256:745260e962c5f2ce6976550214f70a1c5f319bb4cecb07957365f2653b0506ab
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/storage-guard/storage-guard.sh]
           env:
@@ -273,7 +273,7 @@ spec:
             - {name: import-cleaner-state, mountPath: /import-cleaner-state, readOnly: true}
             - {name: media-downloads, mountPath: /media/downloads}
         - name: downloads-mediacover-pruner
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.3.0_v2.0.15-ls482@sha256:745260e962c5f2ce6976550214f70a1c5f319bb4cecb07957365f2653b0506ab
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/mediacover-pruner/mediacover-pruner.sh]
           env:
@@ -297,7 +297,7 @@ spec:
             - {name: pruner-state, mountPath: /tmp}
             - {name: lidarr-config, mountPath: /config}
         - name: downloads-import-cleaner
-          image: linuxserver/qbittorrent:5.2.4_v2.0.15-ls480@sha256:97333cc1ccf903e0bbcd8eb67e3332e4970e9c1ecabe145e499e9c0847ebcaed
+          image: linuxserver/qbittorrent:5.3.0_v2.0.15-ls482@sha256:745260e962c5f2ce6976550214f70a1c5f319bb4cecb07957365f2653b0506ab
           imagePullPolicy: IfNotPresent
           command: [sh, /opt/import-cleaner/import-cleaner.sh]
           env:
@@ -391,7 +391,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: prowlarr
-          image: linuxserver/prowlarr:2.6.5.5623-ls163@sha256:f9151e5bc1025c6d0a630d503210cdcb6bb55a7cc098562609d96a408d838902
+          image: linuxserver/prowlarr:2.6.5.5623-ls165@sha256:b3b00047ed20f6ce2b16780145cb6a0acb51c9e28ea6aa6f5dcd33c7034f1797
           imagePullPolicy: IfNotPresent
           env: &linuxserver-env
             - {name: PUID, value: "1000"}
@@ -432,7 +432,7 @@ spec:
           volumeMounts:
             - {name: prowlarr-config, mountPath: /config}
         - name: radarr
-          image: linuxserver/radarr:6.4.4.10685-ls321@sha256:ea6822c956d26db648b237919f41340318f32e5b7dcc4ba702cf256a0f5f3c12
+          image: linuxserver/radarr:6.4.4.10685-ls323@sha256:fc0ae3c50f8128b97e84381903ec8d6845c3a569641cb7117c124376cccb57c1
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -548,7 +548,7 @@ spec:
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: slskd
-          image: slskd/slskd:0.26.1@sha256:588af49abc3088d639c8f1174d3bfad6e92c093a275a593140e3ac9311ebf6c4
+          image: slskd/slskd:0.26.2@sha256:d0963a3e5b16facd295bf4f2156dad0182f246b1b21a032cae12f5494c694843
           imagePullPolicy: IfNotPresent
           env:
             - {name: TZ, value: America/Toronto}
@@ -586,7 +586,7 @@ spec:
             - {name: slskd-state, mountPath: /app}
             - {name: media-downloads, mountPath: /downloads}
         - name: soularr
-          image: mrusse08/soularr:v1.2.2@sha256:c4f97924fabfce4e0de539d821ea7d20519b95c4815a707bacfc9d7212597f20
+          image: mrusse08/soularr:v1.2.3@sha256:e448d49d0ca6091a35653ff9198ebb4a3acf42abfc2f2056490a9a0f0cffd210
           imagePullPolicy: IfNotPresent
           env:
             - {name: TZ, value: America/Toronto}
@@ -623,7 +623,7 @@ spec:
             - {name: soularr-data, mountPath: /data}
             - {name: media-downloads, mountPath: /downloads}
         - name: shelfmark
-          image: ghcr.io/calibrain/shelfmark:v1.4.0@sha256:4ef757349c3c7a7d90ba95b1e2a46ce4dd460a4776efbcf2aa1b1c476e7d5de5
+          image: ghcr.io/calibrain/shelfmark:v1.5.1@sha256:acfa46b8be80f1e2f084a7703ff027ab274397feb24006114e92c05c140b62c3
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -653,7 +653,7 @@ spec:
             - {name: media-downloads, mountPath: /media/downloads}
         - &access-proxy
           name: qbittorrent-access-proxy
-          image: nginx:1.31.7-alpine@sha256:42c36dfd0b3503b7966771550a91521262b4750665929821abf5069715610e20
+          image: nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:
