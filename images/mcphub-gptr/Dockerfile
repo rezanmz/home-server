@@ -87,7 +87,7 @@ ARG ACTUAL_MCP_BODY_PARSER_VERSION=2.4.0
 # renovate: datasource=npm packageName=zod versioning=semver
 ARG ACTUAL_MCP_ZOD_VERSION=4.6.7
 # renovate: datasource=npm packageName=qs versioning=semver
-ARG ACTUAL_MCP_QS_VERSION=6.16.0
+ARG ACTUAL_MCP_QS_VERSION=6.16.1
 # renovate: datasource=npm packageName=brace-expansion versioning=semver
 ARG ACTUAL_MCP_BRACE_EXPANSION_VERSION=2.1.2
 # renovate: datasource=npm packageName=ua-parser-js versioning=semver
