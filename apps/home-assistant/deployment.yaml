@@ -39,7 +39,7 @@ spec:
         kubernetes.io/hostname: beelink
       initContainers:
         - name: initialize-config
-          image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          image: busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -82,7 +82,7 @@ spec:
             - {name: access-proxy-config, mountPath: /proxy-source, readOnly: true}
             - {name: nginx-runtime, mountPath: /proxy-runtime}
         - name: bootstrap-hacs
-          image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          image: busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
           imagePullPolicy: IfNotPresent
           env:
             # This is a recovery/bootstrap floor, not an update pin. Once HACS
@@ -162,7 +162,7 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /config}
         - name: install-cafe
-          image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          image: busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
           imagePullPolicy: IfNotPresent
           env:
             # C.A.F.E. is a beta visual editor with write access to native Home
@@ -362,7 +362,7 @@ spec:
             - name: config
               mountPath: /config
         - name: access-proxy
-          image: nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60
+          image: nginx:1.31.8-alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606
           imagePullPolicy: IfNotPresent
           command: [nginx, -g, "daemon off;"]
           ports:

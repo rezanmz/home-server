@@ -142,7 +142,7 @@ spec:
       automountServiceAccountToken: false
       initContainers:
         - name: prepare-postgres-data
-          image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          image: busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
           command: [sh, -ec, "mkdir -p /var/lib/postgresql/data/pgdata && chown 999:999 /var/lib/postgresql/data/pgdata"]
           securityContext:
             runAsNonRoot: true
@@ -163,7 +163,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: postgresql
-          image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+          image: pgvector/pgvector:pg16@sha256:0dd3149a06e4579a0d70d8fef9945636cd514005e7237deb27f9b67886f8dc4f
           command: [sh, -ec]
           args: ["export PGDATA=/var/lib/postgresql/data/pgdata; exec docker-entrypoint.sh postgres"]
           imagePullPolicy: IfNotPresent
