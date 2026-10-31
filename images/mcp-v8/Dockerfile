@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.25
-ARG DEBIAN_IMAGE=debian:trixie-slim@sha256:020c0d20b9880058cbe785a9db107156c3c75c2ac944a6aa7ab59f2add76a7bd
+ARG DEBIAN_IMAGE=debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4
 ARG MCP_V8_VERSION=0.18.1
 
 FROM ${DEBIAN_IMAGE} AS mcp-v8
