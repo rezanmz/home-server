@@ -188,7 +188,7 @@ extract_resource OCIRepository flux-system traefik "${traefik_source}"
 validate_release_reference "${traefik_release}" OCIRepository flux-system traefik
 traefik_chart="$(pull_oci_chart \
   "${traefik_source}" \
-  a80d0b95dcda07ee427bd669128d9f7f220ac4ef4cf911084a8ea320ead2b392)"
+  19c9ece378a1d1b32197249873f5834d0338189e2d48fb2b8516502e99153ac8)"
 render_release "${traefik_release}" "${traefik_chart}"
 
 metallb_release="${tmp}/metallb-release.yaml"
