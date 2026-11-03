@@ -64,9 +64,20 @@ spec:
               else
                 echo "WARN: 192.168.1.21 did not accept the firmware" >&2
               fi
+              # A board being switched off is a normal, expected state, not a
+              # failure of this controller. Treating it as one produced 1063
+              # restarts in a single pod (measured 2026-11-02) and a continuous
+              # stream of KubePodNotReady / RolloutStuck / ReplicasMismatch
+              # alerts, because every restart re-ran a full ~15 minute ESP-IDF
+              # compile only to fail the same way.
+              #
+              # So: exit 0 and let the pod settle when no board answered. The
+              # next rollout of this Deployment is the retry - a board that comes
+              # back gets its firmware at the next change to this config. A
+              # compile or config error above still fails loudly on its own,
+              # which is the failure this controller actually needs to report.
               if [ "$uploaded" -eq 0 ]; then
-                echo "ERROR: no board accepted the firmware" >&2
-                exit 1
+                echo "WARN: no board accepted the firmware; board(s) appear offline. Exiting cleanly instead of crash-looping - the OTA will be retried on the next rollout." >&2
               fi
               echo "firmware delivered to $uploaded board(s)"
           env:

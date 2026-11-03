@@ -32,6 +32,39 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      # hindsight runs schema migrations on startup and treats a refused
+      # connection as fatal (exit 3, "Database migration failed"). Its postgres
+      # lives in a separate StatefulSet, so after a node reboot hindsight
+      # routinely lost the race and crash-looped with `connection to server at
+      # "hindsight-postgresql" ... failed: Connection refused` — 16 restarts in
+      # one day, each one a HomeServerContainerRestarting alert. Wait for the
+      # port to accept connections instead of crashing and retrying.
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          command:
+            - sh
+            - -ec
+            - |
+              host=hindsight-postgresql
+              # Bounded: fail loudly after ~3 minutes rather than hang forever,
+              # so a genuinely broken database still surfaces as a real error.
+              for i in $(seq 1 90); do
+                if nc -z -w 2 "$host" 5432; then
+                  echo "postgres is accepting connections (attempt $i)"
+                  exit 0
+                fi
+                sleep 2
+              done
+              echo "ERROR: $host:5432 did not accept connections within 180s" >&2
+              exit 1
+          resources:
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
       containers:
         - name: hindsight
           # v0.10.3 release 2026-10-08; OCI multi-arch index (linux/amd64 + linux/arm64).
