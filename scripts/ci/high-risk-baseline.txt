@@ -139,7 +139,7 @@ mutable-git-ref|source.toolkit.fluxcd.io/v1/GitRepository|flux-system|flux-syste
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|9router-application|spec/sha256/4f142b7bdee724ba7dab3ca88c5d83c97e581bdec47d960165324ec9ed2ab68f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-budget|spec/sha256/800281b98b4ddc02142632cd21c0073fbefc1b3d4910f64a6aae842e8fc9a1b0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|actual-horizon|spec/sha256/e5c9d1ed08c53fdac1cc5acdcf259208b4fc94763872edb44b47061fe2b5e04f
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|spec/sha256/68e4643c3e7da8deded68ecaa30f6ad5ed0587c4f82f5d6f6e97ea12d59d6221
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-application|spec/sha256/cde75a9ea2fca6bf8203f12bfaf0ad6877c077ad3c73e8101fc7ecaba963a888
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|authentik-database|spec/sha256/ccdce8f21dda90152efd85ed6aa8d0e8a40ab16286651073bed741f830bf49a0
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cloudflare-ddns|spec/sha256/d61863d0e93eadb5e8318f294547ab73112387e60d4d4c654edda907670f3691
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|cyd-dashboard-ota|spec/sha256/08e1e125b3327c4ca0b71353cd2b7909e3f6a3f92312b740d0671c2d1530e421
