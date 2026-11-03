@@ -19,6 +19,20 @@ spec:
       ports:
         - port: 9000
           protocol: TCP
+    # Vikunja's wait-for-authentik init container reads /-/health/ready/ over
+    # the in-cluster service before Vikunja starts (see apps/vikunja). Only the
+    # health path is reachable this way at the network level, and only from
+    # Vikunja. Without this rule the init container is REJECTed regardless of
+    # its own egress rule, because NetworkPolicies are additive: BOTH the source
+    # egress policy and this ingress policy must allow the flow.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vikunja
+              app.kubernetes.io/component: application
+      ports:
+        - port: 9000
+          protocol: TCP
   # Authentik may connect to configured SMTP, LDAP and identity providers.
   egress:
     - {}
