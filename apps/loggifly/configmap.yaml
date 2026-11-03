@@ -1,6 +1,27 @@
 # LoggiFly's Docker-socket log access is replaced by Kubernetes warning-event
 # alerts. This catches failed scheduling, unhealthy probes, image failures and
 # crash loops without granting access to either node's container runtime.
+#
+# NOISE BUDGET (see the 2026-11-02 incident): forwarding every Warning event
+# verbatim produced roughly 100 Telegram messages a day, sustained for weeks.
+# Measured over a representative window, 106 of 116 Warning events (91%) were
+# `Unhealthy` probe blips alone, and adding the reboot-churn reasons covered
+# 99%. None of them were individually actionable: a probe that fails once and
+# recovers two seconds later needs no human, and every one of these reasons has
+# a slower, more reliable twin in Alertmanager:
+#
+#   Unhealthy            -> KubePodNotReady (fires only after 15 min not-ready)
+#   NodeNotReady         -> HomeServerNodeMemoryRequestBudgetHigh / node alerts
+#   FailedMount          -> KubePodNotReady (a pod that cannot mount stays unready)
+#   FailedScheduling     -> KubePodNotReady
+#   Longhorn churn       -> the Longhorn volume/engine alerts, which are sustained
+#   Rebooted             -> informational; the node alert path covers real outages
+#
+# So these drops de-duplicate a fast, flapping signal in favour of its slow,
+# trustworthy equivalent. Nothing that persists past 15 minutes can hide here.
+# Reasons NOT dropped include BackOff (CrashLoopBackOff is a real, actionable
+# failure), FailedCreate, ArtifactFailed, GitOperationFailed and every Flux
+# reconciliation error.
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: loggifly, namespace: monitoring}
@@ -12,8 +33,51 @@ data:
     maxEventAgeSeconds: 60
     route:
       routes:
+        # Normal events (including every RESOLVED blip) never need a human.
         - drop:
             - type: Normal
+          match:
+            - receiver: telegram
+        # Single-shot probe blips. Sustained failures surface via KubePodNotReady.
+        - drop:
+            - reason: Unhealthy
+          match:
+            - receiver: telegram
+        # Node drain/reboot churn, most of it caused by the 04:00 maintenance
+        # window. A node that stays down is caught by the node-level alerts.
+        - drop:
+            - reason: NodeNotReady
+          match:
+            - receiver: telegram
+        - drop:
+            - reason: Rebooted
+          match:
+            - receiver: telegram
+        # Mount and scheduling races while volumes re-attach after a reboot.
+        - drop:
+            - reason: FailedMount
+          match:
+            - receiver: telegram
+        - drop:
+            - reason: FailedScheduling
+          match:
+            - receiver: telegram
+        # Longhorn replica churn during those same re-attach windows; the
+        # sustained volume-degraded and engine-faulted alerts still fire.
+        - drop:
+            - reason: FailedSnapshotPurge
+          match:
+            - receiver: telegram
+        - drop:
+            - reason: FailedRebuilding
+          match:
+            - receiver: telegram
+        - drop:
+            - reason: Faulted
+          match:
+            - receiver: telegram
+        - drop:
+            - reason: Unknown
           match:
             - receiver: telegram
     receivers:

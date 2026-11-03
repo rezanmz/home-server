@@ -34,6 +34,19 @@ spec:
       ports:
         - {port: 53, protocol: UDP}
         - {port: 53, protocol: TCP}
+    # The wait-for-authentik init container polls the Authentik service on 9000
+    # before the app starts. Without this rule the init container would burn its
+    # whole 300s budget against a policy drop and then fail the rollout - a
+    # self-inflicted outage in place of the crash loop it is meant to remove.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: authentik
+          namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apps
+      ports:
+        - {port: 9000, protocol: TCP}
     - to:
         - ipBlock: {cidr: 192.168.1.240/32}
       ports:
