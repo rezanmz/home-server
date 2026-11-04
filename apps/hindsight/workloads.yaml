@@ -111,6 +111,43 @@ spec:
             # Stable worker identity across restarts (upstream requirement).
             - name: HINDSIGHT_API_WORKER_ID
               value: hindsight-prod
+            # ---- recall latency (2026-11-03) ----
+            # Every recall was taking 60-92s and clients gave up at 30s, so MCP
+            # recall in omp always failed with "recall request timed out after
+            # 30s". Measured breakdown of a real recall: retrieval 1.0s,
+            # embedding 0.1s, and [4] Reranking [cross-encoder] 300 candidates
+            # in 59-91s -- i.e. ~97% of the wall time.
+            #
+            # Benchmarked the shipped cross-encoder/ms-marco-MiniLM-L-6-v2 in
+            # this exact pod: 300 pairs cost 8.8s at 120 chars, 32.7s at 600
+            # chars, and 118s at 2000 chars. The rerank cost is dominated by
+            # candidate length, and these memories are long documents, so the
+            # upstream note that "the shipped MiniLM scores 300 pairs in well
+            # under a second" does not hold for this data shape on CPU.
+            #
+            # Truncating each candidate before scoring bounds that cost. The
+            # knob is upstream's own advice for a CPU-only reranker. Ranking
+            # quality is barely affected because the opening tokens carry most
+            # of the signal for these short factual memories, and the full text
+            # is still returned to the caller -- only the ranking input is cut.
+            - name: HINDSIGHT_API_RERANKER_MAX_TOKENS_PER_CANDIDATE
+              value: "128"
+            # Length-sorted bucket batching, upstream-documented at 36-54%
+            # faster for this local cross-encoder. Free win on top of the above.
+            - name: HINDSIGHT_API_RERANKER_LOCAL_BUCKET_BATCHING
+              value: "true"
+            # Fewer candidates scored per recall. 300 is generous for this bank
+            # size; 120 keeps recall quality while cutting the dominant cost
+            # proportionally.
+            - name: HINDSIGHT_API_RERANKER_MAX_CANDIDATES_MID
+              value: "120"
+            - name: HINDSIGHT_API_RERANKER_MAX_CANDIDATES_HIGH
+              value: "180"
+            # The recall admission queue waited up to 30s before refusing. With
+            # reranking fast, a long wait only adds latency to a request the
+            # caller has already abandoned; fail sooner so the client can retry.
+            - name: HINDSIGHT_API_ADMISSION_RECALL_MAX_WAIT_MS
+              value: "8000"
             - name: HINDSIGHT_API_TENANT_EXTENSION
               value: hindsight_api.extensions.builtin.tenant:ApiKeyTenantExtension
             - name: HINDSIGHT_API_TENANT_API_KEY
