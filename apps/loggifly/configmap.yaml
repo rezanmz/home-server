@@ -2,13 +2,13 @@
 # alerts. This catches failed scheduling, unhealthy probes, image failures and
 # crash loops without granting access to either node's container runtime.
 #
-# NOISE BUDGET (see the 2026-11-02 incident): forwarding every Warning event
-# verbatim produced roughly 100 Telegram messages a day, sustained for weeks.
-# Measured over a representative window, 106 of 116 Warning events (91%) were
-# `Unhealthy` probe blips alone, and adding the reboot-churn reasons covered
-# 99%. None of them were individually actionable: a probe that fails once and
-# recovers two seconds later needs no human, and every one of these reasons has
-# a slower, more reliable twin in Alertmanager:
+# NOISE BUDGET (see the 2026-11-02 and 2026-11-04 incidents): forwarding every
+# Warning event verbatim produced roughly 100 Telegram messages a day. Measured
+# over a representative window, 106 of 116 Warning events (91%) were `Unhealthy`
+# probe blips alone, and adding the reboot-churn reasons covered 99%. None were
+# individually actionable: a probe that fails once and recovers two seconds later
+# needs no human, and every one of these reasons has a slower, more reliable twin
+# in Alertmanager:
 #
 #   Unhealthy            -> KubePodNotReady (fires only after 15 min not-ready)
 #   NodeNotReady         -> HomeServerNodeMemoryRequestBudgetHigh / node alerts
@@ -22,6 +22,17 @@
 # Reasons NOT dropped include BackOff (CrashLoopBackOff is a real, actionable
 # failure), FailedCreate, ArtifactFailed, GitOperationFailed and every Flux
 # reconciliation error.
+#
+# STRUCTURE: THIS MUST STAY ONE ROUTE WITH ONE DROP LIST.
+# `match` rules are evaluated per route, and a route whose `match` succeeds sends
+# the event to its receiver. `match: - receiver: telegram` succeeds for EVERY
+# event. An earlier version of this file split the drops across nine sibling
+# routes, each carrying that same matcher. The result: a Normal event was dropped
+# by the `type: Normal` route and then delivered once by each of the OTHER nine
+# reason routes -- so every Flux ReconciliationSucceeded event arrived in Telegram
+# nine times (reported 2026-11-04). Drop rules only protect their own route's
+# subtree; they are not global. One route, one drop list (entries OR together), is
+# what makes the filtering total. Do not split this back into one route per reason.
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: loggifly, namespace: monitoring}
@@ -33,51 +44,33 @@ data:
     maxEventAgeSeconds: 60
     route:
       routes:
-        # Normal events (including every RESOLVED blip) never need a human.
         - drop:
+            # Normal events (including every RESOLVED blip) never need a human.
+            # This is the entry that was being bypassed by the sibling routes.
             - type: Normal
-          match:
-            - receiver: telegram
-        # Single-shot probe blips. Sustained failures surface via KubePodNotReady.
-        - drop:
+            # Single-shot probe blips. Sustained failures surface via KubePodNotReady.
             - reason: Unhealthy
-          match:
-            - receiver: telegram
-        # Node drain/reboot churn, most of it caused by the 04:00 maintenance
-        # window. A node that stays down is caught by the node-level alerts.
-        - drop:
+            # Node drain/reboot churn, most of it caused by the 04:00 maintenance
+            # window. A node that stays down is caught by the node-level alerts.
             - reason: NodeNotReady
-          match:
-            - receiver: telegram
-        - drop:
             - reason: Rebooted
-          match:
-            - receiver: telegram
-        # Mount and scheduling races while volumes re-attach after a reboot.
-        - drop:
+            # Mount and scheduling races while volumes re-attach after a reboot.
             - reason: FailedMount
-          match:
-            - receiver: telegram
-        - drop:
             - reason: FailedScheduling
-          match:
-            - receiver: telegram
-        # Longhorn replica churn during those same re-attach windows; the
-        # sustained volume-degraded and engine-faulted alerts still fire.
-        - drop:
+            # Longhorn replica churn during those same re-attach windows; the
+            # sustained volume-degraded and engine-faulted alerts still fire.
             - reason: FailedSnapshotPurge
-          match:
-            - receiver: telegram
-        - drop:
             - reason: FailedRebuilding
-          match:
-            - receiver: telegram
-        - drop:
             - reason: Faulted
-          match:
-            - receiver: telegram
-        - drop:
             - reason: Unknown
+            # Flux bookkeeping. All of these are Normal today, so type: Normal
+            # already covers them; listed anyway because a Flux hiccup can emit
+            # them as Warning too, and none is actionable on its own -- the
+            # Kustomization's Ready condition and the HealthCheckFailed alert are
+            # the real signals.
+            - reason: GitOperationSucceeded
+            - reason: ReconciliationSucceeded
+            - reason: DependencyNotReady
           match:
             - receiver: telegram
     receivers:
