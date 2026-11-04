@@ -162,7 +162,18 @@ spec:
               cpu: 250m
               memory: 1Gi
             limits:
-              cpu: "2"
+              # Raised from "2" on 2026-11-03. The pod was throttled in 25% of
+              # CPU periods (975/3926, 34.6s of lost CPU) and the same rerank of
+              # 120 candidates varied between 15.5s and 31.5s for identical
+              # input -- the signature of CPU contention rather than input size.
+              # Two causes compete for the same 2 cores: the cross-encoder
+              # rerank on the recall path, and background consolidation LLM
+              # batching. The host has 4 cores and beelink was not saturated
+              # (74-76% idle at the time), so this is a quota problem, not a
+              # capacity one. 4 cores lets a recall rerank proceed while
+              # consolidation runs, which is what the earlier 30s client timeout
+              # was really colliding with.
+              cpu: "4"
               memory: 2.5Gi
           startupProbe:
             tcpSocket:
