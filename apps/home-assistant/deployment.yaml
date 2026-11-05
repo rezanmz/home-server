@@ -358,6 +358,16 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]
+              # NET_RAW is deliberately NOT added, even though aiodhcpwatcher
+              # logs "Cannot watch for dhcp packets: [Errno 1] Operation not
+              # permitted" once per boot without it. Verified 2026-11-05 that
+              # all 30 config entries are manually configured and ZERO came from
+              # dhcp/zeroconf/ssdp discovery sources, so network auto-discovery
+              # buys nothing here. The warning is one line at startup, not a
+              # retry loop, and it does not affect any integration. Granting a
+              # raw-socket capability to a process that runs third-party
+              # integrations to silence one cosmetic line is a bad trade.
+              # Revisit only if DHCP-based discovery is actually adopted.
           volumeMounts:
             - name: config
               mountPath: /config
