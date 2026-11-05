@@ -73,7 +73,7 @@ ARG AUDIOBOOKSHELF_MCP_AGENT_UTILITIES_VERSION=1.0.2
 ARG AUDIOBOOKSHELF_MCP_DOTENV_VERSION=1.2.3
 ARG ACTUAL_MCP_REVISION=9c64ad232448b47146a2e35f7ffaa6eefeb816bb
 # renovate: datasource=npm packageName=@actual-app/api versioning=semver
-ARG ACTUAL_API_VERSION=26.10.0
+ARG ACTUAL_API_VERSION=26.11.0
 # renovate: datasource=npm packageName=hono versioning=semver
 ARG ACTUAL_MCP_HONO_VERSION=4.13.14
 # renovate: datasource=npm packageName=@hono/node-server versioning=semver
