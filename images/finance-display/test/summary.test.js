@@ -169,6 +169,35 @@ test('collectSummary advances reconciliation age at local midnight', async () =>
 });
 
 
+test('collectSummary includes future-dated transactions in net worth', async () => {
+  // getAccountBalance() defaults its cutoff to today, which silently drops
+  // scheduled entries. The dashboard must pass a cutoff far enough out that
+  // committed future transactions are counted.
+  const cutoffs = [];
+  const actual = {
+    getAccounts: async () => [{ id: 'cash', closed: false }],
+    getPreferences: async () => ({ defaultCurrencyCode: 'CAD' }),
+    getAccountBalance: async (id, cutoff) => {
+      cutoffs.push(cutoff);
+      // Mirrors Actual: no cutoff => balance as of today (excludes scheduled).
+      return cutoff ? -164_111 : 89_013;
+    },
+    q: () => ({ select: () => ({}) }),
+    aqlQuery: async () => ({ data: [{ name: 'Cash', closed: false, last_reconciled: null }] }),
+  };
+
+  const summary = await collectSummary(
+    actual,
+    () => new Date('2026-11-11T15:00:00.000Z'),
+    'America/Toronto',
+  );
+
+  assert.equal(summary.netWorthCents, -164_111);
+  assert.equal(cutoffs.length, 1);
+  assert.ok(cutoffs[0] instanceof Date, 'a cutoff must be passed to getAccountBalance');
+  assert.ok(cutoffs[0].getUTCFullYear() >= 2100, 'cutoff must be far enough out to cover scheduled entries');
+});
+
 test('SummaryCache serves a stale last-known value after refresh failure', async () => {
   let now = Date.parse('2026-08-13T12:00:00.000Z');
   let attempt = 0;
