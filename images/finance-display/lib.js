@@ -3,6 +3,9 @@ import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 export const CENTS_PER_UNIT = 100;
 export const DISPLAY_CACHE_MS = 15_000;
 export const WEATHER_CACHE_MS = 5 * 60_000;
+// Far-future cutoff so getAccountBalance() includes scheduled/future-dated
+// transactions instead of stopping at today.
+export const NET_WORTH_CUTOFF = new Date('2999-12-31T00:00:00.000Z');
 const DAY_MS = 86_400_000;
 
 function currencyCode(preferences) {
@@ -153,9 +156,14 @@ export async function collectSummary(actual, now = () => new Date(), timeZone = 
   const collectedAt = now();
   let netWorthCents = 0;
 
+  // getAccountBalance() is a balance *as of the cutoff date*, and its default
+  // cutoff is today — so scheduled future-dated transactions (rent, subscriptions)
+  // are silently excluded and the figure under-reports what is actually
+  // committed. "Net worth" on the dashboard must include every posted and
+  // scheduled entry, so pass a cutoff far enough out to cover them all.
   for (const account of accounts) {
     if (!account.closed) {
-      netWorthCents += await actual.getAccountBalance(account.id);
+      netWorthCents += await actual.getAccountBalance(account.id, NET_WORTH_CUTOFF);
     }
   }
 
