@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vocabet
+  name: word-riot
   namespace: apps
   labels:
-    app.kubernetes.io/name: vocabet
+    app.kubernetes.io/name: word-riot
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/name: vocabet
+      app.kubernetes.io/name: word-riot
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: vocabet
+        app.kubernetes.io/name: word-riot
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
       imagePullSecrets:
-        - name: vocabet-ghcr-pull
+        - name: word-riot-ghcr-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -30,10 +30,10 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: vocabet
+        - name: word-riot
           # Rooms live in process memory; a restart ends running games by
           # design, so the container is stateless and read-only.
-          image: ghcr.io/rezanmz/categories:main@sha256:bfb223ef359cc1db49e0d54aef8d1262c041fb095ab1ae46cc3069a152d029ee
+          image: ghcr.io/rezanmz/categories:main@sha256:7fcecf9c87a383bc6bec56e175a53be45ef818630d242ae78aceacfba00bdc47
           imagePullPolicy: IfNotPresent
           env:
             - {name: PORT, value: "3001"}

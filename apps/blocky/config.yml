@@ -44,8 +44,8 @@ customDNS:
     soularr.reza.network: 192.168.1.240
     syncthing.reza.network: 192.168.1.240
     tasks.reza.network: 192.168.1.240
-    vocabet.reza.network: 192.168.1.240
     vpn.reza.network: 192.168.1.240
+    wordriot.reza.network: 192.168.1.240
     # END SERVICE CATALOG GENERATED MAPPINGS
 
 blocking:

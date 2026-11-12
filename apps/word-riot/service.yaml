@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vocabet
+  name: word-riot
   namespace: apps
   labels:
-    app.kubernetes.io/name: vocabet
+    app.kubernetes.io/name: word-riot
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: vocabet
+    app.kubernetes.io/name: word-riot
   ports:
     - name: http
       port: 3001

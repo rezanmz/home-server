@@ -160,7 +160,7 @@ network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|open-web
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|searxng|spec/sha256/f3235d90df4036745d8f78ee403775a3a43ddf9efee611014a1a9e427a16777f
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|seerr|spec/sha256/3f5ac6307a5c94376562a99d4f5dcf00eefd830eab40984b66411b95ea1ef4be
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vikunja|spec/sha256/dcc1255377ad4ce12e740741d3c11f91f2cad9f13b4fb38143c442985a33fb7e
-network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|vocabet|spec/sha256/b4f6277551905ff0225ced3469b6d1ca627c07332e7d7d5d02296750cec4e36e
+network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|apps|word-riot|spec/sha256/0d948c6740235a3d74d14c6522bb78299d3b3531443e431aa3440b3ba7250277
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|default-deny|spec/sha256/07da1daeda9fc6423194cb9a9bca23a5eb983e2c870dd6b47abf678ccd649bde
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|juicefs-system|juicefs-postgresql|spec/sha256/36716bbe1bac7ce647ee26d35af967c2201f94932647d5bc8aa4d1b9733ab0a7
 network-policy-ingress-boundary|networking.k8s.io/v1/NetworkPolicy|kube-system|observability-node-exporter|spec/sha256/37f053596d712e401b7faf79f7d085250ee55ff0a7a846017d84ea06e0e31885
@@ -214,7 +214,7 @@ route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|mcphub|spec/sha256/4c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|open-webui|spec/sha256/afe398451d06cac342ca661dc578c7e9bf6cdb1dc6e10bfcf175999ce36e6dd4
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|seerr|spec/sha256/d0604b82cfffd6f87c188ac69da554a050ad03a35042f0a473918dae20941f38
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vikunja|spec/sha256/06933edc112128e2e973f97a896466c99e3225179ef0c77ac226b94fba1dd7cc
-route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|vocabet|spec/sha256/2f58ad1417af0ae8aa0768798bbdb3c09a86784e3595cebd7caa8912d6e9a7ba
+route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|apps|word-riot|spec/sha256/d698730312c6f86ec5b5c3da9a99b0e03fd306494ee22e79d068999f92b5a88c
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|audiobookshelf|spec/sha256/9be2497d352f2f4fa032722a81ec64ff535be8738805732e80d2926d6dae99d7
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|calibre-web|spec/sha256/d4b5c2cb40f15ebef544c2b9b81b351312fa0bbcf6d888e0184a940036c8228d
 route-boundary|gateway.networking.k8s.io/v1/HTTPRoute|media|jellyfin|spec/sha256/d35436acaa0c222cdff37baac0f4e770685af8c5d8e79555777d65820ab6c7fb
