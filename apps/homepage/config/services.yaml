@@ -57,12 +57,12 @@
         description: Audiobooks and podcasts
         namespace: media
         app: audiobookshelf
-    - Vocabet:
+    - Word riot:
         icon: mdi-gamepad-variant
-        href: https://vocabet.reza.network/
-        description: Room-based party word game
+        href: https://wordriot.reza.network/
+        description: One letter, one word each, then the room votes
         namespace: apps
-        app: vocabet
+        app: word-riot
     - Calibre-Web:
         icon: calibre-web.png
         href: https://library.reza.network/

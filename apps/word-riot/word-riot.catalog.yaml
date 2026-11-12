@@ -2,27 +2,27 @@
 apiVersion: catalog.reza.network/v1alpha1
 kind: Service
 metadata:
-  name: vocabet
+  name: word-riot
 spec:
-  name: Vocabet
+  name: Word riot
   workload:
     namespace: apps
-    app: vocabet
+    app: word-riot
   homepage:
     order: 35
     group: Media
     icon: mdi-gamepad-variant
-    description: Room-based party word game
+    description: One letter, one word each, then the room votes
   web:
-    hostname: vocabet.reza.network
-    route: apps/vocabet/route.yaml
+    hostname: wordriot.reza.network
+    route: apps/word-riot/route.yaml
     visibility: public
     dns:
       cloudflare: true
       splitHorizon: true
     auth:
       mode: native
-      reason: Vocabet has no accounts or upstream SSO; room-code join is its native access control, and the same-origin WebSocket plus QR join flow is incompatible with forward-auth.
+      reason: Word riot has no accounts or upstream SSO; room-code join is its native access control, and the same-origin WebSocket plus QR join flow is incompatible with forward-auth.
   placement:
     mode: floating
   data:

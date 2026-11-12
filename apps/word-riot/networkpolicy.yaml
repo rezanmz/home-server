@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: vocabet
+  name: word-riot
   namespace: apps
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: vocabet
+      app.kubernetes.io/name: word-riot
   policyTypes:
     - Ingress
     - Egress

@@ -506,7 +506,7 @@ class ServiceCatalogTests(unittest.TestCase):
                 "Seerr",
                 "Navidrome",
                 "Audiobookshelf",
-                "Vocabet",
+                "Word riot",
                 "Calibre-Web",
             ],
         )
@@ -548,6 +548,25 @@ class ServiceCatalogTests(unittest.TestCase):
             REPO_ROOT / "apps" / "blocky" / "config.yml",
         ):
             self.assertNotIn("jellyseerr", path.read_text().lower())
+
+    def test_word_riot_identity_has_no_retired_vocabet_integration(self) -> None:
+        word_riot = next(
+            service
+            for service in service_catalog.services(self.catalog)
+            if service["id"] == "word-riot"
+        )
+        self.assertEqual(word_riot["name"], "Word riot")
+        self.assertEqual(word_riot["path"], "apps/word-riot")
+        self.assertEqual(word_riot["workload"]["app"], "word-riot")
+        self.assertEqual(word_riot["web"]["hostname"], "wordriot.reza.network")
+        self.assertFalse((REPO_ROOT / "apps" / "vocabet").exists())
+
+        for path in (
+            REPO_ROOT / "apps" / "homepage" / "config" / "services.yaml",
+            REPO_ROOT / "apps" / "cloudflare-ddns" / "kustomization.yaml",
+            REPO_ROOT / "apps" / "blocky" / "config.yml",
+        ):
+            self.assertNotIn("vocabet", path.read_text().lower())
 
     def test_unknown_nested_field_is_rejected(self) -> None:
         catalog = copy.deepcopy(self.catalog)
