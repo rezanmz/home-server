@@ -267,10 +267,16 @@ spec:
           resources:
             requests:
               cpu: 25m
-              memory: 256Mi
-            limits:
-              cpu: 500m
               memory: 1Gi
+            limits:
+              # Raised from 1Gi on 2026-11-13: the container was OOMKilled twice
+              # (exit 137) while spiking to a 1023 MiB 14-day peak against a 1Gi
+              # ceiling, on a saw-tooth that returns to a flat 263 MiB baseline
+              # between periodic spikes (consolidation/autovacuum) rather than
+              # climbing without settling. 2Gi is 2x the measured peak; the 1Gi
+              # request keeps a busy container inside its own reservation.
+              cpu: 500m
+              memory: 2Gi
           startupProbe:
             exec:
               command:
