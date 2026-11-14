@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.25
 # renovate: datasource=docker depName=node versioning=node
-FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS build
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build
 
 # @actual-app/api 26.11.0 pulls better-sqlite3 13, whose linux binaries are
 # built from source (no prebuilds); the slim base ships no toolchain, so the
@@ -16,7 +16,7 @@ COPY lib.js server.js ./
 COPY test ./test
 RUN npm test && rm -rf test
 
-FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
 
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
