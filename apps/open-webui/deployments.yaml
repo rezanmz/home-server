@@ -473,7 +473,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: open-terminal
-          image: ghcr.io/open-webui/open-terminal:0.14.6@sha256:785d7f2b845f2bf15a1d5e3c9f1460709168551cdf004f1513ed7802426589b3
+          image: ghcr.io/open-webui/open-terminal:0.17.7@sha256:9ee880ebf65d7500a346e3ca74de089b9cfe9cf97ffca00336aff3505a1d4c7e
           imagePullPolicy: IfNotPresent
           env:
             - name: OPEN_TERMINAL_API_KEY
