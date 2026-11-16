@@ -293,7 +293,7 @@ spec:
             failureThreshold: 3
           resources:
             requests: {cpu: 10m, memory: 16Mi, ephemeral-storage: 16Mi}
-            limits: {cpu: 500m, memory: 128Mi, ephemeral-storage: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi, ephemeral-storage: 128Mi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
