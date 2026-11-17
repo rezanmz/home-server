@@ -464,7 +464,7 @@ spec:
               mountPropagation: HostToContainer
             - {name: media-downloads, mountPath: /media/downloads}
         - name: sonarr
-          image: linuxserver/sonarr:4.0.20.3014-ls4@sha256:673dc4609a5672bc8e46069c86ffcea283a86b48d34a6c93d8da8c24a1b87571
+          image: linuxserver/sonarr:4.0.20.3014-ls5@sha256:c7d1df25e428da6c9ace05daea0d34e59522978a3843ea1944812f855af4086c
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
@@ -623,7 +623,7 @@ spec:
             - {name: soularr-data, mountPath: /data}
             - {name: media-downloads, mountPath: /downloads}
         - name: shelfmark
-          image: ghcr.io/calibrain/shelfmark:v1.6.2@sha256:0b400a5d58951b35bfede3d9943b632551259c31e130316fe56c5cc0e2e4faea
+          image: ghcr.io/calibrain/shelfmark:v1.7.0@sha256:6544e02595271b0267b9acda58fa7f3db6f14942bece51b7aadfe4000cf34f1c
           imagePullPolicy: IfNotPresent
           env: *linuxserver-env
           ports:
