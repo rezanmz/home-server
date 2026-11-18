@@ -251,10 +251,12 @@ resources. Explicit placement is used where the application needs:
 The downloads deployment combines Gluetun, qBittorrent, FlareSolverr, Prowlarr,
 Radarr, Sonarr, Shelfmark, and their access proxies in one pod. This preserves
 the VPN network-namespace contract. Gluetun owns the encrypted egress path,
-firewall, kill switch, and ProtonVPN forwarded port. The pod is not pinned: it
-softly prefers a worker without the control-plane role. Calibre-Web floats
-independently because its Shelfmark ingest handoff uses a Longhorn RWX claim;
-neither workload names a physical node.
+firewall, kill switch, and ProtonVPN forwarded port. The pod is pinned to the Pi
+by a hostname selector because `/media/downloads` is an NFS export served by the
+Pi itself: the stack cannot run without the Pi on either node, so a floating
+preference would buy no failover while letting 2,976 MiB of memory requests drift
+onto the Beelink control plane. Calibre-Web floats independently because its
+Shelfmark ingest handoff uses a Longhorn RWX claim.
 
 Singleton applications and databases stay at one replica even though their
 volumes are replicated. Storage replication is not application-level

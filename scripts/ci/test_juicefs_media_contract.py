@@ -65,27 +65,23 @@ class JuiceFSMediaStorageContractTests(unittest.TestCase):
         resource = deployment("apps/downloads/deployment.yaml", "downloads")
         self.assertEqual(resource["spec"]["replicas"], 1)
         spec = pod_spec(resource)
-        # Deliberately floating: a soft worker preference, never a nodeSelector,
-        # so the stack survives losing a node. It was pinned to Beelink by
-        # PR #382 when the Pi had 3950m of 4000m requested and this stack's 885m
-        # left 50m against authentik's 375m, which sent auth.reza.network to 503.
-        # The pin is off again because the CPU requests were right-sized from
-        # measured usage (885m -> 525m), leaving the Pi ~560m free for a pod the
-        # size of the identity provider.
-        self.assertNotIn("nodeSelector", spec)
-        worker_preference = spec["affinity"]["nodeAffinity"][
-            "preferredDuringSchedulingIgnoredDuringExecution"
-        ][0]
-        self.assertEqual(worker_preference["weight"], 100)
+        # Pinned to the Pi, not floating. /media/downloads is an NFS export served
+        # by the Pi (infrastructure/nfs-media/media.yaml: server 192.168.1.2) and
+        # every container mounts it, so this stack cannot run without the Pi on
+        # either node -- the old soft "prefer not control-plane" preference bought
+        # no failover. It did let a 2,976 MiB request set drift back onto the
+        # Beelink control plane after each reboot, holding node memory requests at
+        # 90-96% of allocatable against the 75% HomeServerNodeMemoryRequestBudgetHigh
+        # floor, and firing that alert in 11 of 11 windows in which it sat on
+        # Beelink. Any pin change must keep this test and the catalog
+        # (qbittorrent.catalog.yaml placement.mode) in agreement -- service_catalog
+        # check fails when the declared mode and this selector disagree.
+        # PR #382's Beelink pin was reverted because the Pi then had 3950m of 4000m
+        # of CPU requested; the requests below were since right-sized 885m -> 525m.
         self.assertEqual(
-            worker_preference["preference"]["matchExpressions"],
-            [
-                {
-                    "key": "node-role.kubernetes.io/control-plane",
-                    "operator": "DoesNotExist",
-                }
-            ],
+            spec["nodeSelector"], {"kubernetes.io/hostname": "raspberrypi"}
         )
+        self.assertNotIn("affinity", spec)
         volumes = {item["name"]: item for item in spec["volumes"]}
         self.assertEqual(
             volumes["media-library"]["persistentVolumeClaim"]["claimName"],

@@ -19,26 +19,34 @@ spec:
         home-server.reza.network/internal-client: "true"
     spec:
       automountServiceAccountToken: false
-      # Deliberately floating: a soft preference, never a pin, so the stack
-      # survives losing a node. It prefers the Pi (a worker) while that node has
-      # capacity and can fall back to Beelink. The Pi-hosted NFS claim is
-      # mounted by IP, so it resolves from either node.
+      # Pinned to the Pi, because the Pi's NFS export makes the "floating" claim
+      # false. `media-downloads` is a plain NFS PV served by 192.168.1.2 (the Pi
+      # itself, see infrastructure/nfs-media/media.yaml) and every one of the 12
+      # containers below mounts it. Losing the Pi therefore breaks this stack on
+      # EITHER node, so the former soft "prefer not control-plane" preference
+      # bought no failover while it let the pod drift back onto Beelink after
+      # every reboot. docs/architecture.md already states the position plainly:
+      # "The Pi remains a single point of failure for active downloads and
+      # seeding only."
       #
-      # PR #382 pinned this to Beelink because the Pi had 3950m of 4000m
-      # requested and this stack's 885m left 50m against authentik's 375m, which
-      # sent auth.reza.network to 503. The pin is off again because the CPU
-      # requests below were right-sized from measured usage (885m -> 525m),
-      # leaving the Pi ~560m free, and because holding this stack's 1.3GiB on
-      # the single control-plane node had driven its MemAvailable under the 15%
-      # floor Hermes warns on.
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: node-role.kubernetes.io/control-plane
-                    operator: DoesNotExist
+      # Measured cost of that drift (14-day natural experiment, 2026-11-04..18):
+      # this stack is 2,976 MiB of memory requests and Beelink has 14,372 MiB
+      # allocatable, so landing there pushed node requests to 90-96% of
+      # allocatable against a 75% alert floor and fired
+      # HomeServerNodeMemoryRequestBudgetHigh in 11 of 11 windows in which the
+      # pod sat on Beelink (174 h total, including one unbroken 23 h hold). In
+      # the 4 windows totalling 153 h that it sat on the Pi the alert did not
+      # fire for a single sample. Pinned, Beelink rests at 72.8% and the Pi at
+      # 51.1% with 7.69 GiB of request headroom.
+      #
+      # PR #382 previously pinned this to Beelink and was reverted because the
+      # Pi then had 3950m of 4000m of CPU requested and this stack's 885m starved
+      # authentik. The CPU requests below were since right-sized 885m -> 525m, so
+      # the Pi lands at 75.6% CPU requests with authentik's own request intact;
+      # how the Pi behaves under that load is the one thing this pin must be
+      # watched for.
+      nodeSelector:
+        kubernetes.io/hostname: raspberrypi
       # Keep service-name URLs in the migrated application databases working.
       # These names all resolved to Gluetun's shared namespace in Docker.
       hostAliases:
