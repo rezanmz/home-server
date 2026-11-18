@@ -1486,7 +1486,7 @@ database).
 
 Navidrome streams the music library at `music.reza.network`; Lidarr manages
 music acquisition at the LAN/WireGuard-only `lidarr.reza.network`. Lidarr
-shares the floating downloads pod's Gluetun network namespace, qBittorrent,
+shares the Pi-pinned downloads pod's Gluetun network namespace, qBittorrent,
 and `/media` JuiceFS mount, with Pi-hosted NFS downloads mounted over
 `/media/downloads`. Navidrome has a separate pod, a Longhorn data volume, and a
 read-only `/music` category view of the same JuiceFS filesystem.
@@ -2076,12 +2076,37 @@ ssh beelink 'sudo k3s kubectl get --raw "/api/v1/nodes/beelink/proxy/configz"' \
   | python3 -c 'import json,sys; kc=json.load(sys.stdin)["kubeletconfig"]; print({k: kc.get(k) for k in ("evictionHard","imageGCHighThresholdPercent","imageGCLowThresholdPercent")})'
 ```
 
-Calibre-Web and the downloads pod are independently floating workloads. Their
-Shelfmark handoff uses `calibre-web-ingest-rwx`; do not replace it with an RWO
-claim or pod affinity. Pod affinity is evaluated only when scheduling and can
-leave the two controllers on different nodes after a later move. The obsolete
+Calibre-Web is a floating workload; the downloads pod is pinned to the Pi
+because its `/media/downloads` is the Pi's own NFS export. Their Shelfmark
+handoff uses `calibre-web-ingest-rwx`; do not replace it with an RWO claim or
+pod affinity. Pod affinity is evaluated only when scheduling and can leave the
+two controllers on different nodes after a later move. The obsolete
 `calibre-web-ingest` RWO claim may be deleted only after the RWX claim is mounted
 by both workloads and the old claim is confirmed to contain no pending books.
+
+### Why the downloads stack is pinned to the Pi
+
+`downloads` carries `nodeSelector: kubernetes.io/hostname: raspberrypi` and its
+catalog entry declares `placement.mode: raspberrypi`. This is a correction of a
+false premise, not a capacity preference: `media-downloads` is a plain NFS PV
+whose server is `192.168.1.2`, i.e. the Pi itself, and all twelve of the stack's
+containers mount it. The stack therefore cannot run without the Pi on either
+node, so the previous soft "prefer not control-plane" affinity never provided
+failover — it only allowed 2,976 MiB of memory requests to drift back onto the
+Beelink control plane after each reboot.
+
+That drift is what drove `HomeServerNodeMemoryRequestBudgetHigh`. Over the
+14 days to 2026-11-18 the pod sat on Beelink for 11 windows totalling 174 h and
+the alert fired in all 11 (peaking at 96% of allocatable, with one unbroken 23 h
+hold); it sat on the Pi for 4 windows totalling 153 h and the alert did not fire
+for a single sample. Pinned, Beelink rests at ~72.8% and the Pi at ~51.1%.
+
+The tradeoff to watch is Pi CPU, not memory: the pin puts the Pi at ~75.6% of
+its 4-core CPU *requests* (525m + the 50m Gluetun sidecar), up from ~61%. The
+pod's actual CPU usage is a fraction of that, but PR #382's earlier Beelink pin
+was reverted precisely because a 3950m/4000m Pi request set starved authentik.
+If authentik latency regresses, the fix is to right-size requests rather than to
+unpin this stack.
 
 ### Beelink memory budget and the daily watcher
 
@@ -2092,6 +2117,11 @@ treat a firing as a capacity decision rather than noise: the scheduler cannot
 see the k3s server working set (1.7-4 GiB) or the Longhorn instance managers
 (upstream exposes no memory request for them), so the visible ratio understates
 the real commitment by roughly 4-6 GiB on Beelink.
+
+On Beelink the dominant term is the `downloads` stack at 2,976 MiB. It is pinned
+to the Pi (see "Why the downloads stack is pinned to the Pi"), so this alert is
+now a genuine capacity signal rather than the nightly artifact it was while that
+stack still floated back onto the control plane.
 
 ```bash
 ssh beelink 'sudo k3s kubectl describe node beelink | sed -n "/Allocated resources/,/Events/p"'

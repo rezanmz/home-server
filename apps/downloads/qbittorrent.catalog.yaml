@@ -25,9 +25,13 @@ spec:
       mode: native
       reason: qBittorrent uses its built-in Web UI authentication behind the LAN/WireGuard boundary.
   placement:
-    mode: floating
+    mode: raspberrypi
     manifest: apps/downloads/deployment.yaml
-    reason: Floats with a soft preference for a non-control-plane worker while retaining the shared Gluetun network namespace.
+    reason: >-
+      The stack's /media/downloads is an NFS export served by the Pi itself, so
+      it cannot run without the Pi on either node. Pinning states that truth
+      instead of letting a 2,976 MiB request set drift onto the Beelink control
+      plane after each reboot and hold node memory requests at 90-96%.
   data:
     class: mixed
     protection: longhorn-b2
