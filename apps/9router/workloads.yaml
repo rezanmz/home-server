@@ -81,7 +81,25 @@ spec:
           # playwright-core into the runner image (#5245) so OpenCode Free no
           # longer needs runtime downloads, and NVIDIA NIM reasoning-alias
           # normalization (not used here).
-          image: ghcr.io/decolua/9router:0.5.112@sha256:fab111d99b23bde6c8944ca22982603ab0b09e917a0b1e4ce42a24b05753bec9
+          #
+          # 0.5.112 -> 0.5.119 is a 7-patch hop, age-ripe 7.2 days, and no DB
+          # migration: the 0.5.112..0.5.119 range touches zero files under
+          # migrations/ (the "schema" hits are SSE translator modules). Two
+          # fixes land squarely on this deployment:
+          #   - "opencode-go: use current inference endpoint" — OpenCode retired
+          #     /zen/go/v1 for personal/Teams keys and those keys now get 403
+          #     there, while https://opencode.ai/inference/go still works. We
+          #     run two opencode-go connections (p1 429 GoUsageLimitError, p2
+          #     429), so this is the difference between a real quota answer and
+          #     a transport 403 that looks like one.
+          #   - "transport: survive DPI-shaped networks" — drops ipv4first in
+          #     favour of undici-8 happy eyeballs, and stops reusing keep-alive
+          #     sockets upstream edges silently drop. Directly relevant to the
+          #     recurring Bell-WAN/upstream timeouts investigated 2026-11-10/11.
+          # Same post-rollout gate as before: chat/auto/smart must answer, the
+          # :high streaming path must return 200, and the combo/provider/key
+          # counts must still read 11/4/7.
+          image: ghcr.io/decolua/9router:0.5.119@sha256:38e58865ff111599f409f44430084ad0016c2ba530757ef545848d4bbe0cf007
           imagePullPolicy: IfNotPresent
           # The image entrypoint is `chown … && su-exec node …`, which needs
           # root (setgroups) and fails under this unprivileged pod. fsGroup
