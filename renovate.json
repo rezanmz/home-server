@@ -132,7 +132,7 @@
     },
     {
       "description": "K3s version bumps stay manual: this repository has no state-aware in-place upgrade procedure. The install/join helpers are fresh-host-only and deliberately refuse existing K3s state, and AGENTS.md lists a state-aware in-place K3s upgrade as an unsupported operation. v1.36.5+k3s1 additionally carries 'Bump google.golang.org/grpc to v1.83.2 for CVE-2026-84445' (a gRPC-Go xDS DoS). Verified 2026-10-20: that CVE lives in xds.NewGRPCServer's routing interceptor, and both the pinned v1.36.2 binary and the v1.36.5 binary contain zero grpc/xds, cncf/xds or envoy go-control-plane symbols, so the CVE is not reachable in this cluster's linked code paths - but moving the pin still requires the upgrade and control-plane-recovery designs (prompts/design-k3s-upgrade.md, prompts/design-control-plane-recovery.md) plus a resolution of the live-only CoreDNS hostname selector, because a K3s upgrade re-applies the packaged AddOn manifests. No bot may move this pin; a human with a rehearsed procedure must.",
-      "matchManagers": ["custom"],
+      "matchManagers": ["custom.regex"],
       "matchDatasources": ["github-releases"],
       "matchPackageNames": ["k3s-io/k3s"],
       "enabled": false
