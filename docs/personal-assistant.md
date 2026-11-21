@@ -75,11 +75,10 @@ key learns nothing beyond that 401.
 The omp personal profile routes every role primary through the `chat`/`smart`
 combos (provider declared in `~/.omp/agent/models.yml`); the previous direct
 primaries head each fallback chain, so a router outage degrades to
-provider-direct behaviour. Note: `smart` is led by the text-only `glm-5.3`, so
-vision-bearing omp sessions answer blind while that member is healthy;
-reorder the combo or route vision through `chat` (fully vision-capable
-members) if that becomes unacceptable. Deliberate exceptions to the
-9Router-only boundary remain: Open WebUI's external reranker
+provider-direct behaviour. Every combo is now same-family and vision-capable,
+so no role answers blind: `smart` = MiMo-Pro → GLM-Flash → Deepseek-Flash,
+`chat`/`auto` = Deepseek-Flash → MiMo-Flash → GLM-Flash. Deliberate
+exceptions to the 9Router-only boundary remain: Open WebUI's external reranker
 (`cohere/rerank-v3.5` — 9Router has no rerank proxy), Open WebUI speech
 (whisper STT and mai-voice TTS — 9Router's OpenRouter audio proxy
 rejects the models in its pinned catalog), and Open WebUI image
