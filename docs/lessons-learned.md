@@ -1470,3 +1470,56 @@ not the same thing as the vulnerable code being linked in.
   `docs/cluster-operations.md` ("Current live deviations requiring follow-up"
   #3), and `renovate.json` keeps the K3s custom-manager dependency manual so
   no bot can move the pin.
+
+## 2026-11-21 — 9Router family combos had drifted-dead members and cross-family fallbacks
+
+Source: operator report that "GLM-Flash" answered as DeepSeek, then a full
+audit of the `combos` table in `apps/9router`'s SQLite data directory.
+
+A combo's `models` column is a plain JSON array of provider-prefixed ids, and
+9Router picks the first member whose connection can serve the request. Two
+classes of drift accumulate silently because nothing validates them:
+
+- **Cross-family members.** `GLM-Flash`, `MiMo-Flash`, `MiMo-Pro`, and `GLM`
+  all carried `cmc/deepseek/deepseek-v4.1-flash` as a fallback, so an
+  upstream GLM/MiMo failure answered a GLM-family request with DeepSeek. The
+  response's `model` field proves it (`/v1/chat/completions` echoes the member
+  actually used): after the fix every family id resolves to its own model.
+- **Dead providers ahead of live ones.** `Deepseek-Flash` led with
+  `ds/deepseek-flash` (that provider has no models registered at all — every
+  call is `model_not_found`) and `deepinfra/…` (HTTP 402, zero balance),
+  padding three dead hops ahead of the one live member. `ocg/*` returns HTTP
+  403 `An active OpenCode Go subscription is required` on every model. Only
+  `commandcode` (`cmc/…`) was live.
+
+Fix applied live in the pod's DB (combos are read per request, no restart):
+
+| combo | members |
+| --- | --- |
+| Deepseek-Flash | `cmc/deepseek/deepseek-v4.1-flash` → `ocg/deepseek-v4.1-flash` |
+| GLM-Flash | `cmc/z-ai/glm-5.3-flash` → `ocg/glm-5.3-flash` |
+| GLM | `cmc/zai-org/GLM-5.3` → `ocg/glm-5.3` |
+| MiMo-Flash | `cmc/xiaomi/mimo-v2.6-flash` → `ocg/mimo-v2.6-flash` |
+| MiMo-Pro | `cmc/xiaomi/mimo-v2.6-pro` → `ocg/mimo-v2.6-pro` |
+| MiniMax-Flash | `cmc/minimax/minimax-m3.1-flash` → `ocg/minimax-m3.1-flash` |
+| Qwen-Flash | `cmc/Qwen/Qwen3.8-Flash` → `ocg/qwen3.8-flash` |
+| GPT-Luna | `cmc/gpt-6-luna` → `ocg/gpt-6-luna` |
+
+- **Watch for:** a combo whose answer ignores the family it is named after, a
+  request that returns `model_not_found` then still succeeds (a dead member
+  was skipped), or `[402]`, `[403] permission_error`, and
+  `Model/provider not recognized` in the router's per-attempt error text.
+- **Diagnostic recipe:** `select name, models from combos` inside the pod
+  (`sqlite3` is absent; use `better-sqlite3` via `node -`), then probe each
+  member id directly with `/v1/chat/completions` and compare the response's
+  `model` field against the combo name.
+- **Prevention:** keep every family combo same-family — Command Code
+  (`cmc/<vendor>/<model>`) first while it is the live subscription, then the
+  opencode-go twin. A version bump is a member edit in the same family, never
+  a `"use whatever still answers"` fallback. Consumers pin family combo names
+  only (`~/.omp/agent/models.yml`), so the router stays the single place that
+  owns member order.
+- **Caveat:** this is application state in the Longhorn volume, not Git, so
+  the table above is the record to re-apply after a data restore.
+- **Restore:** `VACUUM INTO '/app/data/db/backups/pre-combo-family-fix.sqlite'`
+  was taken first; rollback is copying the `combos` rows back from it.
