@@ -801,7 +801,7 @@ multi-object Restic repository. Monitor their unbounded billable growth. If a
 bounded rule is introduced later, it may expire only hidden prior versions and
 must never expire current objects based on upload age.
 
-Restic 0.19.1's normal S3 operations use object listing, reads, writes, and
+Restic 0.20.0's normal S3 operations use object listing, reads, writes, and
 name-only deletes that create hide markers. A future least-privilege key should
 be restricted to bucket `rezanmz-home-server-syncthing-backups`, name prefix
 `syncthing/` including the trailing slash, and begin with only `listFiles`,
