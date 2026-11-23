@@ -801,6 +801,14 @@ multi-object Restic repository. Monitor their unbounded billable growth. If a
 bounded rule is introduced later, it may expire only hidden prior versions and
 must never expire current objects based on upload age.
 
+Restic 0.20.0 applies `$RESTIC_HOST` as a default snapshot filter on commands
+that accept snapshot filters (`finalizeSnapshotFilter`). Passing an explicit
+snapshot ID together with that default is rejected with "explicit snapshot ids
+are given", so every script invocation that targets one snapshot by ID (`tag`
+promotion, restore-proof `snapshots`) passes `--host ""` to unset the default.
+When upgrading restic again, re-run the backup and restore-proof modes against
+the pinned image before merging.
+
 Restic 0.20.0's normal S3 operations use object listing, reads, writes, and
 name-only deletes that create hide markers. A future least-privilege key should
 be restricted to bucket `rezanmz-home-server-syncthing-backups`, name prefix
