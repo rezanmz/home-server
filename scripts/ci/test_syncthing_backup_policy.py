@@ -330,7 +330,15 @@ class SyncthingBackupStateMachineTests(unittest.TestCase):
         commands = self.logged_commands()
         backup = next(command for command in commands if command.startswith("backup\t"))
         self.assertIn("\t--json\t--quiet", backup)
-        self.assertTrue(any(command.startswith("tag\t") for command in commands))
+        tag = next(command for command in commands if command.startswith("tag\t"))
+        arguments = tag.split("\t")
+        self.assertIn(CANDIDATE_ID, arguments)
+        # restic 0.20.0 applies $RESTIC_HOST as a default snapshot filter; an
+        # explicit snapshot ID plus any filter is rejected with "explicit
+        # snapshot ids are given". The promotion must therefore pass an empty
+        # --host so the ID alone selects the snapshot.
+        self.assertIn("--host", arguments)
+        self.assertEqual(arguments[arguments.index("--host") + 1], "")
         self.assertIn(f"trusted snapshot id={PROMOTED_ID}", result.stdout)
 
     def test_partial_backup_is_not_promoted_and_bounds_candidates(self) -> None:

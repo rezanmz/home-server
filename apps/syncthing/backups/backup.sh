@@ -262,9 +262,14 @@ run_backup() {
   )"
   validate_snapshot_id "$candidate_snapshot_id" "successful backup snapshot ID"
 
+  # restic 0.20.0 applies $RESTIC_HOST as a default snapshot filter
+  # (finalizeSnapshotFilter). An explicit snapshot ID together with any filter
+  # is rejected with "explicit snapshot ids are given", so pass an empty --host
+  # to unset the default and let the ID select the snapshot.
   restic --retry-lock 2h tag \
     --add "$TRUSTED_TAG" \
     --remove "$CANDIDATE_TAG" \
+    --host "" \
     "$candidate_snapshot_id" \
     --json > "$TAG_OUTPUT"
   cat "$TAG_OUTPUT"
@@ -433,7 +438,10 @@ run_restore_proof() {
   validate_snapshot_id "$restore_snapshot_id" "restore snapshot ID"
 
   snapshot_metadata="$(
-    restic --retry-lock 2h snapshots "$restore_snapshot_id" --json
+    restic --retry-lock 2h snapshots \
+      --host "" \
+      "$restore_snapshot_id" \
+      --json
   )" || fail "could not read restore snapshot metadata"
   printf '%s\n' "$snapshot_metadata" |
     jq -e \
