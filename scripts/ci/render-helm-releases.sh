@@ -198,7 +198,7 @@ extract_resource OCIRepository flux-system metallb "${metallb_source}"
 validate_release_reference "${metallb_release}" OCIRepository flux-system metallb
 metallb_chart="$(pull_oci_chart \
   "${metallb_source}" \
-  fb06bb584fcb7856f15733b2a6a2aff5b61b5c350687e341c163ae24a5938adc)"
+  96667a810bdf9b9d1e6d320af16a4e66c63ba56301bc21005e645cd7a1c298a4)"
 render_release "${metallb_release}" "${metallb_chart}"
 
 longhorn_source="${tmp}/longhorn-source.yaml"
